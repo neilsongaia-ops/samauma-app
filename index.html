@@ -137,9 +137,10 @@
     var btnEnviar = el('button', { type: 'button', 'class': 'sl-primario', texto: 'Enviar código' });
     var btnEntrar = el('button', { type: 'button', 'class': 'sl-primario', texto: 'Entrar' });
     var btnOutro = el('button', { type: 'button', 'class': 'sl-link', texto: 'Usar outro e-mail' });
+    var btnJaTenho = el('button', { type: 'button', 'class': 'sl-link', texto: 'Já tenho um código' });
     var btnReenviar = el('button', { type: 'button', 'class': 'sl-link', texto: 'Reenviar código' });
 
-    var passo1 = el('div', {}, [el('label', { 'for': 'samauma-login-email', texto: 'E-mail cadastrado' }), inEmail, btnEnviar]);
+    var passo1 = el('div', {}, [el('label', { 'for': 'samauma-login-email', texto: 'E-mail cadastrado' }), inEmail, btnEnviar, btnJaTenho]);
     var passo2 = el('div', { style: 'display:none' }, [el('label', { 'for': 'samauma-login-codigo', texto: 'Código enviado ao seu e-mail' }), inCodigo, btnEntrar, btnReenviar, btnOutro]);
     var card = el('div', { 'class': 'sl-card' }, [el('h1', { texto: 'Samaúma' }), el('p', { texto: 'Entre com o código enviado ao seu e-mail.' }), msg, passo1, passo2]);
     overlay = el('div', { id: 'samauma-login' }, [estilo, card]);
@@ -149,6 +150,8 @@
 
     function aviso_(texto, ok) { msg.textContent = texto || ''; msg.className = ok ? 'sl-ok' : ''; }
     function ocupado(botao, sim, textoOcupado, textoNormal) { botao.disabled = sim; botao.textContent = sim ? textoOcupado : textoNormal; }
+
+    function irParaCodigo(texto) { passo1.style.display = 'none'; passo2.style.display = ''; aviso_(texto || '', !!texto); inCodigo.focus(); }
 
     function pedirCodigo() {
       var email = inEmail.value.trim();
@@ -162,7 +165,8 @@
         if (res && res.ok) {
           passo1.style.display = 'none'; passo2.style.display = '';
           aviso_(res.dados && res.dados.mensagem, true); inCodigo.focus();
-        } else aviso_((res && res.erro) || 'Não foi possível enviar o código.');
+        } else if (res && res.erro && /^Aguarde|Muitos pedidos/.test(res.erro)) irParaCodigo(res.erro + ' Se você já recebeu um código, digite-o abaixo.');
+        else aviso_((res && res.erro) || 'Não foi possível enviar o código.');
       }, function (err) {
         ocupado(btnEnviar, false, '', 'Enviar código');
         ocupado(btnReenviar, false, '', 'Reenviar código');
@@ -188,6 +192,7 @@
 
     btnEnviar.addEventListener('click', pedirCodigo);
     btnReenviar.addEventListener('click', pedirCodigo);
+    btnJaTenho.addEventListener('click', function () { if (!inEmail.value.trim()) { aviso_('Informe o e-mail.'); inEmail.focus(); return; } irParaCodigo(''); });
     btnEntrar.addEventListener('click', entrar);
     btnOutro.addEventListener('click', function () { passo2.style.display = 'none'; passo1.style.display = ''; inCodigo.value = ''; aviso_(''); inEmail.focus(); });
     inEmail.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') pedirCodigo(); });
