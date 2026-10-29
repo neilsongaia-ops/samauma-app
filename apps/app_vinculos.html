@@ -627,7 +627,7 @@ function _vincAtualizarContadorAba() {
 function renderizarTabelaVinculos() {
   var container = document.getElementById('vinc-corpo-wrap') || document.getElementById('vinculos-conteudo');
   if (!container) return;
-  var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.editar);
+  var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.vincular);
   var busca = estadoVinculos.busca;
 
   container.innerHTML =
@@ -795,7 +795,7 @@ function _vincLinhaHTML(p, podeEditar) {
 function _vincRenderCorpo() {
   var tbody = document.getElementById('vinc-tbody');
   if (!tbody) return;
-  var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.editar);
+  var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.vincular);
   var todos = _vincListaUnica();
   var listaCompleta = _vincSortLista(_vincFiltrar(todos));
   var total = listaCompleta.length, itensPag = estadoVinculos.itensPorPagina;
@@ -1052,7 +1052,7 @@ function responderPropostaVinculo(idVinculo, nomeProponente, resposta) {
 }
 
 function abrirMenuVinculosMais(ev) {
-  var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.editar);
+  var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.vincular);
   var itens = [
     { icone: 'north', rotulo: 'Vincular a um plano superior', descricao: 'Adicionar mais um plano superior ao qual este plano contribui',
       onclick: "abrirModalVincularPlano('superior')", oculto: !podeEditar },
