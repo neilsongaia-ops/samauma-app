@@ -1,0 +1,1699 @@
+<script>
+/**
+ * Fábrica do contrato entre um app "instalável" e o host que o carrega
+ * (ver docs/arquitetura_apps_modulares.md). Cada app cria a PRÓPRIA
+ * instância — `var _forumSDK = criarSamaumaSDK();` — e nunca guarda num
+ * global genérico (`SamaumaSDK`): o app é entregue por injeção dinâmica de
+ * HTML/JS no DOM do host (`apiObterHtmlApp` + `<script>` recriado em
+ * runtime), não em <iframe> (testado e bloqueado pelo Google — todo Apps
+ * Script já roda dentro de um iframe de sandbox do próprio Google, e um
+ * segundo nível pra outro app quebra a autenticação). Sem <iframe>, todo
+ * app injetado divide o mesmo escopo global da página — um único objeto
+ * `SamaumaSDK` compartilhado colidiria entre dois apps montados ao mesmo
+ * tempo (Fase 3). Cada instância guarda seu próprio nome com o PRÓPRIO
+ * prefixo de arquivo (`_forumSDK`, `_elementosSDK`, ...), mesma convenção
+ * de "todo global leva o prefixo do arquivo" já usada em todo o projeto
+ * (ver CLAUDE.md).
+ *
+ * Regra de ouro: um app nunca chama google.script.run direto nem calcula
+ * permissão no cliente — só através da instância do SDK que criar.
+ */
+function criarSamaumaSDK() {
+  var _contexto = null;
+  var _visibilidade = { pagina: true, aba: true };
+  var _callbacksContexto = [];
+  var _callbacksVisibilidade = [];
+  var _callbacksPainelFechado = [];
+  var _callbackTecla = null;
+  var _callbacksTema = [];
+  var _aoBadge = null;
+  var _aoContagem = null;
+  var _aoAlerta = null;
+  var _aoDados = null;
+
+  return {
+    // Chamado pelo host logo depois de injetar/montar o app, e de novo toda
+    // vez que o contexto muda (ex.: usuário trocou de plano).
+    iniciar: function (ctx) {
+      _contexto = {
+        idPlano: ctx.idPlano, permissoes: ctx.permissoes || {},
+        usuario: ctx.usuario || {}, plano: ctx.plano || {}
+      };
+      _callbacksContexto.forEach(function (cb) { cb(_contexto); });
+    },
+
+    // Chamado pelo host sempre que a visibilidade da aba do app ou da
+    // tela-mãe muda (troca de aba, navegação pra outra tela da SPA).
+    notificarVisibilidade: function (v) {
+      _visibilidade = { pagina: !!v.pagina, aba: !!v.aba };
+      _callbacksVisibilidade.forEach(function (cb) { cb(_visibilidade); });
+    },
+
+    // Registra callback para quando o contexto chegar/mudar. Se já tiver
+    // chegado antes do registro, dispara imediatamente.
+    aoContexto: function (cb) {
+      _callbacksContexto.push(cb);
+      if (_contexto) cb(_contexto);
+    },
+
+    aoVisibilidade: function (cb) {
+      _callbacksVisibilidade.push(cb);
+      cb(_visibilidade);
+    },
+
+    contexto: function () { return _contexto; },
+    visibilidade: function () { return _visibilidade; },
+
+    // Notificação de painel lateral fechado pelo host
+    notificarPainelFechado: function () {
+      _callbacksPainelFechado.forEach(function (cb) { cb(); });
+    },
+    aoPainelFechado: function (cb) {
+      _callbacksPainelFechado.push(cb);
+    },
+
+    // Repasse de teclas de atalho (Escape, Ctrl+A) da aba ativa
+    notificarTecla: function (evt) {
+      if (_callbackTecla) return _callbackTecla(evt);
+      return false;
+    },
+    aoTecla: function (cb) {
+      _callbackTecla = cb;
+    },
+
+    // Notificação de alternância de tema visual (claro/escuro)
+    notificarTema: function (tema) {
+      _callbacksTema.forEach(function (cb) { cb(tema); });
+    },
+    aoTema: function (cb) {
+      _callbacksTema.push(cb);
+    },
+
+    // O HOST registra aqui como quer reagir ao badge deste app (ex.:
+    // atualizar o selo vermelho da própria aba) — o app só reporta o valor.
+    aoBadge: function (cb) { _aoBadge = cb; },
+    reportarBadge: function (valor) { if (_aoBadge) _aoBadge(valor); },
+
+    // Contagem total do app na própria aba (estilo "141" — diferente de
+    // aoBadge/reportarBadge, que é notificação/não-lida, estilo bolinha).
+    // PADRÃO DOS CONTADORES DA ABA (vale para todo app, atual ou futuro):
+    //  - contagem = TOTAL de itens do app (chip neutro, ex.: 141 elementos);
+    //  - alerta   = itens que exigem ação (chip âmbar + tooltip, ex.: "2 vínculos
+    //    aguardam sua decisão").
+    // Um app pode reportar um, o outro ou os dois. Para aparecerem já na abertura
+    // do plano, o app registra um provedor em CONTADORES_APPS (code.js).
+    aoContagem: function (cb) { _aoContagem = cb; },
+    reportarContagem: function (valor) { if (_aoContagem) _aoContagem(valor); },
+    aoAlerta: function (cb) { _aoAlerta = cb; },
+    reportarAlerta: function (valor, titulo) { if (_aoAlerta) _aoAlerta(valor, titulo); },
+
+    // Genérico: qualquer app pode publicar um retorno de dados pro host
+    // reagir (ex.: Elementos publica a lista atualizada pro host recalcular
+    // KPIs do header sem o app precisar conhecer essas outras telas).
+    aoDados: function (cb) { _aoDados = cb; },
+    reportarDados: function (valor) { if (_aoDados) _aoDados(valor); },
+
+    // Barra lateral de detalhes (#detp-panel — ver docs/arquitetura_apps_modulares.md):
+    // "substituição total" — o app manda o HTML pronto e é dono de 100% da
+    // marcação dentro do drawer (inclusive de suas próprias tabs/cabeçalho/
+    // botão de fechar, se quiser; CSS compartilhado do host — .detp-secao,
+    // .detp-linha, .detp-subsecao, .detp-tabs/.detp-tab etc. — já está
+    // disponível globalmente pra manter a mesma linguagem visual, mas o app
+    // não é obrigado a usá-lo). A casca só garante a moldura do drawer
+    // (posição/animação) e o Esc como fallback de fechamento. Único ponto
+    // que muda na migração pra um componente de verdade (Angular): a
+    // implementação interna, nunca essa assinatura.
+    abrirPainel: function (html) { if (typeof window.abrirPainelApp === 'function') window.abrirPainelApp(html); },
+    fecharPainel: function () { if (typeof window.fecharPainelDetalhes === 'function') window.fecharPainelDetalhes(); },
+
+    // Embrulha google.script.run.withSuccessHandler/withFailureHandler numa
+    // Promise. Único ponto que muda na migração para o backend Node/Express.
+    chamar: function (nomeFuncao) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(function (erro) { reject(erro); });
+        runner[nomeFuncao].apply(runner, args);
+      });
+    }
+  };
+}
+</script>
+
+<style>
+/* ── MONITORAMENTO (APP MODULAR) ─────────────────────────── */
+#monit-corpo-wrap {
+  width: 100%;
+}
+.perf-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
+.perf-faixa-chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; margin-right: 6px; }
+.mon-topo { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; margin-bottom: 16px; }
+.mon-card {
+  min-width: 0; border-radius: var(--ds-r-2xl); padding: 20px; display: flex; flex-direction: column;
+  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); box-shadow: none !important;
+}
+.mon-card--anel  { flex: 1 1 260px; }
+.mon-card--rosca { flex: 1 1 280px; }
+.mon-card--barras { flex: 999 1 400px; max-height: 420px; }
+.mon-card h3 { display: flex; align-items: center; gap: 6px; font-size: var(--ds-text-md); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); margin: 0; }
+.mon-card h3 .material-symbols-outlined { font-size: 16px; color: var(--ds-color-border-strong); cursor: help; }
+.mon-card-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+.mon-card-header h3 { margin: 0; }
+.mon-tipo-btn {
+  display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px;
+  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
+  color: var(--ds-color-text); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
+  cursor: pointer; white-space: nowrap; transition: all 0.15s;
+}
+.mon-tipo-btn:hover { background: var(--ds-sidebar-item-hover); border-color: var(--ds-color-border-strong); }
+.mon-tipo-btn[aria-expanded="true"] {
+  background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); border-color: var(--ds-color-info-bg); font-weight: var(--ds-weight-semibold);
+}
+.mon-tipo-btn[aria-expanded="true"] .material-symbols-outlined { color: var(--ds-color-info-fg); }
+.mon-tipo-btn .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
+.mon-card-sub { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); margin: 2px 0 6px; }
+.mon-chart-anel, .mon-chart-rosca { width: 100%; height: 170px; }
+.mon-chart-scroll-wrap {
+  flex: 1 1 auto; min-height: 0; max-height: 310px; overflow-y: auto; overflow-x: hidden;
+  padding-right: 6px; scrollbar-width: thin; scrollbar-color: var(--ds-color-border-strong) transparent;
+}
+.mon-chart-scroll-wrap::-webkit-scrollbar { width: 6px; }
+.mon-chart-scroll-wrap::-webkit-scrollbar-track { background: transparent; }
+.mon-chart-scroll-wrap::-webkit-scrollbar-thumb { background: var(--ds-color-border-strong); border-radius: 4px; }
+.mon-chart-scroll-wrap::-webkit-scrollbar-thumb:hover { background: var(--ds-color-text-muted); }
+.mon-chart-barras { width: 100%; min-height: 220px; }
+.mon-conceito { display: flex; justify-content: center; margin: -4px 0 10px; }
+.mon-fatos { display: flex; flex-direction: column; border-top: 1px solid var(--ds-glass-border); margin-top: auto; }
+.mon-fato { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 8px 0 0; font-size: var(--ds-text-sm); }
+.mon-fato > span:first-child { color: var(--ds-color-text-muted); }
+.mon-fato > span:last-child { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); font-variant-numeric: tabular-nums; }
+.mon-fato.is-alerta > span:last-child { color: var(--ds-color-danger-fg); }
+.mon-legenda { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
+.mon-legenda-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 5px 8px; border: 1px solid transparent; border-radius: var(--ds-r-lg);
+  background: none; cursor: pointer; font-family: var(--ds-font-sans); text-align: left;
+}
+.mon-legenda-item:hover { background: var(--ds-sidebar-item-hover); }
+.mon-legenda-item.is-sel { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); }
+.mon-legenda-item.is-apagado { opacity: .55; }
+.mon-legenda-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.mon-legenda-rot { flex: 1; min-width: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mon-legenda-n { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); font-variant-numeric: tabular-nums; }
+
+/* Tabela */
+.mon-tabela col.mon-col-status   { width: 150px; }
+.mon-tabela col.mon-col-prog     { width: 200px; }
+.mon-tabela col.mon-col-prazo    { width: 120px; }
+.mon-tabela col.mon-col-resp     { width: 190px; }
+.mon-tabela col.mon-col-alc      { width: 230px; }
+.mon-tabela col.mon-col-conc     { width: 130px; }
+.mon-tabela col.mon-col-contrib  { width: 130px; }
+.mon-tabela col.mon-col-acoes, .mon-tabela .mon-col-acoes { width: 196px; text-align: right; padding-left: 4px; padding-right: 12px; }
+.mon-tabela tr:not(.mon-det) .acoes-linha { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
+.mon-tabela tr:not(.mon-det):hover .acoes-linha,
+.mon-tabela tr:not(.mon-det) .acoes-linha:focus-within,
+.mon-tabela tr:not(.mon-det) .acoes-linha:has([aria-expanded="true"]) { opacity: 1; }
+.mon-tabela tbody tr td { padding-top: 12px; padding-bottom: 12px; }
+.mon-elem { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mon-elem .el-codigo { flex-shrink: 0; min-width: 36px; }
+.mon-elem-titulo { font-size: var(--ds-text-base); color: var(--ds-color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mon-elem-titulo.is-raiz { font-weight: var(--ds-weight-semibold); }
+.mon-status { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: var(--ds-radius-pill); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); white-space: nowrap; }
+.mon-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.mon-barra { position: relative; flex: 1; height: 6px; min-width: 40px; border-radius: var(--ds-radius-pill); background: var(--ds-sidebar-item-hover); }
+.mon-barra-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: var(--ds-radius-pill); }
+.mon-barra-meta { position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 1px; background: var(--ds-color-text); opacity: .35; }
+.mon-barra-wrap { display: flex; align-items: center; gap: 10px; }
+.mon-barra-val { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
+.mon-prazo { display: inline-flex; align-items: center; gap: 4px; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mon-prazo.is-vencido { color: var(--ds-color-danger-fg); font-weight: var(--ds-weight-semibold); }
+.mon-prazo .material-symbols-outlined { font-size: 16px; }
+.mon-resp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ds-text-sm); }
+.mon-resp .material-symbols-outlined { font-size: 16px; color: var(--ds-color-text-muted); flex-shrink: 0; }
+.mon-resp > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.mon-ind { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.mon-ind .mon-seta { font-size: 20px; color: var(--ds-color-text-muted); flex-shrink: 0; transition: transform var(--ds-duration-fast) var(--ds-ease-standard); }
+tr.is-open .mon-seta { transform: rotate(90deg); }
+.mon-ind-nome { font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.mon-ind-pol { font-size: 16px; color: var(--ds-color-border-strong); flex-shrink: 0; }
+.mon-tabela tr.mon-linha-ind { cursor: pointer; }
+.mon-tabela tr.mon-linha-ind.is-open td { border-bottom-color: transparent; }
+.mon-contrib { font-size: var(--ds-text-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mon-contrib strong { font-weight: var(--ds-weight-semibold); }
+.mon-contrib span { color: var(--ds-color-text-muted); }
+
+/* Detalhe do indicador */
+.mon-tabela tr.mon-det td { padding: 4px 16px 20px 42px; cursor: default; }
+.mon-tabela tr.mon-det:hover td { background: transparent; }
+.mon-det-corpo { display: flex; flex-wrap: wrap; gap: 20px 32px; }
+.mon-det-graf { flex: 999 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.mon-det-graf > span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.mon-chart-hist { width: 100%; height: 200px; }
+.mon-det-vazio { height: 120px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px dashed var(--ds-color-border); border-radius: var(--ds-r-lg); font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); }
+.mon-det-ficha { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; }
+.mon-det-ficha .detp-linha { border-bottom: 1px solid var(--ds-glass-border); padding: 6px 0; }
+
+.rsc-link {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+  background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-r-md); color: var(--ds-color-action); font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-medium); cursor: pointer; transition: all 0.15s;
+}
+.rsc-link:hover { background: var(--ds-sidebar-item-hover); border-color: var(--ds-color-action); }
+
+@media (max-width: 1100px) {
+  .mon-tabela .mon-col-prazo, .mon-tabela .mon-col-resp, .mon-tabela .mon-col-contrib { display: none; }
+  .mon-tabela col.mon-col-prazo, .mon-tabela col.mon-col-resp, .mon-tabela col.mon-col-contrib { width: 0; }
+  .mon-tabela col.mon-col-acoes, .mon-tabela .mon-col-acoes { width: 96px; }
+}
+@media (max-width: 768px) {
+  .mon-card { padding: 14px; }
+  .mon-tabela, .mon-tabela tbody { display: block; }
+  .mon-tabela colgroup, .mon-tabela thead { display: none; }
+  .mon-tabela tbody tr:not(.mon-det):not(.el-linha-msg) {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; padding: 12px; margin-bottom: 10px;
+    border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
+  }
+  .mon-tabela tbody tr td { display: block; padding: 0; border: none; }
+  .mon-tabela tbody tr td:first-child { grid-column: 1 / -1; }
+  .mon-tabela tbody tr td.mon-col-acoes { display: none; }
+  .mon-tabela tr.mon-det { display: block; margin: -10px 0 10px; border: 1px solid var(--ds-color-border); border-top: none; border-radius: 0 0 var(--ds-r-lg) var(--ds-r-lg); }
+  .mon-tabela tr.mon-det td { display: block; padding: 0 12px 12px; }
+  .mon-tabela tr.mon-linha-ind.is-open { border-radius: var(--ds-r-lg) var(--ds-r-lg) 0 0 !important; margin-bottom: 0 !important; }
+}
+</style>
+
+<div id="monit-corpo-wrap"></div>
+
+<script>
+// ── INSTÂNCIA DO SDK SAMAÚMA PARA MONITORAMENTO ─────────────────
+var _monitoramentoSDK = criarSamaumaSDK();
+window._desempenhoSDK = _monitoramentoSDK;
+window._monitoramentoSDK = _monitoramentoSDK;
+
+var _monitPlanoId = null;
+var _monitCtx = null;
+var _perfDados = null;
+var _perfExpandidos = {};
+var monitTudoExpandido = false;
+var _monitAbaVisivel = false;
+var _monitCarregando = false;
+var _monitStale = false; // dados do servidor podem estar defasados: recarrega na próxima vez que a aba ficar visível
+
+var _monitCharts = {};
+var _monitChartsClique = {};
+
+var estadoMonit = {
+  modo: 'progresso',
+  busca: '', filtroStatus: '', filtroResp: '', filtroElem: '', filtroConceito: '',
+  tipoElementoBarras: '',
+  sort: { col: 'codigo', dir: 'asc' },
+  paginaAtual: 1, itensPorPagina: 20
+};
+
+var _MON_ORD_STATUS = ['Concluído', 'Em Andamento', 'Não Iniciado', 'Cancelado'];
+var _MON_ORD_CONC = ['Excelente', 'Bom', 'Regular', 'Insuficiente', 'Não apurado'];
+
+var _PERF_CORES_CONCEITO = {
+  'Excelente':    { bg: 'var(--ds-color-success-bg)', text: 'var(--ds-color-success-fg)' },
+  'Bom':          { bg: 'var(--ds-color-info-bg)', text: 'var(--ds-color-info-fg)' },
+  'Regular':      { bg: 'var(--ds-color-warning-bg)', text: 'var(--ds-color-warning-fg)' },
+  'Insuficiente': { bg: 'var(--ds-color-danger-bg)', text: 'var(--ds-color-danger-fg)' },
+  'Alta Performance':        { bg: 'var(--ds-color-success-bg)', text: 'var(--ds-color-success-fg)' },
+  'Desempenho Satisfatório': { bg: 'var(--ds-color-info-bg)', text: 'var(--ds-color-info-fg)' },
+  'Desempenho Crítico':      { bg: 'var(--ds-color-warning-bg)', text: 'var(--ds-color-warning-fg)' },
+  'Falha no Planejamento':   { bg: 'var(--ds-color-danger-bg)', text: 'var(--ds-color-danger-fg)' }
+};
+
+var _PERF_CORES_STATUS = {
+  'Concluído':    { cor: 'var(--ds-color-success-fg)', bg: 'var(--ds-color-success-bg)' },
+  'Em Andamento': { cor: 'var(--ds-color-info-fg)', bg: 'var(--ds-color-info-bg)' },
+  'Não Iniciado': { cor: 'var(--ds-color-text-muted)', bg: 'var(--ds-color-surface-2)' },
+  'Cancelado':    { cor: 'var(--ds-color-danger-fg)', bg: 'var(--ds-color-danger-bg)' }
+};
+
+function _monitParseData(str) {
+  var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(str || ''));
+  return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
+}
+
+function _monitDetLinha(label, valor) {
+  return valor ? '<div class="detp-linha"><span class="detp-linha-label">' + label + '</span>'
+    + '<span class="detp-linha-valor">' + valor + '</span></div>' : '';
+}
+
+function _monitCor(varOuCor) {
+  var m = /^var\((--[^)]+)\)$/.exec(String(varOuCor || '').trim());
+  if (!m) return varOuCor;
+  return getComputedStyle(document.body).getPropertyValue(m[1]).trim() || '#5b6472';
+}
+
+function _monitTema() {
+  return {
+    texto: _monitCor('var(--ds-color-text)'), muted: _monitCor('var(--ds-color-text-muted)'),
+    borda: _monitCor('var(--ds-color-border)'), trilha: _monitCor('var(--ds-sidebar-item-hover)'),
+    superficie: _monitCor('var(--ds-color-surface)'), acao: _monitCor('var(--ds-color-action)'),
+    fonte: getComputedStyle(document.body).fontFamily || 'Roboto, sans-serif'
+  };
+}
+
+function _monitTooltip(t) {
+  return { backgroundColor: t.superficie, borderColor: t.borda, borderWidth: 1, padding: [8, 10],
+    textStyle: { color: t.texto, fontSize: 12, fontFamily: t.fonte },
+    extraCssText: 'box-shadow:0 6px 18px rgba(16,38,73,0.12);border-radius:8px;' };
+}
+
+function _monitChart(chave, idDom, option, onClick) {
+  var dom = document.getElementById(idDom);
+  if (!dom || typeof echarts === 'undefined') return;
+  if (dom.clientHeight === 0 && dom.clientWidth === 0) return;
+  var c = _monitCharts[chave];
+  if (c && c.dom !== dom) { try { c.inst.dispose(); } catch (e) {} c = null; }
+  if (!c) {
+    c = _monitCharts[chave] = { inst: echarts.init(dom, null, { renderer: 'svg' }), dom: dom };
+    c.inst.on('click', function(p) { var fn = _monitChartsClique[chave]; if (fn) fn(p); });
+  }
+  _monitChartsClique[chave] = onClick || null;
+  try {
+    c.inst.resize();
+    c.inst.setOption(option, true);
+  } catch (e) {
+    console.warn('Erro ao configurar gráfico ECharts ' + chave + ':', e);
+  }
+}
+
+function _monitLimparCharts() {
+  Object.keys(_monitCharts).forEach(function(k) {
+    var c = _monitCharts[k];
+    if (!document.body.contains(c.dom)) {
+      try { c.inst.dispose(); } catch (e) {}
+      delete _monitCharts[k];
+    }
+  });
+}
+
+function _monitDestruirTodosCharts() {
+  Object.keys(_monitCharts).forEach(function(k) {
+    var c = _monitCharts[k];
+    try { c.inst.dispose(); } catch (e) {}
+    delete _monitCharts[k];
+  });
+}
+
+function _monitResizeCharts() {
+  Object.keys(_monitCharts).forEach(function(k) {
+    var c = _monitCharts[k];
+    if (c && c.inst) {
+      try { c.inst.resize(); } catch (e) {}
+    }
+  });
+}
+
+window.addEventListener('resize', function() {
+  _monitResizeCharts();
+});
+
+function _monitOptAnel(valor, cor, rotulo) {
+  var t = _monitTema();
+  return {
+    animationDuration: 700,
+    series: [{
+      type: 'gauge', startAngle: 90, endAngle: -270, min: 0, max: 100, radius: '92%',
+      progress: { show: true, roundCap: true, width: 12, itemStyle: { color: cor } },
+      axisLine: { roundCap: true, lineStyle: { width: 12, color: [[1, t.trilha]] } },
+      pointer: { show: false }, axisTick: { show: false }, splitLine: { show: false }, axisLabel: { show: false }, anchor: { show: false },
+      title: { show: true, offsetCenter: [0, '28%'], fontSize: 12, color: t.muted, fontFamily: t.fonte },
+      detail: { valueAnimation: true, offsetCenter: [0, '-6%'], fontSize: 28, fontWeight: 700, color: t.texto, fontFamily: t.fonte,
+        formatter: function(v) { return _fmtNumBR(v) + '%'; } },
+      data: [{ value: Math.max(0, Math.min(100, Number(valor.toFixed(1)))), name: rotulo }]
+    }]
+  };
+}
+
+function _monitOptRosca(itens, total, rotulo, selecionado) {
+  var t = _monitTema();
+  return {
+    tooltip: Object.assign({ trigger: 'item', formatter: function(p) { return escapeHtml(p.name) + ': <b>' + p.value + '</b> (' + Math.round(p.percent) + '%)'; } }, _monitTooltip(t)),
+    title: { text: String(total), subtext: rotulo, left: 'center', top: '36%', itemGap: 2,
+      textStyle: { fontSize: 22, fontWeight: 700, color: t.texto, fontFamily: t.fonte }, subtextStyle: { fontSize: 12, color: t.muted, fontFamily: t.fonte } },
+    series: [{
+      type: 'pie', radius: ['64%', '88%'], padAngle: 2, itemStyle: { borderRadius: 4 }, label: { show: false }, labelLine: { show: false },
+      emphasis: { scale: true, scaleSize: 4 },
+      data: itens.filter(function(i) { return i.n > 0; }).map(function(i) {
+        return { name: i.rot, value: i.n, itemStyle: { color: _monitCor(i.cor), opacity: selecionado && selecionado !== i.chave ? 0.25 : 1 } };
+      })
+    }]
+  };
+}
+
+function _monitOptBarras(rotulos, valores, cores, opacidades, tooltipFn, comMeta) {
+  var t = _monitTema();
+  var serie = {
+    type: 'bar', barWidth: comMeta ? 12 : 14, itemStyle: { borderRadius: 7 },
+    showBackground: !comMeta, backgroundStyle: { color: t.trilha, borderRadius: 7 },
+    label: { show: true, position: 'right', formatter: function(x) { return Math.round(x.value) + '%'; }, color: t.texto, fontSize: 12, fontWeight: 600, fontFamily: t.fonte },
+    data: valores.map(function(v, i) { return { value: Number(v.toFixed(1)), itemStyle: { color: _monitCor(cores[i]), opacity: opacidades[i] } }; })
+  };
+  if (comMeta) serie.markLine = { symbol: 'none', silent: true,
+    label: { show: true, position: 'start', formatter: 'meta', color: t.muted, fontSize: 11, fontFamily: t.fonte },
+    lineStyle: { color: t.texto, opacity: .35, type: [4, 4], width: 1 }, data: [{ xAxis: 100 }] };
+  return {
+    grid: { left: 8, right: comMeta ? 56 : 48, top: comMeta ? 14 : 4, bottom: 4, containLabel: true },
+    tooltip: Object.assign({ trigger: 'item', formatter: tooltipFn, confine: true }, _monitTooltip(t)),
+    xAxis: { type: 'value', max: comMeta ? function(v) { return Math.max(120, Math.ceil(v.max / 10) * 10); } : 100, show: false },
+    yAxis: { type: 'category', data: rotulos, axisLine: { show: false }, axisTick: { show: false },
+      axisLabel: { color: t.texto, fontSize: 13, fontFamily: t.fonte, margin: 12 } },
+    series: [serie]
+  };
+}
+
+function _monitOptHistorico(ind) {
+  var t = _monitTema(), un = ind.unidade ? ' ' + ind.unidade : '';
+  var aps = (ind.apuracoes || []).filter(function(a) { return a.rotuloPeriodo || a.periodo; });
+
+  var temBase = ind.indiceBase !== null && ind.indiceBase !== undefined && ind.indiceBase !== '' && !isNaN(Number(ind.indiceBase));
+  var anoBaseStr = ind.anoBase ? String(ind.anoBase) : (ind.dataReferenciaFmt ? String(ind.dataReferenciaFmt) : '');
+  var rotuloBase = anoBaseStr ? (anoBaseStr + ' (Base)') : 'Ano-base';
+
+  var cats = [], real = [], metas = [];
+
+  if (aps.length > 0) {
+    if (temBase) {
+      cats.push(rotuloBase);
+      real.push(Number(ind.indiceBase));
+      metas.push(null);
+    }
+    aps.forEach(function(a) {
+      var rot = a.rotuloPeriodo || a.periodo;
+      cats.push(rot);
+      real.push(_isNum(a.apurado) ? a.apurado : null);
+      metas.push(_isNum(a.valorMeta) ? a.valorMeta : null);
+    });
+  } else if ((ind.historico || []).length > 0 || temBase) {
+    if (temBase) {
+      cats.push(rotuloBase);
+      real.push(Number(ind.indiceBase));
+    }
+    (ind.historico || []).forEach(function(h) {
+      cats.push(h.data);
+      real.push(h.valor);
+    });
+  }
+
+  var temRealizado = real.some(function(v) { return _isNum(v); });
+  var series = [];
+  if (temRealizado) {
+    series.push({
+      name: 'Realizado', type: 'line', smooth: .3, symbol: 'circle', symbolSize: 7, connectNulls: true, data: real,
+      lineStyle: { width: 2.5, color: t.acao }, itemStyle: { color: t.acao, borderColor: t.superficie, borderWidth: 2 },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(38,112,232,0.16)' }, { offset: 1, color: 'rgba(38,112,232,0)' }] } }
+    });
+  }
+  if (metas.length && metas.some(function(v) { return _isNum(v); })) {
+    series.push({
+      name: 'Meta', type: 'line', step: 'middle', symbol: 'none', connectNulls: true, data: metas,
+      lineStyle: { width: 1.5, type: [5, 4], color: t.muted }, itemStyle: { color: t.muted }
+    });
+  }
+
+  return {
+    grid: { left: 8, right: 16, top: 24, bottom: 4, containLabel: true },
+    tooltip: Object.assign({
+      trigger: 'axis', axisPointer: { type: 'line', lineStyle: { color: t.borda } },
+      valueFormatter: function(v) { return v == null ? '—' : _fmtNumBR(v) + un; }
+    }, _monitTooltip(t)),
+    legend: { show: series.length > 1, top: 0, right: 0, itemWidth: 14, itemHeight: 8, textStyle: { color: t.muted, fontSize: 12, fontFamily: t.fonte } },
+    xAxis: {
+      type: 'category', data: cats, boundaryGap: false,
+      axisLine: { lineStyle: { color: t.borda } }, axisTick: { show: false },
+      axisLabel: { color: t.muted, fontSize: 12, fontFamily: t.fonte }
+    },
+    yAxis: {
+      type: 'value', splitNumber: 3,
+      axisLabel: { color: t.muted, fontSize: 12, fontFamily: t.fonte, formatter: function(v) { return _fmtNumBR(v); } },
+      splitLine: { lineStyle: { color: t.trilha } }
+    },
+    series: series
+  };
+}
+
+function _perfBadgeConceito(conceito, extraStyle) {
+  if (!conceito) return '<span class="perf-badge" style="background: var(--ds-color-surface-2);color: var(--ds-color-text-muted)">Não apurado</span>';
+  var c = _PERF_CORES_CONCEITO[conceito] || { bg: 'var(--ds-color-surface-2)', text: 'var(--ds-color-text-muted)' };
+  return '<span class="perf-badge" style="background:' + c.bg + ';color:' + c.text + ';' + (extraStyle || '') + '">' + escapeHtml(conceito) + '</span>';
+}
+
+function _monitLinhasProgresso() {
+  return (_perfDados && _perfDados.elementos) || [];
+}
+
+function _monitLinhasDesempenho() {
+  return (_perfDados && _perfDados.indicadores) || [];
+}
+
+function _monitListaAtiva() {
+  return estadoMonit.modo === 'progresso' ? _monitLinhasProgresso() : _monitLinhasDesempenho();
+}
+
+function _monitDentroDoElemento(idElemento, idRaiz) {
+  var elems = (_perfDados && _perfDados.elementos) || [];
+  var paiDe = {};
+  elems.forEach(function(e) { paiDe[String(e.id)] = String(e.idPai || ''); });
+  var atual = String(idElemento);
+  var seguranca = 0;
+  while (atual && seguranca < 60) {
+    if (atual === String(idRaiz)) return true;
+    atual = paiDe[atual] || '';
+    seguranca++;
+  }
+  return false;
+}
+
+function _monitFiltrar(lista) {
+  var b = (estadoMonit.busca || '').trim().toLowerCase();
+  return (lista || []).filter(function(item) {
+    var resp = String(item.responsavel || '');
+    if (estadoMonit.modo === 'progresso') {
+      if (estadoMonit.filtroStatus && item.status !== estadoMonit.filtroStatus) return false;
+      if (estadoMonit.filtroResp && resp.indexOf(estadoMonit.filtroResp) === -1) return false;
+      if (estadoMonit.filtroElem && !_monitDentroDoElemento(item.id, estadoMonit.filtroElem)) return false;
+      if (b && (String(item.codigo || '') + ' ' + String(item.titulo || '') + ' ' + resp).toLowerCase().indexOf(b) === -1) return false;
+    } else {
+      if (estadoMonit.filtroElem && !_monitDentroDoElemento(item.elementoVinculado, estadoMonit.filtroElem)) return false;
+      if (estadoMonit.filtroConceito && item.conceitoLabel !== estadoMonit.filtroConceito) return false;
+      if (estadoMonit.filtroResp && resp.indexOf(estadoMonit.filtroResp) === -1) return false;
+      if (b && (String(item.nome || '') + ' ' + String(item.elemLabel || '') + ' ' + resp).toLowerCase().indexOf(b) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function _monitSortLista(lista) {
+  var col = estadoMonit.sort.col;
+  var dir = estadoMonit.sort.dir;
+  return lista.slice().sort(function(a, b) {
+    var va = a[col], vb = b[col], cmp;
+    if (col === 'codigo' || col === 'codigoElem') {
+      cmp = (typeof compararCodigos === 'function')
+        ? compararCodigos(String(va || ''), String(vb || ''))
+        : String(va || '').localeCompare(String(vb || ''), 'pt', { numeric: true });
+    } else if (typeof va === 'number' && typeof vb === 'number') {
+      cmp = va - vb;
+    } else {
+      cmp = String(va == null ? '' : va).toLowerCase().localeCompare(String(vb == null ? '' : vb).toLowerCase(), 'pt');
+    }
+    return dir === 'asc' ? cmp : -cmp;
+  });
+}
+
+function monitOrdenar(col) {
+  if (estadoMonit.sort.col === col) {
+    estadoMonit.sort.dir = estadoMonit.sort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    estadoMonit.sort.col = col;
+    estadoMonit.sort.dir = 'asc';
+  }
+  estadoMonit.paginaAtual = 1;
+  _monitRenderCorpo();
+}
+
+function monitDefinirColunaOrdenacao(col) {
+  if (!estadoMonit.sort) estadoMonit.sort = { col: col, dir: 'asc' };
+  else estadoMonit.sort.col = col;
+  estadoMonit.paginaAtual = 1;
+  _monitRenderCorpo();
+}
+
+function monitDefinirDirecaoOrdenacao(dir) {
+  if (!estadoMonit.sort) estadoMonit.sort = { col: estadoMonit.modo === 'progresso' ? 'codigo' : 'alcanceSort', dir: dir };
+  else estadoMonit.sort.dir = dir;
+  estadoMonit.paginaAtual = 1;
+  _monitRenderCorpo();
+}
+
+function monitAbrirMenuOrdenar(ev) {
+  ev.stopPropagation();
+  var gatilho = ev.currentTarget;
+  var modo = estadoMonit.modo;
+  var colunas = modo === 'progresso'
+    ? [
+        { valor: 'codigo',      label: 'Elemento' },
+        { valor: 'status',      label: 'Status' },
+        { valor: 'percentual',  label: 'Progresso' },
+        { valor: 'prazoSort',   label: 'Prazo' },
+        { valor: 'responsavel', label: 'Responsável' }
+      ]
+    : [
+        { valor: 'nome',          label: 'Indicador' },
+        { valor: 'alcanceSort',   label: 'Alcance' },
+        { valor: 'conceitoLabel', label: 'Conceito' },
+        { valor: 'contribSort',   label: 'Contribuição' }
+      ];
+  var colAtual = (estadoMonit.sort && estadoMonit.sort.col) || (modo === 'progresso' ? 'codigo' : 'alcanceSort');
+  var dirAtual = (estadoMonit.sort && estadoMonit.sort.dir) || 'asc';
+  if (typeof abrirMenuSelecao === 'function') {
+    abrirMenuSelecao(gatilho, [
+      { label: 'Ordenar por', itens: colunas.map(function(c) {
+        return { label: c.label, ativo: c.valor === colAtual, onclick: "monitDefinirColunaOrdenacao('" + c.valor + "')" };
+      }) },
+      { label: 'Ordem', itens: [
+        { label: 'Crescente',   ativo: dirAtual === 'asc',  onclick: "monitDefinirDirecaoOrdenacao('asc')" },
+        { label: 'Decrescente', ativo: dirAtual === 'desc', onclick: "monitDefinirDirecaoOrdenacao('desc')" }
+      ] }
+    ]);
+  }
+}
+
+function monitAbrirPainelIndicador(id) {
+  if (typeof indAbrirPainel === 'function') {
+    indAbrirPainel(id);
+  } else if (typeof window.indAbrirPainel === 'function') {
+    window.indAbrirPainel(id);
+  } else {
+    window._indPainelPendenteId = id;
+    if (typeof _indicadoresMontarApp === 'function') _indicadoresMontarApp();
+  }
+}
+
+function imprimirMonitoramento() {
+  window.print();
+}
+
+function exportarMonitoramento() {
+  var modo = estadoMonit.modo;
+  var lista = _monitSortLista(_monitFiltrar(_monitListaAtiva()));
+  var pNome = (_monitCtx && _monitCtx.plano && _monitCtx.plano.nome) || 'plano';
+  var nomePlano = pNome.replace(/[^\wÀ-ú]/g, '_');
+  var linhas = [];
+  var fnCell = typeof _csvCell === 'function' ? _csvCell : function(v) { return '"' + String(v || '').replace(/"/g, '""') + '"'; };
+
+  if (modo === 'progresso') {
+    var cab = ['Codigo', 'Elemento', 'Tipo', 'Status', 'Progresso', 'Prazo', 'Responsavel'];
+    linhas.push(cab.map(fnCell).join(','));
+    lista.forEach(function(l) {
+      linhas.push([
+        l.codigo || '',
+        l.titulo || '',
+        l.tipo || '',
+        l.status || '',
+        _isNum(l.percentual) ? (Math.round(l.percentual) + '%') : '',
+        l.prazo || '',
+        l.responsavel || ''
+      ].map(fnCell).join(','));
+    });
+    var csvContent = linhas.join('\n');
+    if (typeof _downloadCSV === 'function') {
+      _downloadCSV(csvContent, 'monitoramento_progresso_' + nomePlano + '.csv');
+    } else {
+      var blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'monitoramento_progresso_' + nomePlano + '.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  } else {
+    var cab = ['Indicador', 'Elemento Vinculado', 'Polaridade', 'Realizado', 'Meta', 'Alcance', 'Conceito', 'Pontos', 'Contribuicao', 'Responsavel'];
+    linhas.push(cab.map(fnCell).join(','));
+    lista.forEach(function(i) {
+      linhas.push([
+        i.nome || '',
+        i.elemLabel || '',
+        i.interpretacao || '',
+        _isNum(i.valorRealizado) ? String(i.valorRealizado) : '',
+        _isNum(i.valorMeta) ? String(i.valorMeta) : '',
+        _isNum(i.alcance) ? (Math.round(i.alcance) + '%') : '',
+        i.conceitoLabel || '',
+        _isNum(i.pontos) ? String(i.pontos) : '',
+        _isNum(i.contribuicao) ? String(i.contribuicao) : '',
+        i.responsavel || ''
+      ].map(fnCell).join(','));
+    });
+    var csvContent = linhas.join('\n');
+    if (typeof _downloadCSV === 'function') {
+      _downloadCSV(csvContent, 'monitoramento_desempenho_' + nomePlano + '.csv');
+    } else {
+      var blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'monitoramento_desempenho_' + nomePlano + '.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+}
+
+function monitMudarModo(modo) {
+  if (estadoMonit.modo === modo) return;
+  estadoMonit.modo = modo;
+  estadoMonit.busca = ''; estadoMonit.filtroStatus = ''; estadoMonit.filtroResp = '';
+  estadoMonit.filtroElem = ''; estadoMonit.filtroConceito = '';
+  estadoMonit.sort = modo === 'progresso' ? { col: 'codigo', dir: 'asc' } : { col: 'alcanceSort', dir: 'desc' };
+  estadoMonit.paginaAtual = 1;
+  _perfExpandidos = {};
+  monitTudoExpandido = false;
+  if (_perfDados) renderizarMonitoramento(_perfDados);
+}
+
+function monitMudarTamanho(val) {
+  estadoMonit.itensPorPagina = parseInt(val, 10) || 20;
+  estadoMonit.paginaAtual = 1;
+  _monitRenderCorpo();
+}
+
+function monitMudarPagina(dir) {
+  var total = _monitFiltrar(_monitListaAtiva()).length;
+  var totalPags = Math.max(1, Math.ceil(total / estadoMonit.itensPorPagina));
+  if (dir === 'prev' && estadoMonit.paginaAtual > 1) estadoMonit.paginaAtual--;
+  if (dir === 'next' && estadoMonit.paginaAtual < totalPags) estadoMonit.paginaAtual++;
+  if (estadoMonit.paginaAtual < 1) estadoMonit.paginaAtual = 1;
+  if (estadoMonit.paginaAtual > totalPags) estadoMonit.paginaAtual = totalPags;
+  _monitRenderCorpo();
+}
+
+function monitIrParaPagina(pg) {
+  var total = _monitFiltrar(_monitListaAtiva()).length;
+  var totalPags = Math.max(1, Math.ceil(total / estadoMonit.itensPorPagina));
+  var p = parseInt(pg, 10) || 1;
+  estadoMonit.paginaAtual = Math.min(Math.max(1, p), totalPags);
+  _monitRenderCorpo();
+}
+
+function _monitAtualizarPaginacao(total, start) {
+  var pag = document.getElementById('monit-pagination');
+  if (!pag) return;
+  var itensPag = estadoMonit.itensPorPagina;
+  var totalPags = Math.max(1, Math.ceil(total / itensPag));
+  if (estadoMonit.paginaAtual > totalPags) estadoMonit.paginaAtual = totalPags;
+  if (estadoMonit.paginaAtual < 1) estadoMonit.paginaAtual = 1;
+
+  var fim = Math.min(start + itensPag, total);
+  var counter = document.getElementById('monit-pag-counter');
+  if (counter) counter.textContent = (total === 0 ? '0 de 0' : (start + 1) + '–' + fim + ' de ' + total);
+
+  var sel = document.getElementById('monit-pag-selector');
+  if (sel) {
+    sel.innerHTML = '';
+    for (var i = 1; i <= totalPags; i++) {
+      var opt = document.createElement('option');
+      opt.value = i;
+      opt.text = i;
+      if (i === estadoMonit.paginaAtual) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.value = String(estadoMonit.paginaAtual);
+    sel.disabled = (totalPags <= 1 || total === 0);
+  }
+}
+
+function _monitTiposElementosPlano() {
+  var elems = (_perfDados && _perfDados.elementos) || [];
+  if (!elems.length) return [];
+  var paiDe = {};
+  elems.forEach(function(e) { paiDe[String(e.id)] = String(e.idPai || ''); });
+  var nivelDe = {};
+  elems.forEach(function(e) {
+    var nivel = 1, atual = paiDe[String(e.id)], seg = 0;
+    while (atual && seg < 30) {
+      nivel++;
+      atual = paiDe[atual] || '';
+      seg++;
+    }
+    nivelDe[String(e.id)] = nivel;
+  });
+  var tiposMap = {};
+  elems.forEach(function(e) {
+    var t = String(e.tipo || '').trim();
+    if (!t) return;
+    var n = nivelDe[String(e.id)] || 1;
+    if (!tiposMap[t] || n < tiposMap[t].nivel) {
+      tiposMap[t] = { tipo: t, nivel: n, count: 0 };
+    }
+    tiposMap[t].count++;
+  });
+  return Object.keys(tiposMap).map(function(k) { return tiposMap[k]; }).sort(function(a, b) {
+    if (a.nivel !== b.nivel) return a.nivel - b.nivel;
+    return a.tipo.localeCompare(b.tipo, 'pt');
+  });
+}
+
+function _monitElementosBarras() {
+  var elems = (_perfDados && _perfDados.elementos) || [];
+  if (!elems.length) return { tipo: '', nivel: 1, tiposDisponiveis: [], lista: [] };
+
+  var tipos = _monitTiposElementosPlano();
+  if (!tipos.length) return { tipo: '', nivel: 1, tiposDisponiveis: [], lista: [] };
+
+  var tipoAtivo = estadoMonit.tipoElementoBarras;
+  var tipoObj = tipos.find(function(t) { return t.tipo === tipoAtivo; });
+  if (!tipoObj) {
+    tipoObj = tipos[0];
+    estadoMonit.tipoElementoBarras = tipoObj.tipo;
+  }
+
+  var itensTipo = elems.filter(function(e) {
+    return String(e.tipo || '').trim() === tipoObj.tipo;
+  }).sort(function(a, b) {
+    return (typeof compararCodigos === 'function')
+      ? compararCodigos(String(a.codigo || ''), String(b.codigo || ''))
+      : String(a.codigo || '').localeCompare(String(b.codigo || ''), 'pt', { numeric: true });
+  });
+
+  var temFilhoMap = {};
+  elems.forEach(function(e) {
+    if (e.idPai) temFilhoMap[String(e.idPai)] = true;
+  });
+
+  var temFiltroOutros = !!(estadoMonit.busca || estadoMonit.filtroStatus || estadoMonit.filtroResp);
+  var temFiltroElem = !!estadoMonit.filtroElem;
+  var filtroElemMesmoTipo = temFiltroElem && itensTipo.some(function(e) { return String(e.id) === String(estadoMonit.filtroElem); });
+
+  var matchMap = {};
+  var linhasFiltradas = [];
+  if (temFiltroOutros || (temFiltroElem && !filtroElemMesmoTipo)) {
+    linhasFiltradas = _monitFiltrar(_monitLinhasProgresso());
+    linhasFiltradas.forEach(function(l) { matchMap[l.id] = true; });
+
+    itensTipo = itensTipo.filter(function(el) {
+      var idStr = String(el.id);
+      if (matchMap[idStr]) return true;
+      if (temFilhoMap[idStr]) {
+        return linhasFiltradas.some(function(l) {
+          return _monitDentroDoElemento(l.id, el.id);
+        });
+      }
+      return false;
+    });
+  }
+
+  var lista = itensTipo.map(function(el) {
+    if (temFilhoMap[String(el.id)]) {
+      var folhas = elems.filter(function(x) {
+        return String(x.status) !== 'Cancelado'
+          && !temFilhoMap[String(x.id)]
+          && _monitDentroDoElemento(x.id, el.id)
+          && (!linhasFiltradas.length || matchMap[String(x.id)]);
+      });
+      if (!folhas.length) {
+        folhas = elems.filter(function(x) {
+          return String(x.status) !== 'Cancelado'
+            && !temFilhoMap[String(x.id)]
+            && _monitDentroDoElemento(x.id, el.id);
+        });
+      }
+      var pct = folhas.length
+        ? folhas.reduce(function(acc, x) { return acc + Number(x.percentual || 0); }, 0) / folhas.length
+        : Number(el.percentual || 0);
+      return { o: el, pct: pct, temFilhos: true };
+    }
+    return { o: el, pct: Number(el.percentual || 0), temFilhos: false };
+  });
+
+  return {
+    tipo: tipoObj.tipo,
+    nivel: tipoObj.nivel,
+    tiposDisponiveis: tipos,
+    lista: lista
+  };
+}
+
+function monitAbrirMenuTipos(btn, ev) {
+  if (ev) ev.stopPropagation();
+  var info = _monitElementosBarras();
+  if (!info.tiposDisponiveis || info.tiposDisponiveis.length <= 1) return;
+  var itens = info.tiposDisponiveis.map(function(t) {
+    return {
+      label: t.tipo,
+      ativo: t.tipo === info.tipo,
+      onclick: "monitMudarTipoBarras('" + escapeJsAttr(t.tipo) + "')"
+    };
+  });
+  if (typeof abrirMenuSelecao === 'function') {
+    abrirMenuSelecao(btn, [{ itens: itens }]);
+  }
+}
+
+function monitMudarTipoBarras(novoTipo) {
+  estadoMonit.tipoElementoBarras = novoTipo;
+  if (_perfDados) {
+    var resumo = document.getElementById('monit-resumo');
+    if (resumo) resumo.innerHTML = _monitResumoHTML(_perfDados);
+    _monitDesenharResumo(_perfDados);
+  }
+}
+
+function _monitVencidos() {
+  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  return ((_perfDados && _perfDados.elementos) || []).filter(function(e) {
+    var st = String(e.status || '');
+    if (st === 'Concluído' || st === 'Cancelado') return false;
+    var d = _monitParseData(e.fim || e.prazo);
+    return d && d < hoje;
+  }).length;
+}
+
+function _monitTrunc(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+function _monitCardHTML(tipo, titulo, sub, info, idChart, extraHTML, customHeaderHTML) {
+  var chartHTML = tipo === 'barras'
+    ? '<div class="mon-chart-scroll-wrap"><div class="mon-chart-' + tipo + '" id="' + idChart + '"></div></div>'
+    : '<div class="mon-chart-' + tipo + '" id="' + idChart + '"></div>';
+  var headerHTML = customHeaderHTML || ('<h3>' + escapeHtml(titulo) + (info ? '<span class="material-symbols-outlined" data-title="' + escapeHtml(info) + '">info</span>' : '') + '</h3>');
+  return '<section class="mon-card mon-card--' + tipo + '" aria-label="' + escapeHtml(titulo) + '">'
+    + headerHTML
+    + '<p class="mon-card-sub">' + escapeHtml(sub) + '</p>'
+    + chartHTML
+    + (extraHTML || '') + '</section>';
+}
+
+function _monitFatoHTML(rot, val, tip, alerta) {
+  return '<div class="mon-fato' + (alerta ? ' is-alerta' : '') + '"' + (tip ? ' data-title="' + escapeHtml(tip) + '"' : '') + '><span>' + rot + '</span><span>' + val + '</span></div>';
+}
+
+function _monitLegendaHTML(itens, selecionado, fnNome) {
+  return '<div class="mon-legenda">' + itens.map(function(i) {
+    var sel = selecionado === i.chave;
+    return '<button type="button" class="mon-legenda-item' + (sel ? ' is-sel' : '') + (selecionado && !sel ? ' is-apagado' : '') + '" aria-pressed="' + sel + '"'
+      + ' onclick="' + fnNome + '(\'' + escapeJsAttr(i.chave) + '\')">'
+      + '<span class="mon-legenda-dot" style="background:' + i.cor + '"></span>'
+      + '<span class="mon-legenda-rot">' + escapeHtml(i.rot) + '</span><span class="mon-legenda-n">' + i.n + '</span></button>';
+  }).join('') + '</div>';
+}
+
+function _monitBaseSem(campo) {
+  var salvo = estadoMonit[campo]; estadoMonit[campo] = '';
+  var l = _monitFiltrar(_monitListaAtiva());
+  estadoMonit[campo] = salvo;
+  return l;
+}
+
+function _monitProgressoFiltrado(linhasFiltradas) {
+  var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  // Elemento com filhos (não cancelados) não entra na média: o progresso dele vem dos filhos (mesma regra do servidor)
+  var comFilhos = {};
+  _monitLinhasProgresso().forEach(function(l) { if (l.idPai && String(l.status) !== 'Cancelado') comFilhos[String(l.idPai)] = true; });
+  var validos = (linhasFiltradas || []).filter(function(l) { return String(l.status) !== 'Cancelado' && !comFilhos[String(l.id)]; });
+  var total = validos.length;
+  var concluidos = validos.filter(function(l) { return String(l.status) === 'Concluído'; }).length;
+  var somaPct = validos.reduce(function(acc, l) { return acc + Number(l.percentual || 0); }, 0);
+  var pct = total > 0 ? (somaPct / total) : 0;
+  var venc = validos.filter(function(l) {
+    if (String(l.status) === 'Concluído') return false;
+    var d = _monitParseData(l.prazo || l.fim);
+    return d && d < hoje;
+  }).length;
+  return {
+    pct: pct,
+    totalConsiderado: total,
+    concluidos: concluidos,
+    vencidos: venc
+  };
+}
+
+function _monitClassificarFaixa(faixas, valor) {
+  if (!faixas || !faixas.length || valor === null || valor === undefined || isNaN(valor)) return null;
+  for (var i = 0; i < faixas.length; i++) {
+    if (valor >= faixas[i].min) return faixas[i];
+  }
+  return faixas[faixas.length - 1];
+}
+
+function _monitDesempenhoFiltrado(linhasFiltradas, faixasConfig) {
+  var agreg = { pontosObtidos: 0, pontosMaximos: 0, avaliaveis: 0, semMeta: 0, atingidas: 0, pendentes: 0 };
+  (linhasFiltradas || []).forEach(function(item) {
+    if (!item.temMeta) agreg.semMeta++;
+    agreg.pendentes += Number(item.resultadosPendentes || 0);
+    if (item.alcance !== null && item.alcance !== undefined && !isNaN(item.alcance)) {
+      agreg.avaliaveis++;
+      agreg.pontosObtidos += Number(item.contribuicao || 0);
+      agreg.pontosMaximos += Number(item.contribuicaoMax || 0);
+      if (Number(item.alcance) >= 100) agreg.atingidas++;
+    }
+  });
+  agreg.ieg = agreg.pontosMaximos > 0 ? (agreg.pontosObtidos / agreg.pontosMaximos) * 100 : null;
+  var faixasPlano = faixasConfig && faixasConfig.FAIXAS_PLANO;
+  var fClass = _monitClassificarFaixa(faixasPlano, agreg.ieg);
+  agreg.conceito = fClass ? fClass.conceito : (agreg.ieg !== null ? 'Insuficiente' : null);
+  return agreg;
+}
+
+function _monitResumoHTML(dados) {
+  if (!dados) return '<div class="mon-topo"><div class="mon-card" style="flex:1 1 100%">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>') + '</div></div>';
+  if (estadoMonit.modo === 'progresso') {
+    var p = (dados.progresso && dados.progresso.proprio) || {}, v = dados.progresso ? dados.progresso.vinculado : null;
+    var temFiltroProg = !!(estadoMonit.busca || estadoMonit.filtroStatus || estadoMonit.filtroResp || estadoMonit.filtroElem);
+    var pAtual = temFiltroProg ? _monitProgressoFiltrado(_monitFiltrar(_monitLinhasProgresso())) : p;
+    var venc = temFiltroProg ? pAtual.vencidos : _monitVencidos();
+    var base = _monitBaseSem('filtroStatus');
+    var itens = _MON_ORD_STATUS.map(function(s) {
+      return { chave: s, rot: s, cor: (_PERF_CORES_STATUS[s] || {}).cor || 'var(--ds-color-text-muted)', n: base.filter(function(l) { return l.status === s; }).length };
+    });
+
+    var infoBarras = _monitElementosBarras();
+    var headerBarrasHTML;
+    var subTituloBarras = 'Média dos elementos. Clique em uma barra para filtrar.';
+
+    if (infoBarras.tiposDisponiveis && infoBarras.tiposDisponiveis.length > 1) {
+      headerBarrasHTML = '<div class="mon-card-header">'
+        + '<h3>Execução por Elemento</h3>'
+        + '<button type="button" class="mon-tipo-btn" onclick="monitAbrirMenuTipos(this, event)" aria-haspopup="menu" aria-label="Filtrar por tipo de elemento no gráfico">'
+        + '<span>' + escapeHtml(infoBarras.tipo || 'Elemento') + '</span>'
+        + '<span class="material-symbols-outlined">expand_more</span>'
+        + '</button>'
+        + '</div>';
+    } else {
+      headerBarrasHTML = '<h3>Execução por Elemento</h3>';
+    }
+
+    var subAnelProg = temFiltroProg
+      ? 'Média do escopo filtrado (' + pAtual.totalConsiderado + ' elementos)'
+      : 'Média simples do % de conclusão dos elementos';
+    var tipAnelProg = temFiltroProg
+      ? 'Média do % de conclusão de ' + pAtual.totalConsiderado + ' elemento(s) no filtro ativo. Cancelados ficam fora do cálculo.'
+      : 'Média simples do % de conclusão de ' + (p.totalConsiderado || 0) + ' elementos. Cancelados ficam fora do cálculo.';
+
+    return '<div class="mon-topo">'
+      + _monitCardHTML('anel', 'Execução do plano', subAnelProg, tipAnelProg, 'mon-chart-anel',
+          '<div class="mon-fatos">'
+          + _monitFatoHTML('Com vinculados' + (v && v.qtdPlanos && !temFiltroProg ? ' (' + v.qtdPlanos + ')' : ''),
+              temFiltroProg ? '—' : (v && _isNum(v.pct) ? _fmtNumBR(v.pct) + '%' : '—'),
+              temFiltroProg ? 'Vínculos desconsiderados com filtro ativo' : 'Inclui os elementos dos planos subordinados com vínculo aprovado')
+          + _monitFatoHTML('Elementos concluídos', (pAtual.concluidos || 0) + ' de ' + (pAtual.totalConsiderado || 0))
+          + _monitFatoHTML('Prazos vencidos', String(venc), temFiltroProg ? 'Elementos filtrados com prazo final já vencido' : 'Elementos não concluídos com prazo final já vencido', venc > 0)
+          + '</div>')
+      + _monitCardHTML('rosca', 'Por status', 'Clique para filtrar a lista.', '', 'mon-chart-rosca',
+          _monitLegendaHTML(itens.map(function(i) { return Object.assign({}, i, { cor: i.cor }); }), estadoMonit.filtroStatus, 'monitFiltrarStatus'))
+      + _monitCardHTML('barras', 'Execução por Elemento', subTituloBarras, '', 'mon-chart-barras', '', headerBarrasHTML)
+      + '</div>';
+  }
+  var d = (dados.desempenho && dados.desempenho.proprio) || {}, vd = dados.desempenho ? dados.desempenho.vinculado : null;
+  var temFiltroDesemp = !!(estadoMonit.busca || estadoMonit.filtroElem || estadoMonit.filtroResp || estadoMonit.filtroConceito);
+  var dAtual = temFiltroDesemp ? _monitDesempenhoFiltrado(_monitFiltrar(_monitLinhasDesempenho()), dados.faixas) : d;
+  var baseC = _monitBaseSem('filtroConceito');
+  var itensC = _MON_ORD_CONC.map(function(k) {
+    var c = _PERF_CORES_CONCEITO[k] || { text: 'var(--ds-color-border-strong)' };
+    return { chave: k, rot: k, cor: k === 'Não apurado' ? 'var(--ds-color-border-strong)' : c.text, n: baseC.filter(function(l) { return l.conceitoLabel === k; }).length };
+  }).filter(function(i) { return i.n > 0 || i.chave !== 'Não apurado'; });
+  var pontosMax = (dados.faixas && dados.faixas.PONTOS_MAXIMOS) || 3;
+  var subAnelDesemp = temFiltroDesemp
+    ? 'IEG do escopo filtrado (' + (dAtual.avaliaveis || 0) + ' avaliáveis)'
+    : 'Pontos ponderados sobre o máximo possível';
+  return '<div class="mon-topo">'
+    + _monitCardHTML('anel', 'Eficácia do plano (IEG)', subAnelDesemp,
+        'IEG = Σ(peso × pontos) ÷ Σ(peso × ' + pontosMax + '). Cada indicador recebe de 0 a ' + pontosMax + ' pontos conforme o alcance da meta.', 'mon-chart-anel',
+        (dAtual.conceito ? '<div class="mon-conceito">' + _perfBadgeConceito(dAtual.conceito) + '</div>' : '')
+        + '<div class="mon-fatos">'
+        + _monitFatoHTML('Com vinculados' + (vd && vd.qtdPlanos && !temFiltroDesemp ? ' (' + vd.qtdPlanos + ')' : ''),
+            temFiltroDesemp ? '—' : (vd && _isNum(vd.ieg) ? _fmtNumBR(vd.ieg) + '%' : '—'),
+            temFiltroDesemp ? 'Vínculos desconsiderados com filtro ativo' : 'Inclui os indicadores dos planos subordinados com vínculo aprovado')
+        + _monitFatoHTML('Metas alcançadas', (dAtual.atingidas || 0) + ' de ' + (dAtual.avaliaveis || 0), 'Indicadores apurados com alcance ≥ 100%')
+        + _monitFatoHTML('Pontos ponderados', _fmtNumBR(dAtual.pontosObtidos || 0) + ' de ' + _fmtNumBR(dAtual.pontosMaximos || 0))
+        + ((dAtual.pendentes || 0) > 0 ? _monitFatoHTML('Resultados pendentes', String(dAtual.pendentes), 'Aguardando validação — não entram no cálculo', true) : '')
+        + '</div>')
+    + _monitCardHTML('rosca', 'Por conceito', 'Clique para filtrar a lista.', '', 'mon-chart-rosca',
+        _monitLegendaHTML(itensC, estadoMonit.filtroConceito, 'monitFiltrarConceito'))
+    + _monitCardHTML('barras', 'Alcance das metas', 'Por indicador apurado. Clique em uma barra para abrir o histórico.', '', 'mon-chart-barras')
+    + '</div>';
+}
+
+function _monitDesenharResumo(dados) {
+  if (!dados || typeof echarts === 'undefined') return;
+  _monitLimparCharts();
+  if (estadoMonit.modo === 'progresso') {
+    var p = (dados.progresso && dados.progresso.proprio) || {};
+    var temFiltroProg = !!(estadoMonit.busca || estadoMonit.filtroStatus || estadoMonit.filtroResp || estadoMonit.filtroElem);
+    var pAtual = temFiltroProg ? _monitProgressoFiltrado(_monitFiltrar(_monitLinhasProgresso())) : p;
+    _monitChart('anel', 'mon-chart-anel', _monitOptAnel(_isNum(pAtual.pct) ? pAtual.pct : 0, _monitCor('var(--ds-color-action)'), 'execução'));
+    var base = _monitBaseSem('filtroStatus');
+    _monitChart('rosca', 'mon-chart-rosca', _monitOptRosca(_MON_ORD_STATUS.map(function(s) {
+      return { chave: s, rot: s, cor: (_PERF_CORES_STATUS[s] || {}).cor, n: base.filter(function(l) { return l.status === s; }).length };
+    }), base.length, 'elementos', estadoMonit.filtroStatus), function(x) { monitFiltrarStatus(x.name); });
+
+    var infoBarras = _monitElementosBarras();
+    var objs = (infoBarras.lista || []).slice().sort(function(a, b) {
+      if (Math.abs(a.pct - b.pct) > 0.001) return a.pct - b.pct;
+      return (typeof compararCodigos === 'function')
+        ? compararCodigos(String(b.o.codigo || ''), String(a.o.codigo || ''))
+        : String(b.o.codigo || '').localeCompare(String(a.o.codigo || ''), 'pt', { numeric: true });
+    });
+    var el = document.getElementById('mon-chart-barras');
+    if (el) el.style.height = Math.max(220, objs.length * 34 + 16) + 'px';
+    _monitChart('barras', 'mon-chart-barras', _monitOptBarras(
+      objs.map(function(x) { return _monitTrunc((x.o.codigo ? x.o.codigo + '  ' : '') + x.o.titulo, 34); }),
+      objs.map(function(x) { return x.pct; }),
+      objs.map(function() { return 'var(--ds-color-action)'; }),
+      objs.map(function(x) { return estadoMonit.filtroElem && String(estadoMonit.filtroElem) !== String(x.o.id) ? 0.25 : 1; }),
+      function(x) { var o = objs[x.dataIndex]; return escapeHtml(o.o.titulo) + '<br/><b>' + _fmtNumBR(o.pct) + '%</b> de execução'; },
+      false
+    ), function(x) { var o = objs[x.dataIndex]; if (o) monitFiltrarObjetivo(String(o.o.id)); });
+    return;
+  }
+  var d = (dados.desempenho && dados.desempenho.proprio) || {};
+  var temFiltroDesemp = !!(estadoMonit.busca || estadoMonit.filtroElem || estadoMonit.filtroResp || estadoMonit.filtroConceito);
+  var dAtual = temFiltroDesemp ? _monitDesempenhoFiltrado(_monitFiltrar(_monitLinhasDesempenho()), dados.faixas) : d;
+  var cc = _PERF_CORES_CONCEITO[dAtual.conceito];
+  _monitChart('anel', 'mon-chart-anel', _monitOptAnel(_isNum(dAtual.ieg) ? dAtual.ieg : 0, _monitCor(cc ? cc.text : 'var(--ds-color-action)'), 'IEG'));
+  var baseC = _monitBaseSem('filtroConceito');
+  _monitChart('rosca', 'mon-chart-rosca', _monitOptRosca(_MON_ORD_CONC.map(function(k) {
+    var c = _PERF_CORES_CONCEITO[k];
+    return { chave: k, rot: k, cor: c ? c.text : 'var(--ds-color-border-strong)', n: baseC.filter(function(l) { return l.conceitoLabel === k; }).length };
+  }), baseC.length, 'indicadores', estadoMonit.filtroConceito), function(x) { monitFiltrarConceito(x.name); });
+
+  var ap = _monitFiltrar(_monitLinhasDesempenho()).filter(function(i) { return _isNum(i.alcance); })
+    .sort(function(a, b) { return a.alcance - b.alcance; });
+  var elb = document.getElementById('mon-chart-barras');
+  if (elb) elb.style.height = Math.max(220, ap.length * 30 + 24) + 'px';
+  _monitChart('barras', 'mon-chart-barras', _monitOptBarras(
+    ap.map(function(i) { return _monitTrunc(i.nome, 30); }),
+    ap.map(function(i) { return i.alcance; }),
+    ap.map(function(i) { return (_PERF_CORES_CONCEITO[i.conceito] || { text: 'var(--ds-color-text-muted)' }).text; }),
+    ap.map(function() { return 1; }),
+    function(x) { var i = ap[x.dataIndex]; return escapeHtml(i.nome) + '<br/>Alcance <b>' + _fmtNumBR(i.alcance) + '%</b> · ' + escapeHtml(i.conceitoLabel); },
+    true
+  ), function(x) { var i = ap[x.dataIndex]; if (i) { _perfExpandidos[String(i.id)] = true; _monitRenderCorpo(); } });
+}
+
+function _monitRedesenharGraficosHistorico() {
+  if (estadoMonit.modo !== 'desempenho' || !_perfDados) return;
+  var lista = _monitLinhasDesempenho();
+  lista.forEach(function(ind) {
+    if (_perfExpandidos[ind.id]) {
+      _monitChart('hist_' + ind.id, 'mon-hist-' + ind.id, _monitOptHistorico(ind));
+    }
+  });
+}
+
+function monitFiltrarStatus(s)   { estadoMonit.filtroStatus   = estadoMonit.filtroStatus === s ? '' : s; estadoMonit.paginaAtual = 1; renderizarMonitoramento(_perfDados); }
+function monitFiltrarConceito(c) { estadoMonit.filtroConceito = estadoMonit.filtroConceito === c ? '' : c; estadoMonit.paginaAtual = 1; renderizarMonitoramento(_perfDados); }
+function monitFiltrarObjetivo(id){ estadoMonit.filtroElem     = String(estadoMonit.filtroElem) === String(id) ? '' : String(id); estadoMonit.paginaAtual = 1; renderizarMonitoramento(_perfDados); }
+
+var _monitFiltrosDef = {
+  status:   { label: 'Status',      chave: 'filtroStatus',   modo: 'progresso' },
+  obj:      { label: 'Elemento',    chave: 'filtroElem',     modo: '*' },
+  resp:     { label: 'Responsável', chave: 'filtroResp',     modo: '*' },
+  conceito: { label: 'Conceito',    chave: 'filtroConceito', modo: 'desempenho' }
+};
+
+function _monitCamposAtivos() {
+  return estadoMonit.modo === 'progresso' ? ['status', 'obj', 'resp'] : ['conceito', 'obj', 'resp'];
+}
+
+function _monitRotuloFiltro(campo) {
+  var v = estadoMonit[_monitFiltrosDef[campo].chave];
+  if (!v) return '';
+  if (campo === 'obj') {
+    var elems = (_perfDados && _perfDados.elementos) || [];
+    var o = elems.find(function(e) { return String(e.id) === String(v); });
+    return o ? (o.codigo ? o.codigo + ' — ' : '') + _monitTrunc(o.titulo, 22) : '';
+  }
+  if (campo === 'resp') {
+    var tipo = 'USER';
+    _monitListaAtiva().some(function(l) {
+      var achou = (l.quem || []).find(function(q) { return q.idResp === v; });
+      if (achou && achou.tipo) { tipo = achou.tipo; return true; }
+      return false;
+    });
+    return (typeof nomeRespExibicao === 'function') ? nomeRespExibicao(v, tipo) : v;
+  }
+  return v;
+}
+
+function _monitFiltrosHTML(modo) {
+  var campos = _monitCamposAtivos();
+  var temFiltro = estadoMonit.busca || campos.some(function(c) { return estadoMonit[_monitFiltrosDef[c].chave]; });
+  return '<div id="monit-filtros" class="el-filtros">'
+    + '<div class="el-search" id="monit-search-wrap">'
+    +   '<button type="button" class="ds-icon-action' + (estadoMonit.busca ? ' hidden' : '') + '" id="monit-search-toggle" onclick="monitAbrirBusca()" data-title="Buscar" aria-label="Buscar">'
+    +     '<span class="material-symbols-outlined">search</span></button>'
+    +   '<div class="el-search-caixa' + (estadoMonit.busca ? '' : ' hidden') + '" id="monit-search-caixa">'
+    +     '<span class="material-symbols-outlined el-search-icon" aria-hidden="true">search</span>'
+    +     '<input type="text" class="ds-input el-search-input" id="monit-filtro-busca" oninput="aplicarFiltrosMonit()" value="' + escapeHtml(estadoMonit.busca) + '"'
+    +       ' placeholder="' + (modo === 'progresso' ? 'Buscar elemento ou responsável…' : 'Buscar indicador ou elemento…') + '" aria-label="Buscar">'
+    +     '<button type="button" class="el-search-clear' + (estadoMonit.busca ? '' : ' hidden') + '" id="monit-btn-clear" onclick="limparFiltroMonitBusca()" data-title="Limpar busca" aria-label="Limpar busca">'
+    +       '<span class="material-symbols-outlined">close</span></button>'
+    +   '</div>'
+    + '</div>'
+    + campos.map(function(c) {
+        var rot = _monitRotuloFiltro(c), def = _monitFiltrosDef[c];
+        return '<div class="el-filtro">'
+          + '<button type="button" class="el-filtro-btn' + (rot ? ' el-filtro-btn--ativo' : '') + '" onclick="monitAbrirFiltro(\'' + c + '\', event)">'
+          +   '<span>' + escapeHtml(rot ? def.label + ': ' + rot : def.label) + '</span>'
+          +   '<span class="material-symbols-outlined" style="font-size:18px">expand_more</span></button>'
+          + '<button type="button" class="el-filtro-x' + (rot ? '' : ' hidden') + '" onclick="monitLimparUmFiltro(\'' + c + '\')" aria-label="Limpar filtro ' + def.label.toLowerCase() + '">'
+          +   '<span class="material-symbols-outlined" style="font-size:15px">close</span></button>'
+          + '</div>';
+      }).join('')
+    + '<button type="button" class="el-limpar-link' + (temFiltro ? '' : ' hidden') + '" onclick="limparFiltrosMonit()" aria-label="Limpar filtros">Limpar filtros</button>'
+    + '<div style="flex:1"></div>'
+    + '<div class="det-modos" role="group" aria-label="Modo de visualização">'
+    +   '<button type="button" class="det-modo' + (modo === 'progresso' ? ' ativo' : '') + '" onclick="monitMudarModo(\'progresso\')"'
+    +     ' data-title="Progresso — andamento dos elementos" aria-label="Progresso" aria-pressed="' + (modo === 'progresso') + '">'
+    +     '<span class="material-symbols-outlined">engineering</span></button>'
+    +   '<button type="button" class="det-modo' + (modo === 'desempenho' ? ' ativo' : '') + '" onclick="monitMudarModo(\'desempenho\')"'
+    +     ' data-title="Desempenho — eficácia das metas" aria-label="Desempenho" aria-pressed="' + (modo === 'desempenho') + '">'
+    +     '<span class="material-symbols-outlined">military_tech</span></button>'
+    + '</div>'
+    + '</div>';
+}
+
+function monitAbrirBusca() {
+  var st = document.getElementById('monit-search-toggle'); if (st) st.classList.add('hidden');
+  var sc = document.getElementById('monit-search-caixa'); if (sc) sc.classList.remove('hidden');
+  var fb = document.getElementById('monit-filtro-busca'); if (fb) fb.focus();
+}
+
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('monit-search-wrap'), caixa = document.getElementById('monit-search-caixa');
+  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
+  var inp = document.getElementById('monit-filtro-busca');
+  if (inp && !inp.value.trim()) {
+    caixa.classList.add('hidden');
+    var st = document.getElementById('monit-search-toggle');
+    if (st) st.classList.remove('hidden');
+  }
+});
+
+function aplicarFiltrosMonit() {
+  estadoMonit.busca = (document.getElementById('monit-filtro-busca') || {}).value || '';
+  estadoMonit.paginaAtual = 1;
+  var bc = document.getElementById('monit-btn-clear'); if (bc) bc.classList.toggle('hidden', !estadoMonit.busca);
+  var resumo = document.getElementById('monit-resumo');
+  if (resumo && _perfDados) { resumo.innerHTML = _monitResumoHTML(_perfDados); }
+  _monitRenderCorpo();
+  _monitDesenharResumo(_perfDados);
+}
+
+function limparFiltroMonitBusca() {
+  var inp = document.getElementById('monit-filtro-busca'); if (inp) { inp.value = ''; inp.focus(); }
+  aplicarFiltrosMonit();
+}
+
+function monitAbrirFiltro(campo, ev) {
+  ev.stopPropagation();
+  var def = _monitFiltrosDef[campo], atual = estadoMonit[def.chave], opcoes = [];
+  if (campo === 'status') {
+    opcoes = _MON_ORD_STATUS.map(function(s) { return { v: s, label: s, dot: _monitCor((_PERF_CORES_STATUS[s] || {}).cor) }; });
+  } else if (campo === 'conceito') {
+    opcoes = _MON_ORD_CONC.map(function(k) { var c = _PERF_CORES_CONCEITO[k]; return { v: k, label: k, dot: _monitCor(c ? c.text : 'var(--ds-color-border-strong)') }; });
+  } else if (campo === 'obj') {
+    var todosElems = ((_perfDados && _perfDados.elementos) || []).slice().sort(function(a, b) {
+      return (typeof compararCodigos === 'function')
+        ? compararCodigos(String(a.codigo || ''), String(b.codigo || ''))
+        : String(a.codigo || '').localeCompare(String(b.codigo || ''), 'pt', { numeric: true });
+    });
+    opcoes = todosElems.map(function(o) { return { v: String(o.id), label: (o.codigo ? o.codigo + ' — ' : '') + o.titulo }; });
+  } else {
+    var s = {};
+    _monitListaAtiva().forEach(function(l) { (l.quem || []).forEach(function(q) { if (q.idResp) s[q.idResp] = q.tipo; }); });
+    opcoes = Object.keys(s).sort(function(a, b) { return a.localeCompare(b, 'pt'); }).map(function(n) {
+      return { v: n, label: (typeof nomeRespExibicao === 'function') ? nomeRespExibicao(n, s[n]) : n };
+    });
+  }
+  if (!opcoes.length) return;
+  var itens = [{ label: 'Todos', ativo: !atual, onclick: "monitSelecionarFiltro('" + campo + "','')" }].concat(opcoes.map(function(o) {
+    var it = { label: o.label, ativo: String(o.v) === String(atual), onclick: "monitSelecionarFiltro('" + campo + "','" + escapeJsAttr(o.v) + "')" };
+    if (o.dot) it.dot = o.dot;
+    return it;
+  }));
+  if (typeof abrirMenuSelecao === 'function') {
+    abrirMenuSelecao(ev.currentTarget, [{ itens: itens }]);
+  }
+}
+
+function monitSelecionarFiltro(campo, valor) {
+  estadoMonit[_monitFiltrosDef[campo].chave] = valor;
+  estadoMonit.paginaAtual = 1;
+  renderizarMonitoramento(_perfDados);
+}
+
+function monitLimparUmFiltro(campo) { monitSelecionarFiltro(campo, ''); }
+
+function limparFiltrosMonit() {
+  estadoMonit.busca = ''; estadoMonit.filtroStatus = ''; estadoMonit.filtroResp = '';
+  estadoMonit.filtroElem = ''; estadoMonit.filtroConceito = '';
+  estadoMonit.paginaAtual = 1;
+  renderizarMonitoramento(_perfDados);
+}
+
+function renderizarMonitoramento(dados) {
+  var container = document.getElementById('monit-corpo-wrap');
+  if (!container) return;
+  var modo = estadoMonit.modo;
+  var cols = modo === 'progresso'
+    ? '<col><col class="mon-col-status"><col class="mon-col-prog"><col class="mon-col-prazo"><col class="mon-col-resp"><col class="mon-col-acoes">'
+    : '<col><col class="mon-col-alc"><col class="mon-col-conc"><col class="mon-col-contrib"><col class="mon-col-acoes">';
+
+  container.innerHTML =
+    '<div id="monit-resumo">' + _monitResumoHTML(dados) + '</div>'
+    + _monitFiltrosHTML(modo)
+    + '<div class="el-table-wrap">'
+    +   '<table class="el-tabela mon-tabela" id="monit-tabela"><colgroup>' + cols + '</colgroup>'
+    +   '<thead id="monit-thead"></thead><tbody id="monit-tbody"></tbody></table>'
+    + '</div>'
+    + '<div id="monit-pagination" class="pagination-bar rsc-pag">'
+    +   '<div class="pag-left"><span>Exibir:</span>'
+    +     '<select id="monit-pag-size" onchange="monitMudarTamanho(this.value)" class="form-control form-control-sm">'
+    +       '<option value="10">10</option><option value="20">20</option><option value="50">50</option>'
+    +     '</select></div>'
+    +   '<div class="pag-center"><span id="monit-pag-counter">0–0 de 0</span></div>'
+    +   '<div class="pag-right">'
+    +     '<button class="btn-pag" onclick="monitMudarPagina(\'prev\')" data-title="Anterior" aria-label="Página anterior"><span class="material-symbols-outlined">chevron_left</span></button>'
+    +     '<select id="monit-pag-selector" onchange="monitIrParaPagina(this.value)" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>'
+    +     '<button class="btn-pag" onclick="monitMudarPagina(\'next\')" data-title="Próximo" aria-label="Próxima página"><span class="material-symbols-outlined">chevron_right</span></button>'
+    +   '</div>'
+    + '</div>';
+
+  var selSize = document.getElementById('monit-pag-size');
+  if (selSize) selSize.value = String(estadoMonit.itensPorPagina);
+  _monitRenderCorpo();
+  _monitDesenharResumo(dados);
+}
+
+function _monitRenderCorpo() {
+  var thead = document.getElementById('monit-thead');
+  var tbody = document.getElementById('monit-tbody');
+  if (!thead || !tbody) return;
+  var modo = estadoMonit.modo, sort = estadoMonit.sort;
+
+  var cols = modo === 'progresso'
+    ? [{ col: 'codigo', label: 'Elemento' }, { col: 'status', label: 'Status', cls: 'mon-col-status' }, { col: 'percentual', label: 'Progresso', cls: 'mon-col-prog' },
+       { col: 'prazoSort', label: 'Prazo', cls: 'mon-col-prazo' }, { col: 'responsavel', label: 'Responsável', cls: 'mon-col-resp' }]
+    : [{ col: 'nome', label: 'Indicador' }, { col: 'alcanceSort', label: 'Alcance', cls: 'mon-col-alc' }, { col: 'conceitoLabel', label: 'Conceito', cls: 'mon-col-conc' },
+       { col: 'contribSort', label: 'Contribuição', cls: 'mon-col-contrib' }];
+  var nCols = cols.length + 1;
+
+  thead.innerHTML = '<tr>' + cols.map(function(c) {
+    var ativo = sort.col === c.col;
+    return '<th class="th-sortable' + (ativo ? ' is-sort' : '') + (c.cls ? ' ' + c.cls : '') + '" onclick="monitOrdenar(\'' + c.col + '\')">' + escapeHtml(c.label)
+      + '<span class="sort-icon">' + (ativo ? (sort.dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '') + '</span></th>';
+  }).join('')
+    + '<th class="mon-col-acoes el-col-acoes"><div class="el-th-acoes">'
+    +   '<button type="button" class="el-th-btn" onclick="atualizarMonitoramento()" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
+    +   (modo === 'desempenho'
+          ? '<button type="button" class="el-th-btn" id="btn-expandir-monit" onclick="monitToggleExpandirTudo()" data-title="' + (monitTudoExpandido ? 'Recolher todos' : 'Expandir todos') + '"'
+            + ' aria-label="' + (monitTudoExpandido ? 'Recolher todos' : 'Expandir todos') + '"><span class="material-symbols-outlined">' + (monitTudoExpandido ? 'unfold_less' : 'unfold_more') + '</span></button>'
+          : '')
+    +   '<button type="button" class="el-th-btn" onclick="imprimirMonitoramento()" data-title="Imprimir" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>'
+    +   '<button type="button" class="el-th-btn" onclick="exportarMonitoramento()" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
+    +   '<button type="button" class="el-th-btn" onclick="monitAbrirMenuOrdenar(event)" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
+    + '</div></th></tr>';
+
+  if (modo === 'desempenho' && !_perfDados) {
+    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="' + nCols + '">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>') + '</td></tr>';
+    _monitAtualizarPaginacao(0, 0);
+    return;
+  }
+
+  var listaCompleta = _monitSortLista(_monitFiltrar(_monitListaAtiva()));
+  var total = listaCompleta.length, itensPag = estadoMonit.itensPorPagina;
+  var totalPags = Math.max(1, Math.ceil(total / itensPag));
+  if (estadoMonit.paginaAtual > totalPags) estadoMonit.paginaAtual = totalPags;
+  if (estadoMonit.paginaAtual < 1) estadoMonit.paginaAtual = 1;
+  var start = (estadoMonit.paginaAtual - 1) * itensPag;
+  var lista = listaCompleta.slice(start, start + itensPag);
+
+  if (!lista.length) {
+    var temFiltro = estadoMonit.busca || estadoMonit.filtroStatus || estadoMonit.filtroResp || estadoMonit.filtroElem || estadoMonit.filtroConceito;
+    var vz = temFiltro ? { icon: 'filter_alt_off', titulo: 'Nenhum resultado para os filtros', detalhe: 'Tente ampliar ou limpar os filtros aplicados.' }
+      : modo === 'progresso' ? { icon: 'engineering', titulo: 'Nenhum elemento cadastrado', detalhe: 'Cadastre elementos na aba Elementos.' }
+      : { icon: 'query_stats', titulo: 'Nenhum indicador cadastrado', detalhe: 'Cadastre indicadores na aba Indicadores.' };
+    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="' + nCols + '"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">' + vz.icon + '</span>'
+      + '<p class="el-esti">' + vz.titulo + '</p><p>' + vz.detalhe + '</p></div></td></tr>';
+    _monitAtualizarPaginacao(0, 0);
+    _monitLimparCharts();
+    return;
+  }
+
+  if (modo === 'progresso') {
+    var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    tbody.innerHTML = lista.map(function(l) {
+      var c = _PERF_CORES_STATUS[l.status] || { cor: 'var(--ds-color-text-muted)', bg: 'var(--ds-color-surface-2)' };
+      var pct = _isNum(l.percentual) ? l.percentual : 0;
+      var cancel = l.status === 'Cancelado', concl = l.status === 'Concluído';
+      var dPrazo = _monitParseData(l.prazo || l.fim), vencido = !cancel && !concl && dPrazo && dPrazo < hoje;
+      var raiz = String(l.codigo || '').indexOf('.') === -1;
+      var nomesTodos = (l.quem || []).map(function(q) {
+        return (typeof nomeRespExibicao === 'function') ? nomeRespExibicao(q.idResp, q.tipo) : q.idResp;
+      }).filter(Boolean);
+      var nAdic = (l.quem || []).length - 1;
+      var respTitle = nAdic > 0
+        ? 'Principal: ' + (l.quem[0].idResp || '') + ' | Adicionais: ' + (l.quem.slice(1).map(function(q){ return q.idResp; }).join(', '))
+        : ((l.quem && l.quem[0] && l.quem[0].idResp !== nomesTodos[0]) ? l.quem[0].idResp : '');
+      var ico = (l.quem && l.quem[0] && l.quem[0].tipo === 'USER') ? 'person' : 'apartment';
+      var resp = (l.quem && l.quem.length > 0)
+        ? '<span class="resp-badge el-resp-badge"' + (respTitle ? ' data-title="' + escapeHtml(respTitle) + '"' : '') + '>'
+          + '<span class="material-symbols-outlined">' + ico + '</span>'
+          + '<span class="el-resp-nome">' + escapeHtml(nomesTodos[0] || 'Não definido') + '</span>'
+          + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '')
+          + '</span>'
+        : '—';
+      var acoes = (typeof acoesLinhaHTML === 'function') ? acoesLinhaHTML('mon-el-' + l.id, [
+        { icone: 'right_panel_open', rotulo: 'Detalhes do elemento', onclick: "abrirDetalhesElementoPainel('" + escapeHtml(l.id) + "')", principal: true }
+      ]) : '';
+      return '<tr ondblclick="abrirDetalhesElementoPainel(\'' + escapeHtml(l.id) + '\')">'
+        + '<td><div class="mon-elem"><span class="el-codigo">' + escapeHtml(l.codigo || '—') + '</span>'
+        +   '<span class="mon-elem-titulo' + (raiz ? ' is-raiz' : '') + '" data-title="' + escapeHtml(l.titulo) + '">' + escapeHtml(l.titulo) + '</span></div></td>'
+        + '<td class="mon-col-status"><span class="mon-status" style="background:' + c.bg + ';color:' + c.cor + '"><span class="mon-status-dot"></span>' + escapeHtml(l.status) + '</span></td>'
+        + '<td class="mon-col-prog"><div class="mon-barra-wrap"><span class="mon-barra"><span class="mon-barra-fill" style="width:' + Math.min(pct, 100) + '%;background:'
+        +   (concl ? 'var(--ds-color-success)' : cancel ? 'var(--ds-color-border-strong)' : 'var(--ds-color-action)') + '"></span></span>'
+        +   '<span class="mon-barra-val">' + (cancel ? '—' : pct.toFixed(0) + '%') + '</span></div></td>'
+        + '<td class="mon-col-prazo"><span class="mon-prazo' + (vencido ? ' is-vencido' : '') + '"' + (vencido ? ' data-title="Prazo vencido"' : '') + '>'
+        +   (vencido ? '<span class="material-symbols-outlined">schedule</span>' : '') + escapeHtml(l.prazo || '—') + '</span></td>'
+        + '<td class="mon-col-resp">' + resp + '</td>'
+        + '<td class="mon-col-acoes">' + acoes + '</td>'
+        + '</tr>';
+    }).join('');
+    _monitLimparCharts();
+  } else {
+    var ESCALA = 130;
+    tbody.innerHTML = lista.map(function(ind) {
+      var id = escapeHtml(String(ind.id)), aberto = !!_perfExpandidos[ind.id];
+      var c = _PERF_CORES_CONCEITO[ind.conceito] || { bg: 'var(--ds-color-surface-2)', text: 'var(--ds-color-text-muted)' };
+      var tem = _isNum(ind.alcance);
+      var pol = ind.interpretacao === 'Menor Melhor'
+        ? '<span class="material-symbols-outlined mon-ind-pol" data-title="Quanto menor, melhor">south</span>'
+        : '<span class="material-symbols-outlined mon-ind-pol" data-title="Quanto maior, melhor">north</span>';
+      var acoes = (typeof acoesLinhaHTML === 'function') ? acoesLinhaHTML('mon-ind-' + id, [
+        { icone: 'right_panel_open', rotulo: 'Detalhes do indicador', onclick: "monitAbrirPainelIndicador('" + id + "')", principal: true }
+      ]) : '';
+      var linha = '<tr class="mon-linha-ind' + (aberto ? ' is-open' : '') + '" onclick="perfToggleExpand(\'' + id + '\', event)" ondblclick="monitAbrirPainelIndicador(\'' + id + '\'); event.stopPropagation();" aria-expanded="' + aberto + '">'
+        + '<td><div class="mon-ind"><span class="material-symbols-outlined mon-seta" aria-hidden="true">chevron_right</span>'
+        +   '<span class="mon-ind-nome" data-title="' + escapeHtml(ind.nome) + '">' + escapeHtml(ind.nome) + '</span>' + pol + '</div></td>'
+        + '<td class="mon-col-alc"><div class="mon-barra-wrap" data-title="' + (tem ? 'Alcance ' + _fmtNumBR(ind.alcance) + '% da meta (traço = 100%)' : (ind.temMeta ? 'Sem resultados validados' : 'Sem meta cadastrada')) + '">'
+        +   '<span class="mon-barra"><span class="mon-barra-fill" style="width:' + (tem ? Math.min(100, ind.alcance / ESCALA * 100).toFixed(1) : 0) + '%;background:' + c.text + '"></span>'
+        +   '<span class="mon-barra-meta" style="left:' + (100 / ESCALA * 100).toFixed(1) + '%"></span></span>'
+        +   '<span class="mon-barra-val">' + (tem ? Math.round(ind.alcance) + '%' : '—') + '</span></div></td>'
+        + '<td class="mon-col-conc">' + _perfBadgeConceito(ind.conceito) + '</td>'
+        + '<td class="mon-col-contrib">' + (_isNum(ind.contribuicao)
+            ? '<span class="mon-contrib" data-title="Peso ' + ind.peso + ' × ' + ind.pontos + ' ponto(s) = ' + _fmtNumBR(ind.contribuicao) + ' de ' + _fmtNumBR(ind.contribuicaoMax) + ' possíveis">'
+              + '<strong>' + _fmtNumBR(ind.contribuicao) + '</strong><span> / ' + _fmtNumBR(ind.contribuicaoMax) + '</span></span>'
+            : '—') + '</td>'
+        + '<td class="mon-col-acoes">' + acoes + '</td>'
+        + '</tr>';
+      if (!aberto) return linha;
+      var temBase = ind.indiceBase !== null && ind.indiceBase !== undefined && ind.indiceBase !== '' && !isNaN(Number(ind.indiceBase));
+      var temHist = temBase || (ind.historico || []).length > 0 || (ind.apuracoes || []).some(function(a) { return _isNum(a.apurado); });
+      var realMeta = tem ? _fmtNumBR(ind.valorRealizado) + ' / ' + _fmtNumBR(ind.valorMeta) + (ind.unidade ? ' ' + escapeHtml(ind.unidade) : '') : '';
+      return linha + '<tr class="mon-det"><td colspan="' + nCols + '"><div class="mon-det-corpo">'
+        + '<div class="mon-det-graf"><span>' + (temHist ? 'Resultados validados × meta' : '') + '</span>'
+        +   (temHist ? '<div class="mon-chart-hist" id="mon-hist-' + id + '"></div>'
+                     : '<div class="mon-det-vazio"><span class="material-symbols-outlined">hourglass_empty</span>Ainda sem resultados validados</div>')
+        + '</div>'
+        + '<div class="mon-det-ficha">'
+        +   _monitDetLinha('Elemento', escapeHtml(ind.elemLabel || '—'))
+        +   _monitDetLinha('Realizado / meta', realMeta)
+        +   _monitDetLinha('Apuração', ind.tipoCalculo === 'CONTINUO' ? 'Contínua' : 'Singular')
+        +   _monitDetLinha('Peso', String(ind.peso))
+        +   _monitDetLinha('Pontos', _isNum(ind.pontos) ? ind.pontos + ' de ' + ((_perfDados.faixas && _perfDados.faixas.PONTOS_MAXIMOS) || 3) : '')
+        +   _monitDetLinha('Referência', ind.periodo ? escapeHtml(ind.periodo) : '')
+        +   (ind.responsavel ? _monitDetLinha('Responsável', escapeHtml(ind.responsavel)) : '')
+        +   ((ind.resultadosPendentes || 0) > 0 ? _monitDetLinha('Pendentes de validação', String(ind.resultadosPendentes)) : '')
+        +   '<div class="mon-det-acoes-painel" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--ds-color-border)">'
+        +     '<button type="button" class="rsc-link" onclick="monitAbrirPainelIndicador(\'' + id + '\')">'
+        +       '<span class="material-symbols-outlined">right_panel_open</span>Abrir detalhes no painel lateral</button>'
+        +   '</div>'
+        + '</div>'
+        + '</div></td></tr>';
+    }).join('');
+
+    _monitLimparCharts();
+    lista.forEach(function(ind) {
+      if (_perfExpandidos[ind.id]) _monitChart('hist_' + ind.id, 'mon-hist-' + ind.id, _monitOptHistorico(ind));
+    });
+  }
+  _monitAtualizarPaginacao(total, start);
+}
+
+function perfToggleExpand(idInd, ev) {
+  if (ev && ev.target.closest && ev.target.closest('button, a, .acoes-linha')) return;
+  _perfExpandidos[idInd] = !_perfExpandidos[idInd];
+  _monitRenderCorpo();
+}
+
+function monitToggleExpandirTudo() {
+  monitTudoExpandido = !monitTudoExpandido;
+  _perfExpandidos = {};
+  if (monitTudoExpandido) _monitFiltrar(_monitLinhasDesempenho()).forEach(function(l) { _perfExpandidos[String(l.id)] = true; });
+  _monitRenderCorpo();
+}
+
+function atualizarMonitoramento() {
+  _monitCarregarDados(true);
+}
+
+// silencioso=true: atualização em segundo plano — mantém na tela o que já está carregado
+// (sem spinner, sem zerar filtros/linhas expandidas) e só troca quando a resposta chega.
+function _monitCarregarDados(forcar, silencioso) {
+  if (!_monitPlanoId || _monitPlanoId === 'undefined' || _monitCarregando) return;
+  _monitCarregando = true;
+  _monitStale = false;
+  var idPlanoReq = _monitPlanoId;
+  if (forcar && !silencioso) {
+    _perfDados = null;
+  }
+
+  var wrap = document.getElementById('monit-corpo-wrap');
+  if (silencioso && _perfDados) {
+    // nada a mostrar: os dados atuais continuam visíveis
+  } else if (wrap && !_perfDados) {
+    wrap.innerHTML = '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>';
+  } else {
+    var tbMonit = document.getElementById('monit-tbody');
+    if (tbMonit) tbMonit.innerHTML = '<tr><td colspan="9" style="padding:0">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>') + '</td></tr>';
+  }
+
+  _monitoramentoSDK.chamar('apiGetAbaMonitoramento', _monitPlanoId)
+    .then(function(res) {
+      if (idPlanoReq !== _monitPlanoId) return; // resposta de um plano já abandonado
+      _monitCarregando = false;
+      _perfDados = res;
+      if (!silencioso) {
+        _perfExpandidos = {};
+        monitTudoExpandido = false;
+      }
+      renderizarMonitoramento(res);
+
+      var d = (res && res.desempenho && res.desempenho.proprio) || {};
+      if (d.pendentes > 0) {
+        _monitoramentoSDK.reportarAlerta(d.pendentes, d.pendentes + ' resultado(s) pendente(s) de validação');
+      } else {
+        _monitoramentoSDK.reportarAlerta(null);
+      }
+    })
+    .catch(function(err) {
+      if (idPlanoReq !== _monitPlanoId) return;
+      _monitCarregando = false;
+      var tbMonit = document.getElementById('monit-tbody');
+      var msg = (err && err.message) || String(err);
+      if (tbMonit) {
+        tbMonit.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(msg) + '</td></tr>';
+      } else if (wrap) {
+        wrap.innerHTML = '<div style="color:var(--ds-color-danger); padding:20px">Erro: ' + escapeHtml(msg) + '</div>';
+      }
+    });
+}
+
+// ── REGISTRO DE HOOKS DO SDK ───────────────────────────────────
+_monitoramentoSDK.aoVisibilidade(function(info) {
+  var visivel = !!(info && info.aba && info.pagina);
+  _monitAbaVisivel = visivel;
+  if (visivel) {
+    if (!_perfDados && !_monitCarregando && _monitPlanoId && _monitPlanoId !== 'undefined') {
+      _monitCarregarDados(false);
+    } else if (_perfDados && _monitStale && !_monitCarregando) {
+      _monitCarregarDados(true, true);
+    } else if (_perfDados) {
+      setTimeout(function() {
+        _monitDesenharResumo(_perfDados);
+        _monitResizeCharts();
+      }, 50);
+    }
+  }
+});
+
+_monitoramentoSDK.aoContexto(function(ctx) {
+  if (!ctx) return;
+  var novoId = String(ctx.idPlano || (ctx.plano && ctx.plano.id) || '');
+  if (!novoId || novoId === 'undefined') return;
+  var mudouPlano = (_monitPlanoId !== novoId);
+  _monitCtx = ctx;
+  _monitPlanoId = novoId;
+
+  if (!mudouPlano) {
+    // Plano reaberto (ou trâmite): o que está em memória pode ter ficado defasado
+    _monitStale = true;
+    if (_monitAbaVisivel && _perfDados && !_monitCarregando) _monitCarregarDados(true, true);
+    return;
+  }
+
+  if (mudouPlano) {
+    _monitCarregando = false;
+    _monitStale = false;
+    _perfDados = null;
+    _perfExpandidos = {};
+    monitTudoExpandido = false;
+    _monitDestruirTodosCharts();
+    estadoMonit.busca = '';
+    estadoMonit.filtroStatus = '';
+    estadoMonit.filtroResp = '';
+    estadoMonit.filtroElem = '';
+    estadoMonit.filtroConceito = '';
+    estadoMonit.tipoElementoBarras = '';
+    estadoMonit.paginaAtual = 1;
+    if (_monitAbaVisivel) {
+      _monitCarregarDados(false);
+    } else {
+      var wrap = document.getElementById('monit-corpo-wrap');
+      if (wrap) wrap.innerHTML = '';
+    }
+  }
+});
+
+// Chamadas pelo host quando Elementos/Indicadores reportam dados: se o que a aba
+// mostra deixou de bater com a lista atual, marca como defasado (recarrega ao ficar visível).
+function _monitMarcarSeMudou(assinaturaAtual, assinaturaMonit) {
+  if (!_perfDados || assinaturaAtual === assinaturaMonit) return;
+  _monitStale = true;
+  if (_monitAbaVisivel && !_monitCarregando) _monitCarregarDados(true, true);
+}
+window.monitVerificarElementos = function(elementos) {
+  var sig = function(l) { return (l || []).map(function(e) { return String(e.id) + '|' + String(e.status || 'Não Iniciado') + '|' + Number(e.percentual || 0); }).sort().join(';'); };
+  _monitMarcarSeMudou(sig(elementos), sig(_perfDados && _perfDados.elementos));
+};
+window.monitVerificarIndicadores = function(indicadores) {
+  var sig = function(l) { return (l || []).map(function(i) { return String(i.id); }).sort().join(';'); };
+  _monitMarcarSeMudou(sig(indicadores), sig(_perfDados && _perfDados.indicadores));
+};
+
+_monitoramentoSDK.aoTema(function(tema) {
+  if (_perfDados && _monitAbaVisivel) {
+    _monitDesenharResumo(_perfDados);
+    _monitRedesenharGraficosHistorico();
+  }
+});
+
+_monitoramentoSDK.aoTecla(function(ev) {
+  if (ev && ev.key === 'Escape') {
+    if (estadoMonit.busca) {
+      limparFiltroMonitBusca();
+      return true;
+    }
+    var temExpandidos = Object.keys(_perfExpandidos).some(function(k) { return _perfExpandidos[k]; });
+    if (temExpandidos) {
+      _perfExpandidos = {};
+      monitTudoExpandido = false;
+      _monitRenderCorpo();
+      return true;
+    }
+    var temFiltro = estadoMonit.filtroStatus || estadoMonit.filtroResp || estadoMonit.filtroElem || estadoMonit.filtroConceito;
+    if (temFiltro) {
+      limparFiltrosMonit();
+      return true;
+    }
+  }
+  return false;
+});
+</script>

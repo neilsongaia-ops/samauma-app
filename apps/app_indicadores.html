@@ -1,0 +1,2861 @@
+<!-- ================================================================
+     APP INDICADORES E METAS (Fase 3 — Arquitetura de Abas Plugáveis)
+     Injetado dinamicamente em #metas-conteudo via apiObterHtmlApp('metas')
+     Mantém estado próprio e comunica com o host via _indicadoresSDK
+     ================================================================ -->
+<script>
+/**
+ * Fábrica do contrato entre um app "instalável" e o host que o carrega
+ * (ver docs/arquitetura_apps_modulares.md). Cada app cria a PRÓPRIA
+ * instância — `var _forumSDK = criarSamaumaSDK();` — e nunca guarda num
+ * global genérico (`SamaumaSDK`): o app é entregue por injeção dinâmica de
+ * HTML/JS no DOM do host (`apiObterHtmlApp` + `<script>` recriado em
+ * runtime), não em <iframe> (testado e bloqueado pelo Google — todo Apps
+ * Script já roda dentro de um iframe de sandbox do próprio Google, e um
+ * segundo nível pra outro app quebra a autenticação). Sem <iframe>, todo
+ * app injetado divide o mesmo escopo global da página — um único objeto
+ * `SamaumaSDK` compartilhado colidiria entre dois apps montados ao mesmo
+ * tempo (Fase 3). Cada instância guarda seu próprio nome com o PRÓPRIO
+ * prefixo de arquivo (`_forumSDK`, `_elementosSDK`, ...), mesma convenção
+ * de "todo global leva o prefixo do arquivo" já usada em todo o projeto
+ * (ver CLAUDE.md).
+ *
+ * Regra de ouro: um app nunca chama google.script.run direto nem calcula
+ * permissão no cliente — só através da instância do SDK que criar.
+ */
+function criarSamaumaSDK() {
+  var _contexto = null;
+  var _visibilidade = { pagina: true, aba: true };
+  var _callbacksContexto = [];
+  var _callbacksVisibilidade = [];
+  var _callbacksPainelFechado = [];
+  var _callbackTecla = null;
+  var _callbacksTema = [];
+  var _aoBadge = null;
+  var _aoContagem = null;
+  var _aoAlerta = null;
+  var _aoDados = null;
+
+  return {
+    // Chamado pelo host logo depois de injetar/montar o app, e de novo toda
+    // vez que o contexto muda (ex.: usuário trocou de plano).
+    iniciar: function (ctx) {
+      _contexto = {
+        idPlano: ctx.idPlano, permissoes: ctx.permissoes || {},
+        usuario: ctx.usuario || {}, plano: ctx.plano || {}
+      };
+      _callbacksContexto.forEach(function (cb) { cb(_contexto); });
+    },
+
+    // Chamado pelo host sempre que a visibilidade da aba do app ou da
+    // tela-mãe muda (troca de aba, navegação pra outra tela da SPA).
+    notificarVisibilidade: function (v) {
+      _visibilidade = { pagina: !!v.pagina, aba: !!v.aba };
+      _callbacksVisibilidade.forEach(function (cb) { cb(_visibilidade); });
+    },
+
+    // Registra callback para quando o contexto chegar/mudar. Se já tiver
+    // chegado antes do registro, dispara imediatamente.
+    aoContexto: function (cb) {
+      _callbacksContexto.push(cb);
+      if (_contexto) cb(_contexto);
+    },
+
+    aoVisibilidade: function (cb) {
+      _callbacksVisibilidade.push(cb);
+      cb(_visibilidade);
+    },
+
+    contexto: function () { return _contexto; },
+    visibilidade: function () { return _visibilidade; },
+
+    // Notificação de painel lateral fechado pelo host
+    notificarPainelFechado: function () {
+      _callbacksPainelFechado.forEach(function (cb) { cb(); });
+    },
+    aoPainelFechado: function (cb) {
+      _callbacksPainelFechado.push(cb);
+    },
+
+    // Repasse de teclas de atalho (Escape, Ctrl+A) da aba ativa
+    notificarTecla: function (evt) {
+      if (_callbackTecla) return _callbackTecla(evt);
+      return false;
+    },
+    aoTecla: function (cb) {
+      _callbackTecla = cb;
+    },
+
+    // Notificação de alternância de tema visual (claro/escuro)
+    notificarTema: function (tema) {
+      _callbacksTema.forEach(function (cb) { cb(tema); });
+    },
+    aoTema: function (cb) {
+      _callbacksTema.push(cb);
+    },
+
+    // O HOST registra aqui como quer reagir ao badge deste app (ex.:
+    // atualizar o selo vermelho da própria aba) — o app só reporta o valor.
+    aoBadge: function (cb) { _aoBadge = cb; },
+    reportarBadge: function (valor) { if (_aoBadge) _aoBadge(valor); },
+
+    // Contagem total do app na própria aba (estilo "141" — diferente de
+    // aoBadge/reportarBadge, que é notificação/não-lida, estilo bolinha).
+    // PADRÃO DOS CONTADORES DA ABA (vale para todo app, atual ou futuro):
+    //  - contagem = TOTAL de itens do app (chip neutro, ex.: 141 elementos);
+    //  - alerta   = itens que exigem ação (chip âmbar + tooltip, ex.: "2 vínculos
+    //    aguardam sua decisão").
+    // Um app pode reportar um, o outro ou os dois. Para aparecerem já na abertura
+    // do plano, o app registra um provedor em CONTADORES_APPS (code.js).
+    aoContagem: function (cb) { _aoContagem = cb; },
+    reportarContagem: function (valor) { if (_aoContagem) _aoContagem(valor); },
+    aoAlerta: function (cb) { _aoAlerta = cb; },
+    reportarAlerta: function (valor, titulo) { if (_aoAlerta) _aoAlerta(valor, titulo); },
+
+    // Genérico: qualquer app pode publicar um retorno de dados pro host
+    // reagir (ex.: Elementos publica a lista atualizada pro host recalcular
+    // KPIs do header sem o app precisar conhecer essas outras telas).
+    aoDados: function (cb) { _aoDados = cb; },
+    reportarDados: function (valor) { if (_aoDados) _aoDados(valor); },
+
+    // Barra lateral de detalhes (#detp-panel — ver docs/arquitetura_apps_modulares.md):
+    // "substituição total" — o app manda o HTML pronto e é dono de 100% da
+    // marcação dentro do drawer (inclusive de suas próprias tabs/cabeçalho/
+    // botão de fechar, se quiser; CSS compartilhado do host — .detp-secao,
+    // .detp-linha, .detp-subsecao, .detp-tabs/.detp-tab etc. — já está
+    // disponível globalmente pra manter a mesma linguagem visual, mas o app
+    // não é obrigado a usá-lo). A casca só garante a moldura do drawer
+    // (posição/animação) e o Esc como fallback de fechamento. Único ponto
+    // que muda na migração pra um componente de verdade (Angular): a
+    // implementação interna, nunca essa assinatura.
+    abrirPainel: function (html) { if (typeof window.abrirPainelApp === 'function') window.abrirPainelApp(html); },
+    fecharPainel: function () { if (typeof window.fecharPainelDetalhes === 'function') window.fecharPainelDetalhes(); },
+
+    // Embrulha google.script.run.withSuccessHandler/withFailureHandler numa
+    // Promise. Único ponto que muda na migração para o backend Node/Express.
+    chamar: function (nomeFuncao) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(function (erro) { reject(erro); });
+        runner[nomeFuncao].apply(runner, args);
+      });
+    }
+  };
+}
+</script>
+
+
+<style>
+/* ── INDICADORES: tabela (reaproveita .el-tabela do design system) ─────────────── */
+#view-metas .el-tabela thead th { top: calc(var(--det-sticky-top) + var(--det-tabs-h) + 56px); }
+.ind-tabela col.ind-col-nome,  .ind-tabela .ind-col-nome  { width: auto; max-width: 0; overflow: hidden; }
+.ind-tabela col.ind-col-cob,   .ind-tabela .ind-col-cob   { width: 230px; overflow: hidden; box-sizing: border-box; }
+.ind-tabela col.ind-col-freq,  .ind-tabela .ind-col-freq  { width: 120px; overflow: hidden; box-sizing: border-box; }
+.ind-tabela col.ind-col-resp,  .ind-tabela .ind-col-resp  { width: 180px; overflow: hidden; box-sizing: border-box; }
+.ind-tabela col.ind-col-acoes, .ind-tabela .ind-col-acoes { width: 180px; min-width: 180px; text-align: right; padding-left: 4px; padding-right: 12px; box-sizing: border-box; }
+.ind-tabela tbody tr.ind-linha { cursor: pointer; }
+.ind-tabela tbody tr.ind-linha td { padding-top: 12px; padding-bottom: 12px; }
+.ind-tabela tbody tr.ind-linha.is-open td { border-bottom-color: transparent; }
+.ind-seta { font-size: 20px; color: var(--ds-color-text-muted); transition: transform var(--ds-duration-fast) var(--ds-ease-standard); }
+tr.is-open .ind-seta { transform: rotate(90deg); }
+
+.ind-nome-cel { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ind-titulo-cel { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.ind-nome { font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium); color: var(--ds-color-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ind-sub { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ind-sup-ico { font-size: 16px; color: var(--ds-color-text-muted); flex-shrink: 0; }
+.ind-alerta-ico { font-size: 16px; color: var(--ds-color-warning-fg); flex-shrink: 0; }
+.ind-freq { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ind-resp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
+.ind-resp .material-symbols-outlined { font-size: 16px; color: var(--ds-color-text-muted); flex-shrink: 0; }
+.ind-resp-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ind-resp .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); flex-shrink: 0; }
+
+/* Linha com pendência de meta (estilo is-decidir de Vínculos / is-pendente-tratamento de Riscos) */
+.ind-tabela tr.ind-linha.is-pendente-meta td { background: color-mix(in srgb, var(--ds-color-warning-bg) 45%, var(--ds-color-surface)); }
+.ind-tabela tr.ind-linha.is-pendente-meta td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-warning); }
+.ind-tabela tr.ind-linha.is-pendente-meta:hover td { background: var(--ds-color-warning-bg); }
+.ind-tabela tr.ind-linha.is-pendente-meta .ind-sub { color: var(--ds-color-warning-fg); font-weight: var(--ds-weight-semibold); }
+.ind-decisao { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; white-space: nowrap; }
+.ind-decisao .ind-btn-proativo {
+  height: 30px; min-height: 30px; padding: 0 10px;
+  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
+  gap: 4px; border-radius: var(--ds-r-md); white-space: nowrap; flex-shrink: 0;
+}
+.ind-decisao .ind-btn-proativo .material-symbols-outlined { font-size: 16px; }
+
+/* cobertura por ano (coluna Metas) */
+.ind-cob { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; row-gap: 2px; }
+.ind-cob-anos { display: flex; gap: 2px; flex-shrink: 0; }
+.ind-cob-anos i { width: 11px; height: 5px; border-radius: 2px; background: var(--ds-color-border); }
+.ind-cob-anos i.tem { background: var(--ds-color-action); }
+.ind-cob-txt { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; max-width: 100%; }
+.ind-cob-txt.is-lacuna { color: var(--ds-color-warning-fg); }
+
+/* ações da linha: só no hover/seleção nas normais; linhas pendentes mostram sempre */
+.ind-tabela tr.ind-linha:not(.is-pendente-meta) .acoes-linha { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
+.ind-tabela tr.ind-linha:hover .acoes-linha,
+.ind-tabela tr.ind-linha.selecionada .acoes-linha,
+.ind-tabela tr.ind-linha.ind-ativa .acoes-linha,
+.ind-tabela tr.ind-linha.is-pendente-meta .acoes-linha,
+.ind-tabela tr.ind-linha .acoes-linha:focus-within,
+.ind-tabela tr.ind-linha .acoes-linha:has([aria-expanded="true"]) { opacity: 1; }
+.ind-tabela tr.ind-ativa td { background: var(--ds-sidebar-item-active); }
+
+/* linha expandida */
+.ind-tabela tr.ind-det td { padding: 2px 16px 18px 88px; cursor: default; border-bottom: 1px solid var(--ds-glass-border); }
+.ind-tabela tr.ind-det:hover td { background: transparent; }
+.ind-tabela tr.ind-det.selecionada td, .ind-tabela tr.ind-det.ind-ativa td { background: color-mix(in srgb, var(--ds-sidebar-item-active) 45%, transparent); }
+.ind-det-info { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; min-height: 24px; margin-bottom: 12px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ind-det-info > span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.ind-det-info > span > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ind-det-info .material-symbols-outlined { font-size: 16px; }
+.ind-det-info .is-perdido { color: var(--ds-color-danger); }
+.ind-det-rodape { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 12px; }
+/* indicador sem metas: um bloco único no lugar da faixa */
+.ind-sem-metas { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px;
+  border: 1px dashed var(--ds-color-border-strong); border-radius: var(--ds-r-xl); }
+.ind-sem-metas > .material-symbols-outlined { font-size: 22px; color: var(--ds-color-warning-fg); }
+.ind-sem-metas-txt { flex: 1 1 240px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ind-sem-metas-txt strong { font-size: var(--ds-text-base); color: var(--ds-color-text); }
+.ind-sem-metas-txt span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ind-interp { display: inline-flex; align-items: center; gap: 4px; margin-right: auto; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ind-interp .material-symbols-outlined { font-size: 16px; }
+
+/* faixa de metas: uma coluna por ano; gap de 1px sobre fundo = divisórias */
+.ind-faixa {
+  display: grid; grid-template-columns: repeat(var(--ind-anos, 4), minmax(0, 1fr));
+  gap: 1px; background: var(--ds-color-border); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-xl); overflow: hidden;
+}
+.ind-ano { display: flex; flex-direction: column; min-width: 0; background: var(--ds-color-surface); }
+.ind-ano-cab { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
+  color: var(--ds-color-text-muted); font-variant-numeric: tabular-nums; }
+.ind-ano-cab small { font-size: 11px; font-weight: var(--ds-weight-medium); color: var(--ds-color-action); }
+.ind-ano.is-atual { background: color-mix(in srgb, var(--ds-color-action) 5%, var(--ds-color-surface)); }
+.ind-ano.is-atual .ind-ano-cab { color: var(--ds-color-action); box-shadow: inset 0 2px 0 var(--ds-color-action); }
+.ind-ano-corpo { display: flex; flex: 1; min-height: 64px; border-top: 1px solid var(--ds-glass-border); }
+.ind-meta { position: relative; flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 10px 12px 12px; }
+.ind-meta + .ind-meta { border-left: 1px solid var(--ds-glass-border); }
+.ind-meta-per { font-size: 11px; color: var(--ds-color-text-muted); }
+.ind-meta-val { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
+.ind-meta-val strong { font-size: 18px; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); font-variant-numeric: tabular-nums; letter-spacing: -0.3px; }
+.ind-meta-val span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ind-meta-barra { position: absolute; left: 12px; right: 12px; bottom: 6px; height: 3px; border-radius: 2px; background: var(--ds-sidebar-item-hover); }
+.ind-meta-barra i { display: block; height: 100%; border-radius: 2px; background: var(--ds-color-action); }
+.ind-meta-barra.is-menor i { background: var(--ds-color-purple, #8a6fd1); }
+.ind-meta-acoes { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; border-radius: var(--ds-r-md); background: inherit; opacity: 0;
+  transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
+.ind-meta:hover .ind-meta-acoes, .ind-meta-acoes:focus-within { opacity: 1; }
+.ind-meta-acoes button { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; background: none; border: none;
+  border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); cursor: pointer; }
+.ind-meta-acoes button:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
+.ind-meta-acoes button.perigo:hover { background: var(--ds-color-danger-bg); color: var(--ds-color-danger); }
+.ind-meta-acoes .material-symbols-outlined { font-size: 16px; }
+.ind-meta-add {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; margin: 8px; border: 1px dashed var(--ds-color-border-strong);
+  border-radius: var(--ds-r-lg); background: none; font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
+  color: var(--ds-color-text-muted); cursor: pointer;
+}
+.ind-meta-add:hover { border-color: var(--ds-color-action); color: var(--ds-color-action); background: var(--ds-color-info-bg); }
+.ind-meta-add .material-symbols-outlined { font-size: 18px; }
+.ind-meta-vazio { flex: 1; display: flex; align-items: center; justify-content: center; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); }
+
+/* painel lateral (dentro do #detp-panel) */
+.detp-ind-formula { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; margin-bottom: 18px; border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); }
+.detp-ind-formula span:last-child { font-size: var(--ds-text-base); line-height: 1.45; color: var(--ds-color-text); overflow-wrap: anywhere; }
+.detp-ind-metas { display: flex; flex-direction: column; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-xl); overflow: hidden; }
+.detp-ind-ano { display: grid; grid-template-columns: 64px minmax(0, 1fr); }
+.detp-ind-ano + .detp-ind-ano { border-top: 1px solid var(--ds-glass-border); }
+.detp-ind-ano > b { display: flex; align-items: center; padding: 0 12px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); font-variant-numeric: tabular-nums; }
+.detp-ind-ano.is-atual { background: color-mix(in srgb, var(--ds-color-action) 5%, var(--ds-color-surface)); }
+.detp-ind-ano.is-atual > b { color: var(--ds-color-action); box-shadow: inset 2px 0 0 var(--ds-color-action); }
+.detp-ind-ano > div { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; min-height: 44px; padding: 8px 12px; }
+.detp-ind-ano .ind-meta-val strong { font-size: var(--ds-text-base); }
+.detp-ind-ano .is-sem { font-size: var(--ds-text-sm); color: var(--ds-color-warning-fg); }
+
+@media (max-width: 1100px) {
+  .ind-tabela .ind-col-freq, .ind-tabela .ind-col-resp { display: none; }
+  .ind-tabela col.ind-col-freq, .ind-tabela col.ind-col-resp { width: 0; }
+  .ind-tabela col.ind-col-cob, .ind-tabela .ind-col-cob { width: 180px; }
+  .ind-tabela tr.ind-det td { padding-left: 72px; }
+}
+@media (max-width: 900px) { .ind-faixa { --ind-anos: 2 !important; } }
+
+/* mobile: galeria de cards */
+@media (max-width: 768px) {
+  .ind-tabela, .ind-tabela tbody { display: block; }
+  .ind-tabela colgroup, .ind-tabela thead { display: none; }
+  .ind-tabela tr.ind-linha {
+    display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "chk freq acoes" "nome nome nome" "cob cob cob";
+    gap: 6px 8px; padding: 12px; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
+  }
+  .ind-tabela tr.ind-linha.is-pendente-meta {
+    border-left: 3px solid var(--ds-color-warning);
+    grid-template-areas: "chk freq acoes" "nome nome nome" "cob cob cob" "dec dec dec";
+  }
+  .ind-tabela tr.ind-linha:not(.is-open) { margin-bottom: 10px; }
+  .ind-tabela tr.ind-linha.is-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
+  .ind-tabela tr.ind-linha td { display: block; padding: 0; border: none; width: auto; max-width: none; }
+  .ind-tabela tr.ind-linha td.el-col-expand, .ind-tabela tr.ind-linha td.ind-col-resp { display: none; }
+  .ind-tabela tr.ind-linha td.el-col-check { grid-area: chk; }
+  .ind-tabela tr.ind-linha td.ind-col-freq { grid-area: freq; display: block; }
+  .ind-tabela tr.ind-linha td.ind-col-freq .ind-freq { display: inline-block; font-size: 11px; font-weight: var(--ds-weight-semibold); padding: 2px 8px; border-radius: var(--ds-r-md); background: var(--ds-color-surface-2); color: var(--ds-color-text); }
+  .ind-tabela tr.ind-linha td.ind-col-acoes { grid-area: acoes; }
+  .ind-tabela tr.ind-linha.is-pendente-meta td.ind-col-acoes { grid-area: dec; width: auto; }
+  .ind-tabela tr.ind-linha.is-pendente-meta .ind-decisao { display: flex; width: 100%; gap: 6px; margin-top: 4px; }
+  .ind-tabela tr.ind-linha.is-pendente-meta .ind-decisao .ind-btn-proativo { flex: 1; height: 44px; font-size: var(--ds-text-sm); }
+  .ind-sub { white-space: normal; }
+  .ind-tabela tr.ind-linha td.ind-col-nome { grid-area: nome; }
+  .ind-tabela tr.ind-linha td.ind-col-cob { grid-area: cob; }
+  .ind-tabela tr.ind-linha .acoes-linha { opacity: 1; }
+  .ind-tabela tr.ind-det { display: block; margin-bottom: 10px; border: 1px solid var(--ds-color-border); border-top: none; border-radius: 0 0 var(--ds-r-lg) var(--ds-r-lg); }
+  .ind-tabela tr.ind-det td { display: block; padding: 0 12px 12px; border: none; }
+  .ind-meta-acoes { opacity: 1; }
+}
+body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { border-color: #fff; }
+/* ============================================================================
+   Modal de Indicador (wizard com trilha lateral) e modal "Definir metas" — migração do Claude Design (2026-10-03,
+   "Modais Indicadores v2"). Mesmo padrão de Plano/Elemento/Risco; o CSS do wizard é escopado ao modal (o app é
+   independente: não depende de o app Elementos estar carregado). Tokens --ds-*; nenhum token novo.
+   ============================================================================ */
+.ind-info, .ind-trava { font-size: 16px; vertical-align: middle; cursor: help; color: var(--ds-color-text-muted); margin-left: 4px; }
+.indw-obrig { font-size: 10px; font-weight: var(--ds-weight-bold); letter-spacing: .3px; text-transform: uppercase; color: var(--ds-color-danger-fg); }
+.indw-titulo { font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); margin: 0 0 18px; }
+.indw-divisor { border-top: 1px solid var(--ds-glass-border); margin: 20px 0; }
+.indw-row-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.indw-select { position: relative; }
+.indw-select .ds-select { appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer; }
+.indw-select .indw-seta { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--ds-color-text-muted); pointer-events: none; }
+.indw-qtd-linha { display: flex; gap: 8px; }
+.indw-qtd-linha input[type=number] { width: 96px; flex-shrink: 0; }
+.indw-qtd-linha .indw-select { flex: 1; min-width: 0; }
+.ds-input:disabled, .ds-select:disabled { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); cursor: not-allowed; }
+.indw-aviso-trava { background: var(--ds-status-execucao-bg) !important; color: var(--ds-status-execucao-fg) !important; }
+.indw-ctx-mobile { display: none; }
+
+#modal-novo-indicador .wiz-rail-modal { max-width: 860px; max-height: 90vh; padding: 0; position: relative; overflow: hidden; width: 860px; max-width: calc(100vw - 32px); }
+#modal-novo-indicador .wiz-rail-close { position: absolute; top: 14px; right: 14px; z-index: 5; }
+#modal-novo-indicador .wiz-body { display: flex; min-height: 0; max-height: 90vh; height: 620px; max-height: calc(100vh - 104px); }
+#modal-novo-indicador .wiz-rail { flex: 0 0 250px; display: flex; flex-direction: column; gap: 14px; padding: 20px 16px; background: var(--ds-color-surface-2);
+  border-right: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl) 0 0 var(--ds-r-xl); overflow-y: auto; box-sizing: border-box; }
+#modal-novo-indicador .wiz-rail-header h3 { margin: 2px 0 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+#modal-novo-indicador .wiz-rail-eyebrow { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); letter-spacing: .3px; color: var(--ds-color-action); }
+#modal-novo-indicador .wiz-rail-contexto { display: flex; align-items: flex-start; gap: 6px; padding: 8px 10px; border-radius: var(--ds-r-lg);
+  background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); font-size: var(--ds-text-xs); line-height: 1.35; }
+#modal-novo-indicador .wiz-rail-contexto.hidden { display: none; }
+#modal-novo-indicador .wiz-rail-contexto .material-symbols-outlined { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+#modal-novo-indicador .wiz-rail-lista { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; }
+#modal-novo-indicador .wiz-rail-item { display: flex; align-items: flex-start; gap: 10px; text-align: left; width: 100%; padding: 10px; border: 1px solid transparent;
+  border-radius: var(--ds-r-lg); background: none; cursor: pointer; font-family: var(--ds-font-sans); color: var(--ds-color-text-muted); }
+#modal-novo-indicador .wiz-rail-item:hover { background: var(--ds-sidebar-item-hover); }
+#modal-novo-indicador .wiz-rail-item.wiz-rail-atual { background: var(--ds-color-surface); box-shadow: var(--ds-shadow-1); color: var(--ds-color-text); }
+#modal-novo-indicador .wiz-rail-num { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); background: var(--ds-color-border); color: var(--ds-color-text-muted); margin-top: 1px; }
+#modal-novo-indicador .wiz-rail-item.wiz-rail-atual .wiz-rail-num { background: var(--ds-color-action); color: var(--ds-color-on-action); }
+#modal-novo-indicador .wiz-rail-item.wiz-rail-concluido .wiz-rail-num { background: var(--ds-color-success); color: #fff; }
+#modal-novo-indicador .wiz-rail-num .material-symbols-outlined { font-size: 14px; }
+#modal-novo-indicador .wiz-rail-item-titulo { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+#modal-novo-indicador .wiz-rail-item-desc { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); margin-top: 2px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#modal-novo-indicador .wiz-rail-footer { flex-shrink: 0; }
+#modal-novo-indicador .wiz-rail-progress { height: 4px; border-radius: var(--ds-radius-pill); background: var(--ds-color-border); overflow: hidden; margin-bottom: 6px; }
+#modal-novo-indicador .wiz-rail-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-radius-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
+#modal-novo-indicador .wiz-rail-footer span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+#modal-novo-indicador .wiz-mobile-progress { display: none; padding: 14px 56px 0 16px; gap: 6px; flex-direction: column; }
+#modal-novo-indicador .wiz-mobile-progress-track { height: 4px; border-radius: var(--ds-radius-pill); background: var(--ds-color-surface-2); overflow: hidden; }
+#modal-novo-indicador .wiz-mobile-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-radius-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
+#modal-novo-indicador .wiz-mobile-progress span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+#modal-novo-indicador .wiz-content { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+#modal-novo-indicador .wizard-steps-viewport { padding-top: 20px; flex: 1; min-height: 0; overflow-y: auto; }
+#modal-novo-indicador .wizard-step { max-width: 480px; margin: 0 auto; }
+#modal-novo-indicador .wizard-step.hidden { display: none; }
+#modal-novo-indicador .indw-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--ds-glass-border); flex-shrink: 0; justify-content: space-between; }
+#modal-novo-indicador .indw-footer-dir { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+#modal-novo-indicador .indw-footer .hidden { display: none; }
+@media (max-width: 860px) {
+  #modal-novo-indicador .wiz-rail-modal { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+  #modal-novo-indicador .wiz-body { height: calc(100dvh - 40px); max-height: none; }
+  #modal-novo-indicador .wiz-rail { display: none; }
+  #modal-novo-indicador .wiz-mobile-progress { display: flex; }
+  #modal-novo-indicador.modal-overlay { padding: 0; }
+  .indw-ctx-mobile { display: flex; }
+}
+@media (max-width: 480px) { .indw-row-2 { grid-template-columns: 1fr; gap: 0; } }
+
+/* modal "Definir metas" (grade de períodos) */
+#modal-nova-meta .indw-meta-card { width: 600px; max-width: calc(100vw - 32px); max-height: calc(100vh - 104px); padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.indw-meta-cab { display: flex; align-items: flex-start; gap: 12px; padding: 20px 20px 12px; }
+.indw-meta-cab > div { flex: 1; min-width: 0; }
+.indw-meta-eyebrow { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); letter-spacing: .3px; color: var(--ds-color-action); }
+.indw-meta-cab h3 { margin: 2px 0 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#form-nova-meta { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; }
+.indw-meta-corpo { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 4px 20px 20px; gap: 16px; }
+.indw-meta-topo { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px; }
+.indw-meta-topo .ds-field { margin-bottom: 0; min-width: 0; }
+.indw-meta-fill { display: flex; gap: 8px; }
+#meta-grade { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.meta-grade-rolagem { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface); }
+.meta-grade { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
+.meta-grade th { position: sticky; top: 0; z-index: 2; text-align: left; height: 36px; padding: 0 12px; background: var(--ds-color-surface-2); border-bottom: 1px solid var(--ds-color-border);
+  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); color: var(--ds-color-text-muted); text-transform: none; }
+.meta-grade th:last-child { width: 48%; }
+.meta-grade td { height: 48px; padding: 0 12px; border-bottom: 1px solid var(--ds-glass-border); vertical-align: middle; }
+.meta-grade td.meta-per { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--ds-text-base); }
+.meta-grade td.meta-per .material-symbols-outlined { font-size: 16px; vertical-align: middle; cursor: help; color: var(--ds-color-text-muted); margin-left: 6px; }
+.meta-grade input { width: 100%; max-width: none; }
+.indw-meta-carregando { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 36px 16px; color: var(--ds-color-text-muted);
+  font-size: var(--ds-text-sm); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface); }
+.meta-aviso { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--ds-r-lg); background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg); font-size: var(--ds-text-sm); line-height: 1.45; }
+.meta-aviso-titulo { display: flex; align-items: center; gap: 8px; font-weight: var(--ds-weight-semibold); }
+.meta-aviso-titulo .material-symbols-outlined { font-size: 18px; }
+.meta-aviso-item { display: flex; align-items: center; gap: 8px; min-height: 36px; padding-left: 26px; color: var(--ds-color-text); }
+.meta-aviso-item > span { flex: 1; min-width: 0; }
+.meta-aviso-item > strong { font-variant-numeric: tabular-nums; }
+.indw-meta-rodape { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--ds-glass-border); justify-content: space-between; flex-shrink: 0; }
+@media (max-width: 600px) {
+  #modal-nova-meta .indw-meta-card { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+  #modal-nova-meta.modal-overlay { padding: 0; }
+  .indw-meta-topo { grid-template-columns: 1fr; }
+}
+</style>
+
+<!-- MODAL DE INDICADORES — wizard com trilha lateral (data-app-portal="1" envia direto para document.body).
+     Migração do Claude Design (2026-10-03): ids, name e handlers preservados; etapas 1 Identificação · 2 Medição ·
+     3 Responsáveis · 4 Referência (só campos não obrigatórios; "Adicionar referência" leva a ela). -->
+<div id="modal-novo-indicador" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalIndicador" onclick="if(event.target===this) window[this.dataset.fechar]()">
+  <div class="modal-card modal-lg wiz-rail-modal" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-ind">
+
+    <button type="button" class="btn-icon-close wiz-rail-close" onclick="fecharModalIndicador()" data-title="Fechar" aria-label="Fechar">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+
+    <div class="wiz-mobile-progress">
+      <div class="wiz-mobile-progress-track"><div class="wiz-mobile-progress-fill" id="indwiz-mob-fill"></div></div>
+      <span id="indwiz-mob-texto">Etapa 1 de 4</span>
+    </div>
+
+    <div class="wiz-body">
+      <aside class="wiz-rail">
+        <div class="wiz-rail-header">
+          <span class="wiz-rail-eyebrow" id="indwiz-eyebrow">&nbsp;</span>
+          <h3 id="titulo-modal-ind">Novo indicador</h3>
+        </div>
+
+        <!-- contexto: elemento já definido pela árvore -->
+        <div id="msg-contexto-elem-ind" class="wiz-rail-contexto hidden">
+          <span class="material-symbols-outlined">subdirectory_arrow_right</span>
+          <span>Dentro de <strong id="lbl-elem-ind"></strong></span>
+        </div>
+        <div id="indwiz-aviso-trava" class="wiz-rail-contexto indw-aviso-trava hidden">
+          <span class="material-symbols-outlined">lock</span>
+          <span>Periodicidade e regra de agregação travadas durante a execução do plano.</span>
+        </div>
+
+        <div class="wiz-rail-lista" id="indwiz-rail-lista"><!-- injetado via JS: _indwizRenderRail() --></div>
+        <div class="wiz-rail-footer">
+          <div class="wiz-rail-progress"><div class="wiz-rail-progress-fill" id="indwiz-rail-fill"></div></div>
+          <span id="indwiz-rail-contador">Etapa 1 de 4</span>
+        </div>
+      </aside>
+
+      <div class="wiz-content">
+        <div class="wizard-steps-viewport">
+        <form id="form-novo-indicador" onsubmit="handleSalvarIndicador(event)" novalidate>
+          <!-- IDs ocultos -->
+          <input type="hidden" name="idElementoVinculado" id="input-ind-id-elemento">
+          <input type="hidden" id="input-ind-id-edicao">
+
+          <!-- ETAPA 1: IDENTIFICAÇÃO -->
+          <div class="wizard-step" data-step="1" id="indwiz-step-1">
+            <h2 class="indw-titulo">Identificação</h2>
+
+            <div id="msg-contexto-elem-ind-mob" class="wiz-rail-contexto indw-ctx-mobile hidden" style="margin-bottom:16px">
+              <span class="material-symbols-outlined">subdirectory_arrow_right</span>
+              <span>Dentro de <strong id="lbl-elem-ind-mob"></strong></span>
+            </div>
+
+            <!-- elemento do plano (visível quando o modal é aberto pela aba Indicadores) -->
+            <div id="group-ind-elemento" class="ds-field hidden">
+              <div id="ind-selelem"></div>
+            </div>
+
+            <div class="ds-field">
+              <label class="ds-label" for="ind-nome">Nome do indicador <span class="indw-obrig">obrigatório</span></label>
+              <input type="text" name="nome" id="ind-nome" class="ds-input" required minlength="2" placeholder="Ex: Taxa de Conclusão de Cursos" oninput="_indwizLimparErro(this); _indwizRenderRail()">
+              <small class="ds-help ds-help--error hidden" id="ind-nome-erro"></small>
+            </div>
+
+            <!-- outros elementos do mesmo plano em que o indicador também é aferido (some quando o limite do plano é 1) -->
+            <div id="group-ind-elementos-extra" class="ds-field hidden">
+              <div id="ind-selelemextra"></div>
+            </div>
+
+            <!-- vínculo superior (impacto): só aparece quando algum elemento do indicador tem elemento superior -->
+            <div id="group-ind-superior" class="hidden">
+              <div class="indw-divisor"></div>
+              <div class="ds-field">
+                <div id="ind-selsup"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ETAPA 2: MEDIÇÃO -->
+          <div class="wizard-step hidden" data-step="2" id="indwiz-step-2">
+            <h2 class="indw-titulo">Medição</h2>
+
+            <div class="ds-field">
+              <label class="ds-label" for="ind-formula">Fórmula de cálculo <span class="indw-obrig">obrigatório</span></label>
+              <input type="text" name="formula" id="ind-formula" class="ds-input" required placeholder="Ex: (Alunos Formados / Total Ingressantes) * 100" oninput="_indwizLimparErro(this)">
+              <small class="ds-help ds-help--error hidden" id="ind-formula-erro"></small>
+            </div>
+
+            <div class="indw-row-2">
+              <div class="ds-field">
+                <label class="ds-label" for="ind-unidade">Unidade de medida <span class="indw-obrig">obrigatório</span></label>
+                <div class="indw-select">
+                  <select name="unidade" id="ind-unidade" class="ds-select" required onchange="_indwizRenderRail()">
+                    <option value="%">% (Percentual)</option>
+                    <option value="Qtd">Qtd (Absoluto)</option>
+                    <option value="R$">R$ (Monetário)</option>
+                    <option value="Dias">Dias</option>
+                    <option value="Meses">Meses</option>
+                    <option value="Horas">Horas</option>
+                    <option value="Nota">Nota (Escala)</option>
+                    <option value="Índice">Índice</option>
+                  </select><span class="material-symbols-outlined indw-seta" aria-hidden="true">expand_more</span>
+                </div>
+              </div>
+              <div class="ds-field">
+                <label class="ds-label" for="ind-interpretacao">Interpretação <span class="indw-obrig">obrigatório</span></label>
+                <div class="indw-select">
+                  <select name="interpretacao" id="ind-interpretacao" class="ds-select" required>
+                    <option value="Quanto maior o valor, melhor">Quanto maior, melhor</option>
+                    <option value="Quanto menor o valor, melhor">Quanto menor, melhor</option>
+                    <option value="Igual à meta">Igual à meta</option>
+                  </select><span class="material-symbols-outlined indw-seta" aria-hidden="true">expand_more</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="indw-divisor" style="margin-top:4px"></div>
+
+            <div class="ds-field">
+              <label class="ds-label" for="ind-frequencia">Frequência de aferição <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
+              <div class="indw-select">
+                <select name="frequencia" id="ind-frequencia" class="ds-select" required onchange="onMudarFrequenciaInd(); _indwizRenderRail()">
+                  <option value="Anual">Anual</option>
+                  <option value="Semestral">Semestral</option>
+                  <option value="Quadrimestral">Quadrimestral</option>
+                  <option value="Trimestral">Trimestral</option>
+                  <option value="Bimestral">Bimestral</option>
+                  <option value="Mensal">Mensal</option>
+                  <option value="Contínuo">Contínuo</option>
+                </select><span class="material-symbols-outlined indw-seta" aria-hidden="true">expand_more</span>
+              </div>
+            </div>
+
+            <!-- intervalo e início do fluxo Contínuo (aparece só quando frequencia === 'Contínuo') -->
+            <div id="ind-intervalo-wrap" class="indw-row-2 hidden">
+              <div class="ds-field">
+                <label class="ds-label" for="ind-intervalo-qtd">A cada <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Intervalo entre os períodos de aferição. Cada janela vira um período, com a sua própria meta.">info</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
+                <div class="indw-qtd-linha">
+                  <input type="number" id="ind-intervalo-qtd" name="intervaloQtd" class="ds-input" min="1" max="999" placeholder="Ex: 15" oninput="_indwizLimparErro(this)">
+                  <div class="indw-select">
+                    <select id="ind-intervalo-unidade" name="intervaloUnidade" class="ds-select">
+                      <option value="Dias" selected>Dias</option>
+                      <option value="Semanas">Semanas</option>
+                      <option value="Meses">Meses</option>
+                    </select><span class="material-symbols-outlined indw-seta" aria-hidden="true">expand_more</span>
+                  </div>
+                </div>
+                <small class="ds-help ds-help--error hidden" id="ind-intervalo-qtd-erro"></small>
+              </div>
+              <div class="ds-field">
+                <label class="ds-label" for="ind-inicio-continuo">A partir de <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Data em que começa a contagem. A primeira janela começa nesta data e as seguintes vêm em sequência, sem lacunas.">info</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
+                <input type="date" id="ind-inicio-continuo" name="inicioContinuo" class="ds-input" oninput="_indwizLimparErro(this)">
+                <small class="ds-help ds-help--error hidden" id="ind-inicio-continuo-erro"></small>
+              </div>
+            </div>
+
+            <div class="ds-field" style="margin-bottom:0">
+              <label class="ds-label" for="ind-regra-agregacao">Regra de agregação <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Como os lançamentos de um mesmo período viram o valor realizado. Último valor: vale o mais recente (ex.: taxa de evasão). Soma: acumula os lançamentos (ex.: nº de publicações). Média: média dos lançamentos (ex.: nota de satisfação).">info</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
+              <div class="indw-select">
+                <select name="regraAgregacao" id="ind-regra-agregacao" class="ds-select" required onchange="_indwizRenderRail()">
+                  <option value="ULTIMO" selected>Último valor</option>
+                  <option value="SOMA">Soma dos lançamentos</option>
+                  <option value="MEDIA">Média dos lançamentos</option>
+                </select><span class="material-symbols-outlined indw-seta" aria-hidden="true">expand_more</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ETAPA 3: RESPONSÁVEIS -->
+          <div class="wizard-step hidden" data-step="3" id="indwiz-step-3">
+            <h2 class="indw-titulo">Responsáveis</h2>
+            <div id="ind-selresp"></div>
+            <small class="ds-help ds-help--error hidden" id="ind-selresp-erro"></small>
+          </div>
+
+          <!-- ETAPA 4: REFERÊNCIA (só campos não obrigatórios) -->
+          <div class="wizard-step hidden" data-step="4" id="indwiz-step-4">
+            <h2 class="indw-titulo">Referência</h2>
+            <div class="indw-row-2">
+              <div class="ds-field">
+                <label class="ds-label" for="ind-indice-base">Índice base <span class="material-symbols-outlined ind-info" tabindex="0" data-title="O valor mais recente antes do início deste plano.">info</span></label>
+                <input type="text" name="indiceBase" id="ind-indice-base" class="ds-input" placeholder="Ex: 45%">
+              </div>
+              <div class="ds-field">
+                <label class="ds-label" for="input-ind-data-referencia">Data de referência <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Marco zero: quando o índice base foi apurado.">info</span></label>
+                <input type="date" name="dataReferencia" id="input-ind-data-referencia" class="ds-input">
+              </div>
+            </div>
+            <div class="ds-field" style="margin-bottom:0">
+              <label class="ds-label" for="ind-fonte-dados">Fonte de dados <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Endereço web oficial de onde os dados são extraídos. Deve ser um link válido.">info</span></label>
+              <input type="text" name="fonteDados" id="ind-fonte-dados" class="ds-input" placeholder="Ex: https://sigaa.ufpa.br/relatorios">
+            </div>
+          </div>
+        </form>
+        </div>
+
+        <div class="indw-footer">
+          <button type="button" class="ds-btn ds-btn--ghost" style="border-color:transparent" onclick="fecharModalIndicador()">Cancelar</button>
+          <div class="indw-footer-dir">
+            <button type="button" class="ds-btn ds-btn--ghost hidden" style="border-color:transparent" id="indw-btn-voltar" onclick="_indwizVoltar()"><span class="material-symbols-outlined">arrow_back</span><span class="indw-txt-voltar">Voltar</span></button>
+            <button type="button" class="ds-btn ds-btn--ghost hidden" id="indw-btn-salvar-sec" onclick="_indwizSalvar()"><span class="material-symbols-outlined">save</span>Salvar</button>
+            <button type="button" class="ds-btn ds-btn--ghost hidden" style="border-color:transparent" id="indw-btn-referencia" onclick="_indwizIrPara(4, 'frente')">Adicionar referência</button>
+            <button type="button" class="ds-btn ds-btn--primary" id="indw-btn-continuar" onclick="_indwizProximo()">Continuar<span class="material-symbols-outlined">arrow_forward</span></button>
+            <button type="submit" form="form-novo-indicador" class="ds-btn ds-btn--primary hidden" id="btn-submit-ind"><span class="material-symbols-outlined">save</span>Salvar indicador</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DE METAS POR PERÍODO (data-app-portal="1" envia direto para document.body) — modal simples (uma tarefa só),
+     migração do Claude Design 2026-10-03 -->
+<div id="modal-nova-meta" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalMeta" onclick="if(event.target===this) window[this.dataset.fechar]()">
+  <div class="modal-card indw-meta-card" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-meta">
+    <div class="indw-meta-cab">
+      <div>
+        <span class="indw-meta-eyebrow">DEFINIR METAS</span>
+        <h3 id="titulo-modal-meta">Metas</h3>
+      </div>
+      <button type="button" class="btn-icon-close" onclick="fecharModalMeta()" data-title="Fechar" aria-label="Fechar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <form id="form-nova-meta" onsubmit="handleSalvarMetas(event)">
+      <input type="hidden" id="input-meta-id-indicador">
+      <div class="indw-meta-corpo">
+        <div class="indw-meta-topo">
+          <div class="ds-field">
+            <label class="ds-label" for="input-meta-ano">Ano de referência <span class="indw-obrig">obrigatório</span></label>
+            <input type="number" id="input-meta-ano" class="ds-input" min="1900" max="9999" required placeholder="Ex: 2026" onchange="_metaCarregarGrade()">
+          </div>
+          <div class="ds-field">
+            <label class="ds-label" for="input-meta-preencher">Mesmo valor em todos <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Preenche todos os períodos da lista com o valor digitado. Depois você ainda pode ajustar cada um.">info</span></label>
+            <div class="indw-meta-fill">
+              <input type="text" id="input-meta-preencher" class="ds-input" placeholder="Ex: 100" onkeydown="if(event.key==='Enter'){event.preventDefault();_metaPreencherTodos();}">
+              <button type="button" class="ds-btn ds-btn--ghost" id="btn-meta-aplicar" onclick="_metaPreencherTodos()">Aplicar</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="meta-grade"></div>
+        <div id="meta-fora"></div>
+      </div>
+
+      <div class="indw-meta-rodape">
+        <button type="button" class="ds-btn ds-btn--ghost" style="border-color:transparent" onclick="fecharModalMeta()">Cancelar</button>
+        <button type="submit" class="ds-btn ds-btn--primary" id="btn-submit-meta" disabled><span class="material-symbols-outlined">save</span>Salvar metas</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- CONTAINER PRINCIPAL DA ABA INDICADORES -->
+<div id="indicadores-conteudo">
+  <!-- Conteúdo de filtros, tabela e paginação montado por renderizarSecaoIndicadores() -->
+</div>
+
+<script>
+// ================================================================
+// LÓGICA DO APP INDICADORES E METAS
+// ================================================================
+var _indicadoresSDK = criarSamaumaSDK();
+
+var _indCtx = null;
+var _indCarregado = false;
+var _indCarregando = false;       // há uma chamada a apiGetAbaIndicadores em andamento
+var _indFilaAposCarga = [];       // callbacks de quem precisa dos dados carregados (indGarantirCarregado)
+var _indVis = { pagina: false, aba: false }; // via _indicadoresSDK.aoVisibilidade — a aba só carrega quando visível
+var _indIndicadores = [];
+var _indIndicadoresSuperiores = [];
+var _indMetas = [];
+var _indDefinicaoEditavel = { editavel: true, motivo: '' }; // frequência/intervalo/início/regra: travam durante a execução (servidor decide)
+var _indPainelPendenteId = null;
+
+// Estado de visualização/filtros/ordenação da aba Indicadores
+var estadoIndicadores = {
+  busca: '', filtroResp: '', filtroFreq: '', filtroElem: '',
+  sort: { col: 'prioridade', dir: 'asc' },
+  itensPorPagina: 10, paginaAtual: 1,
+  expandidos: {},
+  selecionados: {},   // id -> true
+  painelId: null      // indicador aberto no #detp-panel
+};
+
+// Variáveis de estado do modal de indicadores
+var cacheUnidadesInd = [];
+var cacheUsuariosInd = [];
+var unidadesContextoPermitidoInd = [];
+var usuariosExclusivosContextoInd = [];
+var idElementoAtualInd = null;
+var seletorRespInd = null;
+
+var _indFiltrosDef = {
+  resp: { label: 'Responsável', chave: 'filtroResp' },
+  elem: { label: 'Elemento',    chave: 'filtroElem' },
+  freq: { label: 'Frequência',  chave: 'filtroFreq' }
+};
+
+var _IND_PER_CURTO = {
+  '1º Semestre': '1º sem.', '2º Semestre': '2º sem.',
+  '1º Trimestre': '1º tri.', '2º Trimestre': '2º tri.',
+  '3º Trimestre': '3º tri.', '4º Trimestre': '4º tri.'
+};
+
+var _indUltimoClicado = null;
+
+function _indPermiteEdicao() {
+  if (_indCtx && _indCtx.permissoes) return !!_indCtx.permissoes.gerenciarElementos;
+  if (typeof planoPermiteEdicao === 'function') return planoPermiteEdicao();
+  return false;
+}
+
+// Junta indicadores + metas + elemento + indicador superior em lista unificada
+function _indDados() {
+  var inds = _indIndicadores.length ? _indIndicadores : ((dadosDetalhados && dadosDetalhados.indicadores) || []);
+  var metas = _indMetas.length ? _indMetas : ((dadosDetalhados && dadosDetalhados.metas) || []);
+  var elementosMap = {};
+  ((dadosDetalhados && dadosDetalhados.elementos) || []).forEach(function(e) { elementosMap[String(e.id)] = e; });
+  var supMap = {};
+  var indSup = _indIndicadoresSuperiores.length ? _indIndicadoresSuperiores : ((dadosDetalhados && dadosDetalhados.indicadoresSuperiores) || []);
+  indSup.forEach(function(i) { supMap[String(i.id)] = i; });
+  inds.forEach(function(i) { if (!supMap[String(i.id)]) supMap[String(i.id)] = i; }); // superior do próprio plano
+
+  var metasPorInd = {};
+  metas.forEach(function(m) {
+    var k = String(m.idIndicador);
+    if (!metasPorInd[k]) metasPorInd[k] = [];
+    metasPorInd[k].push(m);
+  });
+
+  var lista = inds.map(function(ind) {
+    var el = (ind.nomeElemento || ind.codigoElemento)
+      ? { id: ind.idElemento, titulo: ind.nomeElemento || '', codigo: ind.codigoElemento || '', tipo: '' }
+      : (elementosMap[String(ind.idElemento)] || null);
+    var idsSup = ind.idsIndicadoresSuperiores || (ind.idIndicadorSuperior ? [ind.idIndicadorSuperior] : []);
+    var nomesSup = idsSup.map(function(i) { return supMap[String(i)] ? supMap[String(i)].nome : 'Indicador vinculado'; });
+    var nomesAdic = (ind.idsElementosAdicionais || []).map(function(i) { var e = elementosMap[String(i)]; return e ? ((e.codigo ? e.codigo + ' ' : '') + e.titulo) : ''; }).filter(Boolean);
+    return Object.assign({}, ind, {
+      metas: (metasPorInd[String(ind.id)] || []).slice().sort(function(a, b) { return a.ano - b.ano; }),
+      elemento: el || null,
+      indicadoresSuperioresNomes: nomesSup,
+      elementosAdicionaisNomes: nomesAdic
+    });
+  });
+
+  return {
+    todos: lista,
+    com: lista.filter(function(i) { return i.metas.length > 0; }),
+    sem: lista.filter(function(i) { return i.metas.length === 0; })
+  };
+}
+
+function _indListaAtiva() {
+  return _indDados().todos;
+}
+
+function _indFiltrar(lista) {
+  var busca = estadoIndicadores.busca.toLowerCase();
+  var fResp = estadoIndicadores.filtroResp;
+  var fFreq = estadoIndicadores.filtroFreq;
+  var fElem = estadoIndicadores.filtroElem;
+  return lista.filter(function(p) {
+    if (busca && String(p.nome || '').toLowerCase().indexOf(busca) === -1
+              && String(p.formula || '').toLowerCase().indexOf(busca) === -1) return false;
+    if (fResp && p.responsavel !== fResp) return false;
+    if (fFreq && p.frequencia !== fFreq) return false;
+    if (fElem && (p.elemento ? String(p.elemento.id) : '—') !== fElem) return false;
+    return true;
+  });
+}
+
+function _indPrioridadePeso(p, anos) {
+  if (!p.metas || p.metas.length === 0) return 1;
+  if (anos && anos.length) {
+    var tem = {}; p.metas.forEach(function(m) { tem[m.ano] = true; });
+    var temLacuna = anos.some(function(a) { return !tem[a]; });
+    if (temLacuna) return 2;
+  }
+  return 3;
+}
+
+function _indSortLista(lista) {
+  var sort = estadoIndicadores.sort || { col: 'prioridade', dir: 'asc' };
+  var col = sort.col, dir = sort.dir === 'asc' ? 1 : -1;
+  var todasMetas = _indMetas.length ? _indMetas : ((dadosDetalhados && dadosDetalhados.metas) || []);
+  var anos = _indAnosVigencia(todasMetas);
+  return (lista || []).slice().sort(function(a, b) {
+    var res = 0;
+    if (col === 'metas') {
+      var ma = (a.metas || []).length, mb = (b.metas || []).length;
+      res = (ma - mb) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
+    } else if (col === 'responsavel') {
+      var ra = String(nomeRespExibicao(a.responsavel, a.tipoResponsavel) || '').toLowerCase();
+      var rb = String(nomeRespExibicao(b.responsavel, b.tipoResponsavel) || '').toLowerCase();
+      res = ra.localeCompare(rb, 'pt') || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
+    } else if (col === 'frequencia') {
+      var fa = String(a.frequencia || '').toLowerCase();
+      var fb = String(b.frequencia || '').toLowerCase();
+      res = fa.localeCompare(fb, 'pt') || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
+    } else if (col === 'nome') {
+      var na = String(a.nome || '').toLowerCase();
+      var nb = String(b.nome || '').toLowerCase();
+      res = na.localeCompare(nb, 'pt');
+    } else {
+      var pa = _indPrioridadePeso(a, anos), pb = _indPrioridadePeso(b, anos);
+      res = (pa - pb) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
+    }
+    return dir === 1 ? res : -res;
+  });
+}
+
+function indOrdenarPorColuna(col) {
+  if (!estadoIndicadores.sort) estadoIndicadores.sort = { col: 'prioridade', dir: 'asc' };
+  if (estadoIndicadores.sort.col === col) {
+    estadoIndicadores.sort.dir = estadoIndicadores.sort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    estadoIndicadores.sort.col = col;
+    estadoIndicadores.sort.dir = 'asc';
+  }
+  estadoIndicadores.paginaAtual = 1;
+  _indRenderCorpo();
+}
+
+function _indAtualizarIconesOrdenacao() {
+  var col = (estadoIndicadores.sort && estadoIndicadores.sort.col) || 'prioridade';
+  var dir = (estadoIndicadores.sort && estadoIndicadores.sort.dir) || 'asc';
+  ['nome', 'metas', 'frequencia', 'responsavel'].forEach(function(c) {
+    var el = document.getElementById('ind-sort-icon-' + c);
+    if (!el) return;
+    el.className = 'sort-icon';
+    el.textContent = c === col ? (dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '';
+  });
+}
+
+function indAbrirMenuOrdenar(ev) {
+  ev.stopPropagation();
+  var gatilho = ev.currentTarget;
+  var colunas = [
+    { valor: 'prioridade',  label: 'Prioridade (pendências primeiro)' },
+    { valor: 'nome',        label: 'Nome' },
+    { valor: 'metas',       label: 'Metas' },
+    { valor: 'frequencia',  label: 'Frequência' },
+    { valor: 'responsavel', label: 'Responsável' }
+  ];
+  var colAtual = (estadoIndicadores.sort && estadoIndicadores.sort.col) || 'prioridade';
+  var dirAtual = (estadoIndicadores.sort && estadoIndicadores.sort.dir) || 'asc';
+  if (typeof abrirMenuSelecao === 'function') {
+    abrirMenuSelecao(gatilho, [
+      { label: 'Ordenar por', itens: colunas.map(function(c) {
+        return { label: c.label, ativo: c.valor === colAtual, onclick: "indDefinirColunaOrdenacao('" + c.valor + "')" };
+      }) },
+      { label: 'Ordem', itens: [
+        { label: 'Crescente',   ativo: dirAtual === 'asc',  onclick: "indDefinirDirecaoOrdenacao('asc')" },
+        { label: 'Decrescente', ativo: dirAtual === 'desc', onclick: "indDefinirDirecaoOrdenacao('desc')" }
+      ] }
+    ]);
+  }
+}
+
+function indDefinirColunaOrdenacao(col) {
+  if (!estadoIndicadores.sort) estadoIndicadores.sort = {};
+  estadoIndicadores.sort.col = col;
+  estadoIndicadores.paginaAtual = 1;
+  _indRenderCorpo();
+}
+
+function indDefinirDirecaoOrdenacao(dir) {
+  if (!estadoIndicadores.sort) estadoIndicadores.sort = {};
+  estadoIndicadores.sort.dir = dir;
+  estadoIndicadores.paginaAtual = 1;
+  _indRenderCorpo();
+}
+
+function _indAnosVigencia(metas) {
+  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano) || {};
+  var ini = parseInt(pl.anoInicio, 10), fim = parseInt(pl.anoFim, 10);
+  if (ini && fim && fim >= ini && fim - ini < 15) {
+    var a = []; for (var y = ini; y <= fim; y++) a.push(y); return a;
+  }
+  var s = {}; (metas || []).forEach(function(m) { if (m.ano) s[m.ano] = true; });
+  return Object.keys(s).map(Number).sort();
+}
+
+function _indPerOrdem(p) { var m = String(p || '').match(/^(\d)/); return m ? +m[1] : 0; }
+function _indCmpMeta(a, b) {
+  var ka = a.periodoInicioISO || '', kb = b.periodoInicioISO || '';
+  if (ka && kb) return ka < kb ? -1 : (ka > kb ? 1 : 0);
+  return _indPerOrdem(a.periodo) - _indPerOrdem(b.periodo);
+}
+function _indEhAnual(p) { return !p || /^anual$/i.test(String(p).trim()); }
+function _indNum(v) {
+  var n = Number(String(v).replace(',', '.'));
+  return isFinite(n) ? n.toLocaleString('pt-BR') : String(v);
+}
+function _indEhMonetario(unidade) {
+  return /^(R\$|\$|€|£|monetário)$/i.test(String(unidade || '').trim());
+}
+function _indValorUnidadeHTML(valor, unidade) {
+  var numStr = escapeHtml(_indNum(valor));
+  var uniStr = escapeHtml(unidade || '');
+  if (_indEhMonetario(unidade)) {
+    return '<span>' + uniStr + '</span> <strong>' + numStr + '</strong>';
+  }
+  return '<strong>' + numStr + '</strong>' + (uniStr ? ' <span>' + uniStr + '</span>' : '');
+}
+function _indValorUnidadeTxt(valor, unidade) {
+  var numStr = _indNum(valor);
+  var u = String(unidade || '').trim();
+  if (_indEhMonetario(u)) {
+    return u + ' ' + numStr;
+  }
+  return numStr + (u ? ' ' + u : '');
+}
+function _indFreqTxt(p) {
+  return (p.frequencia === 'Contínuo' && p.intervaloQtd)
+    ? 'Contínuo (a cada ' + p.intervaloQtd + ' ' + String(p.intervaloUnidade || '').toLowerCase() + ')'
+    : (p.frequencia || '');
+}
+function _indMenorMelhor(p) { return /menor/i.test(String(p.interpretacao || '')); }
+function _indTemFiltro() { var e = estadoIndicadores; return !!(e.busca || e.filtroResp || e.filtroElem || e.filtroFreq); }
+function _indPorId(id) { var d = _indDados(); return d.com.concat(d.sem).find(function(p) { return String(p.id) === String(id); }) || null; }
+
+function indAbrirBusca() {
+  var toggle = document.getElementById('ind-search-toggle');
+  var caixa = document.getElementById('ind-search-caixa');
+  var inp = document.getElementById('ind-filtro-busca');
+  if (toggle) toggle.classList.add('hidden');
+  if (caixa) caixa.classList.remove('hidden');
+  if (inp) inp.focus();
+}
+
+function indLimparBusca() {
+  var inp = document.getElementById('ind-filtro-busca');
+  if (inp) { inp.value = ''; inp.focus(); }
+  aplicarFiltrosIndicadores();
+}
+
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('ind-search-wrap'), caixa = document.getElementById('ind-search-caixa');
+  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
+  var inp = document.getElementById('ind-filtro-busca');
+  if (inp && !inp.value.trim()) {
+    caixa.classList.add('hidden');
+    var toggle = document.getElementById('ind-search-toggle');
+    if (toggle) toggle.classList.remove('hidden');
+  }
+});
+
+function aplicarFiltrosIndicadores() {
+  estadoIndicadores.busca = (document.getElementById('ind-filtro-busca') || {}).value || '';
+  estadoIndicadores.paginaAtual = 1;
+  _indSyncBarra();
+  _indRenderCorpo();
+}
+
+function indAbrirFiltro(campo, ev) {
+  ev.stopPropagation();
+  var def = _indFiltrosDef[campo], atual = estadoIndicadores[def.chave];
+  var salvo = estadoIndicadores[def.chave]; estadoIndicadores[def.chave] = '';
+  var base = _indFiltrar(_indListaAtiva());
+  estadoIndicadores[def.chave] = salvo;
+  var mapa = {};
+  base.forEach(function(p) {
+    var v, label;
+    if (campo === 'resp') { if (!p.responsavel) return; v = p.responsavel; label = nomeRespExibicao(p.responsavel, p.tipoResponsavel); }
+    else if (campo === 'elem') { v = p.elemento ? String(p.elemento.id) : '—'; label = p.elemento ? ((p.elemento.codigo ? p.elemento.codigo + ' ' : '') + p.elemento.titulo) : 'Sem elemento (vínculo perdido)'; }
+    else { if (!p.frequencia) return; v = p.frequencia; label = p.frequencia; }
+    if (!mapa[v]) mapa[v] = { v: v, label: label, n: 0, cod: p.elemento ? p.elemento.codigo : 'zzz' };
+    mapa[v].n++;
+  });
+  var opcoes = Object.keys(mapa).map(function(k) { return mapa[k]; });
+  opcoes.sort(campo === 'elem'
+    ? function(a, b) { return (typeof compararCodigos === 'function') ? compararCodigos(a.cod, b.cod) : String(a.cod || '').localeCompare(String(b.cod || '')); }
+    : function(a, b) { return a.label.localeCompare(b.label, 'pt'); });
+  if (!opcoes.length) return;
+  var itens = [{ label: 'Todos', ativo: !atual, onclick: "indSelecionarFiltro('" + campo + "','')" }]
+    .concat(opcoes.map(function(o) {
+      return { label: o.label, ativo: o.v === atual, onclick: "indSelecionarFiltro('" + campo + "','" + escapeJsAttr(o.v) + "')" };
+    }));
+  if (typeof abrirMenuSelecao === 'function') abrirMenuSelecao(ev.currentTarget, [{ itens: itens }]);
+}
+
+function indSelecionarFiltro(campo, valor) {
+  estadoIndicadores[_indFiltrosDef[campo].chave] = valor;
+  estadoIndicadores.paginaAtual = 1;
+  _indSyncBarra();
+  _indRenderCorpo();
+}
+
+function indLimparUmFiltro(campo) { indSelecionarFiltro(campo, ''); }
+
+function limparFiltrosIndicadores() {
+  var inp = document.getElementById('ind-filtro-busca'); if (inp) inp.value = '';
+  var caixa = document.getElementById('ind-search-caixa'); if (caixa) caixa.classList.add('hidden');
+  var tg = document.getElementById('ind-search-toggle'); if (tg) tg.classList.remove('hidden');
+  ['busca', 'filtroResp', 'filtroElem', 'filtroFreq'].forEach(function(k) { estadoIndicadores[k] = ''; });
+  estadoIndicadores.paginaAtual = 1;
+  _indSyncBarra();
+  _indRenderCorpo();
+}
+
+function _indSyncBarra() {
+  var e = estadoIndicadores, todos = _indDados(); todos = todos.com.concat(todos.sem);
+  var bc = document.getElementById('ind-btn-clear'); if (bc) bc.classList.toggle('hidden', !e.busca);
+  var respTipo = {}, elNome = {};
+  todos.forEach(function(p) {
+    if (p.responsavel) respTipo[p.responsavel] = p.tipoResponsavel;
+    if (p.elemento) elNome[String(p.elemento.id)] = p.elemento.codigo || p.elemento.titulo;
+  });
+  var rot = {
+    resp: e.filtroResp ? nomeRespExibicao(e.filtroResp, respTipo[e.filtroResp]) : '',
+    elem: e.filtroElem ? (e.filtroElem === '—' ? 'sem vínculo' : (elNome[e.filtroElem] || '')) : '',
+    freq: e.filtroFreq
+  };
+  Object.keys(_indFiltrosDef).forEach(function(c) {
+    var v = rot[c];
+    var lb = document.getElementById('ind-filtro-label-' + c);
+    if (lb) lb.textContent = v ? _indFiltrosDef[c].label + ': ' + v : _indFiltrosDef[c].label;
+    var bt = document.getElementById('ind-filtro-btn-' + c); if (bt) bt.classList.toggle('el-filtro-btn--ativo', !!v);
+    var x = document.getElementById('ind-filtro-x-' + c); if (x) x.classList.toggle('hidden', !v);
+  });
+  var bl = document.getElementById('ind-btn-limpar'); if (bl) bl.classList.toggle('hidden', !_indTemFiltro());
+}
+
+function _indAtualizarPaginacao(total, start) {
+  if (typeof _atualizarBarraPaginacao === 'function') {
+    _atualizarBarraPaginacao('ind', estadoIndicadores, total, start);
+  }
+}
+
+function indMudarTamanho(val) {
+  estadoIndicadores.itensPorPagina = parseInt(val, 10) || 10;
+  estadoIndicadores.paginaAtual = 1;
+  _indRenderCorpo();
+}
+
+function indMudarPagina(dir) {
+  var total = _indFiltrar(_indListaAtiva()).length;
+  var totalPags = Math.max(1, Math.ceil(total / estadoIndicadores.itensPorPagina));
+  if (dir === 'prev' && estadoIndicadores.paginaAtual > 1) estadoIndicadores.paginaAtual--;
+  if (dir === 'next' && estadoIndicadores.paginaAtual < totalPags) estadoIndicadores.paginaAtual++;
+  if (estadoIndicadores.paginaAtual < 1) estadoIndicadores.paginaAtual = 1;
+  if (estadoIndicadores.paginaAtual > totalPags) estadoIndicadores.paginaAtual = totalPags;
+  _indRenderCorpo();
+}
+
+function indIrParaPagina(pg) {
+  var total = _indFiltrar(_indListaAtiva()).length;
+  var totalPags = Math.max(1, Math.ceil(total / estadoIndicadores.itensPorPagina));
+  var p = parseInt(pg, 10) || 1;
+  estadoIndicadores.paginaAtual = Math.min(Math.max(1, p), totalPags);
+  _indRenderCorpo();
+}
+
+function _urlFonteDados(valor) {
+  var v = String(valor || '').trim();
+  if (!v || /\s/.test(v)) return null;
+  var comProto = /^https?:\/\//i.test(v) ? v : 'https://' + v;
+  try {
+    var u = new URL(comProto);
+    if ((u.protocol === 'http:' || u.protocol === 'https:') && u.hostname.indexOf('.') > 0) return u.href;
+  } catch (err) {}
+  return null;
+}
+
+function _indCoberturaHTML(p, anos) {
+  var tem = {}; p.metas.forEach(function(m) { tem[m.ano] = true; });
+  var lac = anos.filter(function(a) { return !tem[a]; }).length;
+  var txt = !p.metas.length ? 'Sem metas' : lac ? lac + (lac === 1 ? ' ano sem meta' : ' anos sem meta') : p.metas.length + (p.metas.length === 1 ? ' meta' : ' metas');
+  var tip = anos.map(function(a) { return a + ': ' + (tem[a] ? 'com meta' : 'sem meta'); }).join(' · ');
+  return '<div class="ind-cob" data-title="' + escapeHtml(tip) + '">'
+    + '<span class="ind-cob-anos">' + anos.map(function(a) { return '<i class="' + (tem[a] ? 'tem' : '') + '"></i>'; }).join('') + '</span>'
+    + '<span class="ind-cob-txt' + (p.metas.length && !lac ? '' : ' is-lacuna') + '">' + txt + '</span></div>';
+}
+
+function _indFaixaHTML(p, anos, podeEditar) {
+  var idj = escapeHtml(String(p.id));
+  var valores = p.metas.map(function(m) { return Number(String(m.valor).replace(',', '.')); }).filter(isFinite);
+  var max = Math.max.apply(null, [1].concat(valores));
+  var anoAtual = new Date().getFullYear();
+  var menor = _indMenorMelhor(p);
+  var cols = anos.map(function(ano) {
+    var ms = p.metas.filter(function(m) { return Number(m.ano) === ano; })
+      .sort(_indCmpMeta);
+    var corpo;
+    if (ms.length) {
+      corpo = ms.map(function(m) {
+        var mid = escapeHtml(String(m.id));
+        var per = _indEhAnual(m.periodo) ? '' : (_IND_PER_CURTO[m.periodo] || m.periodo);
+        var n = Number(String(m.valor).replace(',', '.'));
+        var pct = isFinite(n) ? Math.max(4, n / max * 100).toFixed(0) : 0;
+        var rotulo = ano + (per ? ' ' + m.periodo : '');
+        var labelJs = escapeJsAttr((m.periodo || '') + '/' + ano + ' — ' + _indValorUnidadeTxt(m.valor, p.unidade));
+        return '<div class="ind-meta">'
+          + (per ? '<span class="ind-meta-per">' + escapeHtml(per) + '</span>' : '')
+          + '<span class="ind-meta-val">' + _indValorUnidadeHTML(m.valor, p.unidade) + '</span>'
+          + '<span class="ind-meta-barra' + (menor ? ' is-menor' : '') + '"><i style="width:' + pct + '%"></i></span>'
+          + (podeEditar
+              ? '<div class="ind-meta-acoes">'
+                + '<button type="button" onclick="abrirModalEdicaoMeta(\'' + mid + '\')" data-title="Editar meta" aria-label="Editar meta ' + escapeHtml(rotulo) + '"><span class="material-symbols-outlined">edit</span></button>'
+                + '<button type="button" class="perigo" onclick="confirmarExclusaoMeta(\'' + mid + '\',\'' + labelJs + '\')" data-title="Excluir meta" aria-label="Excluir meta ' + escapeHtml(rotulo) + '"><span class="material-symbols-outlined">delete</span></button>'
+                + '</div>'
+              : '')
+          + '</div>';
+      }).join('');
+    } else {
+      corpo = podeEditar
+        ? '<button type="button" class="ind-meta-add" onclick="abrirModalMeta(\'' + idj + '\',' + ano + ')" aria-label="Definir meta para ' + ano + '"><span class="material-symbols-outlined">add</span>Meta</button>'
+        : '<span class="ind-meta-vazio">—</span>';
+    }
+    var atual = ano === anoAtual;
+    return '<div class="ind-ano' + (atual ? ' is-atual' : '') + '">'
+      + '<div class="ind-ano-cab">' + ano + (atual ? '<small>· ano atual</small>' : '') + '</div>'
+      + '<div class="ind-ano-corpo">' + corpo + '</div></div>';
+  }).join('');
+  return '<div class="ind-faixa" style="--ind-anos:' + Math.max(1, anos.length) + '">' + cols + '</div>';
+}
+
+function _indLinhaHTML(p, anos, podeEditar) {
+  var id = String(p.id), idj = escapeHtml(id), nomeJs = escapeJsAttr(p.nome);
+  var aberto = !!estadoIndicadores.expandidos[id];
+  var sel = !!estadoIndicadores.selecionados[id];
+  var ativo = estadoIndicadores.painelId === id;
+  var isPendente = (!p.metas || p.metas.length === 0);
+  var sup = (p.indicadoresSuperioresNomes || []).length
+    ? '<span class="material-symbols-outlined ind-sup-ico" data-title="Contribui para: ' + escapeHtml(p.indicadoresSuperioresNomes.join('; ')) + '">link</span>' : '';
+  var alerta = isPendente
+    ? '<span class="material-symbols-outlined ind-alerta-ico" data-title="Indicador sem metas definidas">warning</span>' : '';
+  var resp;
+  if (p.responsavel) {
+    var respNome = nomeRespExibicao(p.responsavel, p.tipoResponsavel);
+    var icoResp = p.tipoResponsavel === 'USER' ? 'person' : 'apartment';
+    var titResp = p.responsavel !== respNome ? p.responsavel : '';
+    resp = '<span class="resp-badge el-resp-badge"' + (titResp ? ' data-title="' + escapeHtml(titResp) + '"' : '') + '>'
+      + '<span class="material-symbols-outlined">' + icoResp + '</span>'
+      + '<span class="el-resp-nome">' + escapeHtml(respNome) + '</span>'
+      + '</span>';
+  } else {
+    resp = '—';
+  }
+
+  var acoes;
+  if (isPendente && podeEditar) {
+    var btnProativo = '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm ind-btn-proativo" onclick="event.stopPropagation(); abrirModalMeta(\'' + idj + '\')" aria-label="Definir metas">'
+      + '<span class="material-symbols-outlined">add</span><span>Definir metas</span></button>';
+    acoes = '<div class="ind-decisao">' + btnProativo + acoesLinhaHTML('ind-' + idj, [
+      { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + idj + "')" },
+      { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + idj + "')" },
+      { icone: 'delete', rotulo: 'Excluir indicador', onclick: "confirmarExclusaoIndicador('" + idj + "','" + nomeJs + "')", perigo: true }
+    ], { maxDireto: 0 }) + '</div>';
+  } else {
+    acoes = acoesLinhaHTML('ind-' + idj, [
+      { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + idj + "')", principal: true },
+      { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + idj + "')", principal: true, oculto: !podeEditar },
+      { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + idj + "')", oculto: !podeEditar },
+      { icone: 'delete', rotulo: 'Excluir indicador', onclick: "confirmarExclusaoIndicador('" + idj + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar }
+    ]);
+  }
+
+  var subTexto = isPendente
+    ? 'Pendente: cadastrar metas para a vigência'
+    : (p.elemento ? ((p.elemento.codigo ? p.elemento.codigo + ' ' : '') + p.elemento.titulo) : (p.unidade ? 'Unidade: ' + p.unidade : ''));
+
+  var cls = 'ind-linha'
+    + (isPendente ? ' is-pendente-meta' : '')
+    + (aberto ? ' is-open' : '')
+    + (sel ? ' selecionada' : '')
+    + (ativo ? ' ind-ativa' : '');
+
+  var html = '<tr class="' + cls + '" data-id="' + idj + '" aria-expanded="' + aberto + '"'
+    + ' onclick="indCliqueLinha(event, \'' + idj + '\')" ondblclick="indDuploCliqueLinha(event, \'' + idj + '\')">'
+    + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="indToggleSelecao(\'' + idj + '\', this.checked)" aria-label="Selecionar indicador"></td>'
+    + '<td class="el-col-expand"><button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" onclick="event.stopPropagation(); indToggleExpand(\'' + idj + '\')" aria-label="Expandir"><span class="material-symbols-outlined ind-seta" aria-hidden="true">chevron_right</span></button></td>'
+    + '<td class="ind-col-nome"><div class="ind-nome-cel"><div class="ind-titulo-cel"><span class="ind-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</span>' + alerta + sup + '</div>'
+    + (subTexto ? '<span class="ind-sub" data-title="' + escapeHtml(subTexto) + '">' + escapeHtml(subTexto) + '</span>' : '')
+    + '</div></td>'
+    + '<td class="ind-col-cob">' + _indCoberturaHTML(p, anos) + '</td>'
+    + '<td class="ind-col-freq"><span class="ind-freq" data-title="' + escapeHtml(_indFreqTxt(p)) + '">' + escapeHtml(p.frequencia || '—') + '</span></td>'
+    + '<td class="ind-col-resp">' + resp + '</td>'
+    + '<td class="ind-col-acoes">' + acoes + '</td>'
+    + '</tr>';
+
+  if (aberto) {
+    var el = p.elemento
+      ? '<span data-title="' + escapeHtml((p.elemento.tipo ? p.elemento.tipo + ' — ' : '') + p.elemento.titulo) + '"><span class="material-symbols-outlined">category</span><span>' + escapeHtml((p.elemento.codigo ? p.elemento.codigo + ' ' : '') + p.elemento.titulo) + '</span></span>'
+      : '<span class="is-perdido"><span class="material-symbols-outlined">link_off</span><span>Vínculo com elemento perdido</span></span>';
+    var formula = p.formula
+      ? '<span data-title="' + escapeHtml(p.formula) + '"><span class="material-symbols-outlined">function</span><span>' + escapeHtml(p.formula) + '</span></span>' : '';
+    var menor = _indMenorMelhor(p);
+    html += '<tr class="ind-det' + (sel ? ' selecionada' : '') + (ativo ? ' ind-ativa' : '') + '"><td colspan="7">'
+      + '<div class="ind-det-info">' + el + formula + '</div>'
+      + (p.metas.length
+          ? _indFaixaHTML(p, anos, podeEditar)
+            + '<div class="ind-det-rodape">'
+            +   (p.interpretacao ? '<span class="ind-interp"><span class="material-symbols-outlined">' + (menor ? 'trending_down' : 'trending_up') + '</span>' + escapeHtml(p.interpretacao) + '</span>' : '<span class="ind-interp"></span>')
+            +   (podeEditar ? '<button type="button" class="rsc-link" onclick="abrirModalMeta(\'' + idj + '\')"><span class="material-symbols-outlined">add_chart</span>Nova meta</button>' : '')
+            +   '<button type="button" class="rsc-link" onclick="indAbrirPainel(\'' + idj + '\')">Ver configuração<span class="material-symbols-outlined">chevron_right</span></button>'
+            + '</div>'
+          : '<div class="ind-sem-metas">'
+            + '<span class="material-symbols-outlined">flag</span>'
+            + '<span class="ind-sem-metas-txt"><strong>Nenhuma meta definida</strong><span>'
+            +   escapeHtml([anos.length ? 'Vigência do plano: ' + anos[0] + '–' + anos[anos.length - 1] : '', String(p.frequencia || '').toLowerCase() + (p.unidade ? ', em ' + p.unidade : '')].filter(Boolean).join(' · '))
+            + '</span></span>'
+            + '<button type="button" class="rsc-link" onclick="indAbrirPainel(\'' + idj + '\')">Ver configuração<span class="material-symbols-outlined">chevron_right</span></button>'
+            + '</div>')
+      + '</td></tr>';
+  }
+  return html;
+}
+
+function _indRenderCorpo() {
+  var tbody = document.getElementById('ind-tbody');
+  if (!tbody) return;
+  var podeEditar = _indPermiteEdicao();
+  var listaCompleta = _indSortLista(_indFiltrar(_indListaAtiva()));
+  var total = listaCompleta.length, itensPag = estadoIndicadores.itensPorPagina;
+  var totalPags = Math.max(1, Math.ceil(total / itensPag));
+  if (estadoIndicadores.paginaAtual > totalPags) estadoIndicadores.paginaAtual = totalPags;
+  if (estadoIndicadores.paginaAtual < 1) estadoIndicadores.paginaAtual = 1;
+  var start = (estadoIndicadores.paginaAtual - 1) * itensPag;
+  var lista = listaCompleta.slice(start, start + itensPag);
+
+  if (!lista.length) {
+    var d = _indDados(), vz;
+    if (!d.todos.length)      vz = { icon: 'speed', titulo: 'Nenhum indicador cadastrado', detalhe: 'Use "Novo indicador" para começar.' };
+    else if (_indTemFiltro()) vz = { icon: 'filter_alt_off', titulo: 'Nenhum resultado para os filtros', detalhe: 'Tente ampliar ou limpar os filtros aplicados.' };
+    else                      vz = { icon: 'speed', titulo: 'Nenhum indicador encontrado', detalhe: 'Nenhum indicador corresponde à visualização atual.' };
+    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="7"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">' + vz.icon + '</span>'
+      + '<p class="el-esti">' + vz.titulo + '</p><p>' + vz.detalhe + '</p></div></td></tr>';
+    _indAtualizarPaginacao(0, 0);
+    _indAtualizarSelecao([]);
+    _indAtualizarIconesOrdenacao();
+    return;
+  }
+
+  var todasMetas = _indMetas.length ? _indMetas : ((dadosDetalhados && dadosDetalhados.metas) || []);
+  var anos = _indAnosVigencia(todasMetas);
+  tbody.innerHTML = lista.map(function(p) { return _indLinhaHTML(p, anos, podeEditar); }).join('');
+  _indAtualizarPaginacao(total, start);
+  _indAtualizarSelecao(listaCompleta);
+  _indAtualizarIconesOrdenacao();
+
+  var todosAbertos = lista.every(function(p) { return estadoIndicadores.expandidos[String(p.id)]; });
+  var be = document.getElementById('ind-btn-expandir');
+  if (be) {
+    var ico = be.querySelector('.material-symbols-outlined');
+    if (ico) ico.textContent = todosAbertos ? 'unfold_less' : 'unfold_more';
+    be.setAttribute('data-title', todosAbertos ? 'Recolher todos' : 'Expandir todos');
+    be.setAttribute('aria-label', todosAbertos ? 'Recolher todos' : 'Expandir todos');
+  }
+}
+
+function abrirMenuIndicadoresMais(ev) {
+  var itens = [
+    { icone: 'upload', rotulo: 'Importar indicadores', descricao: 'Carregar indicadores a partir de uma planilha', onclick: 'importarIndicadoresCSV()' },
+    { icone: 'download', rotulo: 'Exportar indicadores e metas', descricao: 'Baixar indicadores e metas do plano (CSV)', onclick: 'exportarIndicadoresMetasCSV()' }
+  ];
+  if (typeof _acoesLinhaNormalizar === 'function' && typeof acoesLinhaMenu === 'function') {
+    var norm = itens.map(_acoesLinhaNormalizar);
+    if (typeof _acoesLinhaReg !== 'undefined') _acoesLinhaReg['indicadores-mais'] = { menu: norm, todos: norm };
+    acoesLinhaMenu('indicadores-mais', ev);
+  }
+}
+
+function renderizarSecaoIndicadores() {
+  var container = document.getElementById('indicadores-conteudo');
+  if (!container) return;
+  var podeEditar = _indPermiteEdicao();
+  var busca = estadoIndicadores.busca;
+
+  container.innerHTML =
+    '<div id="ind-filtros" class="el-filtros">'
+    +   '<div class="el-search" id="ind-search-wrap">'
+    +     '<button type="button" class="ds-icon-action' + (busca ? ' hidden' : '') + '" id="ind-search-toggle" onclick="indAbrirBusca()" data-title="Buscar" aria-label="Buscar">'
+    +       '<span class="material-symbols-outlined">search</span></button>'
+    +     '<div class="el-search-caixa' + (busca ? '' : ' hidden') + '" id="ind-search-caixa">'
+    +       '<span class="material-symbols-outlined el-search-icon" aria-hidden="true">search</span>'
+    +       '<input type="text" class="ds-input el-search-input" id="ind-filtro-busca" placeholder="Buscar por nome ou fórmula…" aria-label="Buscar por nome ou fórmula"'
+    +         ' oninput="aplicarFiltrosIndicadores()" value="' + escapeHtml(busca) + '">'
+    +       '<button type="button" class="el-search-clear hidden" id="ind-btn-clear" onclick="indLimparBusca()" data-title="Limpar busca" aria-label="Limpar busca">'
+    +         '<span class="material-symbols-outlined">close</span></button>'
+    +     '</div>'
+    +   '</div>'
+    +   ['resp', 'elem', 'freq'].map(function(c) {
+          return '<div class="el-filtro">'
+            + '<button type="button" class="el-filtro-btn" id="ind-filtro-btn-' + c + '" onclick="indAbrirFiltro(\'' + c + '\', event)">'
+            +   '<span id="ind-filtro-label-' + c + '">' + _indFiltrosDef[c].label + '</span>'
+            +   '<span class="material-symbols-outlined" style="font-size:18px">expand_more</span></button>'
+            + '<button type="button" class="el-filtro-x hidden" id="ind-filtro-x-' + c + '" onclick="indLimparUmFiltro(\'' + c + '\')" aria-label="Limpar filtro ' + _indFiltrosDef[c].label.toLowerCase() + '">'
+            +   '<span class="material-symbols-outlined" style="font-size:15px">close</span></button>'
+            + '</div>';
+        }).join('')
+    +   '<button type="button" class="el-limpar-link hidden" id="ind-btn-limpar" onclick="limparFiltrosIndicadores()">Limpar filtros</button>'
+    +   '<div style="flex:1"></div>'
+    +   '<div class="det-split desktop-only-flex">'
+    +     (podeEditar
+            ? '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-main" id="btn-novo-indicador" onclick="abrirModalIndicadorGlobal()">'
+              + '<span class="material-symbols-outlined">add</span> Novo indicador</button>'
+            : '')
+    +     '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-seta acoes-mais" onclick="abrirMenuIndicadoresMais(event)"'
+    +       ' data-title="Importar e exportar" aria-label="Mais opções de indicadores" aria-haspopup="menu" aria-expanded="false">'
+    +       '<span class="material-symbols-outlined">expand_more</span></button>'
+    +   '</div>'
+    + '</div>'
+
+    + '<div id="ind-filtros-selecao" class="el-filtros-selecao hidden">'
+    +   '<button type="button" class="ds-icon-action" onclick="indCancelarSelecao()" data-title="Cancelar seleção" aria-label="Cancelar seleção">'
+    +     '<span class="material-symbols-outlined">close</span></button>'
+    +   '<span class="el-selecao-texto" id="ind-selecao-texto">0 selecionados</span>'
+    +   '<div class="el-selecao-divisor"></div>'
+    +   '<div class="el-selecao-acoes" id="ind-selecao-acoes">'
+    +     '<button type="button" class="ds-icon-action" onclick="exportarIndicadoresMetasCSV()" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
+    +     (podeEditar ? '<button type="button" class="ds-icon-action" onclick="indExcluirSelecionados()" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>' : '')
+    +   '</div>'
+    + '</div>'
+
+    + '<div class="el-table-wrap">'
+    +   '<table class="el-tabela ind-tabela" id="ind-tabela">'
+    +     '<colgroup><col class="el-col-check"><col class="el-col-expand"><col class="ind-col-nome"><col class="ind-col-cob"><col class="ind-col-freq"><col class="ind-col-resp"><col class="ind-col-acoes"></colgroup>'
+    +     '<thead><tr>'
+    +       '<th class="el-col-check"><input type="checkbox" id="chk-select-all-ind" onchange="indToggleSelecionarTodos(this.checked)" aria-label="Selecionar todos"></th>'
+    +       '<th class="el-col-expand"></th>'
+    +       '<th class="th-sortable ind-col-nome" onclick="indOrdenarPorColuna(\'nome\')">Indicador<span class="sort-icon" id="ind-sort-icon-nome"></span></th>'
+    +       '<th class="th-sortable ind-col-cob" onclick="indOrdenarPorColuna(\'metas\')" data-title="Cobertura de metas por ano de vigência">Metas<span class="sort-icon" id="ind-sort-icon-metas"></span></th>'
+    +       '<th class="th-sortable ind-col-freq" onclick="indOrdenarPorColuna(\'frequencia\')">Frequência<span class="sort-icon" id="ind-sort-icon-frequencia"></span></th>'
+    +       '<th class="th-sortable ind-col-resp" onclick="indOrdenarPorColuna(\'responsavel\')">Responsável<span class="sort-icon" id="ind-sort-icon-responsavel"></span></th>'
+    +       '<th class="ind-col-acoes"><div class="el-th-acoes">'
+    +         '<button type="button" class="el-th-btn" onclick="atualizarAbaIndicadores()" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
+    +         '<button type="button" class="el-th-btn" id="ind-btn-expandir" onclick="indToggleExpandirTodos()" data-title="Expandir todos" aria-label="Expandir todos"><span class="material-symbols-outlined">unfold_more</span></button>'
+    +         '<button type="button" class="el-th-btn" onclick="exportarIndicadoresMetasCSV()" data-title="Exportar indicadores e metas" aria-label="Exportar indicadores e metas"><span class="material-symbols-outlined">download</span></button>'
+    +         '<button type="button" class="el-th-btn" onclick="indAbrirMenuOrdenar(event)" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
+    +       '</div></th>'
+    +     '</tr></thead>'
+    +     '<tbody id="ind-tbody"></tbody>'
+    +   '</table>'
+    + '</div>'
+    + '<div id="ind-pagination" class="pagination-bar rsc-pag">'
+    +   '<div class="pag-left"><span>Exibir:</span>'
+    +     '<select id="ind-pag-size" onchange="indMudarTamanho(this.value)" class="form-control form-control-sm">'
+    +       '<option value="10">10</option><option value="20">20</option><option value="50">50</option>'
+    +     '</select>'
+    +   '</div>'
+    +   '<div class="pag-center"><span id="ind-pag-counter">0–0 de 0</span></div>'
+    +   '<div class="pag-right">'
+    +     '<button class="btn-pag" onclick="indMudarPagina(\'prev\')" data-title="Anterior" aria-label="Página anterior"><span class="material-symbols-outlined">chevron_left</span></button>'
+    +     '<select id="ind-pag-selector" onchange="indIrParaPagina(this.value)" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>'
+    +     '<button class="btn-pag" onclick="indMudarPagina(\'next\')" data-title="Próximo" aria-label="Próxima página"><span class="material-symbols-outlined">chevron_right</span></button>'
+    +   '</div>'
+    + '</div>';
+
+  _indSyncBarra();
+  _indRenderCorpo();
+}
+
+function importarIndicadoresCSV() {
+  showMessage('info', 'Em Desenvolvimento', 'A importação de indicadores via CSV será liberada em breve.');
+}
+
+function indCliqueLinha(ev, id) {
+  if (ev.target.tagName === 'INPUT' || ev.target.closest('.acoes-linha, .ind-decisao, button, .el-th-btn, .ds-icon-action, .el-toggle-btn, a')) return;
+  var idStr = String(id);
+
+  if (ev.shiftKey && _indUltimoClicado) {
+    var listaVisivel = _indSortLista(_indFiltrar(_indListaAtiva()));
+    var itensPag = estadoIndicadores.itensPorPagina;
+    var start = (estadoIndicadores.paginaAtual - 1) * itensPag;
+    var pagina = listaVisivel.slice(start, start + itensPag);
+    _indSelecionarIntervalo(_indUltimoClicado, idStr, pagina);
+    _indAtualizarSelecaoVisual();
+    return;
+  } else if (ev.ctrlKey || ev.metaKey) {
+    if (estadoIndicadores.selecionados[idStr]) delete estadoIndicadores.selecionados[idStr];
+    else estadoIndicadores.selecionados[idStr] = true;
+    _indUltimoClicado = idStr;
+    _indAtualizarSelecaoVisual();
+    return;
+  }
+
+  indToggleExpand(idStr);
+}
+
+function indDuploCliqueLinha(ev, id) {
+  if (ev.target.tagName === 'INPUT' || ev.target.closest('.acoes-linha, .ind-decisao, button, .el-th-btn, .ds-icon-action, .el-toggle-btn, a')) return;
+  indAbrirPainel(id);
+}
+
+function indToggleExpand(id) {
+  var k = String(id);
+  estadoIndicadores.expandidos[k] = !estadoIndicadores.expandidos[k];
+  _indRenderCorpo();
+}
+
+function _indSelecionarIntervalo(idA, idB, pagina) {
+  var rows = pagina || _indSortLista(_indFiltrar(_indListaAtiva()));
+  var idxA = rows.findIndex(function(r) { return String(r.id) === String(idA); });
+  var idxB = rows.findIndex(function(r) { return String(r.id) === String(idB); });
+  if (idxA < 0 || idxB < 0) return;
+  var min = Math.min(idxA, idxB), max = Math.max(idxA, idxB);
+  for (var i = min; i <= max; i++) {
+    estadoIndicadores.selecionados[String(rows[i].id)] = true;
+  }
+}
+
+function _indAtualizarSelecaoVisual() {
+  var rows = document.querySelectorAll('#ind-tbody tr.ind-linha[data-id]');
+  rows.forEach(function(tr) {
+    var id = tr.dataset.id;
+    var sel = !!(id && estadoIndicadores.selecionados[id]);
+    tr.classList.toggle('selecionada', sel);
+    var detTr = tr.nextElementSibling;
+    if (detTr && detTr.classList.contains('ind-det')) {
+      detTr.classList.toggle('selecionada', sel);
+    }
+    var chk = tr.querySelector('input[type="checkbox"]');
+    if (chk) chk.checked = sel;
+  });
+  var listaCompleta = _indSortLista(_indFiltrar(_indListaAtiva()));
+  _indAtualizarSelecao(listaCompleta);
+}
+
+function indToggleExpandirTodos() {
+  var lista = _indSortLista(_indFiltrar(_indListaAtiva()));
+  var start = (estadoIndicadores.paginaAtual - 1) * estadoIndicadores.itensPorPagina;
+  var pagina = lista.slice(start, start + estadoIndicadores.itensPorPagina);
+  var todos = pagina.every(function(p) { return estadoIndicadores.expandidos[String(p.id)]; });
+  pagina.forEach(function(p) { estadoIndicadores.expandidos[String(p.id)] = !todos; });
+  _indRenderCorpo();
+}
+
+function indToggleSelecao(id, marcado) {
+  var idStr = String(id);
+  if (marcado) {
+    estadoIndicadores.selecionados[idStr] = true;
+    _indUltimoClicado = idStr;
+  } else {
+    delete estadoIndicadores.selecionados[idStr];
+  }
+  _indAtualizarSelecaoVisual();
+}
+
+function indToggleSelecionarTodos(marcado) {
+  estadoIndicadores.selecionados = {};
+  if (marcado) {
+    _indFiltrar(_indListaAtiva()).forEach(function(p) {
+      estadoIndicadores.selecionados[String(p.id)] = true;
+    });
+  }
+  _indAtualizarSelecaoVisual();
+}
+
+function indCancelarSelecao() {
+  estadoIndicadores.selecionados = {};
+  _indAtualizarSelecaoVisual();
+}
+
+function _indAtualizarSelecao(listaVisivel) {
+  var ids = {}; listaVisivel.forEach(function(p) { ids[String(p.id)] = true; });
+  Object.keys(estadoIndicadores.selecionados).forEach(function(k) { if (!ids[k]) delete estadoIndicadores.selecionados[k]; });
+  var n = Object.keys(estadoIndicadores.selecionados).length;
+  var f = document.getElementById('ind-filtros'), s = document.getElementById('ind-filtros-selecao');
+  if (f) f.classList.toggle('hidden', n > 0);
+  if (s) s.classList.toggle('hidden', n === 0);
+  var t = document.getElementById('ind-selecao-texto'); if (t) t.textContent = n + (n === 1 ? ' indicador selecionado' : ' indicadores selecionados');
+  var all = document.getElementById('chk-select-all-ind');
+  if (all) { all.checked = listaVisivel.length > 0 && n === listaVisivel.length; all.indeterminate = n > 0 && n < listaVisivel.length; }
+
+  var acoesCont = document.getElementById('ind-selecao-acoes');
+  if (acoesCont && n > 0) {
+    var podeEditar = _indPermiteEdicao();
+    if (n === 1) {
+      var indId = Object.keys(estadoIndicadores.selecionados)[0];
+      var indObj = _indListaAtiva().find(function(i) { return String(i.id) === String(indId); });
+      acoesCont.innerHTML = acoesLinhaHTML('indsel-' + indId, [
+        { icone: 'info', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + indId + "')", principal: true },
+        { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + indId + "')", principal: true, oculto: !podeEditar },
+        { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + indId + "')", principal: true, oculto: !podeEditar },
+        { icone: 'download', rotulo: 'Exportar CSV', onclick: "exportarIndicadoresMetasCSV()", principal: true },
+        { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoIndicador('" + indId + "','" + escapeJsAttr(indObj ? indObj.nome : '') + "')", cor: 'var(--ds-color-danger-fg)', oculto: !podeEditar }
+      ], { maxDireto: 5 });
+    } else {
+      acoesCont.innerHTML = '<button type="button" class="ds-icon-action" onclick="exportarIndicadoresMetasCSV()" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
+        + (podeEditar ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" onclick="indExcluirSelecionados()" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>' : '');
+    }
+  }
+}
+
+function indExcluirSelecionados() {
+  var ids = Object.keys(estadoIndicadores.selecionados);
+  if (!ids.length) return;
+  showConfirm('Excluir indicadores?', 'Deseja excluir ' + ids.length + (ids.length === 1 ? ' indicador' : ' indicadores') + ' e suas metas? Esta ação não pode ser desfeita.', function() {
+    mostrarLoader();
+    var promises = ids.map(function(id) {
+      return _indicadoresSDK.chamar('apiExcluirIndicador', id);
+    });
+    Promise.allSettled(promises).then(function(results) {
+      esconderLoader();
+      if (ids.indexOf(estadoIndicadores.painelId) !== -1) {
+        estadoIndicadores.painelId = null;
+        if (typeof fecharPainelDetalhes === 'function') fecharPainelDetalhes();
+      }
+      estadoIndicadores.selecionados = {};
+      var erros = results.filter(function(r) { return r.status === 'rejected'; });
+      if (erros.length) {
+        showMessage('error', 'Alguns indicadores não foram excluídos', escapeHtml(erros[0].reason ? (erros[0].reason.message || String(erros[0].reason)) : 'Erro'));
+      } else {
+        showMessage('success', 'Excluídos', 'Indicadores excluídos com sucesso.');
+      }
+      carregarAbaIndicadores();
+    });
+  });
+}
+
+function _indRenderPainel(p) {
+  var view = document.getElementById('detp-view-detalhes');
+  if (!view) return;
+  var idj = escapeHtml(String(p.id)), podeEditar = _indPermiteEdicao();
+  var fonteUrl = _urlFonteDados(p.fonteDados);
+  var campo = function(rot, val, extra, span2) {
+    return '<div class="detp-risco-campo' + (span2 ? ' span-2' : '') + '"><span class="detp-risco-rot">' + rot + '</span>'
+      + '<span class="detp-risco-val" style="display:flex;align-items:center;gap:6px;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-title="' + escapeHtml(val || '') + '">' + (val ? escapeHtml(val) : '—') + '</span>' + (extra || '') + '</span></div>';
+  };
+  var el = p.elemento
+    ? '<span class="material-symbols-outlined">category</span>' + escapeHtml((p.elemento.codigo ? p.elemento.codigo + ' ' : '') + p.elemento.titulo)
+    : '<span class="material-symbols-outlined" style="color:var(--ds-color-danger)">link_off</span><span style="color:var(--ds-color-danger)">Vínculo com elemento perdido</span>';
+
+  var anos = _indAnosVigencia(_indMetas.length ? _indMetas : ((dadosDetalhados && dadosDetalhados.metas) || []));
+  var anoAtual = new Date().getFullYear();
+  var anosCom = 0;
+  var metas = anos.map(function(ano) {
+    var ms = p.metas.filter(function(m) { return Number(m.ano) === ano; })
+      .sort(_indCmpMeta);
+    if (ms.length) anosCom++;
+    var corpo = ms.length ? ms.map(function(m) {
+      var per = _indEhAnual(m.periodo) ? '' : '<span class="ind-meta-per">' + escapeHtml(_IND_PER_CURTO[m.periodo] || m.periodo) + '</span> ';
+      return '<span class="ind-meta-val">' + per + _indValorUnidadeHTML(m.valor, p.unidade) + '</span>';
+    }).join('') : '<span class="is-sem">Sem meta</span>';
+    return '<div class="detp-ind-ano' + (ano === anoAtual ? ' is-atual' : '') + '"><b>' + ano + '</b><div>' + corpo + '</div></div>';
+  }).join('');
+
+  view.innerHTML =
+    '<div class="detp-secao">'
+    +   '<h3 class="detp-risco-titulo">' + escapeHtml(p.nome || '') + '</h3>'
+    +   '<div class="detp-risco-vinculo">' + el + '</div>'
+    +   '<div class="detp-ind-formula"><span class="detp-risco-rot">Fórmula</span><span>' + (p.formula ? escapeHtml(p.formula) : '—') + '</span></div>'
+    +   '<div class="detp-risco-grade">'
+    +     campo('Unidade de medida', p.unidade)
+    +     campo('Interpretação', p.interpretacao)
+    +     campo('Frequência', _indFreqTxt(p))
+    +     campo('Data de referência', p.dataReferenciaFmt)
+    +     campo('Índice base', p.indiceBase ? _indValorUnidadeTxt(p.indiceBase, p.unidade) : '')
+    +     campo('Fonte de dados', p.fonteDados, fonteUrl ? '<a href="' + escapeHtml(fonteUrl) + '" target="_blank" rel="noopener" data-title="Abrir fonte de dados em nova aba" style="display:inline-flex;color:var(--ds-color-action)"><span class="material-symbols-outlined" style="font-size:16px">open_in_new</span></a>' : '')
+    +     ((p.elementosAdicionaisNomes || []).length ? campo('Também aferido em', p.elementosAdicionaisNomes.join('; '), '', true) : '')
+    +     campo('Indicador superior', (p.indicadoresSuperioresNomes || []).join('; '), '', true)
+    +     (p.responsavel
+            ? '<div class="detp-risco-campo span-2"><span class="detp-risco-rot">Responsável</span><div class="detp-resp-item"><span class="material-symbols-outlined">' + (p.tipoResponsavel === 'USER' ? 'person' : 'apartment') + '</span><span data-title="' + escapeHtml(p.responsavel) + '">' + escapeHtml(nomeRespExibicao(p.responsavel, p.tipoResponsavel)) + '</span></div></div>'
+            : '')
+    +   '</div>'
+    + '</div>'
+    + '<div class="detp-secao">'
+    +   '<div class="detp-risco-sec-cab"><strong>Metas</strong><span>' + p.metas.length + (p.metas.length === 1 ? ' meta' : ' metas') + ' · ' + anosCom + ' de ' + anos.length + ' anos</span>'
+    +     (podeEditar ? '<button type="button" class="ds-icon-action ds-icon-action--sm" onclick="abrirModalMeta(\'' + idj + '\')" data-title="Nova meta" aria-label="Nova meta"><span class="material-symbols-outlined">add</span></button>' : '')
+    +   '</div>'
+    +   (anos.length ? '<div class="detp-ind-metas">' + metas + '</div>' : '<p class="detp-texto-bloco" style="color:var(--ds-color-text-muted)">Nenhuma meta definida.</p>')
+    + '</div>';
+}
+
+function indAbrirPainel(id) {
+  if (!_indCarregado) {
+    _indPainelPendenteId = id;
+    var view = document.getElementById('detp-view-detalhes');
+    if (view && typeof spinnerListaHTML === 'function') view.innerHTML = spinnerListaHTML();
+    if (typeof abrirPainelDetalhes === 'function') abrirPainelDetalhes('detalhes');
+    return;
+  }
+  var p = _indPorId(id);
+  if (!p) return;
+  if (typeof window._appNotificarPainelFechado === 'function') window._appNotificarPainelFechado(); // outros apps largam o painel
+  estadoIndicadores.painelId = String(id);
+  _indRenderPainel(p);
+  if (typeof abrirPainelDetalhes === 'function') abrirPainelDetalhes('detalhes');
+  _indRenderCorpo();
+}
+
+function confirmarExclusaoIndicador(id, nome) {
+  showConfirm(
+    'Excluir Indicador?',
+    'Deseja excluir o indicador <strong>' + escapeHtml(nome) + '</strong>?<br>Suas metas e resultados deixarão de ser exibidos no plano.',
+    function() {
+      mostrarLoader();
+      _indicadoresSDK.chamar('apiExcluirIndicador', id).then(function() {
+        esconderLoader();
+        carregarAbaIndicadores();
+      }, function(err) {
+        esconderLoader();
+        showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+      });
+    }
+  );
+}
+
+function editarIndicador(id) {
+  abrirModalEdicaoIndicador(id);
+}
+
+function confirmarExclusaoMeta(id, label) {
+  showConfirm(
+    'Excluir Meta?',
+    'Deseja excluir a meta <strong>' + escapeHtml(label) + '</strong>?<br>Os resultados já lançados para ela deixarão de ser considerados na apuração.',
+    function() {
+      mostrarLoader();
+      _indicadoresSDK.chamar('apiExcluirMeta', id).then(function() {
+        esconderLoader();
+        carregarAbaIndicadores();
+      }, function(err) {
+        esconderLoader();
+        showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+      });
+    }
+  );
+}
+
+function abrirModalListaIndicadores(idElemento, event) {
+  if (event) event.stopPropagation();
+  estadoIndicadores.filtroElem = String(idElemento);
+  estadoIndicadores.busca = '';
+  estadoIndicadores.filtroResp = '';
+  estadoIndicadores.filtroFreq = '';
+  estadoIndicadores.paginaAtual = 1;
+  _indSyncBarra();
+  _indRenderCorpo();
+  if (typeof mudarView === 'function') mudarView('metas');
+}
+
+function exportarIndicadoresMetasCSV() {
+  var d = _indDados();
+  var inds = d.todos;
+  var metas = _indMetas.length ? _indMetas : ((dadosDetalhados && dadosDetalhados.metas) || []);
+  var cab = ['TipoRegistro','ID','IdElemento','IdIndicador','Nome','Formula','Unidade','Frequencia','Ano','Periodo','ValorMeta','DataLimite'];
+  var fnCell = (typeof _csvCell === 'function') ? _csvCell : function(v) {
+    var s = String(v === undefined || v === null ? '' : v).replace(/"/g, '""');
+    return /[",\n\r]/.test(s) ? '"' + s + '"' : s;
+  };
+  var linhas = [cab.map(fnCell).join(',')];
+  for (var i = 0; i < inds.length; i++) {
+    var ind = inds[i];
+    linhas.push([
+      'INDICADOR', ind.id, ind.idElemento || '', '', ind.nome,
+      ind.formula || '', ind.unidade || '', ind.frequencia || '',
+      '', '', '', ''
+    ].map(fnCell).join(','));
+    var metasInd = metas.filter(function(m) { return String(m.idIndicador) === String(ind.id); });
+    for (var j = 0; j < metasInd.length; j++) {
+      var m = metasInd[j];
+      linhas.push([
+        'META', m.id, '', ind.id, '', '', '', '',
+        m.ano || '', m.periodo || '', m.valor || '', m.dataLimite || ''
+      ].map(fnCell).join(','));
+    }
+  }
+  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano) || {};
+  var nome = (pl.nome || 'plano').replace(/[^\wÀ-ɏ]/g, '_');
+  if (typeof _downloadCSV === 'function') {
+    _downloadCSV(linhas.join('\n'), 'indicadores_metas_' + nome + '.csv');
+  } else {
+    var blob = new Blob([linhas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = 'indicadores_metas_' + nome + '.csv';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 100);
+  }
+}
+
+// --- FUNÇÕES DOS MODAIS ---
+
+function _initSeletorRespInd() {
+  if (seletorRespInd) return;
+  if (typeof SeletorResponsaveis === 'undefined') return;
+  seletorRespInd = SeletorResponsaveis.criar({
+    containerId: 'ind-selresp',
+    label: 'Responsáveis pela coleta',
+    helpText: 'Unidades ou servidores que lançam os resultados deste indicador. Pode adicionar mais de um.',
+    getUnidades: function() { return unidadesContextoPermitidoInd; },
+    getUsuarios: function() { return cacheUsuariosInd; },
+    filtroUsuarios: function(lista) {
+      var setUnidadeIds = new Set(unidadesContextoPermitidoInd.map(function(u) { return String(u.id); }));
+      var setExclusivos = new Set(usuariosExclusivosContextoInd.map(String));
+      return (lista || []).filter(function(user) {
+        return setUnidadeIds.has(String(user.idUnidadeLotacao)) || setExclusivos.has(String(user.id));
+      });
+    }
+  });
+}
+
+function _respElementoParaListaInd(el) {
+  if (!el || !el.quem) return [];
+  return el.quem.filter(function(q) { return !q.colaborador; }).map(function(q) {
+    return { id: q.id, tipo: q.tipo, nome: q.idResp };
+  });
+}
+
+function _setContextoElemInd(idElemento) {
+  var box = document.getElementById('msg-contexto-elem-ind');
+  var lbl = document.getElementById('lbl-elem-ind');
+  var boxMob = document.getElementById('msg-contexto-elem-ind-mob');
+  var lblMob = document.getElementById('lbl-elem-ind-mob');
+  if (!box || !lbl) return;
+  var el = null;
+  if (idElemento) {
+    var elFromDet = (dadosDetalhados && dadosDetalhados.elementos || []).find(function(e) { return String(e.id) === String(idElemento); });
+    if (elFromDet) {
+      el = elFromDet;
+    } else {
+      var indComEl = _indIndicadores.find(function(i) { return String(i.idElemento) === String(idElemento) && i.nomeElemento; });
+      if (indComEl) {
+        el = { id: idElemento, titulo: indComEl.nomeElemento, codigo: indComEl.codigoElemento || '', tipo: '' };
+      }
+    }
+  }
+  if (el) {
+    var txtEl = (el.codigo ? el.codigo + ' — ' : '') + (el.tipo ? el.tipo + ': ' : '') + el.titulo;
+    lbl.textContent = txtEl;
+    box.classList.remove('hidden');
+    if (boxMob && lblMob) { lblMob.textContent = txtEl; boxMob.classList.remove('hidden'); }
+  } else {
+    box.classList.add('hidden');
+    if (boxMob) boxMob.classList.add('hidden');
+  }
+}
+
+function abrirModalIndicador(idElemento) {
+  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano);
+  if (!pl) {
+    showMessage('error', 'Erro', 'Contexto do plano não encontrado.');
+    return;
+  }
+
+  var form = document.getElementById('form-novo-indicador');
+  if (form) form.reset();
+  var inputEl = document.getElementById('input-ind-id-elemento');
+  if (inputEl) inputEl.value = idElemento;
+  idElementoAtualInd = idElemento || null;
+  _setModoModalInd(false);
+
+  var grupo = document.getElementById('group-ind-elemento');
+  if (grupo) grupo.classList.add('hidden');
+  _setContextoElemInd(idElemento);
+
+  _initSeletorRespInd();
+  if (seletorRespInd) {
+    var el = idElemento && dadosDetalhados && dadosDetalhados.elementos
+      ? dadosDetalhados.elementos.find(function(e) { return String(e.id) === String(idElemento); })
+      : null;
+    var respAuto = _respElementoParaListaInd(el);
+    if (respAuto.length) seletorRespInd.setLista(respAuto);
+    else seletorRespInd.limpar();
+  }
+
+  _indPrepararVinculos([], []);
+  prepararDadosResponsavelInd();
+  onMudarFrequenciaInd();
+  _indAplicarTravaDefinicao(false);
+  _indwizIniciar(false);
+
+  var modal = document.getElementById('modal-novo-indicador');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function _setModoModalInd(edicao, idIndicador) {
+  var idEdicaoEl = document.getElementById('input-ind-id-edicao');
+  if (idEdicaoEl) idEdicaoEl.value = edicao ? String(idIndicador) : '';
+  var titulo = document.getElementById('titulo-modal-ind');
+  if (titulo) titulo.textContent = edicao ? 'Editar indicador' : 'Novo indicador';
+  _indwizEdicao = !!edicao;
+}
+
+function abrirModalEdicaoIndicador(idIndicador) {
+  var ind = _indPorId(idIndicador);
+  if (!ind) {
+    var inds = _indIndicadores.length ? _indIndicadores : ((dadosDetalhados && dadosDetalhados.indicadores) || []);
+    ind = inds.find(function(i) { return String(i.id) === String(idIndicador); });
+  }
+  if (!ind) {
+    showMessage('error', 'Erro', 'Indicador não encontrado nos dados carregados.');
+    return;
+  }
+
+  var form = document.getElementById('form-novo-indicador');
+  if (form) form.reset();
+  var inputEl = document.getElementById('input-ind-id-elemento');
+  if (inputEl) inputEl.value = ind.idElemento;
+  idElementoAtualInd = ind.idElemento || null;
+  _setModoModalInd(true, ind.id);
+
+  // O elemento principal pode ser trocado (na janela de elaboração/análise/revisão): mostra o seletor preenchido
+  var grupo = document.getElementById('group-ind-elemento');
+  if (grupo) grupo.classList.remove('hidden');
+  _setContextoElemInd(null);
+  _initSeletoresVinculosInd();
+  if (seletorElemInd) {
+    seletorElemInd.limpar();
+    var opEl = _indOpcoesElementos();
+    seletorElemInd.setLista([opEl.find(function(o) { return String(o.id) === String(ind.idElemento); }) || { id: ind.idElemento, titulo: ind.nomeElemento || 'Elemento', codigo: ind.codigoElemento || '' }]);
+  }
+
+  _initSeletorRespInd();
+  if (seletorRespInd) {
+    if (ind.responsaveis && ind.responsaveis.length) {
+      seletorRespInd.setLista(ind.responsaveis);
+    } else if (ind.idResponsavel) {
+      seletorRespInd.setLista([{ id: ind.idResponsavel, tipo: ind.tipoResponsavel || 'UNIDADE', nome: ind.responsavel || '' }]);
+    } else {
+      seletorRespInd.limpar();
+    }
+  }
+
+  if (form) {
+    form.nome.value = ind.nome || '';
+    form.formula.value = ind.formula || '';
+    if (ind.unidade) form.unidade.value = ind.unidade;
+    if (ind.interpretacao) {
+      if (/maior/i.test(ind.interpretacao)) form.interpretacao.value = 'Quanto maior o valor, melhor';
+      else if (/menor/i.test(ind.interpretacao)) form.interpretacao.value = 'Quanto menor o valor, melhor';
+      else if (/igual/i.test(ind.interpretacao)) form.interpretacao.value = 'Igual à meta';
+      else form.interpretacao.value = ind.interpretacao;
+    }
+    if (ind.frequencia) form.frequencia.value = ind.frequencia;
+    onMudarFrequenciaInd();
+    var intQtd = document.getElementById('ind-intervalo-qtd');
+    if (intQtd) intQtd.value = ind.intervaloQtd || '';
+    var intUni = document.getElementById('ind-intervalo-unidade');
+    if (intUni) intUni.value = ind.intervaloUnidade || 'Dias';
+    var inpInicio = document.getElementById('ind-inicio-continuo');
+    if (inpInicio) inpInicio.value = ind.inicioContinuo || '';
+    var selRegra = document.getElementById('ind-regra-agregacao');
+    if (selRegra) selRegra.value = ind.regraAgregacao || 'ULTIMO';
+    var inpRef = document.getElementById('input-ind-data-referencia');
+    if (inpRef) inpRef.value = ind.dataReferencia || '';
+    form.indiceBase.value = ind.indiceBase || '';
+    form.fonteDados.value = ind.fonteDados || '';
+  }
+
+  _indPrepararVinculos(ind.idsElementosAdicionais || [], ind.idsIndicadoresSuperiores || (ind.idIndicadorSuperior ? [ind.idIndicadorSuperior] : []));
+  prepararDadosResponsavelInd();
+  _indAplicarTravaDefinicao(true);
+  _indwizIniciar(true);
+
+  var modal = document.getElementById('modal-novo-indicador');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function abrirModalIndicadorGlobal() {
+  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano);
+  if (!pl) {
+    showMessage('error', 'Erro', 'Contexto do plano não encontrado.');
+    return;
+  }
+  var elementos = (dadosDetalhados && dadosDetalhados.elementos) || [];
+  if (elementos.length === 0) {
+    showMessage('warning', 'Atenção', 'Cadastre pelo menos um elemento do plano antes de criar indicadores.');
+    return;
+  }
+
+  var form = document.getElementById('form-novo-indicador');
+  if (form) form.reset();
+  var inputEl = document.getElementById('input-ind-id-elemento');
+  if (inputEl) inputEl.value = '';
+  idElementoAtualInd = null;
+  _setModoModalInd(false);
+
+  var grupo = document.getElementById('group-ind-elemento');
+  if (grupo) grupo.classList.remove('hidden');
+  _setContextoElemInd(null);
+
+  _indPrepararVinculos([], []);
+  if (seletorElemInd) seletorElemInd.limpar();
+
+  _initSeletorRespInd();
+  if (seletorRespInd) seletorRespInd.limpar();
+  prepararDadosResponsavelInd();
+  onMudarFrequenciaInd();
+  _indAplicarTravaDefinicao(false);
+  _indwizIniciar(false);
+
+  var modal = document.getElementById('modal-novo-indicador');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function selecionarElementoIndicador(idElemento) {
+  var inp = document.getElementById('input-ind-id-elemento');
+  if (inp) inp.value = idElemento || '';
+  idElementoAtualInd = idElemento || null;
+  definirContextoPermitidoInd();
+  if (seletorElemInd) seletorElemInd.setErro('');
+  _indAoMudarElementos();
+  if (idElemento && !_indwizEdicao) {
+    if (seletorRespInd) {
+      var el = (dadosDetalhados && dadosDetalhados.elementos || []).find(function(e) { return String(e.id) === String(idElemento); });
+      var respAuto = _respElementoParaListaInd(el);
+      if (respAuto.length) seletorRespInd.setLista(respAuto);
+      else seletorRespInd.limpar();
+    }
+  } else if (!idElemento) {
+    if (seletorRespInd) seletorRespInd.limpar();
+  }
+}
+
+function fecharModalIndicador() {
+  var modal = document.getElementById('modal-novo-indicador');
+  if (modal) modal.classList.add('hidden');
+}
+
+// ---- Vínculos do indicador: elemento principal, outros elementos do plano e indicadores superiores ----
+// Seletores com busca (components_seletor_lista.html). O servidor revalida tudo (indicador_vinculos.js).
+var seletorElemInd = null, seletorElemExtraInd = null, seletorSupInd = null;
+var _indConfig = { vinculoIndicadorLimite: null, elementosLimite: null }; // resolvido pelo servidor (null = sem limite)
+
+function _indOpcoesElementos(excluirId) {
+  var cores = (dadosDetalhados && dadosDetalhados.coresTipo) || {};
+  return ((dadosDetalhados && dadosDetalhados.elementos) || [])
+    .filter(function(e) { return String(e.id) !== String(excluirId || ''); })
+    .sort(function(a, b) { return (typeof compararCodigos === 'function') ? compararCodigos(a.codigo, b.codigo) : String(a.codigo || '').localeCompare(String(b.codigo || ''), 'pt-BR', { numeric: true }); })
+    .map(function(e) { return { id: e.id, titulo: e.titulo, codigo: e.codigo, tipo: e.tipo, cor: cores[e.tipo] || '' }; });
+}
+
+// Elementos em que o indicador é aferido agora (principal + outros escolhidos)
+function _indIdsElementosAtuais() {
+  var ids = idElementoAtualInd ? [String(idElementoAtualInd)] : [];
+  if (seletorElemExtraInd) seletorElemExtraInd.getIds().forEach(function(id) { if (ids.indexOf(id) < 0) ids.push(id); });
+  return ids;
+}
+
+// Elementos superiores (de planos superiores) de qualquer elemento do indicador
+function _indIdsElementosSuperiores() {
+  var meus = _indIdsElementosAtuais(), vistos = {}, lista = [];
+  ((dadosDetalhados && dadosDetalhados.elementos) || []).forEach(function(e) {
+    if (meus.indexOf(String(e.id)) < 0) return;
+    (e.idsElementoSuperior || (e.idElementoSuperior ? [e.idElementoSuperior] : [])).forEach(function(s) {
+      s = String(s); if (!vistos[s]) { vistos[s] = true; lista.push(s); }
+    });
+  });
+  return lista;
+}
+
+var _IND_GRUPO_MESMO_PLANO = '__mesmo_plano__';
+var _IND_ROTULO_LIGACAO = { PAI: 'Elemento pai', FILHO: 'Elemento filho', RELACIONADO: 'Relacionado' };
+
+function _indIdPropria() {
+  var i = document.getElementById('input-ind-id-edicao');
+  return i ? String(i.value || '') : '';
+}
+
+// Como os elementos de um indicador do mesmo plano se ligam aos deste indicador (espelha
+// _motivosLigacaoElementosIndicador do servidor): 'PAI' = B é pai de A, 'FILHO' = B é filho de A, 'RELACIONADO'.
+function _indMotivosLigacao(idsB) {
+  var mapa = {}, motivos = [];
+  ((dadosDetalhados && dadosDetalhados.elementos) || []).forEach(function(e) { mapa[String(e.id)] = e; });
+  function add(m) { if (motivos.indexOf(m) < 0) motivos.push(m); }
+  function rels(e) { return (e.idsElementoRelacionado || []).map(String); }
+  _indIdsElementosAtuais().forEach(function(a) {
+    var ea = mapa[a];
+    if (!ea) return;
+    idsB.forEach(function(b) {
+      var eb = mapa[b];
+      if (!eb || a === b) return;
+      if (String(eb.idPai || '') === a) add('FILHO');
+      if (String(ea.idPai || '') === b) add('PAI');
+      if (rels(ea).indexOf(b) > -1 || rels(eb).indexOf(a) > -1) add('RELACIONADO');
+    });
+  });
+  return motivos;
+}
+
+// Já é (direta ou indiretamente) subordinado a este indicador? Vincular criaria um ciclo.
+function _indCriaCiclo(idCandidato) {
+  var self = _indIdPropria();
+  if (!self) return false;
+  var supDe = {};
+  _indIndicadoresDoPlano().forEach(function(i) { supDe[String(i.id)] = (i.idsIndicadoresSuperiores || []).map(String); });
+  var pilha = [String(idCandidato)], vistos = {};
+  while (pilha.length) {
+    var x = pilha.pop();
+    if (x === self) return true;
+    if (vistos[x]) continue;
+    vistos[x] = true;
+    (supDe[x] || []).forEach(function(s) { pilha.push(s); });
+  }
+  return false;
+}
+
+function _indIndicadoresDoPlano() {
+  return _indIndicadores.length ? _indIndicadores : ((dadosDetalhados && dadosDetalhados.indicadores) || []);
+}
+
+function _indTodasMesmoPlano() {
+  var self = _indIdPropria();
+  return _indIndicadoresDoPlano().filter(function(i) { return String(i.id) !== self; }).map(function(i) {
+    var ids = [String(i.idElemento)].concat((i.idsElementosAdicionais || []).map(String));
+    var elem = ((i.codigoElemento ? i.codigoElemento + ' ' : '') + (i.nomeElemento || '')).trim();
+    var mot = _indMotivosLigacao(ids);
+    var rotulo = mot.map(function(m) { return _IND_ROTULO_LIGACAO[m]; }).join(', ');
+    return { id: i.id, titulo: i.nome, codigo: i.codigoElemento || '', tipo: '', cor: '',
+      meta: rotulo + (rotulo && elem ? ' · ' : '') + elem,
+      idPlanoOrigem: _IND_GRUPO_MESMO_PLANO, nomePlanoOrigem: 'Neste plano',
+      idsElementos: ids, aceitaVinculo: true, mesmoPlano: true, motivos: mot };
+  });
+}
+
+function _indTodasSuperiores() {
+  var sups = _indIndicadoresSuperiores.length ? _indIndicadoresSuperiores : ((dadosDetalhados && dadosDetalhados.indicadoresSuperiores) || []);
+  return sups.map(function(i) {
+    var elem = ((i.codigoElemento ? i.codigoElemento + ' ' : '') + (i.nomeElemento || '')).trim();
+    return { id: i.id, titulo: i.nome, codigo: i.codigoElemento || '', tipo: '', meta: elem + (i.unidade ? (elem ? ' · ' : '') + i.unidade : ''), cor: '',
+      idPlanoOrigem: i.idPlanoOrigem || '', nomePlanoOrigem: i.nomePlanoOrigem || 'Plano superior',
+      idsElementos: (i.idsElementos || [i.idElemento]).map(String), aceitaVinculo: i.aceitaVinculo !== false };
+  }).concat(_indTodasMesmoPlano());
+}
+function _indOpcoesSuperiores() {
+  var validos = {};
+  _indIdsElementosSuperiores().forEach(function(id) { validos[id] = true; });
+  var mesmoOk = _indConfig.mesmoPlanoPermitido !== false;
+  return _indTodasSuperiores().filter(function(o) {
+    if (o.mesmoPlano) return mesmoOk && o.motivos.length > 0 && !_indCriaCiclo(o.id);
+    return o.aceitaVinculo && o.idsElementos.some(function(e) { return validos[e]; });
+  });
+}
+
+function _initSeletoresVinculosInd() {
+  if (!seletorElemInd && document.getElementById('ind-selelem')) {
+    seletorElemInd = SeletorLista.criar({
+      containerId: 'ind-selelem', semGrupos: true, filtrosTipo: true, unico: true,
+      getOpcoes: function() { return _indOpcoesElementos(); },
+      getLimite: function() { return null; },
+      onChange: function() { selecionarElementoIndicador(seletorElemInd.getIds()[0] || ''); },
+      textos: {
+        rotulo: 'Elemento do plano', icone: 'category', obrigatorio: true, ajuda: '',
+        placeholder: 'Selecione o elemento', vazio: 'Nenhum elemento neste plano.', vazioBusca: ' neste plano',
+        chipsAria: 'Elemento do plano escolhido', telaTitulo: 'Elemento do plano', telaBusca: 'Buscar elementos deste plano', remover: 'Remover '
+      }
+    });
+  }
+  if (!seletorElemExtraInd && document.getElementById('ind-selelemextra')) {
+    seletorElemExtraInd = SeletorLista.criar({
+      containerId: 'ind-selelemextra', semGrupos: true, filtrosTipo: true,
+      getOpcoes: function() { return _indOpcoesElementos(idElementoAtualInd); },
+      getLimite: function() { var l = _indConfig.elementosLimite; return (l === null || l === undefined) ? null : Math.max(0, l - 1); },
+      onChange: _indAoMudarElementos,
+      textos: {
+        rotulo: 'Também aferido em', icone: 'category',
+        ajuda: 'Outros elementos deste plano em que este mesmo indicador também é aferido. O elemento do plano acima continua sendo o principal.',
+        vazio: 'Nenhum outro elemento neste plano.', vazioBusca: ' neste plano',
+        chipsAria: 'Outros elementos escolhidos', telaTitulo: 'Também aferido em', telaBusca: 'Buscar elementos deste plano', remover: 'Remover '
+      }
+    });
+  }
+  if (!seletorSupInd && document.getElementById('ind-selsup')) {
+    seletorSupInd = SeletorLista.criar({
+      containerId: 'ind-selsup',
+      getOpcoes: _indOpcoesSuperiores, getTodasOpcoes: _indTodasSuperiores,
+      getLimite: function() { return _indConfig.vinculoIndicadorLimite; },
+      onChange: function() {},
+      textos: {
+        rotulo: 'Contribui para indicador superior', icone: 'north_east',
+        ajuda: 'Indicadores que serão impactados pelos resultados deste indicador: os de elementos superiores (planos superiores) e os de elementos pai, filho ou relacionados neste plano.',
+        vazio: 'Nenhum indicador disponível: os elementos deste indicador não têm elementos superiores, pai, filho ou relacionados com indicadores.', vazioBusca: ' entre os indicadores disponíveis',
+        desativado: 'O vínculo com indicadores superiores está desativado neste plano.',
+        chipsAria: 'Indicadores superiores escolhidos', telaTitulo: 'Contribui para', telaBusca: 'Buscar indicadores', remover: 'Remover vínculo com '
+      }
+    });
+  }
+}
+
+// Mostra/esconde os grupos conforme os elementos escolhidos e os limites do plano
+function _indAtualizarGrupos() {
+  var gExtra = document.getElementById('group-ind-elementos-extra');
+  if (gExtra) {
+    var lim = _indConfig.elementosLimite;
+    var temOutros = _indOpcoesElementos(idElementoAtualInd).length > 0;
+    var temSel = !!(seletorElemExtraInd && seletorElemExtraInd.getQuantidade());
+    gExtra.classList.toggle('hidden', !idElementoAtualInd || ((lim === 1 || !temOutros) && !temSel));
+  }
+  var gSup = document.getElementById('group-ind-superior');
+  if (gSup) gSup.classList.toggle('hidden', _indOpcoesSuperiores().length === 0 && !(seletorSupInd && seletorSupInd.getQuantidade()));
+  if (seletorElemExtraInd) seletorElemExtraInd.atualizar();
+  if (seletorSupInd) seletorSupInd.atualizar();
+}
+
+// Elemento(s) mudou: tira o principal dos "outros" e os superiores que deixaram de valer
+function _indAoMudarElementos() {
+  if (seletorElemExtraInd) {
+    var op = _indOpcoesElementos(idElementoAtualInd);
+    var ids = seletorElemExtraInd.getIds();
+    var manter = ids.filter(function(id) { return String(id) !== String(idElementoAtualInd || ''); });
+    if (manter.length !== ids.length) {
+      seletorElemExtraInd.setLista(manter.map(function(id) { return op.find(function(o) { return String(o.id) === id; }) || { id: id }; }));
+    }
+  }
+  if (seletorSupInd) {
+    var atuais = seletorSupInd.getIds();
+    var ficam = _indOpcoesSuperiores().filter(function(o) { return atuais.indexOf(String(o.id)) > -1; });
+    if (ficam.length !== atuais.length) seletorSupInd.setLista(ficam);
+  }
+  _indAtualizarGrupos();
+}
+
+// Abertura do modal: escolhe os vínculos já gravados (idsAdic = outros elementos; idsSup = indicadores superiores)
+function _indPrepararVinculos(idsAdic, idsSup) {
+  _initSeletoresVinculosInd();
+  if (!seletorElemExtraInd || !seletorSupInd) return;
+  seletorElemExtraInd.limpar();
+  seletorSupInd.limpar();
+  var op = _indOpcoesElementos(idElementoAtualInd);
+  seletorElemExtraInd.setLista((idsAdic || []).map(function(id) { return op.find(function(o) { return String(o.id) === String(id); }) || { id: id }; }));
+  var todas = _indTodasSuperiores();
+  seletorSupInd.setLista((idsSup || []).map(function(id) {
+    return todas.find(function(o) { return String(o.id) === String(id); }) || { id: id, titulo: 'Indicador do plano superior', codigo: '', nomePlanoOrigem: '' };
+  }));
+  seletorSupInd.setCarregando(!_indCarregado);
+  if (!_indCarregado) _indFilaAposCarga.push(function() { seletorSupInd.setCarregando(false); _indAtualizarGrupos(); });
+  _indAtualizarGrupos();
+}
+
+function prepararDadosResponsavelInd() {
+  if (cacheUnidadesInd.length === 0) {
+    _indicadoresSDK.chamar('apiGetListaUnidades').then(function(lista) {
+      cacheUnidadesInd = (lista || []).map(function(u) {
+        return {
+          id: String(u.id).trim(), nome: u.nome, sigla: u.sigla,
+          idPai: u.idPai ? String(u.idPai).trim() : null
+        };
+      });
+      definirContextoPermitidoInd();
+      carregarUsuariosInd();
+    });
+  } else {
+    definirContextoPermitidoInd();
+    if (cacheUsuariosInd.length === 0) carregarUsuariosInd();
+  }
+}
+
+function carregarUsuariosInd() {
+  if (cacheUsuariosInd.length > 0) return;
+  _indicadoresSDK.chamar('apiGetListaUsuarios').then(function(lista) {
+    cacheUsuariosInd = lista || [];
+  });
+}
+
+function definirContextoPermitidoInd() {
+  usuariosExclusivosContextoInd = [];
+  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano);
+  if (!pl || pl.tipoResponsavel !== 'UNIDADE') {
+    unidadesContextoPermitidoInd = cacheUnidadesInd;
+    return;
+  }
+  var el = idElementoAtualInd && dadosDetalhados && dadosDetalhados.elementos
+    ? dadosDetalhados.elementos.find(function(e) { return String(e.id) === String(idElementoAtualInd); })
+    : null;
+  var herdados = _respElementoParaListaInd(el);
+  var unidadesHerdadas = herdados.filter(function(r) { return r.tipo === 'UNIDADE'; }).map(function(r) { return r.id; });
+  var usuariosHerdados = herdados.filter(function(r) { return r.tipo === 'USER'; }).map(function(r) { return r.id; });
+
+  if (unidadesHerdadas.length === 0 && usuariosHerdados.length === 0) {
+    var idUnidadePlano = String(pl.idUnidade).trim();
+    var hier = processarHierarquiaInd(cacheUnidadesInd);
+    var mapa = hier.mapa, raizesGlobais = hier.raizesGlobais;
+    var listaPermitida = [];
+    if (mapa[idUnidadePlano]) listaPermitida = achatarArvoreInd(mapa[idUnidadePlano]);
+    else raizesGlobais.forEach(function(no) { listaPermitida = listaPermitida.concat(achatarArvoreInd(no)); });
+    unidadesContextoPermitidoInd = listaPermitida;
+    return;
+  }
+
+  usuariosExclusivosContextoInd = usuariosHerdados;
+  if (unidadesHerdadas.length === 0) {
+    unidadesContextoPermitidoInd = [];
+    return;
+  }
+  var hier2 = processarHierarquiaInd(cacheUnidadesInd);
+  var mapa2 = hier2.mapa;
+  var vistos = new Set();
+  var listaPermitida2 = [];
+  unidadesHerdadas.forEach(function(idUnidade) {
+    if (mapa2[idUnidade]) {
+      achatarArvoreInd(mapa2[idUnidade]).forEach(function(no) {
+        if (!vistos.has(no.id)) { vistos.add(no.id); listaPermitida2.push(no); }
+      });
+    }
+  });
+  unidadesContextoPermitidoInd = listaPermitida2;
+}
+
+function processarHierarquiaInd(lista) {
+  var mapa = {}; var raizesGlobais = [];
+  (lista || []).forEach(function(u) { u.children = []; mapa[u.id] = u; });
+  (lista || []).forEach(function(u) {
+    if (u.id === u.idPai) u.idPai = null;
+    if (u.idPai && mapa[u.idPai]) mapa[u.idPai].children.push(u);
+    else raizesGlobais.push(u);
+  });
+  return { mapa: mapa, raizesGlobais: raizesGlobais };
+}
+
+function achatarArvoreInd(noRaiz) {
+  var resultado = []; var stack = [noRaiz]; var visitados = new Set();
+  while (stack.length > 0) {
+    var no = stack.pop();
+    if (visitados.has(no.id)) continue;
+    visitados.add(no.id);
+    resultado.push(no);
+    if (no.children && no.children.length > 0) {
+      var filhos = no.children.slice().sort(function(a, b) { return (a.sigla || '').localeCompare(b.sigla || ''); });
+      for (var i = filhos.length - 1; i >= 0; i--) stack.push(filhos[i]);
+    }
+  }
+  return resultado;
+}
+
+function onMudarFrequenciaInd() {
+  var el = document.getElementById('ind-frequencia');
+  var v = el ? el.value : '';
+  var wrap = document.getElementById('ind-intervalo-wrap');
+  if (wrap) wrap.classList.toggle('hidden', v !== 'Contínuo');
+  ['ind-intervalo-qtd', 'ind-inicio-continuo'].forEach(function(id) {
+    var campo = document.getElementById(id);
+    if (campo) campo.required = (v === 'Contínuo');
+  });
+}
+
+// Travas da definição (frequência/intervalo/início/regra): só na EDIÇÃO e fora da janela de elaboração/revisão.
+// O servidor aplica a mesma regra (apiAtualizarIndicador) — aqui só evita o erro depois de preencher.
+function _indAplicarTravaDefinicao(edicao) {
+  var travar = !!edicao && !_indDefinicaoEditavel.editavel;
+  ['ind-frequencia', 'ind-regra-agregacao', 'ind-intervalo-qtd', 'ind-intervalo-unidade', 'ind-inicio-continuo'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.disabled = travar;
+  });
+  document.querySelectorAll('#modal-novo-indicador .ind-trava').forEach(function(ic) { ic.classList.toggle('hidden', !travar); });
+  var avisoTrava = document.getElementById('indwiz-aviso-trava');
+  if (avisoTrava) avisoTrava.classList.toggle('hidden', !travar);
+  // Elemento principal, outros elementos e indicadores superiores seguem a mesma janela estrutural (o servidor também recusa)
+  var motivoTrava = 'Travado durante a execução do plano. Para alterar, abra uma revisão.';
+  [seletorElemInd, seletorElemExtraInd, seletorSupInd].forEach(function(sl) { if (sl) sl.setDesabilitado(travar, motivoTrava); });
+}
+
+// ================================================================
+// WIZARD DO MODAL DE INDICADOR (_indwiz*) — mesmo padrão do wizard de Risco (_rwiz*)
+// ================================================================
+var _indwizEdicao = false;
+var estadoWizardInd = { atual: 1, passos: [1, 2, 3, 4], transicionando: false };
+var INDWIZ_TITULOS = [
+  { titulo: 'Identificação', desc: 'Nome e onde se encaixa' },
+  { titulo: 'Medição', desc: 'Como e quando medir' },
+  { titulo: 'Responsáveis', desc: 'Quem acompanha' },
+  { titulo: 'Referência', desc: 'Ponto de partida e fonte' }
+];
+
+function _indwizValorSel(id) {
+  var el = document.getElementById(id);
+  return el && el.options && el.selectedIndex > -1 ? el.options[el.selectedIndex].text : '';
+}
+
+// Resumo do que já foi preenchido (aparece no lugar da descrição da etapa)
+function _indwizResumoPasso(n) {
+  if (n === 1) {
+    var nome = document.getElementById('ind-nome');
+    return nome ? nome.value.trim() : '';
+  }
+  if (n === 2) {
+    var un = document.getElementById('ind-unidade');
+    var partes = [un ? un.value : '', document.getElementById('ind-frequencia') ? document.getElementById('ind-frequencia').value : '', _indwizValorSel('ind-regra-agregacao')];
+    return partes.filter(Boolean).join(' · ');
+  }
+  if (n === 3) {
+    var lista = (typeof seletorRespInd !== 'undefined' && seletorRespInd) ? seletorRespInd.getLista() : [];
+    return lista.map(function(r) { return nomeRespExibicao(r.nome, r.tipo); }).join(', ');
+  }
+  return '';
+}
+
+function _indwizRenderRail() {
+  var wrap = document.getElementById('indwiz-rail-lista');
+  if (!wrap) return;
+  var passos = estadoWizardInd.passos;
+  var idxAtual = passos.indexOf(estadoWizardInd.atual);
+  wrap.innerHTML = passos.map(function(p, i) {
+    var atual = p === estadoWizardInd.atual;
+    var concluido = !atual && (i < idxAtual || (_indwizEdicao && p < 4));
+    var cls = 'wiz-rail-item' + (atual ? ' wiz-rail-atual' : (concluido ? ' wiz-rail-concluido' : ''));
+    var info = INDWIZ_TITULOS[i];
+    var resumo = (atual || concluido) ? _indwizResumoPasso(p) : '';
+    var numHTML = concluido ? '<span class="material-symbols-outlined">check</span>' : String(i + 1);
+    return '<button type="button" class="' + cls + '" onclick="_indwizIrParaRail(' + p + ')">'
+      + '<span class="wiz-rail-num">' + numHTML + '</span>'
+      + '<span style="min-width:0"><div class="wiz-rail-item-titulo">' + escapeHtml(info.titulo) + '</div>'
+      + '<div class="wiz-rail-item-desc">' + escapeHtml(resumo || info.desc) + '</div></span>'
+      + '</button>';
+  }).join('');
+
+  var pct = Math.round(((idxAtual + 1) / passos.length) * 100);
+  var texto = 'Etapa ' + (idxAtual + 1) + ' de ' + passos.length;
+  [['indwiz-rail-fill', 'indwiz-rail-contador'], ['indwiz-mob-fill', 'indwiz-mob-texto']].forEach(function(ids) {
+    var fill = document.getElementById(ids[0]); if (fill) fill.style.width = pct + '%';
+    var txt = document.getElementById(ids[1]); if (txt) txt.textContent = texto;
+  });
+}
+
+// Botões do rodapé por etapa: Continuar (1-2) · "Adicionar referência" + Salvar (3) · Salvar (4);
+// na edição, "Salvar" secundário também nas etapas 1-2 (salva sem percorrer tudo).
+function _indwizAtualizarRodape() {
+  var n = estadoWizardInd.atual;
+  var mobile = window.matchMedia('(max-width: 860px)').matches;
+  var alterna = function(id, mostrar) { var el = document.getElementById(id); if (el) el.classList.toggle('hidden', !mostrar); };
+  alterna('indw-btn-voltar', n > 1);
+  alterna('indw-btn-salvar-sec', _indwizEdicao && n < 3 && !mobile);
+  alterna('indw-btn-referencia', n === 3 && !mobile);
+  alterna('indw-btn-continuar', n < 3);
+  alterna('btn-submit-ind', n >= 3);
+  var txtVoltar = document.querySelector('#indw-btn-voltar .indw-txt-voltar');
+  if (txtVoltar) txtVoltar.style.display = mobile ? 'none' : '';
+}
+
+function _indwizIrPara(n, direcao) {
+  var trocarAgora = function() {
+    estadoWizardInd.atual = n;
+    document.querySelectorAll('#modal-novo-indicador .wizard-step').forEach(function(el) {
+      el.classList.toggle('hidden', Number(el.dataset.step) !== n);
+    });
+    _indwizRenderRail();
+    _indwizAtualizarRodape();
+    var viewport = document.querySelector('#modal-novo-indicador .wizard-steps-viewport');
+    if (viewport) viewport.scrollTop = 0;
+    estadoWizardInd.transicionando = false;
+  };
+  var atualEl = document.getElementById('indwiz-step-' + estadoWizardInd.atual);
+  if (!direcao || !atualEl || Number(atualEl.dataset.step) === n || estadoWizardInd.transicionando) { trocarAgora(); return; }
+  estadoWizardInd.transicionando = true;
+  var saiClasse = direcao === 'frente' ? 'wizard-slide-out-left' : 'wizard-slide-out-right';
+  atualEl.classList.add(saiClasse);
+  setTimeout(function() { atualEl.classList.remove(saiClasse); trocarAgora(); }, 180);
+}
+
+function _indwizIrParaRail(n) {
+  if (n === estadoWizardInd.atual) return;
+  if (n > estadoWizardInd.atual && !_indwizValidarPassoAtual()) return;
+  _indwizIrPara(n, n > estadoWizardInd.atual ? 'frente' : 'tras');
+}
+
+var INDWIZ_MSGS_CAMPO = {
+  'ind-nome': { valueMissing: 'Informe o nome do indicador.', tooShort: 'Use pelo menos 2 caracteres.' },
+  'ind-formula': { valueMissing: 'Informe a fórmula de cálculo.' },
+  'ind-intervalo-qtd': { valueMissing: 'Informe o intervalo (número maior que zero).', rangeUnderflow: 'Use um número maior que zero.' },
+  'ind-inicio-continuo': { valueMissing: 'Informe a data de início.' }
+};
+function _indwizMsgCampo(campo) {
+  var v = campo.validity, o = INDWIZ_MSGS_CAMPO[campo.id] || {};
+  if (v.valueMissing) return o.valueMissing || 'Preencha este campo.';
+  if (v.tooShort) return o.tooShort || ('Use pelo menos ' + campo.minLength + ' caracteres.');
+  if (v.rangeUnderflow) return o.rangeUnderflow || 'Valor abaixo do mínimo.';
+  return campo.validationMessage || 'Verifique este campo.';
+}
+function _indwizExibirErro(campo) {
+  campo.classList.add(campo.tagName === 'SELECT' ? 'ds-select--error' : 'ds-input--error');
+  if (campo._selop) campo._selop.sincronizar();
+  var erro = document.getElementById(campo.id + '-erro');
+  if (erro) { erro.textContent = _indwizMsgCampo(campo); erro.classList.remove('hidden'); }
+}
+function _indwizLimparErro(campo) {
+  campo.classList.remove('ds-input--error', 'ds-select--error');
+  if (campo._selop) campo._selop.sincronizar();
+  var erro = document.getElementById(campo.id + '-erro');
+  if (erro) { erro.classList.add('hidden'); erro.textContent = ''; }
+}
+
+// Elemento principal (seletor com busca): obrigatório quando o campo está visível (modal aberto pela aba Indicadores)
+function _indwizValidarElemento() {
+  var grupo = document.getElementById('group-ind-elemento');
+  var id = (document.getElementById('input-ind-id-elemento') || {}).value;
+  if (!grupo || grupo.classList.contains('hidden') || id || !seletorElemInd) return true;
+  seletorElemInd.setErro('Selecione o elemento do plano.');
+  return false;
+}
+
+// Valida os campos visíveis da etapa atual (campo oculto/desabilitado não bloqueia)
+function _indwizValidarPassoAtual() {
+  var stepEl = document.getElementById('indwiz-step-' + estadoWizardInd.atual);
+  if (!stepEl) return true;
+  if (estadoWizardInd.atual === 1 && !_indwizValidarElemento()) return false;
+  var campos = stepEl.querySelectorAll('input, select');
+  for (var i = 0; i < campos.length; i++) {
+    var campo = campos[i];
+    if (campo.closest('.hidden') || campo.disabled) continue;
+    if (!campo.checkValidity()) { _indwizExibirErro(campo); campo.focus(); return false; }
+  }
+  return true;
+}
+
+function _indwizProximo() {
+  if (!_indwizValidarPassoAtual()) return;
+  var passos = estadoWizardInd.passos;
+  var idx = passos.indexOf(estadoWizardInd.atual);
+  if (idx < passos.length - 1) _indwizIrPara(passos[idx + 1], 'frente');
+}
+
+function _indwizVoltar() {
+  var passos = estadoWizardInd.passos;
+  var idx = passos.indexOf(estadoWizardInd.atual);
+  if (idx > 0) _indwizIrPara(passos[idx - 1], 'tras');
+}
+
+// Antes de salvar: vai para a primeira etapa com campo inválido; responsável é validado na etapa 3
+function _indwizValidarTudoAntesDeSalvar() {
+  var form = document.getElementById('form-novo-indicador');
+  if (!_indwizValidarElemento()) { _indwizIrPara(1); return false; }
+  var campos = form.querySelectorAll('input, select');
+  // campo dentro de GRUPO oculto (ex.: intervalo do Contínuo, elemento superior) não bloqueia; etapa inativa sim
+  var ocultoPorGrupo = function(campo) {
+    for (var el = campo.parentElement; el && el !== form; el = el.parentElement) {
+      if (el.classList.contains('wizard-step')) return false;
+      if (el.classList.contains('hidden')) return true;
+    }
+    return false;
+  };
+  for (var i = 0; i < campos.length; i++) {
+    var campo = campos[i];
+    if (campo.disabled || ocultoPorGrupo(campo) || campo.checkValidity()) continue;
+    var stepEl = campo.closest('.wizard-step');
+    if (stepEl) _indwizIrPara(Number(stepEl.dataset.step));
+    _indwizExibirErro(campo);
+    campo.focus();
+    return false;
+  }
+  var lista = (typeof seletorRespInd !== 'undefined' && seletorRespInd) ? seletorRespInd.getLista() : [];
+  if (lista.length === 0) {
+    _indwizIrPara(3);
+    var erro = document.getElementById('ind-selresp-erro');
+    if (erro) { erro.textContent = 'Adicione ao menos um responsável pela coleta.'; erro.classList.remove('hidden'); }
+    return false;
+  }
+  var erroResp = document.getElementById('ind-selresp-erro');
+  if (erroResp) erroResp.classList.add('hidden');
+  return true;
+}
+
+function _indwizSalvar() {
+  var form = document.getElementById('form-novo-indicador');
+  if (form && form.requestSubmit) form.requestSubmit(); else if (form) handleSalvarIndicador({ preventDefault: function() {}, target: form });
+}
+
+function _indwizIniciar(edicao) {
+  _indwizEdicao = !!edicao;
+  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano) || {};
+  var eyebrow = document.getElementById('indwiz-eyebrow');
+  if (eyebrow) eyebrow.textContent = String(pl.nome || '').toUpperCase() || '\u00A0';
+  var modalWiz = document.getElementById('modal-novo-indicador');
+  modalWiz.querySelectorAll('select.ds-select').forEach(SeletorOpcao.melhorar);
+  modalWiz.querySelectorAll('.ds-input--error, .ds-select--error').forEach(_indwizLimparErro);
+  SeletorOpcao.sincronizar(modalWiz);
+  var erroResp = document.getElementById('ind-selresp-erro');
+  if (erroResp) erroResp.classList.add('hidden');
+  _indwizIrPara(1);
+}
+
+// Enter avança a etapa (e salva na última), como nos outros wizards
+(function () {
+  var form = document.getElementById('form-novo-indicador');
+  if (!form) return;
+  form.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || (e.target.closest && e.target.closest('#ind-selresp'))) return;
+    e.preventDefault();
+    if (estadoWizardInd.atual >= 3) _indwizSalvar(); else _indwizProximo();
+  });
+})();
+
+function handleSalvarIndicador(e) {
+  e.preventDefault();
+  if (!_indwizValidarTudoAntesDeSalvar()) return;
+  var responsaveis = seletorRespInd
+    ? seletorRespInd.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; })
+    : [];
+
+  var inputElem = document.getElementById('input-ind-id-elemento');
+  if (!inputElem || !inputElem.value) {
+    showMessage('warning', 'Atenção', 'Selecione o Elemento do Plano ao qual o indicador pertence.');
+    return;
+  }
+
+  if (responsaveis.length === 0) {
+    showMessage('warning', 'Atenção', 'Adicione ao menos um Responsável pela Coleta.');
+    return;
+  }
+
+  var form = e.target;
+  var fonteDados = form.fonteDados.value.trim();
+  if (fonteDados) {
+    var fonteUrl = _urlFonteDados(fonteDados);
+    if (!fonteUrl) {
+      showMessage('warning', 'Atenção', 'O campo <strong>Fonte de Dados</strong> deve ser um link web válido (ex.: https://sigaa.ufpa.br). Corrija o endereço ou deixe o campo em branco.');
+      return;
+    }
+    fonteDados = fonteUrl;
+  }
+
+  mostrarLoader();
+
+  var dados = {
+    nome: form.nome.value,
+    formula: form.formula.value,
+    unidade: form.unidade.value,
+    interpretacao: form.interpretacao.value,
+    frequencia: form.frequencia.value,
+    dataReferencia: form.dataReferencia.value,
+    intervaloQtd: form.intervaloQtd.value,
+    intervaloUnidade: form.intervaloUnidade.value,
+    inicioContinuo: form.inicioContinuo.value,
+    regraAgregacao: form.regraAgregacao.value,
+    indiceBase: form.indiceBase.value,
+    fonteDados: fonteDados,
+    idElementoVinculado: form.idElementoVinculado.value,
+    responsaveis: responsaveis
+  };
+  // Superiores: só segue quando o campo está visível (oculto = nenhum elemento do indicador tem elemento superior)
+  if (seletorSupInd && !document.getElementById('group-ind-superior').classList.contains('hidden')) dados.idsIndicadoresSuperiores = seletorSupInd.getIds();
+  // Outros elementos: só segue quando o campo está visível (oculto = limite 1 sem nada escolhido; não mexe no que já existe)
+  var gExtraSalvar = document.getElementById('group-ind-elementos-extra');
+  if (seletorElemExtraInd && gExtraSalvar && !gExtraSalvar.classList.contains('hidden')) dados.idsElementosAdicionais = seletorElemExtraInd.getIds();
+
+  var idEdicaoEl = document.getElementById('input-ind-id-edicao');
+  var idEdicao = idEdicaoEl ? idEdicaoEl.value : '';
+  var acao = idEdicao ? 'apiAtualizarIndicador' : 'apiSalvarIndicador';
+  if (idEdicao) dados.id = idEdicao;
+
+  _indicadoresSDK.chamar(acao, dados).then(function() {
+    esconderLoader();
+    fecharModalIndicador();
+    carregarAbaIndicadores();
+  }, function(err) {
+    esconderLoader();
+    showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+  });
+}
+
+// ---- Metas por período: o modal mostra os períodos que a frequência do indicador gera para o ano ----
+var _metaGrade = null;   // resposta de apiGetPeriodosIndicador (períodos + meta de cada um)
+var _metaReq = 0;        // descarta respostas de anos já trocados
+
+function abrirModalMeta(idIndicador, anoSugerido) {
+  var inpInd = document.getElementById('input-meta-id-indicador');
+  if (inpInd) inpInd.value = idIndicador;
+  var anoFinal = anoSugerido || new Date().getFullYear();
+  var inpAno = document.getElementById('input-meta-ano');
+  if (inpAno) inpAno.value = anoFinal;
+  var pre = document.getElementById('input-meta-preencher');
+  if (pre) pre.value = '';
+  var tituloMeta = document.getElementById('titulo-modal-meta');
+  var indMeta = _indPorId(idIndicador);
+  if (tituloMeta) tituloMeta.textContent = (indMeta && indMeta.nome) || 'Metas';
+  var modal = document.getElementById('modal-nova-meta');
+  if (modal) modal.classList.remove('hidden');
+  _metaCarregarGrade();
+}
+
+// Editar uma meta = abrir a grade do ano dela
+function abrirModalEdicaoMeta(idMeta) {
+  var metas = _indMetas.length ? _indMetas : ((dadosDetalhados && dadosDetalhados.metas) || []);
+  var meta = metas.find(function(m) { return String(m.id) === String(idMeta); });
+  if (!meta) {
+    showMessage('error', 'Erro', 'Meta não encontrada nos dados carregados.');
+    return;
+  }
+  abrirModalMeta(meta.idIndicador, parseInt(meta.ano, 10) || undefined);
+}
+
+function fecharModalMeta() {
+  _metaReq++;
+  var modal = document.getElementById('modal-nova-meta');
+  if (modal) modal.classList.add('hidden');
+}
+
+function _metaSalvarHabilitado(sim) {
+  var btn = document.getElementById('btn-submit-meta');
+  if (btn) btn.disabled = !sim;
+  var ap = document.getElementById('btn-meta-aplicar');
+  if (ap) ap.disabled = !sim;
+  var pre = document.getElementById('input-meta-preencher');
+  if (pre) pre.disabled = !sim;
+}
+
+function _metaCarregarGrade() {
+  var idInd = (document.getElementById('input-meta-id-indicador') || {}).value;
+  var ano = parseInt((document.getElementById('input-meta-ano') || {}).value, 10);
+  var box = document.getElementById('meta-grade');
+  var fora = document.getElementById('meta-fora');
+  if (!box) return;
+  _metaGrade = null;
+  _metaSalvarHabilitado(false);
+  if (fora) fora.innerHTML = '';
+  if (!idInd || !ano || ano < 1900 || ano > 9999) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="indw-meta-carregando"><div class="lista-spinner"></div>Carregando períodos…</div>';
+  var req = ++_metaReq;
+  _indicadoresSDK.chamar('apiGetPeriodosIndicador', idInd, ano).then(function(res) {
+    if (req !== _metaReq) return;
+    _metaGrade = res;
+    _metaRenderGrade();
+  }, function(err) {
+    if (req !== _metaReq) return;
+    // ex.: indicador Contínuo sem data de início — a mensagem do servidor explica o que falta
+    box.innerHTML = '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">event_busy</span><span>' + escapeHtml((err && err.message) || String(err)) + '</span></div>';
+  });
+}
+
+function _metaRenderGrade() {
+  var box = document.getElementById('meta-grade');
+  var fora = document.getElementById('meta-fora');
+  var g = _metaGrade;
+  if (!box || !g) return;
+  var ind = _indPorId(document.getElementById('input-meta-id-indicador').value) || {};
+
+  if (!g.periodos.length) {
+    box.innerHTML = '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">calendar_today</span><span>Nenhum período em ' + escapeHtml(String(g.ano)) + '.</span></div>';
+  } else {
+    box.innerHTML = '<div class="meta-grade-rolagem"><table class="meta-grade"><thead><tr><th>Período</th><th>Meta' + (ind.unidade ? ' (' + escapeHtml(ind.unidade) + ')' : '') + '</th></tr></thead><tbody>'
+      + g.periodos.map(function(p) {
+        var trava = p.temResultados
+          ? '<span class="material-symbols-outlined" tabindex="0" data-title="Já há resultados lançados neste período. A meta pode ser alterada, não removida.">lock</span>' : '';
+        return '<tr><td class="meta-per">' + escapeHtml(p.rotulo) + trava + '</td>'
+          + '<td><input type="text" class="ds-input meta-valor" data-inicio="' + escapeHtml(p.inicioISO) + '" value="' + escapeHtml(p.valor) + '" aria-label="Meta de ' + escapeHtml(p.rotulo) + '" placeholder="Ex: 100"></td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+
+  if (fora) {
+    fora.innerHTML = (g.foraDosPeriodos && g.foraDosPeriodos.length)
+      ? '<div class="meta-aviso"><div class="meta-aviso-titulo"><span class="material-symbols-outlined">warning</span>Metas fora da frequência atual'
+        + '<span class="material-symbols-outlined ind-info" tabindex="0" data-title="Estas metas não correspondem a nenhum período da frequência atual. Exclua as que não servem mais.">info</span></div>'
+        + g.foraDosPeriodos.map(function(m) {
+          var lab = escapeJsAttr((m.periodo || '') + ' — ' + m.valor);
+          return '<div class="meta-aviso-item"><span>' + escapeHtml(m.periodo || 'Sem período') + '</span><strong>' + escapeHtml(String(m.valor)) + '</strong>'
+            + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Excluir meta" aria-label="Excluir meta" onclick="confirmarExclusaoMeta(\'' + escapeHtml(String(m.id)) + '\',\'' + lab + '\')"><span class="material-symbols-outlined">delete</span></button></div>';
+        }).join('') + '</div>'
+      : '';
+  }
+  _metaSalvarHabilitado(g.periodos.length > 0);
+}
+
+function _metaPreencherTodos() {
+  var v = (document.getElementById('input-meta-preencher') || {}).value;
+  if (v === undefined || String(v).trim() === '') return;
+  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) { inp.value = String(v).trim(); });
+}
+
+function handleSalvarMetas(e) {
+  e.preventDefault();
+  if (!_metaGrade) return;
+  var idInd = document.getElementById('input-meta-id-indicador').value;
+  var ano = parseInt(document.getElementById('input-meta-ano').value, 10);
+  var metas = [];
+  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) {
+    metas.push({ inicio: inp.getAttribute('data-inicio'), valor: inp.value });
+  });
+  mostrarLoader();
+  _indicadoresSDK.chamar('apiSalvarMetasPeriodo', { idIndicador: idInd, ano: ano, metas: metas }).then(function() {
+    esconderLoader();
+    fecharModalMeta();
+    carregarAbaIndicadores();
+  }, function(err) {
+    esconderLoader();
+    showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+  });
+}
+
+// ================================================================
+// CICLO DE VIDA DO APP VIA SDK
+// ================================================================
+
+function _indIniciar() {
+  if (!_indCtx || !_indCtx.idPlano) return;
+  _indCarregando = true;
+  renderizarSecaoIndicadores();
+  var tbody = document.getElementById('ind-tbody');
+  if (tbody && !_indCarregado) {
+    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="7" style="padding:0">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner"></div>') + '</td></tr>';
+  }
+
+  _indicadoresSDK.chamar('apiGetAbaIndicadores', _indCtx.idPlano).then(function(res) {
+    _indIndicadores = (res && res.indicadores) || [];
+    _indIndicadoresSuperiores = (res && res.indicadoresSuperiores) || [];
+    _indMetas = (res && res.metas) || [];
+    _indDefinicaoEditavel = (res && res.definicaoEditavel) || { editavel: true, motivo: '' };
+    _indConfig = (res && res.configIndicadores) || { vinculoIndicadorLimite: null, elementosLimite: null };
+    _indCarregado = true;
+    _indCarregando = false;
+
+    _indicadoresSDK.reportarDados({
+      indicadores: _indIndicadores,
+      indicadoresSuperiores: _indIndicadoresSuperiores,
+      metas: _indMetas
+    });
+    _indicadoresSDK.reportarContagem(_indIndicadores.length);
+
+    renderizarSecaoIndicadores();
+
+    // Quem pediu os dados (outras telas/abas) é atendido agora, já com tudo carregado.
+    var fila = _indFilaAposCarga; _indFilaAposCarga = [];
+    fila.forEach(function(cb) { try { cb(); } catch (e) { console.error(e); } });
+
+    if (_indPainelPendenteId) {
+      var pend = _indPainelPendenteId;
+      _indPainelPendenteId = null;
+      indAbrirPainel(pend);
+    } else if (estadoIndicadores.painelId) {
+      var ip = _indPorId(estadoIndicadores.painelId);
+      if (ip) _indRenderPainel(ip); else if (typeof fecharPainelDetalhes === 'function') fecharPainelDetalhes();
+    }
+  }, function(err) {
+    _indCarregando = false;
+    _indFilaAposCarga = [];
+    var tbodyErr = document.getElementById('ind-tbody');
+    if (tbodyErr) {
+      tbodyErr.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(err.message || String(err)) + '</td></tr>';
+    }
+  });
+}
+
+function carregarAbaIndicadores() {
+  _indIniciar();
+}
+
+// Recarrega só se a aba já foi carregada alguma vez; se nunca foi aberta, os dados
+// virão frescos quando for (carga sob demanda) — não vale gastar uma chamada agora.
+function atualizarAbaIndicadores() {
+  if (!_indCarregado && !_indCarregando) return;
+  _indIniciar();
+}
+
+// Garante os dados carregados antes de executar `cb` (síncrono se já carregado).
+// Usado por quem depende dos indicadores sem a aba estar aberta (aba Monitoramento,
+// exportação, painel/lista de indicadores abertos a partir de Elementos).
+function indGarantirCarregado(cb) {
+  if (_indCarregado) { if (cb) cb(); return; }
+  if (cb) _indFilaAposCarga.push(cb);
+  if (!_indCarregando) _indIniciar();
+}
+
+function _indComDados(fn) {
+  return function() {
+    var self = this, args = arguments;
+    indGarantirCarregado(function() { fn.apply(self, args); });
+  };
+}
+
+// Handshake de inicialização
+// Carga sob demanda: só busca os dados quando a aba fica visível (o SDK entrega
+// {pagina, aba}); o contador da aba vem do host (KPIs do cabeçalho) sem precisar disto.
+_indicadoresSDK.aoVisibilidade(function(v) {
+  _indVis = v;
+  if (v.aba && v.pagina && _indCtx && !_indCarregado && !_indCarregando) {
+    _indIniciar();
+  }
+});
+
+_indicadoresSDK.aoContexto(function(ctx) {
+  if (_indCtx && String(_indCtx.idPlano) === String(ctx.idPlano)) {
+    // Mesmo plano reaberto (ou trâmite): atualiza contexto e re-renderiza se já carregado
+    _indCtx = ctx;
+    if (_indCarregado) {
+      if (typeof _indRenderCorpo === 'function') _indRenderCorpo();
+      _indicadoresSDK.reportarDados({ indicadores: _indIndicadores, indicadoresSuperiores: _indIndicadoresSuperiores, metas: _indMetas });
+      _indicadoresSDK.reportarContagem(_indIndicadores.length);
+    }
+    return;
+  }
+  _indCtx = ctx;
+  _indCarregado = false;
+  _indIndicadores = [];
+  _indIndicadoresSuperiores = [];
+  _indMetas = [];
+  _indDefinicaoEditavel = { editavel: true, motivo: '' };
+  estadoIndicadores.busca = '';
+  estadoIndicadores.filtroResp = '';
+  estadoIndicadores.filtroFreq = '';
+  estadoIndicadores.filtroElem = '';
+  estadoIndicadores.sort = { col: 'prioridade', dir: 'asc' };
+  estadoIndicadores.paginaAtual = 1;
+  estadoIndicadores.expandidos = {};
+  estadoIndicadores.selecionados = {};
+  estadoIndicadores.painelId = null;
+  _indCarregando = false;
+  _indFilaAposCarga = [];
+  // Só carrega agora se a aba já estiver à vista; senão a notificação de
+  // visibilidade (mudarView) dispara a carga quando o usuário abri-la.
+  if (_indVis.aba && _indVis.pagina) _indIniciar();
+});
+
+_indicadoresSDK.aoPainelFechado(function() {
+  if (estadoIndicadores && estadoIndicadores.painelId) {
+    estadoIndicadores.painelId = null;
+    if (_indCarregado && typeof _indRenderCorpo === 'function') _indRenderCorpo();
+  }
+});
+
+_indicadoresSDK.aoTecla(function(evt) {
+  if (evt.key === 'Escape') {
+    if (typeof indCancelarSelecao === 'function' && Object.keys(estadoIndicadores.selecionados || {}).length > 0) {
+      indCancelarSelecao();
+      return true;
+    }
+  } else if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && String(evt.key).toLowerCase() === 'a') {
+    if (typeof indToggleSelecionarTodos === 'function') {
+      indToggleSelecionarTodos(true);
+      return true;
+    }
+  }
+  return false;
+});
+
+// Exposição global das funções esperadas por outras partes do sistema
+window.abrirModalIndicador = abrirModalIndicador;
+window.abrirModalEdicaoIndicador = _indComDados(abrirModalEdicaoIndicador);
+window.abrirModalIndicadorGlobal = abrirModalIndicadorGlobal;
+window.abrirModalMeta = _indComDados(abrirModalMeta);
+window.abrirModalEdicaoMeta = _indComDados(abrirModalEdicaoMeta);
+window.abrirModalListaIndicadores = _indComDados(abrirModalListaIndicadores);
+window.indAbrirPainel = _indComDados(indAbrirPainel);
+window.exportarIndicadoresMetasCSV = _indComDados(exportarIndicadoresMetasCSV);
+window.confirmarExclusaoIndicador = _indComDados(confirmarExclusaoIndicador);
+window.confirmarExclusaoMeta = _indComDados(confirmarExclusaoMeta);
+window.editarIndicador = _indComDados(editarIndicador);
+window.atualizarAbaIndicadores = atualizarAbaIndicadores;
+window.carregarAbaIndicadores = carregarAbaIndicadores;
+window.indGarantirCarregado = indGarantirCarregado;
+window.renderizarSecaoIndicadores = renderizarSecaoIndicadores;
+window.estadoIndicadores = estadoIndicadores;
+window._indicadoresSDK = _indicadoresSDK;
+</script>

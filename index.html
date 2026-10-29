@@ -61,7 +61,19 @@
     });
   }
 
+  // Os apps instaláveis são arquivos estáticos (apps/<nome>.html, gerados por scripts/build_frontend.js), não chamadas ao servidor.
+  var ARQUIVO_APP = { metas: 'app_indicadores', desempenho: 'app_monitoramento' };
+  function obterHtmlApp(nomeApp, ok, falha, objeto) {
+    var arquivo = ARQUIVO_APP[nomeApp] || ('app_' + nomeApp);
+    if (!/^[a-z_]+$/.test(arquivo)) { if (falha) falha(new Error('App não encontrado: ' + nomeApp), objeto); return; }
+    fetch('apps/' + arquivo + '.html', { cache: 'no-cache' }).then(function (r) {
+      if (!r.ok) throw new Error('App não encontrado: ' + nomeApp);
+      return r.text();
+    }).then(function (t) { if (ok) ok(t, objeto); }, function (e) { if (falha) falha(e, objeto); });
+  }
+
   function chamar(nome, args, ok, falha, objeto) {
+    if (nome === 'apiObterHtmlApp') { obterHtmlApp(args[0], ok, falha, objeto); return; }
     if (!ROTAS_PUBLICAS[nome] && !lerToken()) { mostrarLogin(); return; }
     enviar(nome, args, function (res) {
       if (res && res.ok) { if (ok) ok(res.dados === undefined ? null : res.dados, objeto); return; }

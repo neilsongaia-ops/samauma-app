@@ -1,0 +1,1398 @@
+<!-- ================================================================
+     APP VÍNCULOS (Fase 3B — Arquitetura de Abas Plugáveis)
+     Injetado dinamicamente em #vinculos-conteudo via apiObterHtmlApp('vinculos')
+     Mantém estado próprio e comunica com o host via _vinculosSDK
+     ================================================================ -->
+<script>
+/**
+ * Fábrica do contrato entre um app "instalável" e o host que o carrega
+ * (ver docs/arquitetura_apps_modulares.md). Cada app cria a PRÓPRIA
+ * instância — `var _forumSDK = criarSamaumaSDK();` — e nunca guarda num
+ * global genérico (`SamaumaSDK`): o app é entregue por injeção dinâmica de
+ * HTML/JS no DOM do host (`apiObterHtmlApp` + `<script>` recriado em
+ * runtime), não em <iframe> (testado e bloqueado pelo Google — todo Apps
+ * Script já roda dentro de um iframe de sandbox do próprio Google, e um
+ * segundo nível pra outro app quebra a autenticação). Sem <iframe>, todo
+ * app injetado divide o mesmo escopo global da página — um único objeto
+ * `SamaumaSDK` compartilhado colidiria entre dois apps montados ao mesmo
+ * tempo (Fase 3). Cada instância guarda seu próprio nome com o PRÓPRIO
+ * prefixo de arquivo (`_forumSDK`, `_elementosSDK`, ...), mesma convenção
+ * de "todo global leva o prefixo do arquivo" já usada em todo o projeto
+ * (ver CLAUDE.md).
+ *
+ * Regra de ouro: um app nunca chama google.script.run direto nem calcula
+ * permissão no cliente — só através da instância do SDK que criar.
+ */
+function criarSamaumaSDK() {
+  var _contexto = null;
+  var _visibilidade = { pagina: true, aba: true };
+  var _callbacksContexto = [];
+  var _callbacksVisibilidade = [];
+  var _callbacksPainelFechado = [];
+  var _callbackTecla = null;
+  var _callbacksTema = [];
+  var _aoBadge = null;
+  var _aoContagem = null;
+  var _aoAlerta = null;
+  var _aoDados = null;
+
+  return {
+    // Chamado pelo host logo depois de injetar/montar o app, e de novo toda
+    // vez que o contexto muda (ex.: usuário trocou de plano).
+    iniciar: function (ctx) {
+      _contexto = {
+        idPlano: ctx.idPlano, permissoes: ctx.permissoes || {},
+        usuario: ctx.usuario || {}, plano: ctx.plano || {}
+      };
+      _callbacksContexto.forEach(function (cb) { cb(_contexto); });
+    },
+
+    // Chamado pelo host sempre que a visibilidade da aba do app ou da
+    // tela-mãe muda (troca de aba, navegação pra outra tela da SPA).
+    notificarVisibilidade: function (v) {
+      _visibilidade = { pagina: !!v.pagina, aba: !!v.aba };
+      _callbacksVisibilidade.forEach(function (cb) { cb(_visibilidade); });
+    },
+
+    // Registra callback para quando o contexto chegar/mudar. Se já tiver
+    // chegado antes do registro, dispara imediatamente.
+    aoContexto: function (cb) {
+      _callbacksContexto.push(cb);
+      if (_contexto) cb(_contexto);
+    },
+
+    aoVisibilidade: function (cb) {
+      _callbacksVisibilidade.push(cb);
+      cb(_visibilidade);
+    },
+
+    contexto: function () { return _contexto; },
+    visibilidade: function () { return _visibilidade; },
+
+    // Notificação de painel lateral fechado pelo host
+    notificarPainelFechado: function () {
+      _callbacksPainelFechado.forEach(function (cb) { cb(); });
+    },
+    aoPainelFechado: function (cb) {
+      _callbacksPainelFechado.push(cb);
+    },
+
+    // Repasse de teclas de atalho (Escape, Ctrl+A) da aba ativa
+    notificarTecla: function (evt) {
+      if (_callbackTecla) return _callbackTecla(evt);
+      return false;
+    },
+    aoTecla: function (cb) {
+      _callbackTecla = cb;
+    },
+
+    // Notificação de alternância de tema visual (claro/escuro)
+    notificarTema: function (tema) {
+      _callbacksTema.forEach(function (cb) { cb(tema); });
+    },
+    aoTema: function (cb) {
+      _callbacksTema.push(cb);
+    },
+
+    // O HOST registra aqui como quer reagir ao badge deste app (ex.:
+    // atualizar o selo vermelho da própria aba) — o app só reporta o valor.
+    aoBadge: function (cb) { _aoBadge = cb; },
+    reportarBadge: function (valor) { if (_aoBadge) _aoBadge(valor); },
+
+    // Contagem total do app na própria aba (estilo "141" — diferente de
+    // aoBadge/reportarBadge, que é notificação/não-lida, estilo bolinha).
+    // PADRÃO DOS CONTADORES DA ABA (vale para todo app, atual ou futuro):
+    //  - contagem = TOTAL de itens do app (chip neutro, ex.: 141 elementos);
+    //  - alerta   = itens que exigem ação (chip âmbar + tooltip, ex.: "2 vínculos
+    //    aguardam sua decisão").
+    // Um app pode reportar um, o outro ou os dois. Para aparecerem já na abertura
+    // do plano, o app registra um provedor em CONTADORES_APPS (code.js).
+    aoContagem: function (cb) { _aoContagem = cb; },
+    reportarContagem: function (valor) { if (_aoContagem) _aoContagem(valor); },
+    aoAlerta: function (cb) { _aoAlerta = cb; },
+    reportarAlerta: function (valor, titulo) { if (_aoAlerta) _aoAlerta(valor, titulo); },
+
+    // Genérico: qualquer app pode publicar um retorno de dados pro host
+    // reagir (ex.: Elementos publica a lista atualizada pro host recalcular
+    // KPIs do header sem o app precisar conhecer essas outras telas).
+    aoDados: function (cb) { _aoDados = cb; },
+    reportarDados: function (valor) { if (_aoDados) _aoDados(valor); },
+
+    // Barra lateral de detalhes (#detp-panel — ver docs/arquitetura_apps_modulares.md):
+    // "substituição total" — o app manda o HTML pronto e é dono de 100% da
+    // marcação dentro do drawer (inclusive de suas próprias tabs/cabeçalho/
+    // botão de fechar, se quiser; CSS compartilhado do host — .detp-secao,
+    // .detp-linha, .detp-subsecao, .detp-tabs/.detp-tab etc. — já está
+    // disponível globalmente pra manter a mesma linguagem visual, mas o app
+    // não é obrigado a usá-lo). A casca só garante a moldura do drawer
+    // (posição/animação) e o Esc como fallback de fechamento. Único ponto
+    // que muda na migração pra um componente de verdade (Angular): a
+    // implementação interna, nunca essa assinatura.
+    abrirPainel: function (html) { if (typeof window.abrirPainelApp === 'function') window.abrirPainelApp(html); },
+    fecharPainel: function () { if (typeof window.fecharPainelDetalhes === 'function') window.fecharPainelDetalhes(); },
+
+    // Embrulha google.script.run.withSuccessHandler/withFailureHandler numa
+    // Promise. Único ponto que muda na migração para o backend Node/Express.
+    chamar: function (nomeFuncao) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(function (erro) { reject(erro); });
+        runner[nomeFuncao].apply(runner, args);
+      });
+    }
+  };
+}
+</script>
+
+
+<style>
+/* ── VÍNCULOS: lista única (reaproveita .el-tabela do design system) ─────────── */
+#view-vinculos .el-tabela thead th { top: calc(var(--det-sticky-top) + var(--det-tabs-h) + 56px); }
+.vinc-tabela col.vinc-col-tipo,   .vinc-tabela .vinc-col-tipo   { width: 130px; }
+.vinc-tabela col.vinc-col-nome,   .vinc-tabela .vinc-col-nome   { width: auto; max-width: 0; overflow: hidden; }
+.vinc-tabela col.vinc-col-resp,   .vinc-tabela .vinc-col-resp   { width: 175px; white-space: nowrap; overflow: hidden; }
+.vinc-tabela col.vinc-col-status, .vinc-tabela .vinc-col-status { width: 120px; }
+.vinc-tabela col.vinc-col-prog,   .vinc-tabela .vinc-col-prog   { width: 115px; white-space: nowrap; }
+.vinc-tabela col.vinc-col-acoes,  .vinc-tabela .vinc-col-acoes  { width: 208px; text-align: right; padding-left: 4px; padding-right: 14px; box-sizing: border-box; }
+.vinc-tabela tbody tr.vinc-linha { cursor: pointer; }
+.vinc-tabela tbody tr.vinc-linha td { padding-top: 10px; padding-bottom: 10px; }
+
+/* barra de progresso do plano vinculado */
+.vinc-prog { display: flex; align-items: center; gap: 8px; }
+.vinc-prog .ds-kpi-track { width: 68px; flex: none; }
+.vinc-prog-txt { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); min-width: 32px; }
+.vinc-sem-prog { color: var(--ds-color-text-muted); }
+
+/* cores por tipo de vínculo */
+.vinc-tag { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 10px 3px 8px; border-radius: var(--ds-radius-pill);
+  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); white-space: nowrap; }
+.vinc-tag .material-symbols-outlined { font-size: 15px; }
+.vinc-tag span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.vinc-tag--decidir     { background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg); }
+.vinc-tag--aguardando  { background: color-mix(in srgb, #7b2cbf 12%, var(--ds-color-surface)); color: #7b2cbf; }
+.vinc-tag--superior    { background: var(--ds-color-info-bg); color: var(--ds-color-action); }
+.vinc-tag--subordinado { background: var(--ds-color-success-bg); color: var(--ds-color-success-fg); }
+.vinc-tabela tr.vinc-linha.is-decidir td { background: color-mix(in srgb, var(--ds-color-warning-bg) 45%, var(--ds-color-surface)); }
+.vinc-tabela tr.vinc-linha.is-decidir td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-warning); }
+.vinc-tabela tr.vinc-linha.is-decidir:hover td { background: var(--ds-color-warning-bg); }
+
+.vinc-nome-cel { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.vinc-nome { font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vinc-sub { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+tr.is-decidir .vinc-sub { color: var(--ds-color-warning-fg); }
+:is(.vinc-tabela, .rsc-tabela) .resp-badge { max-width: 100%; }
+.vinc-status { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: var(--ds-radius-pill); background: var(--ds-color-surface-2);
+  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); white-space: nowrap; }
+.vinc-status i { width: 7px; height: 7px; border-radius: 50%; }
+
+/* decisão sempre visível */
+.vinc-decisao { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap; }
+.vinc-decisao .ds-btn {
+  height: 30px; min-height: 30px; padding: 0 10px;
+  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
+  gap: 4px; border-radius: var(--ds-r-md); white-space: nowrap; flex-shrink: 0;
+}
+.vinc-decisao .ds-btn .material-symbols-outlined { font-size: 16px; }
+
+/* hover-actions nas demais linhas */
+.vinc-tabela tr.vinc-linha:not(.is-decidir) .acoes-linha { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
+.vinc-tabela tr.vinc-linha:hover .acoes-linha,
+.vinc-tabela tr.vinc-linha.selecionada .acoes-linha,
+.vinc-tabela tr.vinc-linha .acoes-linha:focus-within,
+.vinc-tabela tr.vinc-linha .acoes-linha:has([aria-expanded="true"]) { opacity: 1; }
+
+@media (max-width: 1100px) {
+  .vinc-tabela .vinc-col-resp, .vinc-tabela .vinc-col-status, .vinc-tabela .vinc-col-prog { display: none; }
+  .vinc-tabela col.vinc-col-resp, .vinc-tabela col.vinc-col-status, .vinc-tabela col.vinc-col-prog { width: 0; }
+  .vinc-tabela col.vinc-col-acoes, .vinc-tabela .vinc-col-acoes { width: 90px; padding-right: 10px; }
+  .vinc-decisao .vinc-btn-txt { display: none; }          /* só ícones ✓ ✕ */
+  .vinc-decisao .ds-btn { width: 30px; min-width: 30px; padding: 0; justify-content: center; }
+  .vinc-decisao .ds-btn .material-symbols-outlined { font-size: 18px; }
+}
+
+/* mobile: galeria de cards (diretriz docs/design_system.md) */
+@media (max-width: 768px) {
+  .vinc-tabela, .vinc-tabela tbody { display: block; }
+  .vinc-tabela colgroup, .vinc-tabela thead { display: none; }
+  .vinc-tabela tr.vinc-linha {
+    display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "chk tipo acoes" "nome nome nome" "dec dec dec";
+    gap: 6px 8px; padding: 12px; margin-bottom: 10px; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
+  }
+  .vinc-tabela tr.vinc-linha.is-decidir { border-left: 3px solid var(--ds-color-warning); }
+  .vinc-tabela tr.vinc-linha td { display: block; padding: 0; border: none; width: auto; max-width: none; background: transparent !important; box-shadow: none !important; }
+  .vinc-tabela tr.vinc-linha td.el-col-check { grid-area: chk; }
+  .vinc-tabela tr.vinc-linha td.vinc-col-tipo { grid-area: tipo; }
+  .vinc-tabela tr.vinc-linha td.vinc-col-nome { grid-area: nome; }
+  .vinc-tabela tr.vinc-linha td.vinc-col-acoes { grid-area: acoes; }
+  .vinc-tabela tr.vinc-linha .acoes-linha { opacity: 1; }
+  .vinc-tabela tr.vinc-linha.is-decidir td.vinc-col-acoes { grid-area: dec; }
+  .vinc-decisao { display: flex; width: 100%; }
+  .vinc-decisao .ds-btn { flex: 1; width: auto; height: 44px; }
+  .vinc-decisao .vinc-btn-recusar { border-color: var(--ds-color-border); }
+  .vinc-decisao .vinc-btn-txt { display: inline; }
+  .vinc-sub { white-space: normal; }
+}
+body.high-contrast .vinc-tag { border: 1px solid currentColor; }
+</style>
+
+<!-- Container principal da aba Vínculos (injetado em #vinculos-conteudo pelo host) -->
+<div id="vinc-corpo-wrap"></div>
+
+<!-- Modal "Vincular Plano" marcado como portal para document.body -->
+<div id="modal-vincular-plano" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalVincularPlano" onclick="if(event.target===this) fecharModalVincularPlano()">
+  <div class="modal-card" style="max-width:640px">
+    <div class="modal-header">
+      <h3>Vincular Plano</h3>
+      <button class="btn-icon-close" onclick="fecharModalVincularPlano()">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="view-mode-toggle" style="margin-bottom:14px">
+        <button class="mode-btn active" id="vp-toggle-superior" onclick="vpMudarAba('superior')">
+          <span class="material-symbols-outlined icon-sm">arrow_upward</span> Subordinante
+        </button>
+        <button class="mode-btn" id="vp-toggle-subordinado" onclick="vpMudarAba('subordinado')">
+          <span class="material-symbols-outlined icon-sm">arrow_downward</span> Subordinado
+        </button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <div class="filtro-busca-wrap" style="flex:1;min-width:160px">
+          <span class="material-symbols-outlined filtro-search-icon">search</span>
+          <input type="text" class="filtro-input" id="vp-filtro-busca" placeholder="Buscar por nome…" oninput="vpAplicarFiltros()">
+          <button class="filtro-clear-btn" id="vp-btn-clear" onclick="vpLimparFiltroBusca()" style="display:none">
+            <span class="material-symbols-outlined" style="font-size:15px">close</span>
+          </button>
+        </div>
+        <select class="filtro-select" id="vp-filtro-resp" onchange="vpAplicarFiltros()">
+          <option value="">Todos os responsáveis</option>
+        </select>
+      </div>
+
+      <div id="vp-lista-wrap" style="border:1px solid var(--ds-color-border);border-radius:8px;overflow:hidden">
+        <div style="overflow-x:auto">
+          <table class="table-full" style="min-width:480px">
+            <thead>
+              <tr>
+                <th>Tipo</th><th>Nome</th><th>Vigência</th><th>Responsável</th><th>Status</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="vp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="vp-pagination" class="pagination-bar hidden" style="margin-top:0;border-radius:0 0 7px 7px;border:none;border-top:1px solid var(--ds-color-border);box-shadow:none">
+        <div class="pag-center"><span id="vp-pag-counter">0–0 de 0</span></div>
+        <div class="pag-right">
+          <button class="btn-pag" onclick="vpMudarPagina('prev')" data-title="Anterior">
+            <span class="material-symbols-outlined">chevron_left</span></button>
+          <select id="vp-pag-selector" onchange="vpIrParaPagina(this.value)" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>
+          <button class="btn-pag" onclick="vpMudarPagina('next')" data-title="Próximo">
+            <span class="material-symbols-outlined">chevron_right</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// ESTADO E INSTÂNCIA SDK DO APP VÍNCULOS
+// ================================================================
+var _vinculosSDK = criarSamaumaSDK();
+var _vincCtx = null;
+var _vincVis = { pagina: true, aba: true };
+var _vincCarregado = false;
+var _vincCarregando = false;
+
+var _vincDadosCache = {
+  planosVinculados: [],
+  propostasEnviadas: [],
+  propostasRecebidas: [],
+  planosSuperiores: []
+};
+
+var estadoVinculos = {
+  busca: '', filtroVinc: '', filtroStatus: '', filtroResp: '', filtroTipo: '',
+  sort: { col: 'tipo', dir: 'asc' },
+  itensPorPagina: 10, paginaAtual: 1,
+  selecionados: {}
+};
+var _vincUltimaChaveClicada = null;
+
+var estadoVincModal = {
+  aba: 'superior', busca: '', filtroResp: '',
+  paginaAtual: 1, itensPorPagina: 10,
+  candidatosSuperior: [], candidatosSubordinado: []
+};
+
+// Tipos de vínculo: ordem padrão, rótulo, ícone e frase explicativa (pendências)
+var _VINC_TIPO = {
+  decidir:     { ord: 0, rot: 'Aguarda você', ico: 'move_to_inbox', tip: 'Pendência que depende da sua decisão' },
+  aguardando:  { ord: 1, rot: 'Aguardando',   ico: 'schedule',      tip: 'Pendência que depende do outro plano' },
+  superior:    { ord: 2, rot: 'Superior',     ico: 'north',         tip: 'Plano ao qual este plano está subordinado' },
+  subordinado: { ord: 3, rot: 'Subordinado',  ico: 'south',         tip: 'Plano subordinado a este plano' }
+};
+
+var _VINC_DIR = {
+  filho:             { tipo: 'decidir',    txt: 'Pediu para ser subordinado a este plano' },
+  proposta_recebida: { tipo: 'decidir',    txt: 'Propôs que este plano seja subordinado a ele' },
+  superior:          { tipo: 'aguardando', txt: 'Você pediu vínculo como plano superior · aguardando aprovação' },
+  proposta_enviada:  { tipo: 'aguardando', txt: 'Você propôs que ele seja subordinado a este plano · aguardando aceite' }
+};
+
+var _VINC_COR_STATUS = {
+  'Em Elaboração': '#1a56db', 'Em Análise': '#b08400', 'Em Execução': '#137333', 'Em Avaliação': '#c5221f',
+  'Finalizado': '#1a56db', 'Prorrogado': '#e65100', 'Em Revisão': '#6a1b9a', 'Cancelado': '#8a94a3', 'Excluído': '#8a94a3'
+};
+
+var _vincFiltrosDef = {
+  vinc:   { label: 'Vínculo',       chave: 'filtroVinc' },
+  status: { label: 'Status',        chave: 'filtroStatus' },
+  resp:   { label: 'Responsável',   chave: 'filtroResp' },
+  tipo:   { label: 'Tipo',          chave: 'filtroTipo' }
+};
+
+function _vincBadgeStatus(status) {
+  var mapa = {
+    'Em Elaboração': '#e8f0fe|#1a56db', 'Em Análise': '#fff3cd|#856404',
+    'Em Execução': '#e6f4ea|#137333',   'Em Avaliação': '#fce8e6|#c5221f',
+    'Finalizado': '#e8f0fe|#1a56db',    'Prorrogado': '#fff8e1|#e65100',
+    'Em Revisão': '#f3e8fd|#6a1b9a',    'Cancelado': '#f5f5f5|#555',
+    'Excluído': '#f5f5f5|#555'
+  };
+  var cores = (mapa[status] || '#f5f5f5|#555').split('|');
+  return '<span class="badge-status" style="background:' + cores[0] + ';color:' + cores[1] + '">' + escapeHtml(status || '') + '</span>';
+}
+
+function _vincChave(p) { return p.vtipo + ':' + p.id + (p.idVinculo ? ':' + p.idVinculo : ''); }
+
+function _vincMapSuperior(p) {
+  return {
+    idVinculo: p.idVinculo, id: p.id, nome: p.nome || '(sem nome)', tipo: p.tipo || '', status: p.status || '',
+    responsavel: p.responsavel || p.resp || '', tipoResponsavel: p.tipoResponsavel || p.tipoResp || '',
+    respAdicionaisNomes: p.respAdicionaisNomes || [],
+    statusVinculo: p.statusVinculo, papel: p.papel, anoInicio: p.anoInicio || '', anoFim: p.anoFim || '',
+    progresso: (p.progresso !== undefined && p.progresso !== null) ? p.progresso : null
+  };
+}
+
+function _vincDados() {
+  var vinculados = _vincDadosCache.planosVinculados || [];
+  var superiores = _vincDadosCache.planosSuperiores || [];
+
+  var superAprov = superiores.filter(function(p) { return p.statusVinculo === 'Aprovado'; }).map(_vincMapSuperior);
+  var subAprov = vinculados.filter(function(p) { return p.statusVinculo !== 'Pendente'; });
+  var pendentes = [];
+  superiores.filter(function(p) { return p.statusVinculo === 'Pendente'; }).forEach(function(p) {
+    pendentes.push(Object.assign(_vincMapSuperior(p), { direcao: 'superior' }));
+  });
+  vinculados.filter(function(p) { return p.statusVinculo === 'Pendente'; }).forEach(function(p) {
+    pendentes.push(Object.assign({}, p, { direcao: 'filho' }));
+  });
+  (_vincDadosCache.propostasEnviadas || []).forEach(function(p) {
+    pendentes.push(Object.assign({}, p, { direcao: 'proposta_enviada' }));
+  });
+  (_vincDadosCache.propostasRecebidas || []).forEach(function(p) {
+    pendentes.push(Object.assign({}, p, { direcao: 'proposta_recebida' }));
+  });
+  return { superAprov: superAprov, subAprov: subAprov, pendentes: pendentes };
+}
+
+function _vincListaUnica() {
+  var d = _vincDados();
+  var lista = []
+    .concat(d.pendentes.map(function(p) { return Object.assign({}, p, { vtipo: (_VINC_DIR[p.direcao] || {}).tipo || 'aguardando' }); }))
+    .concat(d.superAprov.map(function(p) { return Object.assign({}, p, { vtipo: 'superior' }); }))
+    .concat(d.subAprov.map(function(p) { return Object.assign({}, p, { vtipo: 'subordinado' }); }));
+  return lista.sort(function(a, b) {
+    return (_VINC_TIPO[a.vtipo].ord - _VINC_TIPO[b.vtipo].ord) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
+  });
+}
+
+function _vincTemFiltro() {
+  var e = estadoVinculos;
+  return !!(e.busca || e.filtroVinc || e.filtroStatus || e.filtroResp || e.filtroTipo);
+}
+
+function _vincFiltrar(lista, ignorar) {
+  var e = estadoVinculos, busca = (e.busca || '').toLowerCase();
+  return lista.filter(function(p) {
+    if (busca && String(p.nome || '').toLowerCase().indexOf(busca) === -1) return false;
+    if (ignorar !== 'vinc'   && e.filtroVinc   && p.vtipo !== e.filtroVinc) return false;
+    if (ignorar !== 'status' && e.filtroStatus && p.status !== e.filtroStatus) return false;
+    if (ignorar !== 'resp'   && e.filtroResp   && p.responsavel !== e.filtroResp) return false;
+    if (ignorar !== 'tipo'   && e.filtroTipo   && p.tipo !== e.filtroTipo) return false;
+    return true;
+  });
+}
+
+function _vincSortLista(lista) {
+  var col = (estadoVinculos.sort && estadoVinculos.sort.col) || 'tipo';
+  var dir = (estadoVinculos.sort && estadoVinculos.sort.dir) || 'asc';
+  return lista.slice().sort(function(a, b) {
+    var res = 0;
+    if (col === 'nome') {
+      var na = String(a.nome || '').toLowerCase();
+      var nb = String(b.nome || '').toLowerCase();
+      res = na.localeCompare(nb, 'pt') || (_VINC_TIPO[a.vtipo].ord - _VINC_TIPO[b.vtipo].ord);
+    } else if (col === 'responsavel') {
+      var ra = String(nomeRespExibicao(a.responsavel, a.tipoResponsavel) || '').toLowerCase();
+      var rb = String(nomeRespExibicao(b.responsavel, b.tipoResponsavel) || '').toLowerCase();
+      res = ra.localeCompare(rb, 'pt') || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
+    } else if (col === 'status') {
+      var sa = String(a.status || '').toLowerCase();
+      var sb = String(b.status || '').toLowerCase();
+      res = sa.localeCompare(sb, 'pt') || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
+    } else if (col === 'progresso') {
+      var pa = (a.progresso == null || isNaN(Number(a.progresso))) ? -1 : Number(a.progresso);
+      var pb = (b.progresso == null || isNaN(Number(b.progresso))) ? -1 : Number(b.progresso);
+      res = (pa - pb) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
+    } else {
+      res = (_VINC_TIPO[a.vtipo].ord - _VINC_TIPO[b.vtipo].ord) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
+    }
+    return dir === 'asc' ? res : -res;
+  });
+}
+
+function vincOrdenarPorColuna(col) {
+  if (!estadoVinculos.sort) estadoVinculos.sort = { col: 'tipo', dir: 'asc' };
+  if (estadoVinculos.sort.col === col) {
+    estadoVinculos.sort.dir = estadoVinculos.sort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    estadoVinculos.sort.col = col;
+    estadoVinculos.sort.dir = 'asc';
+  }
+  estadoVinculos.paginaAtual = 1;
+  _vincRenderCorpo();
+}
+
+function vincAbrirMenuOrdenar(ev) {
+  ev.stopPropagation();
+  var gatilho = ev.currentTarget;
+  var colunas = [
+    { valor: 'tipo',        label: 'Vínculo' },
+    { valor: 'nome',        label: 'Plano' },
+    { valor: 'responsavel', label: 'Responsável' },
+    { valor: 'status',      label: 'Status' },
+    { valor: 'progresso',   label: 'Progresso' }
+  ];
+  var colAtual = (estadoVinculos.sort && estadoVinculos.sort.col) || 'tipo';
+  var dirAtual = (estadoVinculos.sort && estadoVinculos.sort.dir) || 'asc';
+  if (typeof abrirMenuSelecao === 'function') {
+    abrirMenuSelecao(gatilho, [
+      { label: 'Ordenar por', itens: colunas.map(function(c) {
+        return { label: c.label, ativo: c.valor === colAtual, onclick: "vincDefinirColunaOrdenacao('" + c.valor + "')" };
+      }) },
+      { label: 'Ordem', itens: [
+        { label: 'Crescente',   ativo: dirAtual === 'asc',  onclick: "vincDefinirDirecaoOrdenacao('asc')" },
+        { label: 'Decrescente', ativo: dirAtual === 'desc', onclick: "vincDefinirDirecaoOrdenacao('desc')" }
+      ] }
+    ]);
+  }
+}
+
+function vincDefinirColunaOrdenacao(col) {
+  if (!estadoVinculos.sort) estadoVinculos.sort = {};
+  estadoVinculos.sort.col = col;
+  estadoVinculos.paginaAtual = 1;
+  _vincRenderCorpo();
+}
+
+function vincDefinirDirecaoOrdenacao(dir) {
+  if (!estadoVinculos.sort) estadoVinculos.sort = {};
+  estadoVinculos.sort.dir = dir;
+  estadoVinculos.paginaAtual = 1;
+  _vincRenderCorpo();
+}
+
+function _vincAtualizarIconesOrdenacao() {
+  var col = (estadoVinculos.sort && estadoVinculos.sort.col) || 'tipo';
+  var dir = (estadoVinculos.sort && estadoVinculos.sort.dir) || 'asc';
+  ['tipo', 'nome', 'responsavel', 'status', 'progresso'].forEach(function(c) {
+    var el = document.getElementById('vinc-sort-icon-' + c);
+    if (!el) return;
+    el.className = 'sort-icon';
+    el.textContent = c === col ? (dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '';
+  });
+}
+
+function vincAbrirBusca() {
+  var st = document.getElementById('vinc-search-toggle'); if (st) st.classList.add('hidden');
+  var sc = document.getElementById('vinc-search-caixa'); if (sc) sc.classList.remove('hidden');
+  var inp = document.getElementById('vinc-filtro-busca'); if (inp) inp.focus();
+}
+
+function vincLimparBusca() {
+  var inp = document.getElementById('vinc-filtro-busca');
+  if (inp) { inp.value = ''; inp.focus(); }
+  aplicarFiltrosVinculos();
+}
+
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('vinc-search-wrap'), caixa = document.getElementById('vinc-search-caixa');
+  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
+  var inp = document.getElementById('vinc-filtro-busca');
+  if (inp && !inp.value.trim()) {
+    caixa.classList.add('hidden');
+    var st = document.getElementById('vinc-search-toggle'); if (st) st.classList.remove('hidden');
+  }
+});
+
+function aplicarFiltrosVinculos() {
+  estadoVinculos.busca = (document.getElementById('vinc-filtro-busca') || {}).value || '';
+  estadoVinculos.paginaAtual = 1;
+  _vincSyncBarra();
+  _vincRenderCorpo();
+}
+
+function vincAbrirFiltro(campo, ev) {
+  ev.stopPropagation();
+  var def = _vincFiltrosDef[campo], atual = estadoVinculos[def.chave];
+  var base = _vincFiltrar(_vincListaUnica(), campo);
+  var mapa = {};
+  base.forEach(function(p) {
+    var v, label, extra = {};
+    if (campo === 'vinc')        { v = p.vtipo; label = _VINC_TIPO[v].rot; extra.ico = _VINC_TIPO[v].ico; }
+    else if (campo === 'status') { if (!p.status) return; v = p.status; label = v; extra.dot = _VINC_COR_STATUS[v] || '#8a94a3'; }
+    else if (campo === 'resp')   { if (!p.responsavel) return; v = p.responsavel; label = nomeRespExibicao(p.responsavel, p.tipoResponsavel); }
+    else                         { if (!p.tipo) return; v = p.tipo; label = v; }
+    if (!mapa[v]) mapa[v] = Object.assign({ v: v, label: label, n: 0 }, extra);
+    mapa[v].n++;
+  });
+  var opcoes = Object.keys(mapa).map(function(k) { return mapa[k]; });
+  opcoes.sort(campo === 'vinc'
+    ? function(a, b) { return _VINC_TIPO[a.v].ord - _VINC_TIPO[b.v].ord; }
+    : function(a, b) { return a.label.localeCompare(b.label, 'pt'); });
+  if (!opcoes.length) return;
+  var itens = [{ label: 'Todos', ativo: !atual, onclick: "vincSelecionarFiltro('" + campo + "','')" }]
+    .concat(opcoes.map(function(o) {
+      var it = { label: o.label, ativo: o.v === atual, onclick: "vincSelecionarFiltro('" + campo + "','" + escapeJsAttr(o.v) + "')" };
+      if (o.dot) it.dot = o.dot;
+      if (o.ico) it.icone = o.ico;
+      return it;
+    }));
+  if (typeof abrirMenuSelecao === 'function') abrirMenuSelecao(ev.currentTarget, [{ itens: itens }]);
+}
+
+function vincSelecionarFiltro(campo, valor) {
+  estadoVinculos[_vincFiltrosDef[campo].chave] = valor;
+  estadoVinculos.paginaAtual = 1;
+  _vincSyncBarra();
+  _vincRenderCorpo();
+}
+
+function vincLimparUmFiltro(campo) { vincSelecionarFiltro(campo, ''); }
+
+function limparFiltrosVinculos() {
+  var inp = document.getElementById('vinc-filtro-busca'); if (inp) inp.value = '';
+  var caixa = document.getElementById('vinc-search-caixa'); if (caixa) caixa.classList.add('hidden');
+  var tg = document.getElementById('vinc-search-toggle'); if (tg) tg.classList.remove('hidden');
+  ['busca', 'filtroVinc', 'filtroStatus', 'filtroResp', 'filtroTipo'].forEach(function(k) { estadoVinculos[k] = ''; });
+  estadoVinculos.paginaAtual = 1;
+  _vincSyncBarra();
+  _vincRenderCorpo();
+}
+
+function _vincSyncBarra() {
+  var e = estadoVinculos;
+  var bc = document.getElementById('vinc-btn-clear'); if (bc) bc.classList.toggle('hidden', !e.busca);
+  var respTipo = {}; _vincListaUnica().forEach(function(p) { if (p.responsavel) respTipo[p.responsavel] = p.tipoResponsavel; });
+  var rot = {
+    vinc: e.filtroVinc ? _VINC_TIPO[e.filtroVinc].rot : '',
+    status: e.filtroStatus,
+    resp: e.filtroResp ? nomeRespExibicao(e.filtroResp, respTipo[e.filtroResp]) : '',
+    tipo: e.filtroTipo
+  };
+  Object.keys(_vincFiltrosDef).forEach(function(c) {
+    var v = rot[c];
+    var lb = document.getElementById('vinc-filtro-label-' + c);
+    if (lb) lb.textContent = v ? _vincFiltrosDef[c].label + ': ' + v : _vincFiltrosDef[c].label;
+    var bt = document.getElementById('vinc-filtro-btn-' + c); if (bt) bt.classList.toggle('el-filtro-btn--ativo', !!v);
+    var x = document.getElementById('vinc-filtro-x-' + c); if (x) x.classList.toggle('hidden', !v);
+  });
+  var bl = document.getElementById('vinc-btn-limpar'); if (bl) bl.classList.toggle('hidden', !_vincTemFiltro());
+}
+
+function _vincAtualizarContadorAba() {
+  var n = _vincListaUnica().filter(function(p) { return p.vtipo === 'decidir'; }).length;
+  var tit = n + (n === 1 ? ' vínculo aguarda sua decisão' : ' vínculos aguardam sua decisão');
+  _vinculosSDK.reportarAlerta(n, tit); // alerta (âmbar): vínculos que aguardam a decisão deste plano
+}
+
+function renderizarTabelaVinculos() {
+  var container = document.getElementById('vinc-corpo-wrap') || document.getElementById('vinculos-conteudo');
+  if (!container) return;
+  var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.editar);
+  var busca = estadoVinculos.busca;
+
+  container.innerHTML =
+    '<div id="vinc-filtros" class="el-filtros">'
+    +   '<div class="el-search" id="vinc-search-wrap">'
+    +     '<button type="button" class="ds-icon-action' + (busca ? ' hidden' : '') + '" id="vinc-search-toggle" onclick="vincAbrirBusca()" data-title="Buscar" aria-label="Buscar">'
+    +       '<span class="material-symbols-outlined">search</span></button>'
+    +     '<div class="el-search-caixa' + (busca ? '' : ' hidden') + '" id="vinc-search-caixa">'
+    +       '<span class="material-symbols-outlined el-search-icon" aria-hidden="true">search</span>'
+    +       '<input type="text" class="ds-input el-search-input" id="vinc-filtro-busca" placeholder="Buscar plano…" aria-label="Buscar plano"'
+    +         ' oninput="aplicarFiltrosVinculos()" value="' + escapeHtml(busca) + '">'
+    +       '<button type="button" class="el-search-clear hidden" id="vinc-btn-clear" onclick="vincLimparBusca()" data-title="Limpar busca" aria-label="Limpar busca">'
+    +         '<span class="material-symbols-outlined">close</span></button>'
+    +     '</div>'
+    +   '</div>'
+    +   ['vinc', 'status', 'resp', 'tipo'].map(function(c) {
+          return '<div class="el-filtro">'
+            + '<button type="button" class="el-filtro-btn" id="vinc-filtro-btn-' + c + '" onclick="vincAbrirFiltro(\'' + c + '\', event)">'
+            +   '<span id="vinc-filtro-label-' + c + '">' + _vincFiltrosDef[c].label + '</span>'
+            +   '<span class="material-symbols-outlined" style="font-size:18px">expand_more</span></button>'
+            + '<button type="button" class="el-filtro-x hidden" id="vinc-filtro-x-' + c + '" onclick="vincLimparUmFiltro(\'' + c + '\')" aria-label="Limpar filtro ' + _vincFiltrosDef[c].label.toLowerCase() + '">'
+            +   '<span class="material-symbols-outlined" style="font-size:15px">close</span></button>'
+            + '</div>';
+        }).join('')
+    +   '<button type="button" class="el-limpar-link hidden" id="vinc-btn-limpar" onclick="limparFiltrosVinculos()">Limpar filtros</button>'
+    +   '<div style="flex:1"></div>'
+    +   '<div class="det-split desktop-only-flex">'
+    +     (podeEditar
+            ? '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-main" id="btn-vincular-plano" onclick="abrirModalVincularPlano()">'
+              + '<span class="material-symbols-outlined">add_link</span> Vincular plano</button>'
+            : '')
+    +     '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-seta acoes-mais" onclick="abrirMenuVinculosMais(event)"'
+    +       ' data-title="Outras formas de vincular e exportar" aria-label="Mais opções de vínculos" aria-haspopup="menu" aria-expanded="false">'
+    +       '<span class="material-symbols-outlined">expand_more</span></button>'
+    +   '</div>'
+    + '</div>'
+
+    + '<div id="vinc-filtros-selecao" class="el-filtros-selecao hidden">'
+    +   '<button type="button" class="ds-icon-action" onclick="vincCancelarSelecao()" data-title="Cancelar seleção" aria-label="Cancelar seleção">'
+    +     '<span class="material-symbols-outlined">close</span></button>'
+    +   '<span class="el-selecao-texto" id="vinc-selecao-texto">0 selecionados</span>'
+    +   '<div class="el-selecao-divisor"></div>'
+    +   '<div class="el-selecao-acoes">'
+    +     '<button type="button" class="ds-icon-action" onclick="exportarVinculosCSV()" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
+    +     (podeEditar ? '<button type="button" class="ds-icon-action hidden" id="vinc-btn-desv-lote" onclick="vincDesvincularSelecionados()" data-title="Desvincular selecionados" aria-label="Desvincular selecionados"><span class="material-symbols-outlined">link_off</span></button>' : '')
+    +   '</div>'
+    + '</div>'
+
+    + '<div class="el-table-wrap">'
+    +   '<table class="el-tabela vinc-tabela" id="vinc-tabela">'
+    +     '<colgroup><col class="el-col-check"><col class="vinc-col-tipo"><col class="vinc-col-nome"><col class="vinc-col-resp"><col class="vinc-col-status"><col class="vinc-col-prog"><col class="vinc-col-acoes"></colgroup>'
+    +     '<thead><tr>'
+    +       '<th class="el-col-check"><input type="checkbox" id="chk-select-all-vinc" onchange="vincToggleSelecionarTodos(this.checked)" aria-label="Selecionar todos"></th>'
+    +       '<th class="th-sortable vinc-col-tipo" onclick="vincOrdenarPorColuna(\'tipo\')">Vínculo<span class="sort-icon" id="vinc-sort-icon-tipo"></span></th>'
+    +       '<th class="th-sortable vinc-col-nome" onclick="vincOrdenarPorColuna(\'nome\')">Plano<span class="sort-icon" id="vinc-sort-icon-nome"></span></th>'
+    +       '<th class="th-sortable vinc-col-resp" onclick="vincOrdenarPorColuna(\'responsavel\')">Responsável<span class="sort-icon" id="vinc-sort-icon-responsavel"></span></th>'
+    +       '<th class="th-sortable vinc-col-status" onclick="vincOrdenarPorColuna(\'status\')">Status<span class="sort-icon" id="vinc-sort-icon-status"></span></th>'
+    +       '<th class="th-sortable vinc-col-prog" onclick="vincOrdenarPorColuna(\'progresso\')">Progresso<span class="sort-icon" id="vinc-sort-icon-progresso"></span></th>'
+    +       '<th class="vinc-col-acoes"><div class="el-th-acoes">'
+    +         '<button type="button" class="el-th-btn" onclick="atualizarAbaVinculos()" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
+    +         '<button type="button" class="el-th-btn" onclick="exportarVinculosCSV()" data-title="Exportar vínculos" aria-label="Exportar vínculos"><span class="material-symbols-outlined">download</span></button>'
+    +         '<button type="button" class="el-th-btn" onclick="vincAbrirMenuOrdenar(event)" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
+    +       '</div></th>'
+    +     '</tr></thead>'
+    +     '<tbody id="vinc-tbody"></tbody>'
+    +   '</table>'
+    + '</div>'
+    + '<div id="vinc-pagination" class="pagination-bar rsc-pag">'
+    +   '<div class="pag-left"><span>Exibir:</span>'
+    +     '<select id="vinc-pag-size" onchange="vincMudarTamanho(this.value)" class="form-control form-control-sm">'
+    +       '<option value="10">10</option><option value="20">20</option><option value="50">50</option>'
+    +     '</select>'
+    +   '</div>'
+    +   '<div class="pag-center"><span id="vinc-pag-counter">0–0 de 0</span></div>'
+    +   '<div class="pag-right">'
+    +     '<button class="btn-pag" onclick="vincMudarPagina(\'prev\')" data-title="Anterior" aria-label="Página anterior"><span class="material-symbols-outlined">chevron_left</span></button>'
+    +     '<select id="vinc-pag-selector" onchange="vincIrParaPagina(this.value)" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>'
+    +     '<button class="btn-pag" onclick="vincMudarPagina(\'next\')" data-title="Próximo" aria-label="Próxima página"><span class="material-symbols-outlined">chevron_right</span></button>'
+    +   '</div>'
+    + '</div>';
+
+  _vincSyncBarra();
+  _vincRenderCorpo();
+}
+
+function _vincLinhaHTML(p, podeEditar) {
+  var T = _VINC_TIPO[p.vtipo], D = _VINC_DIR[p.direcao];
+  var chave = _vincChave(p), chj = escapeHtml(chave);
+  var idj = escapeHtml(String(p.id)), nomeJs = escapeJsAttr(p.nome || '');
+  var sel = !!estadoVinculos.selecionados[chave];
+  var decidir = p.vtipo === 'decidir';
+  var ehPendente = p.vtipo === 'decidir' || p.vtipo === 'aguardando';
+  var vig = p.anoInicio && p.anoFim ? (String(p.anoInicio) === String(p.anoFim) ? p.anoInicio : p.anoInicio + '–' + p.anoFim) : (p.anoInicio || p.anoFim || '');
+  var sub = (ehPendente && D) ? D.txt : [p.tipo, vig].filter(Boolean).join(' · ');
+  var idVincJs = escapeHtml(String(p.idVinculo || ''));
+
+  var acoes;
+  if (decidir) {
+    var aceitar = p.direcao === 'filho'
+      ? "aprovarVinculoPlano('" + idVincJs + "','" + nomeJs + "')"
+      : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','ACEITAR')";
+    var recusar = p.direcao === 'filho'
+      ? "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')"
+      : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','RECUSAR')";
+    var rotAceitar = p.direcao === 'filho' ? 'Aprovar' : 'Aceitar';
+    acoes = podeEditar
+      ? '<div class="vinc-decisao">'
+        + '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm vinc-btn-recusar" onclick="' + recusar + '" data-title="Recusar" aria-label="Recusar">'
+        +   '<span class="material-symbols-outlined">close</span><span class="vinc-btn-txt">Recusar</span></button>'
+        + '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm" onclick="' + aceitar + '" data-title="' + rotAceitar + '" aria-label="' + rotAceitar + '">'
+        +   '<span class="material-symbols-outlined">check</span><span class="vinc-btn-txt">' + rotAceitar + '</span></button>'
+        + '</div>'
+      : '';
+  } else {
+    var podeDefinirPrincipal = podeEditar && p.vtipo === 'superior' && p.papel && p.papel !== 'PRINCIPAL';
+    acoes = acoesLinhaHTML('vinc-' + chj, [
+      { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: "carregarDetalhesPlano('" + idj + "')", principal: true },
+      { icone: 'close', rotulo: 'Cancelar proposta', onclick: "cancelarPropostaVinculo('" + idVincJs + "','" + nomeJs + "')", principal: true, perigo: true,
+        oculto: !(podeEditar && ehPendente && p.direcao === 'proposta_enviada') },
+      { icone: 'close', rotulo: 'Cancelar pedido', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", principal: true, perigo: true,
+        oculto: !(podeEditar && ehPendente && p.direcao === 'superior') },
+      { icone: 'star', rotulo: 'Definir como Principal', onclick: "definirPlanoSuperiorPrincipal('" + idVincJs + "','" + nomeJs + "')",
+        oculto: !podeDefinirPrincipal },
+      { icone: 'link_off', rotulo: (p.vtipo === 'superior') ? 'Desvincular do plano superior' : 'Desvincular plano', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", principal: true, perigo: true,
+        oculto: !(podeEditar && !ehPendente && (p.vtipo === 'superior' || p.vtipo === 'subordinado')) }
+    ]);
+  }
+
+  var respNome = p.responsavel ? nomeRespExibicao(p.responsavel, p.tipoResponsavel) : '';
+  var icoResp = p.tipoResponsavel === 'USER' ? 'person' : 'apartment';
+  var nAdic = (p.respAdicionaisNomes && p.respAdicionaisNomes.length) || 0;
+  var titResp = nAdic > 0
+    ? 'Principal: ' + p.responsavel + ' | Adicionais: ' + p.respAdicionaisNomes.join(', ')
+    : (p.responsavel && p.responsavel !== respNome ? p.responsavel : '');
+
+  var resp = p.responsavel
+    ? '<span class="resp-badge el-resp-badge"' + (titResp ? ' data-title="' + escapeHtml(titResp) + '"' : '') + '>'
+      + '<span class="material-symbols-outlined">' + icoResp + '</span>'
+      + '<span class="el-resp-nome">' + escapeHtml(respNome || 'Não definido') + '</span>'
+      + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '')
+      + '</span>'
+    : '—';
+  var status = p.status
+    ? '<span class="vinc-status"><i style="background:' + (_VINC_COR_STATUS[p.status] || '#8a94a3') + '"></i>' + escapeHtml(p.status) + '</span>' : '—';
+  var pct = (p.progresso == null || isNaN(Number(p.progresso))) ? null : Math.max(0, Math.min(100, Number(p.progresso)));
+  var progHtml = pct === null
+    ? '<span class="vinc-sem-prog" data-title="Sem elementos para calcular o progresso">—</span>'
+    : '<div class="vinc-prog" data-title="Média do % de conclusão dos elementos (cancelados fora)">'
+      + '<div class="ds-kpi-track"><div class="ds-kpi-fill ds-tone-info" style="width:' + pct.toFixed(0) + '%"></div></div>'
+      + '<span class="vinc-prog-txt">' + pct.toFixed(0) + '%</span></div>';
+
+  return '<tr class="vinc-linha' + (decidir ? ' is-decidir' : '') + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"'
+    + ' onclick="vincCliqueLinha(event, \'' + chj + '\')" ondblclick="carregarDetalhesPlano(\'' + idj + '\')">'
+    + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="vincToggleSelecao(\'' + chj + '\', this.checked)" aria-label="Selecionar ' + escapeHtml(p.nome || '') + '"></td>'
+    + '<td class="vinc-col-tipo"><span class="vinc-tag vinc-tag--' + p.vtipo + '" data-title="' + T.tip + '"><span class="material-symbols-outlined">' + T.ico + '</span><span>' + T.rot + '</span></span></td>'
+    + '<td class="vinc-col-nome"><div class="vinc-nome-cel"><span class="vinc-nome" data-title="' + escapeHtml(p.nome || '') + '">' + escapeHtml(p.nome || '(sem nome)') + '</span>'
+    +   '<span class="vinc-sub" data-title="' + escapeHtml(sub) + '">' + escapeHtml(sub) + '</span></div></td>'
+    + '<td class="vinc-col-resp">' + resp + '</td>'
+    + '<td class="vinc-col-status">' + status + '</td>'
+    + '<td class="vinc-col-prog">' + progHtml + '</td>'
+    + '<td class="vinc-col-acoes">' + acoes + '</td>'
+    + '</tr>';
+}
+
+function _vincRenderCorpo() {
+  var tbody = document.getElementById('vinc-tbody');
+  if (!tbody) return;
+  var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.editar);
+  var todos = _vincListaUnica();
+  var listaCompleta = _vincSortLista(_vincFiltrar(todos));
+  var total = listaCompleta.length, itensPag = estadoVinculos.itensPorPagina;
+  var totalPags = Math.max(1, Math.ceil(total / itensPag));
+  if (estadoVinculos.paginaAtual > totalPags) estadoVinculos.paginaAtual = totalPags;
+  if (estadoVinculos.paginaAtual < 1) estadoVinculos.paginaAtual = 1;
+  var start = (estadoVinculos.paginaAtual - 1) * itensPag;
+  var lista = listaCompleta.slice(start, start + itensPag);
+
+  _vincAtualizarContadorAba();
+  _vincAtualizarIconesOrdenacao();
+
+  if (!lista.length) {
+    var vz = !todos.length
+      ? { icon: 'account_tree', titulo: 'Nenhum vínculo', detalhe: 'Use "Vincular plano" para ligar este plano a um superior ou a subordinados.' }
+      : { icon: 'filter_alt_off', titulo: 'Nenhum resultado para os filtros', detalhe: 'Tente ampliar ou limpar os filtros aplicados.' };
+    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="7"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">' + vz.icon + '</span>'
+      + '<p class="el-esti">' + vz.titulo + '</p><p>' + vz.detalhe + '</p></div></td></tr>';
+    _vincAtualizarPaginacao(0, 0);
+    _vincAtualizarSelecao([]);
+    return;
+  }
+
+  tbody.innerHTML = lista.map(function(p) { return _vincLinhaHTML(p, podeEditar); }).join('');
+  _vincAtualizarPaginacao(total, start);
+  _vincAtualizarSelecao(listaCompleta);
+}
+
+function vincMudarTamanho(val) {
+  estadoVinculos.itensPorPagina = parseInt(val, 10) || 10;
+  estadoVinculos.paginaAtual = 1;
+  _vincRenderCorpo();
+}
+
+function vincMudarPagina(dir) {
+  var total = _vincFiltrar(_vincListaUnica()).length;
+  var totalPags = Math.max(1, Math.ceil(total / estadoVinculos.itensPorPagina));
+  if (dir === 'prev' && estadoVinculos.paginaAtual > 1) estadoVinculos.paginaAtual--;
+  if (dir === 'next' && estadoVinculos.paginaAtual < totalPags) estadoVinculos.paginaAtual++;
+  if (estadoVinculos.paginaAtual < 1) estadoVinculos.paginaAtual = 1;
+  if (estadoVinculos.paginaAtual > totalPags) estadoVinculos.paginaAtual = totalPags;
+  _vincRenderCorpo();
+}
+
+function vincIrParaPagina(pg) {
+  var total = _vincFiltrar(_vincListaUnica()).length;
+  var totalPags = Math.max(1, Math.ceil(total / estadoVinculos.itensPorPagina));
+  var p = parseInt(pg, 10) || 1;
+  estadoVinculos.paginaAtual = Math.min(Math.max(1, p), totalPags);
+  _vincRenderCorpo();
+}
+
+function _vincAtualizarPaginacao(total, start) {
+  var pag = document.getElementById('vinc-pagination');
+  if (pag) pag.classList.remove('hidden');
+  if (typeof _atualizarBarraPaginacao === 'function') {
+    _atualizarBarraPaginacao('vinc', estadoVinculos, total, start);
+  }
+}
+
+function vincCliqueLinha(ev, chave) {
+  if (ev.target.closest('input, button, a, .acoes-linha, .vinc-decisao')) return;
+  var chaveStr = String(chave);
+
+  if (ev.shiftKey && _vincUltimaChaveClicada) {
+    var listaVisivel = _vincSortLista(_vincFiltrar(_vincListaUnica()));
+    var itensPag = estadoVinculos.itensPorPagina;
+    var start = (estadoVinculos.paginaAtual - 1) * itensPag;
+    var pagina = listaVisivel.slice(start, start + itensPag);
+    _vincSelecionarIntervalo(_vincUltimaChaveClicada, chaveStr, pagina);
+    _vincAtualizarSelecaoVisual();
+    return;
+  } else if (ev.ctrlKey || ev.metaKey) {
+    if (estadoVinculos.selecionados[chaveStr]) delete estadoVinculos.selecionados[chaveStr];
+    else estadoVinculos.selecionados[chaveStr] = true;
+    _vincUltimaChaveClicada = chaveStr;
+    _vincAtualizarSelecaoVisual();
+    return;
+  }
+
+  estadoVinculos.selecionados = {};
+  estadoVinculos.selecionados[chaveStr] = true;
+  _vincUltimaChaveClicada = chaveStr;
+  _vincAtualizarSelecaoVisual();
+}
+
+function _vincSelecionarIntervalo(chaveA, chaveB, pagina) {
+  var rows = pagina || _vincSortLista(_vincFiltrar(_vincListaUnica()));
+  var idxA = rows.findIndex(function(r) { return _vincChave(r) === String(chaveA); });
+  var idxB = rows.findIndex(function(r) { return _vincChave(r) === String(chaveB); });
+  if (idxA < 0 || idxB < 0) return;
+  var min = Math.min(idxA, idxB), max = Math.max(idxA, idxB);
+  for (var i = min; i <= max; i++) {
+    estadoVinculos.selecionados[_vincChave(rows[i])] = true;
+  }
+}
+
+function _vincAtualizarSelecaoVisual() {
+  var rows = document.querySelectorAll('#vinc-tbody tr.vinc-linha[data-chave]');
+  rows.forEach(function(tr) {
+    var chave = tr.dataset.chave;
+    var sel = !!(chave && estadoVinculos.selecionados[chave]);
+    tr.classList.toggle('selecionada', sel);
+    var chk = tr.querySelector('input[type="checkbox"]');
+    if (chk) chk.checked = sel;
+  });
+  var todos = _vincListaUnica();
+  var listaCompleta = _vincSortLista(_vincFiltrar(todos));
+  _vincAtualizarSelecao(listaCompleta);
+}
+
+function vincToggleSelecao(chave, marcado) {
+  var chaveStr = String(chave);
+  if (marcado) {
+    estadoVinculos.selecionados[chaveStr] = true;
+    _vincUltimaChaveClicada = chaveStr;
+  } else {
+    delete estadoVinculos.selecionados[chaveStr];
+  }
+  _vincAtualizarSelecaoVisual();
+}
+
+function vincToggleSelecionarTodos(marcado) {
+  estadoVinculos.selecionados = {};
+  if (marcado) {
+    _vincSortLista(_vincFiltrar(_vincListaUnica())).forEach(function(p) {
+      estadoVinculos.selecionados[_vincChave(p)] = true;
+    });
+  }
+  _vincAtualizarSelecaoVisual();
+}
+
+function vincCancelarSelecao() {
+  estadoVinculos.selecionados = {};
+  _vincUltimaChaveClicada = null;
+  _vincAtualizarSelecaoVisual();
+}
+
+function _vincAtualizarSelecao(listaVisivel) {
+  var porChave = {};
+  listaVisivel.forEach(function(p) { porChave[_vincChave(p)] = p; });
+  Object.keys(estadoVinculos.selecionados).forEach(function(k) { if (!porChave[k]) delete estadoVinculos.selecionados[k]; });
+  var chaves = Object.keys(estadoVinculos.selecionados), n = chaves.length;
+  var aprovados = chaves.filter(function(k) { var t = porChave[k].vtipo; return t === 'superior' || t === 'subordinado'; }).length;
+  var f = document.getElementById('vinc-filtros'), s = document.getElementById('vinc-filtros-selecao');
+  if (f) f.classList.toggle('hidden', n > 0);
+  if (s) s.classList.toggle('hidden', n === 0);
+  var t = document.getElementById('vinc-selecao-texto'); if (t) t.textContent = n + (n === 1 ? ' selecionado' : ' selecionados');
+  var bd = document.getElementById('vinc-btn-desv-lote');
+  if (bd) {
+    bd.classList.toggle('hidden', !aprovados);
+    bd.setAttribute('data-title', 'Desvincular ' + aprovados + (aprovados === 1 ? ' plano' : ' planos'));
+  }
+  var all = document.getElementById('chk-select-all-vinc');
+  if (all) { all.checked = listaVisivel.length > 0 && n === listaVisivel.length; all.indeterminate = n > 0 && n < listaVisivel.length; }
+}
+
+function vincDesvincularSelecionados() {
+  var lista = _vincListaUnica().filter(function(p) {
+    return estadoVinculos.selecionados[_vincChave(p)] && (p.vtipo === 'superior' || p.vtipo === 'subordinado');
+  });
+  if (!lista.length) return;
+  showConfirm('Desvincular planos?',
+    'Deseja remover ' + lista.length + (lista.length === 1 ? ' vínculo' : ' vínculos') + '? Os planos subordinados voltam a ser independentes.',
+    function() {
+      mostrarLoader();
+      var pend = lista.length, erros = [];
+      lista.forEach(function(p) {
+        google.script.run
+          .withSuccessHandler(fim)
+          .withFailureHandler(function(err) { erros.push(err.message); fim(); })
+          .apiDesvincularVinculo(p.idVinculo);
+      });
+      function fim() {
+        if (--pend > 0) return;
+        esconderLoader();
+        estadoVinculos.selecionados = {};
+        if (erros.length) showMessage('error', 'Alguns vínculos não foram removidos', escapeHtml(erros[0]));
+        else showMessage('success', 'Desvinculados', 'Vínculos removidos com sucesso.');
+        carregarAbaVinculos();
+      }
+    });
+}
+
+function aprovarVinculoPlano(idVinculo, nomeFilho) {
+  showConfirm(
+    'Aprovar Vínculo?',
+    'Deseja aprovar o vínculo do plano <strong>' + escapeHtml(nomeFilho) + '</strong> com este plano?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+        .apiAprovarVinculoPlano(idVinculo);
+    }
+  );
+}
+
+function desvincularVinculo(idVinculo, nomeAlvo) {
+  showConfirm(
+    'Desvincular Plano?',
+    'Deseja remover este vínculo com <strong>' + escapeHtml(nomeAlvo) + '</strong>?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+        .apiDesvincularVinculo(idVinculo);
+    }
+  );
+}
+
+function definirPlanoSuperiorPrincipal(idVinculo, nomeAlvo) {
+  mostrarLoader();
+  google.script.run
+    .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
+    .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+    .apiDefinirPlanoSuperiorPrincipal(idVinculo);
+}
+
+function cancelarPropostaVinculo(idVinculo, nomeAlvo) {
+  showConfirm(
+    'Cancelar Proposta?',
+    'Deseja cancelar a proposta de vínculo enviada para <strong>' + escapeHtml(nomeAlvo) + '</strong>?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+        .apiCancelarPropostaVinculo(idVinculo);
+    }
+  );
+}
+
+function responderPropostaVinculo(idVinculo, nomeProponente, resposta) {
+  var aceitar = resposta === 'ACEITAR';
+  showConfirm(
+    aceitar ? 'Aceitar Proposta?' : 'Recusar Proposta?',
+    aceitar
+      ? 'Deseja aceitar a proposta de <strong>' + escapeHtml(nomeProponente) + '</strong> para se tornar o plano superior deste plano?'
+      : 'Deseja recusar a proposta de <strong>' + escapeHtml(nomeProponente) + '</strong>?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() {
+          esconderLoader();
+          showMessage('success', aceitar ? 'Aceita' : 'Recusada', aceitar ? 'Vínculo definido.' : 'Proposta recusada.');
+          carregarAbaVinculos();
+        })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+        .apiResponderPropostaVinculoSubordinado(idVinculo, resposta);
+    }
+  );
+}
+
+function abrirMenuVinculosMais(ev) {
+  var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.editar);
+  var itens = [
+    { icone: 'north', rotulo: 'Vincular a um plano superior', descricao: 'Adicionar mais um plano superior ao qual este plano contribui',
+      onclick: "abrirModalVincularPlano('superior')", oculto: !podeEditar },
+    { icone: 'south', rotulo: 'Propor plano subordinado', descricao: 'Convidar outro plano a se subordinar a este',
+      onclick: "abrirModalVincularPlano('subordinado')", oculto: !podeEditar },
+    { icone: 'download', rotulo: 'Exportar vínculos', descricao: 'Baixar os vínculos do plano (CSV)', onclick: 'exportarVinculosCSV()' }
+  ].filter(function(i) { return !i.oculto; });
+  if (typeof _acoesLinhaNormalizar === 'function') itens = itens.map(_acoesLinhaNormalizar);
+  if (typeof _acoesLinhaReg !== 'undefined') _acoesLinhaReg['vinculos-mais'] = { menu: itens, todos: itens };
+  if (typeof acoesLinhaMenu === 'function') acoesLinhaMenu('vinculos-mais', ev);
+}
+
+function exportarVinculosCSV() {
+  var idPlano = _vincCtx && _vincCtx.idPlano;
+  if (!idPlano) return showMessage('error', 'Erro', 'Nenhum plano carregado.');
+  var d = _vincDados();
+  var direcaoLabel = { superior: 'Subordinante', filho: 'Subordinado (pendente)', proposta_enviada: 'Proposta enviada', proposta_recebida: 'Proposta recebida' };
+  var todos = []
+    .concat(d.superAprov.map(function(p) { return Object.assign({ direcaoLabel: 'Subordinante' }, p); }))
+    .concat(d.subAprov.map(function(p) { return Object.assign({ direcaoLabel: 'Subordinado' }, p); }))
+    .concat(d.pendentes.map(function(p) { return Object.assign({ direcaoLabel: direcaoLabel[p.direcao] || 'Pendente' }, p); }));
+  var cab = ['Direcao', 'Tipo', 'Nome', 'Vigencia', 'Responsavel', 'Status', 'Progresso'];
+  var fnCell = typeof _csvCell === 'function' ? _csvCell : function(v) { return '"' + String(v || '').replace(/"/g, '""') + '"'; };
+  var linhas = [cab.map(fnCell).join(',')];
+  todos.forEach(function(p) {
+    var vigencia = p.anoInicio && p.anoFim ? p.anoInicio + '-' + p.anoFim : (p.anoInicio || p.anoFim || '');
+    var prog = (p.progresso == null || isNaN(Number(p.progresso))) ? '' : (Math.round(p.progresso) + '%');
+    linhas.push([p.direcaoLabel, p.tipo || '', p.nome || '', vigencia, p.responsavel || '', p.status || '', prog].map(fnCell).join(','));
+  });
+  var nomePlano = (_vincCtx && _vincCtx.plano && _vincCtx.plano.nome) || 'plano';
+  var nomeLimpo = nomePlano.replace(/[^\wÀ-ɏ]/g, '_');
+  if (typeof _downloadCSV === 'function') {
+    _downloadCSV(linhas.join('\n'), 'vinculos_' + nomeLimpo + '.csv');
+  }
+}
+
+// ================================================================
+// MODAL VINCULAR PLANO (PORTAL)
+// ================================================================
+function abrirModalVincularPlano(abaInicial) {
+  var idPlanoAtual = _vincCtx && _vincCtx.idPlano;
+  if (!idPlanoAtual) return;
+
+  var aba = (abaInicial === 'subordinado') ? 'subordinado' : 'superior';
+  estadoVincModal.aba = aba;
+  estadoVincModal.busca = ''; estadoVincModal.filtroResp = '';
+  estadoVincModal.paginaAtual = 1;
+  estadoVincModal.candidatosSuperior = [];
+  estadoVincModal.candidatosSubordinado = [];
+
+  var fb = document.getElementById('vp-filtro-busca'); if (fb) fb.value = '';
+  var bc = document.getElementById('vp-btn-clear'); if (bc) bc.style.display = 'none';
+  var ts = document.getElementById('vp-toggle-superior'); if (ts) ts.classList.toggle('active', aba === 'superior');
+  var tb = document.getElementById('vp-toggle-subordinado'); if (tb) tb.classList.toggle('active', aba === 'subordinado');
+  var tbody = document.getElementById('vp-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="padding:0">' + spinnerListaHTML() + '</td></tr>';
+
+  var modal = document.getElementById('modal-vincular-plano');
+  if (modal) modal.classList.remove('hidden');
+  if (typeof bloquearFundo === 'function') bloquearFundo();
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      estadoVincModal.candidatosSuperior = (res && res.candidatosSuperior) || [];
+      estadoVincModal.candidatosSubordinado = (res && res.candidatosSubordinado) || [];
+      vpPopularFiltroResp();
+      vpRenderLista();
+    })
+    .withFailureHandler(function(err) {
+      var tb = document.getElementById('vp-tbody');
+      if (tb) tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(err.message) + '</td></tr>';
+    })
+    .apiGetPlanosVinculavel(idPlanoAtual);
+}
+
+function fecharModalVincularPlano() {
+  var modal = document.getElementById('modal-vincular-plano');
+  if (modal) modal.classList.add('hidden');
+  if (typeof desbloquearFundo === 'function') desbloquearFundo();
+}
+
+function vpMudarAba(key) {
+  if (estadoVincModal.aba === key) return;
+  estadoVincModal.aba = key;
+  estadoVincModal.paginaAtual = 1;
+  var ts = document.getElementById('vp-toggle-superior'); if (ts) ts.classList.toggle('active', key === 'superior');
+  var tb = document.getElementById('vp-toggle-subordinado'); if (tb) tb.classList.toggle('active', key === 'subordinado');
+  vpPopularFiltroResp();
+  vpRenderLista();
+}
+
+function _vpListaAtiva() {
+  return estadoVincModal.aba === 'superior' ? estadoVincModal.candidatosSuperior : estadoVincModal.candidatosSubordinado;
+}
+
+function vpPopularFiltroResp() {
+  var todosResp = [];
+  _vpListaAtiva().forEach(function(p) {
+    if (p.responsavel && todosResp.indexOf(p.responsavel) === -1) todosResp.push(p.responsavel);
+  });
+  todosResp.sort();
+  var sel = document.getElementById('vp-filtro-resp');
+  if (!sel) return;
+  var atual = sel.value;
+  sel.innerHTML = '<option value="">Todos os responsáveis</option>'
+    + todosResp.map(function(r) { return '<option value="' + escapeHtml(r) + '">' + escapeHtml(r) + '</option>'; }).join('');
+  if (todosResp.indexOf(atual) > -1) sel.value = atual;
+  else estadoVincModal.filtroResp = '';
+}
+
+function vpAplicarFiltros() {
+  estadoVincModal.busca = (document.getElementById('vp-filtro-busca') || {}).value || '';
+  estadoVincModal.filtroResp = (document.getElementById('vp-filtro-resp') || {}).value || '';
+  estadoVincModal.paginaAtual = 1;
+  var bc = document.getElementById('vp-btn-clear'); if (bc) bc.style.display = estadoVincModal.busca ? 'flex' : 'none';
+  vpRenderLista();
+}
+
+function vpLimparFiltroBusca() {
+  estadoVincModal.busca = '';
+  var fb = document.getElementById('vp-filtro-busca'); if (fb) fb.value = '';
+  vpAplicarFiltros();
+}
+
+function vpMudarPagina(dir) {
+  var total = _vpFiltrar(_vpListaAtiva()).length;
+  var totalPags = Math.max(1, Math.ceil(total / estadoVincModal.itensPorPagina));
+  if (dir === 'prev' && estadoVincModal.paginaAtual > 1) estadoVincModal.paginaAtual--;
+  if (dir === 'next' && estadoVincModal.paginaAtual < totalPags) estadoVincModal.paginaAtual++;
+  vpRenderLista();
+}
+
+function vpIrParaPagina(pg) {
+  estadoVincModal.paginaAtual = parseInt(pg, 10) || 1;
+  vpRenderLista();
+}
+
+function _vpFiltrar(lista) {
+  var busca = estadoVincModal.busca.toLowerCase();
+  var fResp = estadoVincModal.filtroResp;
+  return lista.filter(function(p) {
+    if (busca && String(p.nome || '').toLowerCase().indexOf(busca) === -1) return false;
+    if (fResp && p.responsavel !== fResp) return false;
+    return true;
+  });
+}
+
+function vpRenderLista() {
+  var tbody = document.getElementById('vp-tbody');
+  var pag = document.getElementById('vp-pagination');
+  if (!tbody || !pag) return;
+
+  var listaCompleta = _vpFiltrar(_vpListaAtiva());
+  var total = listaCompleta.length;
+  var itensPag = estadoVincModal.itensPorPagina;
+  var totalPags = Math.max(1, Math.ceil(total / itensPag));
+  if (estadoVincModal.paginaAtual > totalPags) estadoVincModal.paginaAtual = totalPags;
+  var start = (estadoVincModal.paginaAtual - 1) * itensPag;
+  var lista = listaCompleta.slice(start, start + itensPag);
+
+  if (lista.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px 12px;color:var(--ds-color-text-muted);font-size:0.85rem">'
+      + 'Nenhum plano ' + (estadoVincModal.aba === 'superior' ? 'disponível como superior' : 'disponível para se tornar subordinado') + '.</td></tr>';
+    pag.classList.add('hidden');
+    return;
+  }
+
+  tbody.innerHTML = lista.map(function(p) {
+    var idj = escapeHtml(String(p.id));
+    var nomeJs = escapeJsAttr(p.nome);
+    var vigencia = p.anoInicio && p.anoFim ? p.anoInicio + '–' + p.anoFim : (p.anoInicio || p.anoFim || '—');
+    var acao = estadoVincModal.aba === 'superior'
+      ? '<button class="btn btn-primary btn-sm" onclick="vpVincularSuperior(\'' + idj + '\',\'' + nomeJs + '\')">Vincular</button>'
+      : '<button class="btn btn-outline btn-sm" onclick="vpSolicitarSubordinado(\'' + idj + '\',\'' + nomeJs + '\')">Solicitar Vínculo</button>';
+    return '<tr>'
+      + '<td>' + escapeHtml(p.tipo || '—') + '</td>'
+      + '<td>' + escapeHtml(p.nome) + '</td>'
+      + '<td>' + vigencia + '</td>'
+      + '<td>' + escapeHtml(p.responsavel || '—') + '</td>'
+      + '<td>' + _vincBadgeStatus(p.status) + '</td>'
+      + '<td style="text-align:right">' + acao + '</td>'
+      + '</tr>';
+  }).join('');
+
+  pag.classList.remove('hidden');
+  var fim = Math.min(start + itensPag, total);
+  var cnt = document.getElementById('vp-pag-counter');
+  if (cnt) cnt.textContent = (total === 0 ? '0' : (start + 1) + '–' + fim) + ' de ' + total;
+  var sel = document.getElementById('vp-pag-selector');
+  if (sel) {
+    sel.innerHTML = '';
+    for (var i = 1; i <= totalPags; i++) {
+      var opt = document.createElement('option');
+      opt.value = i; opt.text = i;
+      if (i === estadoVincModal.paginaAtual) opt.selected = true;
+      sel.appendChild(opt);
+    }
+  }
+  var btnPrev = pag.querySelector('.btn-pag[onclick*="prev"]');
+  var btnNext = pag.querySelector('.btn-pag[onclick*="next"]');
+  if (btnPrev) btnPrev.disabled = (estadoVincModal.paginaAtual === 1);
+  if (btnNext) btnNext.disabled = (estadoVincModal.paginaAtual >= totalPags);
+}
+
+function vpVincularSuperior(idAlvo, nomeAlvo) {
+  var idPlanoAtual = _vincCtx && _vincCtx.idPlano;
+  if (!idPlanoAtual) return;
+  showConfirm(
+    'Vincular Plano?',
+    'Deseja vincular este plano a <strong>' + escapeHtml(nomeAlvo) + '</strong> como plano superior?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() {
+          esconderLoader();
+          fecharModalVincularPlano();
+          showMessage('success', 'Vinculado', 'Plano superior definido.');
+          carregarAbaVinculos();
+        })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
+        .apiVincularASuperior(idPlanoAtual, idAlvo);
+    }
+  );
+}
+
+function vpSolicitarSubordinado(idAlvo, nomeAlvo) {
+  var idPlanoAtual = _vincCtx && _vincCtx.idPlano;
+  if (!idPlanoAtual) return;
+  showConfirm(
+    'Solicitar Vínculo?',
+    'Deseja propor que <strong>' + escapeHtml(nomeAlvo) + '</strong> se torne subordinado deste plano? A outra parte precisa aceitar antes do vínculo valer.',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() {
+          esconderLoader();
+          fecharModalVincularPlano();
+          showMessage('success', 'Proposta enviada', 'Aguardando aceite do responsável do plano.');
+          carregarAbaVinculos();
+        })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
+        .apiPropoQuerVinculoSubordinado(idPlanoAtual, idAlvo);
+    }
+  );
+}
+
+// ================================================================
+// CARREGAMENTO DOS DADOS DO APP
+// ================================================================
+function carregarAbaVinculos() {
+  var idPlano = _vincCtx && _vincCtx.idPlano;
+  if (!idPlano) return;
+  _vincCarregando = true;
+
+  renderizarTabelaVinculos();
+  var tbodyVinc = document.getElementById('vinc-tbody');
+  if (tbodyVinc) tbodyVinc.innerHTML = '<tr class="el-linha-msg"><td colspan="7" style="padding:0">' + spinnerListaHTML() + '</td></tr>';
+
+  _vinculosSDK.chamar('apiGetAbaVinculos', idPlano).then(function(res) {
+    if (!_vincCtx || String(_vincCtx.idPlano) !== String(idPlano)) return; // resposta de um plano já abandonado
+    _vincCarregando = false;
+    _vincCarregado = true;
+    _vincDadosCache = {
+      planosVinculados: (res && res.planosVinculados) || [],
+      propostasEnviadas: (res && res.propostasEnviadas) || [],
+      propostasRecebidas: (res && res.propostasRecebidas) || [],
+      planosSuperiores: (res && res.planosSuperiores) || []
+    };
+    // O resumo do plano no cabeçalho (planosSuperiores) pertence ao host: informa via SDK
+    _vinculosSDK.reportarDados({ plano: { planosSuperiores: _vincDadosCache.planosSuperiores } });
+    _vincAtualizarContadorAba();
+    renderizarTabelaVinculos();
+  }, function(err) {
+    if (!_vincCtx || String(_vincCtx.idPlano) !== String(idPlano)) return;
+    _vincCarregando = false;
+    var el = document.getElementById('vinc-tbody');
+    if (el) el.innerHTML = '<tr class="el-linha-msg"><td colspan="7" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(err.message) + '</td></tr>';
+  });
+}
+
+function atualizarAbaVinculos() { carregarAbaVinculos(); }
+
+// ================================================================
+// HANDSHAKE COM O HOST
+// ================================================================
+_vinculosSDK.aoVisibilidade(function(v) {
+  _vincVis = v;
+  if (v.aba && v.pagina && _vincCtx && !_vincCarregado && !_vincCarregando) {
+    carregarAbaVinculos();
+  }
+});
+
+_vinculosSDK.aoContexto(function(ctx) {
+  if (_vincCtx && String(_vincCtx.idPlano) === String(ctx.idPlano)) {
+    _vincCtx = ctx;
+    if (_vincCarregado) {
+      renderizarTabelaVinculos();
+      _vincAtualizarContadorAba();
+    }
+    return;
+  }
+  _vincCtx = ctx;
+  _vincCarregado = false;
+  _vincCarregando = false;
+  _vincDadosCache = { planosVinculados: [], propostasEnviadas: [], propostasRecebidas: [], planosSuperiores: [] };
+  estadoVinculos.busca = '';
+  estadoVinculos.filtroVinc = '';
+  estadoVinculos.filtroStatus = '';
+  estadoVinculos.filtroResp = '';
+  estadoVinculos.filtroTipo = '';
+  estadoVinculos.paginaAtual = 1;
+  estadoVinculos.selecionados = {};
+  if (_vincVis.aba && _vincVis.pagina) {
+    carregarAbaVinculos();
+  }
+});
+
+_vinculosSDK.aoTecla(function(evt) {
+  if (evt.key === 'Escape') {
+    if (typeof vincCancelarSelecao === 'function' && Object.keys(estadoVinculos.selecionados || {}).length > 0) {
+      vincCancelarSelecao();
+      return true;
+    }
+  } else if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && String(evt.key).toLowerCase() === 'a') {
+    if (typeof vincToggleSelecionarTodos === 'function') {
+      vincToggleSelecionarTodos(true);
+      return true;
+    }
+  }
+  return false;
+});
+
+// Compatibilidade global
+window.carregarAbaVinculos = carregarAbaVinculos;
+window.atualizarAbaVinculos = atualizarAbaVinculos;
+window.renderizarTabelaVinculos = renderizarTabelaVinculos;
+window.abrirModalVincularPlano = abrirModalVincularPlano;
+window.fecharModalVincularPlano = fecharModalVincularPlano;
+window.vincToggleSelecionarTodos = vincToggleSelecionarTodos;
+window.vincCancelarSelecao = vincCancelarSelecao;
+window.estadoVinculos = estadoVinculos;
+window._vinculosSDK = _vinculosSDK;
+</script>
