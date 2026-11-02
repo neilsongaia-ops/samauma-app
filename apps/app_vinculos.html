@@ -148,121 +148,136 @@ function criarSamaumaSDK() {
 
 
 <style>
-/* ── VÍNCULOS: lista única (reaproveita .el-tabela do design system) ─────────── */
+/* ── VÍNCULOS: lista única (reaproveita .el-tabela / .el-toggle-btn / acoesLinhaHTML do host) ──
+   Classes próprias (.vinc-lista, .vinc-row, .vinc-c-*) para não herdar o bloco antigo de .vinc-tabela
+   que ainda existe em pages_plano_detalhe.html. Situação = só ícone colorido + faixa lateral. */
 #view-vinculos .el-tabela thead th { top: calc(var(--det-sticky-top) + var(--det-tabs-h) + 56px); }
-.vinc-tabela col.vinc-col-tipo,   .vinc-tabela .vinc-col-tipo   { width: 130px; }
-.vinc-tabela col.vinc-col-nome,   .vinc-tabela .vinc-col-nome   { width: auto; max-width: 0; overflow: hidden; }
-.vinc-tabela col.vinc-col-resp,   .vinc-tabela .vinc-col-resp   { width: 175px; white-space: nowrap; overflow: hidden; }
-.vinc-tabela col.vinc-col-status, .vinc-tabela .vinc-col-status { width: 120px; }
-.vinc-tabela col.vinc-col-prog,   .vinc-tabela .vinc-col-prog   { width: 115px; white-space: nowrap; }
-.vinc-tabela col.vinc-col-acoes,  .vinc-tabela .vinc-col-acoes  { width: 208px; text-align: right; padding-left: 4px; padding-right: 14px; box-sizing: border-box; }
-.vinc-tabela tbody tr.vinc-linha { cursor: pointer; }
-.vinc-tabela tbody tr.vinc-linha td { padding-top: 10px; padding-bottom: 10px; }
+.vinc-lista { --vinc-azul: var(--ds-color-info-fg); --vinc-verde: var(--ds-color-success-fg); --vinc-ambar: var(--ds-color-warning-fg);
+  --vinc-roxo: #7b2cbf; --vinc-vermelho: var(--ds-color-danger-fg); }
+[data-ds-theme="dark"] .vinc-lista { --vinc-roxo: #c9a2ff; }
+body.high-contrast .vinc-lista { --vinc-roxo: #d6b8ff; }
+.vinc-row--superior    { --vinc-cor: var(--vinc-azul); }
+.vinc-row--subordinado { --vinc-cor: var(--vinc-verde); }
+.vinc-row--decidir     { --vinc-cor: var(--vinc-ambar); }
+.vinc-row--aguardando  { --vinc-cor: var(--vinc-roxo); }
+.vinc-row--desvinculado, .vinc-sub { --vinc-cor: var(--vinc-vermelho); }
 
-/* barra de progresso do plano vinculado */
-.vinc-prog { display: flex; align-items: center; gap: 8px; }
-.vinc-prog .ds-kpi-track { width: 68px; flex: none; }
-.vinc-prog-txt { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); min-width: 32px; }
-.vinc-sem-prog { color: var(--ds-color-text-muted); }
+.vinc-lista col.vinc-c-sit,    .vinc-lista .vinc-c-sit    { width: 96px; padding-left: 12px; padding-right: 8px; overflow: hidden; }
+.vinc-lista col.vinc-c-nome,   .vinc-lista .vinc-c-nome   { width: auto; max-width: 0; overflow: hidden; }
+.vinc-lista col.vinc-c-resp,   .vinc-lista .vinc-c-resp   { width: 176px; white-space: nowrap; overflow: hidden; }
+.vinc-lista col.vinc-c-status, .vinc-lista .vinc-c-status { width: 136px; white-space: nowrap; overflow: hidden; }
+.vinc-lista col.vinc-c-prog,   .vinc-lista .vinc-c-prog   { width: 124px; white-space: nowrap; overflow: hidden; }
+.vinc-lista col.vinc-c-acoes,  .vinc-lista .vinc-c-acoes  { width: 116px; text-align: right; padding-left: 4px; padding-right: 12px; white-space: nowrap; overflow: hidden; }
+.vinc-lista.tem-decisao col.vinc-c-acoes, .vinc-lista.tem-decisao .vinc-c-acoes { width: 236px; }
+.vinc-lista thead th.vinc-c-acoes { text-align: right; overflow: visible; }
+.vinc-lista tbody td { box-sizing: border-box; }
+.vinc-lista tbody tr.vinc-row td { padding-top: 10px; padding-bottom: 10px; }
+.vinc-lista tbody tr.vinc-row > td:first-child,
+.vinc-lista tbody tr.vinc-sub > td:first-child { box-shadow: inset 3px 0 0 var(--vinc-cor); }
+.vinc-lista tbody tr.vinc-sub > td:first-child { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--vinc-cor) 45%, transparent); }
 
-/* cores por tipo de vínculo */
-.vinc-tag { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 10px 3px 8px; border-radius: var(--ds-radius-pill);
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); white-space: nowrap; }
-.vinc-tag .material-symbols-outlined { font-size: 15px; }
-.vinc-tag span:last-child { overflow: hidden; text-overflow: ellipsis; }
-.vinc-tag--decidir     { background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg); }
-.vinc-tag--aguardando  { background: color-mix(in srgb, #7b2cbf 12%, var(--ds-color-surface)); color: #7b2cbf; }
-.vinc-tag--superior    { background: var(--ds-color-info-bg); color: var(--ds-color-action); }
-.vinc-tag--subordinado { background: var(--ds-color-success-bg); color: var(--ds-color-success-fg); }
-.vinc-tabela tr.vinc-linha.is-decidir td { background: color-mix(in srgb, var(--ds-color-warning-bg) 45%, var(--ds-color-surface)); }
-.vinc-tabela tr.vinc-linha.is-decidir td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-warning); }
-.vinc-tabela tr.vinc-linha.is-decidir:hover td { background: var(--ds-color-warning-bg); }
+/* situação: só ícone colorido; a explicação fica no tooltip */
+.vinc-sit { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: var(--ds-r-md); color: var(--vinc-cor); outline-offset: 1px; }
+.vinc-sit .material-symbols-outlined { font-size: 18px; }
 
-.vinc-nome-cel { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.vinc-nome { font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.vinc-sub { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-tr.is-decidir .vinc-sub { color: var(--ds-color-warning-fg); }
-:is(.vinc-tabela, .rsc-tabela) .resp-badge { max-width: 100%; }
-/* nível do plano (mesmo visual da lista de planos: .pll-tipo) + seta de direção do vínculo aprovado */
+/* nível do plano: mesmo visual de .pll-tipo (lista de planos), com largura fixa para os nomes alinharem */
 .vinc-plano { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.vinc-tipo-plano { flex-shrink: 0; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; white-space: nowrap;
-  padding: 1px 8px; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); }
-.vinc-seta { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--ds-radius-pill); }
-.vinc-seta .material-symbols-outlined { font-size: 18px; }
-.vinc-seta--superior    { background: var(--ds-color-info-bg); color: var(--ds-color-action); }
-.vinc-seta--subordinado { background: var(--ds-color-success-bg); color: var(--ds-color-success-fg); }
-.vinc-tipo-cel { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; }
-.vinc-tipo-cel .ds-icon-action { width: 28px; height: 28px; min-width: 28px; }
+.vinc-nivel { flex: none; box-sizing: border-box; width: 96px; text-align: center; overflow: hidden; text-overflow: ellipsis;
+  font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; white-space: nowrap; line-height: 16px;
+  padding: 1px 6px; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); }
+.vinc-nivel--vazio { visibility: hidden; }
+.vinc-nome { min-width: 0; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vinc-lista .resp-badge { max-width: 100%; }
 
-/* linhas expandidas do plano desvinculado: um item por vínculo guardado */
-.vinc-tag--item { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); }
-.vinc-tabela tr.vinc-subitem td { padding: 8px 12px 8px 64px; background: color-mix(in srgb, var(--ds-color-danger) 4%, var(--ds-color-surface)); box-shadow: inset 3px 0 0 var(--ds-color-danger); }
-.vinc-subitem-cel { display: flex; align-items: center; gap: 12px; min-width: 0; font-size: var(--ds-text-sm); }
-.vinc-subitem-tit { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ds-color-text); }
-.vinc-subitem-sup { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; gap: 6px; color: var(--ds-color-text-muted); overflow: hidden; }
-.vinc-subitem-sup span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vinc-subitem-sup .material-symbols-outlined { font-size: 16px; flex: none; }
+.vinc-prog { display: flex; align-items: center; gap: 8px; }
+.vinc-prog .ds-kpi-track { width: 64px; flex: none; }
+.vinc-prog-txt { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); min-width: 32px; }
+.vinc-vazio { color: var(--ds-color-text-muted); }
 
-/* decisão sempre visível */
-.vinc-decisao { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap; }
-.vinc-decisao .ds-btn {
-  height: 30px; min-height: 30px; padding: 0 10px;
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
-  gap: 4px; border-radius: var(--ds-r-md); white-space: nowrap; flex-shrink: 0;
+/* decisão (Aguarda você): botões com texto + ⋮ */
+.vinc-lista .vinc-decisao { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap; max-width: 100%; }
+.vinc-lista .vinc-decisao .ds-btn { height: 30px; min-height: 30px; padding: 0 10px; gap: 4px; flex-shrink: 0;
+  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); border-radius: var(--ds-r-md); white-space: nowrap; }
+.vinc-lista .vinc-decisao .ds-btn .material-symbols-outlined { font-size: 16px; }
+.vinc-lista tr.vinc-row--decidir .acoes-linha { opacity: 1; }
+
+/* desvinculado: linha expansível (chevron .el-toggle-btn do host, igual à aba Elementos) */
+.vinc-lista tr.vinc-sub { display: none; cursor: default; }
+.vinc-lista tr.vinc-sub.vinc-visivel { display: table-row; }
+.vinc-lista tbody tr.vinc-sub td { padding-top: 8px; padding-bottom: 8px; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); }
+.vinc-lista tbody tr.vinc-sub:hover td { background: transparent; }
+.vinc-sub-tipo { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; color: var(--ds-color-text-muted); }
+.vinc-sub-tipo .material-symbols-outlined { font-size: 18px; }
+.vinc-sub-cel { display: flex; align-items: center; gap: 16px; min-width: 0; padding-left: 106px; }
+.vinc-sub-tit { flex: 1 1 0; min-width: 0; color: var(--ds-color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vinc-sub-sup { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; gap: 6px; overflow: hidden; }
+.vinc-sub-sup .material-symbols-outlined { font-size: 16px; flex: none; }
+.vinc-sub-sup span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* barra lateral */
+.vinc-detp-cab { margin-bottom: 18px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.vinc-detp-cab h3 { margin: 0; font-size: 1.15rem; font-weight: 600; line-height: 1.35; color: var(--ds-color-text); }
+.vinc-detp-sit { display: inline-flex; align-items: center; gap: 6px; color: var(--vinc-cor); font-weight: var(--ds-weight-semibold); }
+.vinc-detp-sit .material-symbols-outlined { font-size: 18px; }
+.vinc-detp-guard { color: var(--ds-color-text-muted) !important; }
+
+/* colunas que saem: a célula continua na tabela (largura 0), só o conteúdo some — nada desloca */
+@media (min-width: 769px) and (max-width: 1280px) {
+  .vinc-lista col.vinc-c-prog { width: 0; }
+  .vinc-lista .vinc-c-prog { padding: 0 !important; }
+  .vinc-lista .vinc-c-prog > * { display: none !important; }
+  .vinc-lista col.vinc-c-resp, .vinc-lista .vinc-c-resp { width: 160px; }
 }
-.vinc-decisao .ds-btn .material-symbols-outlined { font-size: 16px; }
-
-/* hover-actions nas demais linhas */
-.vinc-tabela tr.vinc-linha:not(.is-decidir) .acoes-linha { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
-.vinc-tabela tr.vinc-linha:hover .acoes-linha,
-.vinc-tabela tr.vinc-linha.selecionada .acoes-linha,
-.vinc-tabela tr.vinc-linha .acoes-linha:focus-within,
-.vinc-tabela tr.vinc-linha .acoes-linha:has([aria-expanded="true"]) { opacity: 1; }
-
-@media (max-width: 1100px) {
-  .vinc-tabela .vinc-col-resp, .vinc-tabela .vinc-col-status, .vinc-tabela .vinc-col-prog { display: none; }
-  .vinc-tabela col.vinc-col-resp, .vinc-tabela col.vinc-col-status, .vinc-tabela col.vinc-col-prog { width: 0; }
-  .vinc-tabela col.vinc-col-acoes, .vinc-tabela .vinc-col-acoes { width: 90px; padding-right: 10px; }
-  .vinc-decisao .vinc-btn-txt { display: none; }          /* só ícones ✓ ✕ */
-  .vinc-decisao .ds-btn { width: 30px; min-width: 30px; padding: 0; justify-content: center; }
-  .vinc-decisao .ds-btn .material-symbols-outlined { font-size: 18px; }
+@media (min-width: 769px) and (max-width: 1100px) {
+  .vinc-lista col.vinc-c-resp, .vinc-lista col.vinc-c-status { width: 0; }
+  .vinc-lista .vinc-c-resp, .vinc-lista .vinc-c-status { padding: 0 !important; }
+  .vinc-lista .vinc-c-resp > *, .vinc-lista .vinc-c-status > * { display: none !important; }
+  .vinc-lista.tem-decisao col.vinc-c-acoes, .vinc-lista.tem-decisao .vinc-c-acoes { width: 124px; }
+  .vinc-lista .vinc-decisao .vinc-btn-txt { display: none; }
+  .vinc-lista .vinc-decisao .ds-btn { width: 30px; min-width: 30px; padding: 0; justify-content: center; }
+  .vinc-lista .vinc-decisao .ds-btn .material-symbols-outlined { font-size: 18px; }
+  .vinc-sub-cel { padding-left: 0; }
 }
 
-/* mobile: galeria de cards (diretriz docs/design_system.md) */
+/* mobile: galeria de cards (3 linhas), só o ⋮ */
 @media (max-width: 768px) {
-  .vinc-tabela, .vinc-tabela tbody { display: block; }
-  .vinc-tabela colgroup, .vinc-tabela thead { display: none; }
-  .vinc-tabela tr.vinc-linha {
-    display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "chk tipo acoes" "nome nome nome" "dec dec dec";
-    gap: 6px 8px; padding: 12px; margin-bottom: 10px; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
+  .vinc-lista, .vinc-lista tbody { display: block; }
+  .vinc-lista colgroup { display: none; }
+  .vinc-lista thead { display: block; margin-bottom: 10px; }
+  .vinc-lista thead tr { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl); }
+  .vinc-lista thead th { display: none; padding: 0; border: none; position: static; }
+  .vinc-lista thead th.el-col-check { display: block; width: auto; }
+  .vinc-lista thead th.vinc-c-acoes { display: block; width: auto; margin-left: auto; }
+  .vinc-lista tbody tr.vinc-row {
+    display: grid; grid-template-columns: 20px auto auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "chk exp sit nivel status acoes" "nome nome nome nome nome nome" "resp resp resp resp resp prog";
+    gap: 6px 8px; align-items: center; padding: 10px 12px; margin-bottom: 10px;
+    background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-left: 3px solid var(--vinc-cor); border-radius: var(--ds-r-xl);
   }
-  .vinc-tabela tr.vinc-linha.is-decidir { border-left: 3px solid var(--ds-color-warning); }
-  .vinc-tabela tr.vinc-linha td { display: block; padding: 0; border: none; width: auto; max-width: none; background: transparent !important; box-shadow: none !important; }
-  .vinc-tabela tr.vinc-linha td.el-col-check { grid-area: chk; }
-  .vinc-tabela tr.vinc-linha td.vinc-col-tipo { grid-area: tipo; }
-  .vinc-tabela tr.vinc-linha td.vinc-col-nome { grid-area: nome; }
-  .vinc-tabela tr.vinc-linha td.vinc-col-acoes { grid-area: acoes; }
-  .vinc-tabela tr.vinc-linha .acoes-linha { opacity: 1; }
-  .vinc-tabela tr.vinc-linha.is-decidir td.vinc-col-acoes { grid-area: dec; }
-  .vinc-decisao { display: flex; width: 100%; }
-  .vinc-decisao .ds-btn { flex: 1; width: auto; height: 44px; }
-  .vinc-decisao .vinc-btn-recusar { border-color: var(--ds-color-border); }
-  .vinc-decisao .vinc-btn-txt { display: inline; }
-  .vinc-sub { white-space: normal; }
-  .vinc-tabela tr.vinc-subitem { display: block; margin: -6px 0 10px 16px; border-left: 3px solid var(--ds-color-danger); }
-  .vinc-tabela tr.vinc-subitem td { display: block; padding: 8px 10px; box-shadow: none; }
-  .vinc-subitem-cel { flex-wrap: wrap; gap: 4px 10px; }
-  .vinc-subitem-tit, .vinc-subitem-sup { flex: 1 1 100%; white-space: normal; }
+  .vinc-lista tbody tr.vinc-row.selecionada { background: var(--ds-sidebar-item-active); }
+  .vinc-lista tbody tr td { display: block; padding: 0 !important; border: none; width: auto !important; max-width: none; min-width: 0; background: transparent !important; box-shadow: none !important; overflow: visible; }
+  .vinc-lista tbody tr.vinc-row td.el-col-check { grid-area: chk; }
+  .vinc-lista tbody tr.vinc-row td.el-col-expand { grid-area: exp; }
+  .vinc-lista tbody tr.vinc-row td.vinc-c-sit { grid-area: sit; }
+  .vinc-lista tbody tr.vinc-row td.vinc-c-nome, .vinc-lista tbody tr.vinc-row .vinc-plano { display: contents; }
+  .vinc-lista tbody tr.vinc-row .vinc-nivel { grid-area: nivel; width: auto; overflow: visible; }
+  .vinc-lista tbody tr.vinc-row .vinc-nivel--vazio { display: none; }
+  .vinc-lista tbody tr.vinc-row .vinc-nome { grid-area: nome; font-size: var(--ds-text-md); }
+  .vinc-lista tbody tr.vinc-row td.vinc-c-status { grid-area: status; justify-self: start; }
+  .vinc-lista tbody tr.vinc-row td.vinc-c-resp { grid-area: resp; overflow: hidden; }
+  .vinc-lista tbody tr.vinc-row td.vinc-c-prog { grid-area: prog; }
+  .vinc-lista tbody tr.vinc-row td.vinc-c-acoes { grid-area: acoes; }
+  .vinc-lista tbody tr.vinc-row .acoes-linha { opacity: 1; }
+  .vinc-lista .vinc-decisao .ds-btn { display: none; }
+  .vinc-lista tbody tr.vinc-sub.vinc-visivel { display: flex; align-items: center; gap: 8px; margin: -4px 0 10px 14px; padding: 8px 12px;
+    border-left: 3px solid color-mix(in srgb, var(--vinc-cor) 45%, transparent); }
+  .vinc-lista tbody tr.vinc-sub td.el-col-check, .vinc-lista tbody tr.vinc-sub td.el-col-expand, .vinc-lista tbody tr.vinc-sub td.vinc-c-acoes { display: none; }
+  .vinc-lista tbody tr.vinc-sub td.vinc-c-nome { flex: 1 1 auto; overflow: hidden; }
+  .vinc-sub-cel { padding-left: 0; gap: 10px; }
+  .vinc-lista tbody tr.el-linha-msg { display: block; }
+  .vinc-lista tbody tr.el-linha-msg td { display: block; padding: 32px 12px !important; }
 }
-body.high-contrast .vinc-tag { border: 1px solid currentColor; }
-
-/* ── Vínculos órfãos: linha "Desvinculado" no topo da lista, no padrão das pendências (is-decidir) ── */
-.vinc-tag--desvinculado { background: color-mix(in srgb, var(--ds-color-danger) 14%, var(--ds-color-surface)); color: var(--ds-color-danger); }
-.vinc-tabela tr.vinc-linha.is-decidir.is-desv td { background: color-mix(in srgb, var(--ds-color-danger) 9%, var(--ds-color-surface)); }
-.vinc-tabela tr.vinc-linha.is-decidir.is-desv td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-danger); }
-.vinc-tabela tr.vinc-linha.is-decidir.is-desv:hover td { background: color-mix(in srgb, var(--ds-color-danger) 16%, var(--ds-color-surface)); }
-tr.is-decidir.is-desv .vinc-sub { color: var(--ds-color-danger); }
-@media (max-width: 768px) { .vinc-tabela tr.vinc-linha.is-decidir.is-desv { border-left-color: var(--ds-color-danger); } }
+body.high-contrast .vinc-nivel { border-color: currentColor; }
 </style>
 
 <!-- Container principal da aba Vínculos (injetado em #vinculos-conteudo pelo host) -->
@@ -359,21 +374,30 @@ var estadoVincModal = {
   candidatosSuperior: [], candidatosSubordinado: []
 };
 
-// Tipos de vínculo: ordem padrão, rótulo, ícone e frase explicativa (pendências)
+// Tipos de vínculo: ordem padrão, rótulo (filtro/painel), ícone e cor (via classe .vinc-row--<tipo>)
 var _VINC_TIPO = {
-  desvinculado: { ord: -1, rot: 'Desvinculado', ico: 'link_off', tip: 'Plano superior do qual este plano foi desvinculado: os vínculos de elementos e indicadores ficam guardados, sem efeito, e voltam a valer se o vínculo for restabelecido' },
-  decidir:     { ord: 0, rot: 'Aguarda você', ico: 'move_to_inbox', tip: 'Pendência que depende da sua decisão' },
-  aguardando:  { ord: 1, rot: 'Aguardando',   ico: 'schedule',      tip: 'Pendência que depende do outro plano' },
-  superior:    { ord: 2, rot: 'Superior',     ico: 'north',         tip: 'Plano ao qual este plano está subordinado' },
-  subordinado: { ord: 3, rot: 'Subordinado',  ico: 'south',         tip: 'Plano subordinado a este plano' }
+  desvinculado: { ord: -1, rot: 'Desvinculado', ico: 'link_off' },
+  decidir:      { ord: 0,  rot: 'Aguarda você', ico: 'move_to_inbox' },
+  aguardando:   { ord: 1,  rot: 'Aguardando',   ico: 'schedule' },
+  superior:     { ord: 2,  rot: 'Superior',     ico: 'north' },
+  subordinado:  { ord: 3,  rot: 'Subordinado',  ico: 'south' }
 };
 
 var _VINC_DIR = {
   filho:             { tipo: 'decidir',    txt: 'Pediu para ser subordinado a este plano' },
   proposta_recebida: { tipo: 'decidir',    txt: 'Propôs que este plano seja subordinado a ele' },
-  superior:          { tipo: 'aguardando', txt: 'Você pediu vínculo como plano superior · aguardando aprovação' },
+  superior:          { tipo: 'aguardando', txt: 'Você pediu vínculo a este plano superior · aguardando aprovação' },
   proposta_enviada:  { tipo: 'aguardando', txt: 'Você propôs que ele seja subordinado a este plano · aguardando aceite' }
 };
+
+// Frase do tooltip da situação (substitui o antigo subtítulo sob o nome)
+function _vincTipSituacao(p) {
+  if (p.vtipo === 'desvinculado') return p.subTxt;
+  var D = _VINC_DIR[p.direcao];
+  if (D) return D.txt;
+  if (p.vtipo === 'superior') return 'Plano superior' + (p.papel === 'PRINCIPAL' ? ' principal' : p.papel === 'ADICIONAL' ? ' adicional' : '');
+  return 'Plano subordinado';
+}
 
 var _VINC_COR_STATUS = {
   'Em Elaboração': '#1a56db', 'Em Análise': '#b08400', 'Em Execução': '#137333', 'Em Avaliação': '#c5221f',
@@ -416,19 +440,19 @@ function _vincDados() {
   var superiores = _vincDadosCache.planosSuperiores || [];
 
   var superAprov = superiores.filter(function(p) { return p.statusVinculo === 'Aprovado'; }).map(_vincMapSuperior);
-  var subAprov = vinculados.filter(function(p) { return p.statusVinculo !== 'Pendente'; });
+  var subAprov = vinculados.filter(function(p) { return p.statusVinculo !== 'Pendente'; }).map(_vincMapSuperior);
   var pendentes = [];
   superiores.filter(function(p) { return p.statusVinculo === 'Pendente'; }).forEach(function(p) {
     pendentes.push(Object.assign(_vincMapSuperior(p), { direcao: 'superior' }));
   });
   vinculados.filter(function(p) { return p.statusVinculo === 'Pendente'; }).forEach(function(p) {
-    pendentes.push(Object.assign({}, p, { direcao: 'filho' }));
+    pendentes.push(Object.assign(_vincMapSuperior(p), { direcao: 'filho' }));
   });
   (_vincDadosCache.propostasEnviadas || []).forEach(function(p) {
-    pendentes.push(Object.assign({}, p, { direcao: 'proposta_enviada' }));
+    pendentes.push(Object.assign(_vincMapSuperior(p), { direcao: 'proposta_enviada' }));
   });
   (_vincDadosCache.propostasRecebidas || []).forEach(function(p) {
-    pendentes.push(Object.assign({}, p, { direcao: 'proposta_recebida' }));
+    pendentes.push(Object.assign(_vincMapSuperior(p), { direcao: 'proposta_recebida' }));
   });
   var desvinculados = (_vincDadosCache.desvinculados || []).map(function(d) {
     var els = (d.elementos || []).length, inds = (d.indicadores || []).length;
@@ -440,8 +464,9 @@ function _vincDados() {
       responsavel: d.responsavel || '', tipoResponsavel: d.tipoResponsavel || '', respAdicionaisNomes: d.respAdicionaisNomes || [],
       anoInicio: d.anoInicio || '', anoFim: d.anoFim || '', progresso: (d.progresso !== undefined && d.progresso !== null) ? d.progresso : null,
       direcao: 'desvinculado',
-      subTxt: 'Desvinculado em ' + (d.desvinculadoEm || '—') + ' · ' + partes.join(' e ') + ' sem efeito' + (d.vinculoAtual === 'Pendente' ? ' · novo pedido aguardando aprovação' : ''),
-      subTip: d.desvinculadoPor ? 'Desvinculado por ' + d.desvinculadoPor : ''
+      desvinculadoEm: d.desvinculadoEm || '', desvinculadoPor: d.desvinculadoPor || '', vinculoAtual: d.vinculoAtual || '',
+      subTxt: 'Desvinculado em ' + (d.desvinculadoEm || '—') + (d.desvinculadoPor ? ' por ' + d.desvinculadoPor : '')
+        + (partes.length ? ' · ' + partes.join(' e ') + ' sem efeito' : '') + (d.vinculoAtual === 'Pendente' ? ' · novo pedido aguardando aprovação' : '')
     };
   });
   return { superAprov: superAprov, subAprov: subAprov, pendentes: pendentes, desvinculados: desvinculados };
@@ -749,16 +774,17 @@ function renderizarTabelaVinculos() {
     + '</div>'
 
     + '<div class="el-table-wrap">'
-    +   '<table class="el-tabela vinc-tabela" id="vinc-tabela">'
-    +     '<colgroup><col class="el-col-check"><col class="vinc-col-tipo"><col class="vinc-col-nome"><col class="vinc-col-resp"><col class="vinc-col-status"><col class="vinc-col-prog"><col class="vinc-col-acoes"></colgroup>'
+    +   '<table class="el-tabela vinc-lista" id="vinc-tabela">'
+    +     '<colgroup><col class="el-col-check"><col class="el-col-expand"><col class="vinc-c-sit"><col class="vinc-c-nome"><col class="vinc-c-resp"><col class="vinc-c-status"><col class="vinc-c-prog"><col class="vinc-c-acoes"></colgroup>'
     +     '<thead><tr>'
     +       '<th class="el-col-check"><input type="checkbox" id="chk-select-all-vinc" onchange="vincToggleSelecionarTodos(this.checked)" aria-label="Selecionar todos"></th>'
-    +       '<th class="th-sortable vinc-col-tipo" onclick="vincOrdenarPorColuna(\'tipo\')">Vínculo<span class="sort-icon" id="vinc-sort-icon-tipo"></span></th>'
-    +       '<th class="th-sortable vinc-col-nome" onclick="vincOrdenarPorColuna(\'nome\')">Plano<span class="sort-icon" id="vinc-sort-icon-nome"></span></th>'
-    +       '<th class="th-sortable vinc-col-resp" onclick="vincOrdenarPorColuna(\'responsavel\')">Responsável<span class="sort-icon" id="vinc-sort-icon-responsavel"></span></th>'
-    +       '<th class="th-sortable vinc-col-status" onclick="vincOrdenarPorColuna(\'status\')">Status<span class="sort-icon" id="vinc-sort-icon-status"></span></th>'
-    +       '<th class="th-sortable vinc-col-prog" onclick="vincOrdenarPorColuna(\'progresso\')">Progresso<span class="sort-icon" id="vinc-sort-icon-progresso"></span></th>'
-    +       '<th class="vinc-col-acoes"><div class="el-th-acoes">'
+    +       '<th class="el-col-expand" aria-hidden="true"></th>'
+    +       '<th class="th-sortable vinc-c-sit" onclick="vincOrdenarPorColuna(\'tipo\')">Vínculo<span class="sort-icon" id="vinc-sort-icon-tipo"></span></th>'
+    +       '<th class="th-sortable vinc-c-nome" onclick="vincOrdenarPorColuna(\'nome\')">Plano<span class="sort-icon" id="vinc-sort-icon-nome"></span></th>'
+    +       '<th class="th-sortable vinc-c-resp" onclick="vincOrdenarPorColuna(\'responsavel\')"><span>Responsável</span><span class="sort-icon" id="vinc-sort-icon-responsavel"></span></th>'
+    +       '<th class="th-sortable vinc-c-status" onclick="vincOrdenarPorColuna(\'status\')"><span>Status</span><span class="sort-icon" id="vinc-sort-icon-status"></span></th>'
+    +       '<th class="th-sortable vinc-c-prog" onclick="vincOrdenarPorColuna(\'progresso\')"><span>Progresso</span><span class="sort-icon" id="vinc-sort-icon-progresso"></span></th>'
+    +       '<th class="vinc-c-acoes"><div class="el-th-acoes">'
     +         '<button type="button" class="el-th-btn" onclick="atualizarAbaVinculos()" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
     +         '<button type="button" class="el-th-btn" onclick="exportarVinculosCSV()" data-title="Exportar vínculos" aria-label="Exportar vínculos"><span class="material-symbols-outlined">download</span></button>'
     +         '<button type="button" class="el-th-btn" onclick="vincAbrirMenuOrdenar(event)" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
@@ -792,130 +818,117 @@ var _VINC_STATUS_SLUG = {
 var _vincOrfAbertos = {};
 
 function _vincLinhaHTML(p, podeEditar) {
-  var T = _VINC_TIPO[p.vtipo], D = _VINC_DIR[p.direcao];
-  var chave = _vincChave(p), chj = escapeHtml(chave);
+  var T = _VINC_TIPO[p.vtipo];
+  var chave = _vincChave(p), chj = escapeHtml(chave), idAcoes = 'vinc-' + chave;
   var idj = escapeHtml(String(p.id)), nomeJs = escapeJsAttr(p.nome || '');
   var sel = !!estadoVinculos.selecionados[chave];
-  var decidir = p.vtipo === 'decidir';
-  var desv = p.vtipo === 'desvinculado';
+  var decidir = p.vtipo === 'decidir', desv = p.vtipo === 'desvinculado', aguardando = p.vtipo === 'aguardando';
   var aprovado = p.vtipo === 'superior' || p.vtipo === 'subordinado';
-  var ehPendente = decidir || p.vtipo === 'aguardando';
-  // linha explicativa só em alerta/pendência; vínculo aprovado fica só com o nome
-  var sub = desv ? p.subTxt : ((ehPendente && D) ? D.txt : '');
-  var subTip = desv ? (p.subTip || sub) : sub;
+  var aberto = desv && !!_vincOrfAbertos[String(p.id)];
   var idVincJs = escapeHtml(String(p.idVinculo || ''));
   var abrirDet = "vincAbrirDetalhesPlano('" + chj + "')";
-  var itemDet = { icone: 'info', rotulo: 'Detalhes', onclick: abrirDet, principal: true };
+  var itPainel = { icone: 'right_panel_open', rotulo: 'Abrir barra lateral', onclick: abrirDet, principal: true };
+  var itAbrir = { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: "carregarDetalhesPlano('" + idj + "')" };
 
   var acoes;
-  if (decidir) {
-    var aceitar = p.direcao === 'filho'
-      ? "aprovarVinculoPlano('" + idVincJs + "','" + nomeJs + "')"
-      : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','ACEITAR')";
-    var recusar = p.direcao === 'filho'
-      ? "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')"
-      : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','RECUSAR')";
-    var rotAceitar = p.direcao === 'filho' ? 'Aprovar' : 'Aceitar';
+  if (decidir && podeEditar) {
+    var filho = p.direcao === 'filho';
+    var aceitar = filho ? "aprovarVinculoPlano('" + idVincJs + "','" + nomeJs + "')" : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','ACEITAR')";
+    var recusar = filho ? "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')" : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','RECUSAR')";
+    var rotAceitar = filho ? 'Aprovar' : 'Aceitar';
+    // ⋮: no desktop só barra lateral + abrir plano (os botões de texto já fazem o resto); no mobile, tudo
+    var menu = acoesLinhaHTML(idAcoes, [
+      { icone: 'check', rotulo: rotAceitar, onclick: aceitar },
+      { icone: 'close', rotulo: 'Recusar', onclick: recusar },
+      { icone: 'right_panel_open', rotulo: 'Abrir barra lateral', onclick: abrirDet },
+      itAbrir
+    ], { maxDireto: 0 });
+    if (_acoesLinhaReg[idAcoes]) _acoesLinhaReg[idAcoes].menu = _acoesLinhaReg[idAcoes].menu.slice(2);
     acoes = '<div class="vinc-decisao">'
-      + '<button type="button" class="ds-icon-action vinc-btn-info" onclick="' + abrirDet + '" data-title="Detalhes" aria-label="Detalhes"><span class="material-symbols-outlined">info</span></button>'
-      + (podeEditar
-        ? '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm vinc-btn-recusar" onclick="' + recusar + '" data-title="Recusar" aria-label="Recusar">'
-          +   '<span class="material-symbols-outlined">close</span><span class="vinc-btn-txt">Recusar</span></button>'
-          + '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm" onclick="' + aceitar + '" data-title="' + rotAceitar + '" aria-label="' + rotAceitar + '">'
-          +   '<span class="material-symbols-outlined">check</span><span class="vinc-btn-txt">' + rotAceitar + '</span></button>'
-        : '')
-      + '</div>';
-  } else if (desv) {
-    acoes = acoesLinhaHTML('vinc-' + chj, [
-      itemDet,
-      { icone: 'delete_sweep', rotulo: 'Excluir vínculos órfãos', onclick: "vincExcluirOrfaos('" + idj + "')", principal: true, perigo: true, oculto: !podeEditar }
-    ]);
+      + '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm vinc-btn-recusar" onclick="event.stopPropagation(); ' + recusar + '" data-title="Recusar" aria-label="Recusar">'
+      +   '<span class="material-symbols-outlined">close</span><span class="vinc-btn-txt">Recusar</span></button>'
+      + '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm" onclick="event.stopPropagation(); ' + aceitar + '" data-title="' + rotAceitar + '" aria-label="' + rotAceitar + '">'
+      +   '<span class="material-symbols-outlined">check</span><span class="vinc-btn-txt">' + rotAceitar + '</span></button>'
+      + menu + '</div>';
   } else {
-    var podeDefinirPrincipal = podeEditar && p.vtipo === 'superior' && p.papel && p.papel !== 'PRINCIPAL';
-    acoes = acoesLinhaHTML('vinc-' + chj, [
-      itemDet,
-      { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: "carregarDetalhesPlano('" + idj + "')", principal: true },
-      { icone: 'close', rotulo: 'Cancelar proposta', onclick: "cancelarPropostaVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true,
-        oculto: !(podeEditar && ehPendente && p.direcao === 'proposta_enviada') },
-      { icone: 'close', rotulo: 'Cancelar pedido', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true,
-        oculto: !(podeEditar && ehPendente && p.direcao === 'superior') },
-      { icone: 'star', rotulo: 'Definir como Principal', onclick: "definirPlanoSuperiorPrincipal('" + idVincJs + "','" + nomeJs + "')",
-        oculto: !podeDefinirPrincipal },
-      { icone: 'link_off', rotulo: (p.vtipo === 'superior') ? 'Desvincular do plano superior' : 'Desvincular plano', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true,
-        oculto: !(podeEditar && aprovado) }
-    ]);
+    var itens = [itPainel, itAbrir];
+    if (aprovado) itens.push(
+      { icone: 'star', rotulo: 'Definir como principal', onclick: "definirPlanoSuperiorPrincipal('" + idVincJs + "','" + nomeJs + "')",
+        oculto: !(podeEditar && p.vtipo === 'superior' && p.papel && p.papel !== 'PRINCIPAL') },
+      { icone: 'link_off', rotulo: 'Desvincular', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar });
+    if (aguardando) itens.push(p.direcao === 'proposta_enviada'
+      ? { icone: 'cancel', rotulo: 'Cancelar proposta', onclick: "cancelarPropostaVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar }
+      : { icone: 'cancel', rotulo: 'Cancelar pedido', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar });
+    if (desv) itens.push({ icone: 'delete_sweep', rotulo: 'Excluir vínculos órfãos', onclick: "vincExcluirOrfaos('" + idj + "')", perigo: true, oculto: !podeEditar });
+    acoes = acoesLinhaHTML(idAcoes, itens, { maxDireto: 1 });
   }
 
   var respNome = p.responsavel ? nomeRespExibicao(p.responsavel, p.tipoResponsavel) : '';
-  var icoResp = p.tipoResponsavel === 'USER' ? 'person' : 'apartment';
   var nAdic = (p.respAdicionaisNomes && p.respAdicionaisNomes.length) || 0;
   var titResp = nAdic > 0
     ? 'Principal: ' + p.responsavel + ' | Adicionais: ' + p.respAdicionaisNomes.join(', ')
     : (p.responsavel && p.responsavel !== respNome ? p.responsavel : '');
-
   var resp = p.responsavel
     ? '<span class="resp-badge el-resp-badge"' + (titResp ? ' data-title="' + escapeHtml(titResp) + '"' : '') + '>'
-      + '<span class="material-symbols-outlined">' + icoResp + '</span>'
-      + '<span class="el-resp-nome">' + escapeHtml(respNome || 'Não definido') + '</span>'
-      + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '')
-      + '</span>'
-    : '—';
-  // status no padrão de badge do sistema (igual à lista de planos)
+      + '<span class="material-symbols-outlined">' + (p.tipoResponsavel === 'USER' ? 'person' : 'apartment') + '</span>'
+      + '<span class="el-resp-nome">' + escapeHtml(respNome) + '</span>'
+      + (nAdic > 0 ? '<span class="resp-mais">+' + nAdic + '</span>' : '') + '</span>'
+    : '<span class="vinc-vazio">—</span>';
   var status = p.status
-    ? '<span class="ds-badge ds-badge--' + (_VINC_STATUS_SLUG[p.status] || 'finalizado') + '" style="white-space:nowrap">' + escapeHtml(p.status) + '</span>' : '—';
+    ? '<span class="ds-badge ds-badge--' + (_VINC_STATUS_SLUG[p.status] || 'finalizado') + '">' + escapeHtml(p.status) + '</span>' : '<span class="vinc-vazio">—</span>';
   var pct = (p.progresso == null || isNaN(Number(p.progresso))) ? null : Math.max(0, Math.min(100, Number(p.progresso)));
   var progHtml = pct === null
-    ? '<span class="vinc-sem-prog" data-title="Sem elementos para calcular o progresso">—</span>'
+    ? '<span class="vinc-vazio" data-title="Sem elementos para calcular o progresso">—</span>'
     : '<div class="vinc-prog" data-title="Média do % de conclusão dos elementos (cancelados fora)">'
       + '<div class="ds-kpi-track"><div class="ds-kpi-fill ds-tone-info" style="width:' + pct.toFixed(0) + '%"></div></div>'
       + '<span class="vinc-prog-txt">' + pct.toFixed(0) + '%</span></div>';
+  var tip = escapeHtml(_vincTipSituacao(p));
+  var nivel = p.tipo ? '<span class="vinc-nivel" data-title="' + escapeHtml(p.tipo) + '">' + escapeHtml(p.tipo) + '</span>' : '<span class="vinc-nivel vinc-nivel--vazio" aria-hidden="true"></span>';
 
-  // coluna "Vínculo": superior/subordinado aprovados = só a seta; demais mantêm o selo com texto
-  var tag;
-  if (aprovado) {
-    tag = '<span class="vinc-seta vinc-seta--' + p.vtipo + '" data-title="' + escapeHtml(T.tip) + '" aria-label="' + escapeHtml(T.rot) + '"><span class="material-symbols-outlined">' + T.ico + '</span></span>';
-  } else {
-    var aberto = desv && !!_vincOrfAbertos[String(p.id)];
-    tag = '<span class="vinc-tipo-cel">'
-      + (desv ? '<button type="button" class="ds-icon-action" onclick="event.stopPropagation(); vincOrfToggle(\'' + idj + '\')" aria-expanded="' + aberto + '" aria-label="'
-          + (aberto ? 'Ocultar' : 'Mostrar') + ' vínculos guardados"><span class="material-symbols-outlined">' + (aberto ? 'expand_more' : 'chevron_right') + '</span></button>' : '')
-      + '<span class="vinc-tag vinc-tag--' + p.vtipo + '" data-title="' + escapeHtml(T.tip) + '"><span class="material-symbols-outlined">' + T.ico + '</span><span>' + T.rot + '</span></span>'
-      + '</span>';
-  }
-  var tipoPlano = p.tipo ? '<span class="vinc-tipo-plano">' + escapeHtml(p.tipo) + '</span>' : '';
-
-  return '<tr class="vinc-linha' + ((decidir || desv) ? ' is-decidir' : '') + (desv ? ' is-desv' : '') + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"'
+  return '<tr class="vinc-row vinc-row--' + p.vtipo + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"' + (desv ? ' data-orf="' + idj + '"' : '')
     + ' onclick="vincCliqueLinha(event, \'' + chj + '\')" ondblclick="' + abrirDet + '">'
     + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="vincToggleSelecao(\'' + chj + '\', this.checked)" aria-label="Selecionar ' + escapeHtml(p.nome || '') + '"></td>'
-    + '<td class="vinc-col-tipo">' + tag + '</td>'
-    + '<td class="vinc-col-nome"><div class="vinc-plano">' + tipoPlano + '<div class="vinc-nome-cel"><span class="vinc-nome" data-title="' + escapeHtml(p.nome || '') + '">' + escapeHtml(p.nome || '(sem nome)') + '</span>'
-    +   (sub ? '<span class="vinc-sub" data-title="' + escapeHtml(subTip) + '">' + escapeHtml(sub) + '</span>' : '') + '</div></div></td>'
-    + '<td class="vinc-col-resp">' + resp + '</td>'
-    + '<td class="vinc-col-status">' + status + '</td>'
-    + '<td class="vinc-col-prog">' + progHtml + '</td>'
-    + '<td class="vinc-col-acoes">' + acoes + '</td>'
+    + '<td class="el-col-expand">' + (desv
+        ? '<button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" onclick="event.stopPropagation(); vincOrfToggle(\'' + idj + '\')" aria-expanded="' + aberto + '" aria-label="Vínculos guardados">'
+          + '<span class="material-symbols-outlined">chevron_right</span></button>' : '') + '</td>'
+    + '<td class="vinc-c-sit"><span class="vinc-sit" tabindex="0" role="img" data-title="' + tip + '" aria-label="' + escapeHtml(T.rot) + ': ' + tip + '"><span class="material-symbols-outlined" aria-hidden="true">' + T.ico + '</span></span></td>'
+    + '<td class="vinc-c-nome"><div class="vinc-plano">' + nivel + '<span class="vinc-nome" data-title="' + escapeHtml(p.nome || '') + '">' + escapeHtml(p.nome || '(sem nome)') + '</span></div></td>'
+    + '<td class="vinc-c-resp">' + resp + '</td>'
+    + '<td class="vinc-c-status">' + status + '</td>'
+    + '<td class="vinc-c-prog">' + progHtml + '</td>'
+    + '<td class="vinc-c-acoes">' + acoes + '</td>'
     + '</tr>';
 }
 
-// itens guardados do plano desvinculado (linhas abaixo da linha expandida)
+// vínculos guardados do plano desvinculado: uma linha por item, logo abaixo da linha-mãe (sem repetir nada dela)
 function _vincOrfItensHTML(p) {
   var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(p.id); })[0];
   if (!d) return '';
+  var vis = _vincOrfAbertos[String(p.id)] ? ' vinc-visivel' : '';
   var item = function(rot, ico, tit, sup) {
-    return '<tr class="vinc-subitem"><td colspan="7"><div class="vinc-subitem-cel">'
-      + '<span class="vinc-tag vinc-tag--item"><span class="material-symbols-outlined">' + ico + '</span><span>' + rot + '</span></span>'
-      + '<span class="vinc-subitem-tit" data-title="' + escapeHtml(tit) + '">' + escapeHtml(tit) + '</span>'
-      + '<span class="vinc-subitem-sup" data-title="' + escapeHtml(sup) + '"><span class="material-symbols-outlined" aria-label="vinculado a">arrow_forward</span><span>' + escapeHtml(sup) + '</span></span>'
-      + '</div></td></tr>';
+    return '<tr class="vinc-sub' + vis + '" data-orf="' + escapeHtml(String(p.id)) + '">'
+      + '<td class="el-col-check"></td><td class="el-col-expand"></td>'
+      + '<td class="vinc-c-sit"><span class="vinc-sub-tipo" tabindex="0" role="img" data-title="' + rot + '" aria-label="' + rot + '"><span class="material-symbols-outlined" aria-hidden="true">' + ico + '</span></span></td>'
+      + '<td class="vinc-c-nome" colspan="4"><div class="vinc-sub-cel">'
+      +   '<span class="vinc-sub-tit" data-title="' + escapeHtml(tit) + '">' + escapeHtml(tit) + '</span>'
+      +   '<span class="vinc-sub-sup" data-title="' + escapeHtml(sup) + '"><span class="material-symbols-outlined" aria-label="vinculado a">arrow_forward</span><span>' + escapeHtml(sup) + '</span></span>'
+      + '</div></td><td class="vinc-c-acoes"></td></tr>';
   };
   return (d.elementos || []).map(function(e) { return item('Elemento', 'account_tree', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
     + (d.indicadores || []).map(function(i) { return item('Indicador', 'monitoring', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
 }
 
+// expande/recolhe sem re-renderizar (o duplo clique para abrir a barra lateral continua funcionando)
 function vincOrfToggle(id) {
   id = String(id);
-  if (_vincOrfAbertos[id]) delete _vincOrfAbertos[id]; else _vincOrfAbertos[id] = true;
-  _vincRenderCorpo();
+  var aberto = !_vincOrfAbertos[id];
+  if (aberto) _vincOrfAbertos[id] = true; else delete _vincOrfAbertos[id];
+  document.querySelectorAll('#vinc-tbody tr[data-orf]').forEach(function(tr) {
+    if (tr.getAttribute('data-orf') !== id) return;
+    if (tr.classList.contains('vinc-sub')) { tr.classList.toggle('vinc-visivel', aberto); return; }
+    var b = tr.querySelector('.el-toggle-btn');
+    if (b) { b.classList.toggle('expanded', aberto); b.setAttribute('aria-expanded', String(aberto)); }
+  });
 }
 
 function _vincRenderCorpo() {
@@ -936,17 +949,19 @@ function _vincRenderCorpo() {
 
   if (!lista.length) {
     var vz = !todos.length
-      ? { icon: 'account_tree', titulo: 'Nenhum vínculo', detalhe: 'Use "Vincular plano" para ligar este plano a um superior ou a subordinados.' }
-      : { icon: 'filter_alt_off', titulo: 'Nenhum resultado para os filtros', detalhe: 'Tente ampliar ou limpar os filtros aplicados.' };
-    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="7"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">' + vz.icon + '</span>'
-      + '<p class="el-esti">' + vz.titulo + '</p><p>' + vz.detalhe + '</p></div></td></tr>';
+      ? { icon: 'link', titulo: 'Nenhum vínculo' }
+      : { icon: 'filter_alt_off', titulo: 'Nenhum resultado para os filtros' };
+    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="8"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">' + vz.icon + '</span>'
+      + '<p class="el-esti">' + vz.titulo + '</p></div></td></tr>';
     _vincAtualizarPaginacao(0, 0);
     _vincAtualizarSelecao([]);
     return;
   }
 
+  var tab = document.getElementById('vinc-tabela');
+  if (tab) tab.classList.toggle('tem-decisao', podeEditar && lista.some(function(p) { return p.vtipo === 'decidir'; }));
   tbody.innerHTML = lista.map(function(p) {
-    return _vincLinhaHTML(p, podeEditar) + ((p.vtipo === 'desvinculado' && _vincOrfAbertos[String(p.id)]) ? _vincOrfItensHTML(p) : '');
+    return _vincLinhaHTML(p, podeEditar) + (p.vtipo === 'desvinculado' ? _vincOrfItensHTML(p) : '');
   }).join('');
   _vincAtualizarPaginacao(total, start);
   _vincAtualizarSelecao(listaCompleta);
@@ -987,6 +1002,8 @@ function _vincAtualizarPaginacao(total, start) {
 function vincCliqueLinha(ev, chave) {
   if (ev.target.closest('input, button, a, .acoes-linha, .vinc-decisao')) return;
   var chaveStr = String(chave);
+  var tr = ev.currentTarget;
+  if (tr && tr.classList && tr.classList.contains('vinc-row--desvinculado')) { vincOrfToggle(tr.getAttribute('data-orf')); return; }
 
   if (ev.shiftKey && _vincUltimaChaveClicada) {
     var listaVisivel = _vincSortLista(_vincFiltrar(_vincListaUnica()));
@@ -1022,7 +1039,7 @@ function _vincSelecionarIntervalo(chaveA, chaveB, pagina) {
 }
 
 function _vincAtualizarSelecaoVisual() {
-  var rows = document.querySelectorAll('#vinc-tbody tr.vinc-linha[data-chave]');
+  var rows = document.querySelectorAll('#vinc-tbody tr.vinc-row[data-chave]');
   rows.forEach(function(tr) {
     var chave = tr.dataset.chave;
     var sel = !!(chave && estadoVinculos.selecionados[chave]);
@@ -1080,7 +1097,7 @@ function _vincAtualizarSelecao(listaVisivel) {
 
 // Ações da barra de seleção: só aparecem as que TODOS os itens selecionados aceitam (as "unico" só com 1 item).
 var _VINC_ACOES = [
-  { id: 'detalhes',    ico: 'info',         rot: 'Detalhes',                       unico: true, ok: function(p) { return true; } },
+  { id: 'detalhes',    ico: 'right_panel_open', rot: 'Abrir barra lateral',                     unico: true, ok: function(p) { return true; } },
   { id: 'abrir',       ico: 'open_in_new',  rot: 'Abrir plano',                    unico: true, ok: function(p) { return true; } },
   { id: 'aprovar',     ico: 'check',        rot: 'Aprovar',                        edita: true,  ok: function(p) { return p.vtipo === 'decidir'; } },
   { id: 'recusar',     ico: 'close',        rot: 'Recusar',                        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'decidir'; } },
@@ -1169,33 +1186,43 @@ function vincAbrirDetalhesPlano(chave) {
   var view = document.getElementById('detp-view-detalhes');
   if (!view || typeof abrirPainelDetalhes !== 'function' || typeof _detpLinha !== 'function') { carregarDetalhesPlano(String(p.id)); return; }
   if (typeof window._appNotificarPainelFechado === 'function') window._appNotificarPainelFechado();
-  var D = _VINC_DIR[p.direcao], T = _VINC_TIPO[p.vtipo];
+  var T = _VINC_TIPO[p.vtipo], D = _VINC_DIR[p.direcao];
   var vig = p.anoInicio && p.anoFim ? (String(p.anoInicio) === String(p.anoFim) ? p.anoInicio : p.anoInicio + ' – ' + p.anoFim) : (p.anoInicio || p.anoFim || '');
   var statusBadge = p.status ? '<span class="ds-badge ds-badge--' + (_VINC_STATUS_SLUG[p.status] || 'finalizado') + '">' + escapeHtml(p.status) + '</span>' : '';
   var pct = (p.progresso == null || isNaN(Number(p.progresso))) ? '' : Math.round(Number(p.progresso)) + '%';
-  var nAdic = (p.respAdicionaisNomes && p.respAdicionaisNomes.length) || 0;
   var resp = p.responsavel
-    ? '<div class="detp-resp-item"><span class="material-symbols-outlined">' + (p.tipoResponsavel === 'USER' ? 'person' : 'apartment') + '</span><span>' + escapeHtml(nomeRespExibicao(p.responsavel, p.tipoResponsavel)) + '</span><span class="detp-resp-papel">Principal</span></div>'
+    ? '<div class="detp-resp-item"><span class="material-symbols-outlined">' + (p.tipoResponsavel === 'USER' ? 'person' : 'apartment') + '</span><span data-title="' + escapeHtml(p.responsavel) + '">' + escapeHtml(nomeRespExibicao(p.responsavel, p.tipoResponsavel)) + '</span><span class="detp-resp-papel">Principal</span></div>'
       + (p.respAdicionaisNomes || []).map(function(n) { return '<div class="detp-resp-item"><span class="material-symbols-outlined">person</span><span>' + escapeHtml(n) + '</span><span class="detp-resp-papel">Adicional</span></div>'; }).join('')
     : '';
-  var situacao = p.vtipo === 'desvinculado' ? p.subTxt : (D ? D.txt : T.tip);
+  var sit = '<span class="vinc-detp-sit vinc-row--' + p.vtipo + '"><span class="material-symbols-outlined" aria-hidden="true">' + T.ico + '</span>' + escapeHtml(T.rot) + '</span>';
+  var vinc = _detpLinha('Situação', sit);
   var guardados = '';
   if (p.vtipo === 'desvinculado') {
     var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(p.id); })[0] || {};
-    guardados = (d.elementos || []).map(function(e) { return '<div class="detp-vinc-item">' + escapeHtml(e.tituloElemento || '') + ' → ' + escapeHtml(e.tituloElementoSuperior || '') + '</div>'; }).join('')
-      + (d.indicadores || []).map(function(i) { return '<div class="detp-vinc-item">' + escapeHtml(i.nomeIndicador || '') + ' → ' + escapeHtml(i.nomeIndicadorSuperior || '') + '</div>'; }).join('');
+    vinc += _detpLinha('Desvinculado em', '<span' + (p.desvinculadoPor ? ' data-title="' + escapeHtml(p.desvinculadoPor) + '"' : '') + '>' + escapeHtml(p.desvinculadoEm || '—') + '</span>')
+      + (p.vinculoAtual === 'Pendente' ? _detpLinha('Novo pedido', 'Aguardando aprovação') : '');
+    var it = function(ico, rot, tit, sup) {
+      return '<div class="detp-ind-item"><span class="material-symbols-outlined vinc-detp-guard" data-title="' + rot + '" aria-label="' + rot + '">' + ico + '</span>'
+        + '<span class="detp-ind-nome" data-title="' + escapeHtml(tit + ' → ' + sup) + '">' + escapeHtml(tit) + ' → ' + escapeHtml(sup) + '</span></div>';
+    };
+    guardados = (d.elementos || []).map(function(e) { return it('account_tree', 'Elemento', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
+      + (d.indicadores || []).map(function(i) { return it('monitoring', 'Indicador', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
+  } else if (D) {
+    vinc += _detpLinha('Pedido', escapeHtml(D.txt.split(' · ')[0]));
+  } else if (p.papel) {
+    vinc += _detpLinha('Papel', p.papel === 'PRINCIPAL' ? 'Principal' : 'Adicional');
   }
-  var cab = '<div style="margin-bottom:18px"><div style="margin-bottom:8px">' + (p.tipo ? '<span class="vinc-tipo-plano">' + escapeHtml(p.tipo) + '</span>' : '') + '</div>'
-    + '<h3 style="font-size:1.15rem;font-weight:600;margin:0;line-height:1.35;color:var(--ds-color-text)">' + escapeHtml(p.nome || '') + '</h3></div>';
+  var cab = '<div class="vinc-detp-cab">' + (p.tipo ? '<span class="vinc-nivel">' + escapeHtml(p.tipo) + '</span>' : '')
+    + '<h3>' + escapeHtml(p.nome || '') + '</h3></div>';
   var secoes = [
-    { titulo: 'Sobre o plano', html: _detpLinha('Nível', escapeHtml(p.tipo || '')) + _detpLinha('Status', statusBadge) + _detpLinha('Vigência', escapeHtml(vig)) + _detpLinha('Progresso', pct) },
-    { titulo: 'Vínculo', html: _detpLinha('Situação', escapeHtml(situacao || '')) + (p.papel ? _detpLinha('Papel', p.papel === 'PRINCIPAL' ? 'Principal' : 'Adicional') : '') },
+    { titulo: 'Vínculo', html: vinc },
     { titulo: 'Vínculos guardados', html: guardados },
+    { titulo: 'Sobre o plano', html: _detpLinha('Status', statusBadge) + _detpLinha('Vigência', escapeHtml(vig)) + _detpLinha('Progresso', pct) },
     { titulo: 'Responsáveis', html: resp },
-    { titulo: 'Ações', html: '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" onclick="carregarDetalhesPlano(\'' + escapeHtml(String(p.id)) + '\')"><span class="material-symbols-outlined">open_in_new</span> Abrir plano</button></div>' }
+    { titulo: '', html: '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" onclick="carregarDetalhesPlano(\'' + escapeHtml(String(p.id)) + '\')"><span class="material-symbols-outlined">open_in_new</span> Abrir plano</button>' }
   ];
-  view.innerHTML = '<div style="padding:4px 0">' + cab + secoes.filter(function(x) { return x.html; })
-    .map(function(x) { return '<div class="detp-secao"><div class="detp-secao-titulo">' + x.titulo + '</div>' + x.html + '</div>'; }).join('') + '</div>';
+  view.innerHTML = cab + secoes.filter(function(x) { return x.html; })
+    .map(function(x) { return '<div class="detp-secao">' + (x.titulo ? '<div class="detp-secao-titulo">' + x.titulo + '</div>' : '') + x.html + '</div>'; }).join('');
   abrirPainelDetalhes('detalhes');
 }
 
@@ -1292,7 +1319,8 @@ function exportarVinculosCSV() {
   var todos = []
     .concat(d.superAprov.map(function(p) { return Object.assign({ direcaoLabel: 'Subordinante' }, p); }))
     .concat(d.subAprov.map(function(p) { return Object.assign({ direcaoLabel: 'Subordinado' }, p); }))
-    .concat(d.pendentes.map(function(p) { return Object.assign({ direcaoLabel: direcaoLabel[p.direcao] || 'Pendente' }, p); }));
+    .concat(d.pendentes.map(function(p) { return Object.assign({ direcaoLabel: direcaoLabel[p.direcao] || 'Pendente' }, p); }))
+    .concat(d.desvinculados.map(function(p) { return Object.assign({ direcaoLabel: 'Desvinculado' }, p); }));
   var cab = ['Direcao', 'Tipo', 'Nome', 'Vigencia', 'Responsavel', 'Status', 'Progresso'];
   var fnCell = typeof _csvCell === 'function' ? _csvCell : function(v) { return '"' + String(v || '').replace(/"/g, '""') + '"'; };
   var linhas = [cab.map(fnCell).join(',')];
@@ -1528,7 +1556,7 @@ function carregarAbaVinculos() {
 
   renderizarTabelaVinculos();
   var tbodyVinc = document.getElementById('vinc-tbody');
-  if (tbodyVinc) tbodyVinc.innerHTML = '<tr class="el-linha-msg"><td colspan="7" style="padding:0">' + spinnerListaHTML() + '</td></tr>';
+  if (tbodyVinc) tbodyVinc.innerHTML = '<tr class="el-linha-msg"><td colspan="8" style="padding:0">' + spinnerListaHTML() + '</td></tr>';
 
   _vinculosSDK.chamar('apiGetAbaVinculos', idPlano).then(function(res) {
     if (!_vincCtx || String(_vincCtx.idPlano) !== String(idPlano)) return; // resposta de um plano já abandonado
@@ -1549,7 +1577,7 @@ function carregarAbaVinculos() {
     if (!_vincCtx || String(_vincCtx.idPlano) !== String(idPlano)) return;
     _vincCarregando = false;
     var el = document.getElementById('vinc-tbody');
-    if (el) el.innerHTML = '<tr class="el-linha-msg"><td colspan="7" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(err.message) + '</td></tr>';
+    if (el) el.innerHTML = '<tr class="el-linha-msg"><td colspan="8" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(err.message) + '</td></tr>';
   });
 }
 
