@@ -169,9 +169,14 @@ function criarSamaumaSDK() {
 .vinc-lista thead th.vinc-c-acoes { text-align: right; overflow: visible; }
 .vinc-lista tbody td { box-sizing: border-box; }
 .vinc-lista tbody tr.vinc-row td { padding-top: 10px; padding-bottom: 10px; }
-.vinc-lista tbody tr.vinc-row > td:first-child,
-.vinc-lista tbody tr.vinc-sub > td:first-child { box-shadow: inset 3px 0 0 var(--vinc-cor); }
-.vinc-lista tbody tr.vinc-sub > td:first-child { box-shadow: inset 3px 0 0 color-mix(in srgb, var(--vinc-cor) 45%, transparent); }
+/* alerta visual: só pendência/desvinculação pinta a linha; vínculo aprovado e válido fica sem cor */
+.vinc-lista tbody tr.vinc-row--decidir:not(.selecionada) td,
+.vinc-lista tbody tr.vinc-row--aguardando:not(.selecionada) td,
+.vinc-lista tbody tr.vinc-row--desvinculado:not(.selecionada) td { background: color-mix(in srgb, var(--vinc-cor) 12%, var(--ds-color-surface)); }
+.vinc-lista tbody tr.vinc-row--decidir:not(.selecionada):hover td,
+.vinc-lista tbody tr.vinc-row--aguardando:not(.selecionada):hover td,
+.vinc-lista tbody tr.vinc-row--desvinculado:not(.selecionada):hover td { background: color-mix(in srgb, var(--vinc-cor) 20%, var(--ds-color-surface)); }
+.vinc-lista tbody tr.vinc-sub td { background: color-mix(in srgb, var(--vinc-cor) 6%, var(--ds-color-surface)); }
 
 /* situação: só ícone colorido; a explicação fica no tooltip */
 .vinc-sit { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: var(--ds-r-md); color: var(--vinc-cor); outline-offset: 1px; }
@@ -249,8 +254,11 @@ function criarSamaumaSDK() {
     display: grid; grid-template-columns: 20px auto auto auto minmax(0, 1fr) auto;
     grid-template-areas: "chk exp sit nivel status acoes" "nome nome nome nome nome nome" "resp resp resp resp resp prog";
     gap: 6px 8px; align-items: center; padding: 10px 12px; margin-bottom: 10px;
-    background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-left: 3px solid var(--vinc-cor); border-radius: var(--ds-r-xl);
+    background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl);
   }
+  .vinc-lista tbody tr.vinc-row--decidir:not(.selecionada),
+  .vinc-lista tbody tr.vinc-row--aguardando:not(.selecionada),
+  .vinc-lista tbody tr.vinc-row--desvinculado:not(.selecionada) { background: color-mix(in srgb, var(--vinc-cor) 12%, var(--ds-color-surface)); }
   .vinc-lista tbody tr.vinc-row.selecionada { background: var(--ds-sidebar-item-active); }
   .vinc-lista tbody tr td { display: block; padding: 0 !important; border: none; width: auto !important; max-width: none; min-width: 0; background: transparent !important; box-shadow: none !important; overflow: visible; }
   .vinc-lista tbody tr.vinc-row td.el-col-check { grid-area: chk; }
@@ -267,7 +275,7 @@ function criarSamaumaSDK() {
   .vinc-lista tbody tr.vinc-row .acoes-linha { opacity: 1; }
   .vinc-lista .vinc-decisao .ds-btn { display: none; }
   .vinc-lista tbody tr.vinc-sub.vinc-visivel { display: flex; align-items: center; gap: 8px; margin: -4px 0 10px 14px; padding: 8px 12px;
-    border-left: 3px solid color-mix(in srgb, var(--vinc-cor) 45%, transparent); }
+    background: color-mix(in srgb, var(--vinc-cor) 6%, var(--ds-color-surface)); border-radius: var(--ds-r-md); }
   .vinc-lista tbody tr.vinc-sub td.el-col-check, .vinc-lista tbody tr.vinc-sub td.el-col-expand, .vinc-lista tbody tr.vinc-sub td.vinc-c-acoes { display: none; }
   .vinc-lista tbody tr.vinc-sub td.vinc-c-nome { flex: 1 1 auto; overflow: hidden; }
   .vinc-sub-cel { padding-left: 0; gap: 10px; }
