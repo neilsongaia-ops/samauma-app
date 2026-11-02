@@ -105,6 +105,7 @@ body.high-contrast .wiz-rail-item.wiz-rail-atual { background: #222; }
 .elwiz-sub { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); margin: 0 0 18px; }
 /* Explicações ficam em tooltip (i) ao lado do rótulo — nada de subtítulos/ajudas fixas (menos ruído visual). */
 .el-alerta-ico { font-size: 16px; color: var(--ds-color-warning-fg); flex-shrink: 0; }
+.el-chip-meta.el-chip-vinculo .el-chip-aviso { font-size: 14px; color: var(--ds-color-warning-fg); margin-left: -2px; }
 .elwiz-info { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; margin-left: 4px; }
 .elwiz-obrig { font-size: 10px; font-weight: var(--ds-weight-bold); letter-spacing: .3px; text-transform: uppercase; color: var(--ds-color-danger-fg); }
 .elwiz-divisor { border-top: 1px solid var(--ds-glass-border); margin: 20px 0; }
@@ -2774,6 +2775,17 @@ function obterInfoSuperioresElemento(el) {
     tituloCompleto: infos.map(function (i) { return i.tituloCompleto; }).join('  |  ')
   };
 }
+// Chip de vínculo superior do elemento. Com vínculo órfão (plano superior desvinculado, vínculo ainda guardado) ganha
+// um triângulo de aviso depois do número; só some quando os órfãos são excluídos de vez (aba Vínculos).
+function chipVinculoElementoHTML(supInfo, qtdOrfaos) {
+  var nOrf = Number(qtdOrfaos || 0);
+  if (!supInfo && !nOrf) return '';
+  var tip = supInfo ? (supInfo.total > 1 ? 'Vínculos superiores: ' : 'Vínculo superior: ') + supInfo.tituloCompleto : 'Sem vínculo superior em vigor';
+  if (nOrf) tip += (supInfo ? '  |  ' : '. ') + nOrf + (nOrf === 1 ? ' vínculo sem efeito' : ' vínculos sem efeito') + ' (plano superior desvinculado)';
+  return '<span class="el-chip-meta el-chip-vinculo" data-title="' + escapeHtml(tip) + '"><span class="material-symbols-outlined">link</span>'
+    + '<span class="el-chip-meta-txt">' + escapeHtml(supInfo ? supInfo.rotulo : '0') + '</span>'
+    + (nOrf ? '<span class="material-symbols-outlined el-chip-aviso" aria-label="Vínculo sem efeito">warning</span>' : '') + '</span>';
+}
 // Ícone de alerta "acima do limite" (VINCULO_ELEMENTO_LIMITE reduzido com vínculos já existentes): informativo,
 // nunca bloqueia. Igual ao alerta do indicador sem meta: ícone solto ao lado do título, sem chip.
 function _iconeAcimaDoLimiteEl(el) {
@@ -4165,9 +4177,8 @@ function renderizarTabelaEstrutura() {
     if (custoFmt) {
       chipsList.push('<span class="el-chip-meta el-chip-custo" data-title="Custo estimado: ' + escapeHtml(custoFmt) + '"><span class="material-symbols-outlined">payments</span><span class="el-chip-meta-txt">' + escapeHtml(custoFmt) + '</span></span>');
     }
-    if (supInfo) {
-      chipsList.push('<span class="el-chip-meta el-chip-vinculo" data-title="' + (supInfo.total > 1 ? 'Vínculos superiores: ' : 'Vínculo superior: ') + escapeHtml(supInfo.tituloCompleto) + '"><span class="material-symbols-outlined">link</span><span class="el-chip-meta-txt">' + escapeHtml(supInfo.rotulo) + '</span></span>');
-    }
+    var chipVinc = chipVinculoElementoHTML(supInfo, no.vinculosOrfaos);
+    if (chipVinc) chipsList.push(chipVinc);
     if (qtdInd > 0) {
       chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + (qtdInd === 1 ? ' ind.' : ' inds.') + '</span></span>');
     }
@@ -5181,9 +5192,8 @@ function renderizarTabelaDetalhes() {
     var supInfo = obterInfoSuperioresElemento(item);
     var qtdInd = Number(item.qtdIndicadores || 0);
     var chipsList = [];
-    if (supInfo) {
-      chipsList.push('<span class="el-chip-meta el-chip-vinculo" data-title="' + (supInfo.total > 1 ? 'Vínculos superiores: ' : 'Vínculo superior: ') + escapeHtml(supInfo.tituloCompleto) + '"><span class="material-symbols-outlined">link</span><span class="el-chip-meta-txt">' + escapeHtml(supInfo.rotulo) + '</span></span>');
-    }
+    var chipVinc = chipVinculoElementoHTML(supInfo, item.vinculosOrfaos);
+    if (chipVinc) chipsList.push(chipVinc);
     if (qtdInd > 0) {
       chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + (qtdInd === 1 ? ' ind.' : ' inds.') + '</span></span>');
     }
