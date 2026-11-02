@@ -106,6 +106,7 @@ body.high-contrast .wiz-rail-item.wiz-rail-atual { background: #222; }
 /* Explicações ficam em tooltip (i) ao lado do rótulo — nada de subtítulos/ajudas fixas (menos ruído visual). */
 .el-alerta-ico { font-size: 16px; color: var(--ds-color-warning-fg); flex-shrink: 0; }
 .el-chip-meta.el-chip-vinculo .el-chip-aviso { font-size: 14px; color: var(--ds-color-warning-fg); margin-left: -2px; }
+.el-chip-meta.el-chip-vinculo .el-chip-aguardando { color: var(--ds-color-pending); }
 .elwiz-info { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; margin-left: 4px; }
 .elwiz-obrig { font-size: 10px; font-weight: var(--ds-weight-bold); letter-spacing: .3px; text-transform: uppercase; color: var(--ds-color-danger-fg); }
 .elwiz-divisor { border-top: 1px solid var(--ds-glass-border); margin: 20px 0; }
@@ -2777,12 +2778,14 @@ function obterInfoSuperioresElemento(el) {
 }
 // Chips de vínculo superior do elemento: um badge por plano superior (clipe + quantidade de vínculos com aquele plano).
 // Vínculo sem efeito (plano desvinculado ou pedido de vínculo ainda pendente) continua contando e ganha o triângulo de
-// aviso; só some quando os órfãos são excluídos de vez (aba Vínculos). Mais de 3 planos: o resto vira "+N".
+// aviso (relógio roxo quando é só pedido de vínculo aguardando aprovação); só some quando os órfãos são excluídos de vez (aba Vínculos). Mais de 3 planos: o resto vira "+N".
 var EL_CHIPS_VINCULO_MAX = 3;
-function _chipVinculoUnicoHTML(qtd, semEfeito, tip, rotulo) {
+function _chipVinculoUnicoHTML(qtd, semEfeito, tip, rotulo, pendente) {
   return '<span class="el-chip-meta el-chip-vinculo" data-title="' + escapeHtml(tip) + '"><span class="material-symbols-outlined">link</span>'
     + '<span class="el-chip-meta-txt">' + escapeHtml(rotulo != null ? rotulo : String(qtd)) + '</span>'
-    + (semEfeito ? '<span class="material-symbols-outlined el-chip-aviso" aria-label="Vínculo sem efeito">warning</span>' : '') + '</span>';
+    + (semEfeito ? (pendente
+        ? '<span class="material-symbols-outlined el-chip-aviso el-chip-aguardando" aria-label="Aguardando aprovação do vínculo entre os planos">schedule</span>'
+        : '<span class="material-symbols-outlined el-chip-aviso" aria-label="Vínculo sem efeito">warning</span>') : '') + '</span>';
 }
 function _tipVinculoPlanoEl(g) {
   var t = (g.nome || 'Plano superior') + ': ' + (g.itens || []).filter(Boolean).join('; ');
@@ -2794,10 +2797,11 @@ function chipsVinculoElementoHTML(el, supInfo) {
   if (!grupos) {  // dado antigo, sem agrupamento por plano
     return supInfo ? _chipVinculoUnicoHTML(supInfo.total, false, (supInfo.total > 1 ? 'Vínculos superiores: ' : 'Vínculo superior: ') + supInfo.tituloCompleto, supInfo.rotulo) : '';
   }
-  var html = grupos.slice(0, EL_CHIPS_VINCULO_MAX).map(function (g) { return _chipVinculoUnicoHTML(g.qtd, g.semEfeito, _tipVinculoPlanoEl(g)); }).join('');
+  var html = grupos.slice(0, EL_CHIPS_VINCULO_MAX).map(function (g) { return _chipVinculoUnicoHTML(g.qtd, g.semEfeito, _tipVinculoPlanoEl(g), null, g.pendente); }).join('');
   var resto = grupos.slice(EL_CHIPS_VINCULO_MAX);
   if (resto.length) {
-    html += _chipVinculoUnicoHTML(0, resto.some(function (g) { return g.semEfeito; }), resto.map(_tipVinculoPlanoEl).join('  |  '), '+' + resto.length);
+    html += _chipVinculoUnicoHTML(0, resto.some(function (g) { return g.semEfeito; }), resto.map(_tipVinculoPlanoEl).join('  |  '), '+' + resto.length,
+      resto.every(function (g) { return !g.semEfeito || g.pendente; }) && resto.some(function (g) { return g.pendente; }));
   }
   return html;
 }
