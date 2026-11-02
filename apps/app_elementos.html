@@ -390,7 +390,14 @@ body.high-contrast .org-card-plano { background: #000; border: 2px solid #ffff00
   border: 2px solid var(--ds-color-surface); box-shadow: var(--ds-shadow-1); cursor: crosshair; z-index: 4; opacity: 0; transform: scale(.5);
   transition: opacity var(--ds-duration-fast) var(--ds-ease-standard), transform var(--ds-duration-fast) var(--ds-ease-standard); }
 .org-card:hover .org-port, .org-card:focus-within .org-port, .org-canvas.org-rel-arrastando .org-port { opacity: 1; transform: scale(1); }
-.org-rel-hit { fill: none; stroke: transparent; stroke-width: 12; pointer-events: none; }
+.org-rel path.org-rel-hit { fill: none; stroke: transparent; stroke-width: 14; stroke-dasharray: none; pointer-events: none; }
+.org-canvas.org-rel-edit .org-rel:hover { opacity: 1; }
+.org-canvas.org-rel-edit .org-rel:hover path:not(.org-rel-hit) { stroke-width: 2.5; }
+.org-rel-x { cursor: pointer; pointer-events: all; }
+.org-rel-x circle { fill: var(--ds-color-surface); stroke: var(--ds-color-relacao); stroke-width: 2; stroke-dasharray: none; }
+.org-rel-x path { stroke: var(--ds-color-relacao); stroke-width: 2; stroke-dasharray: none; stroke-linecap: round; }
+.org-rel-x:hover circle { fill: var(--ds-color-relacao); }
+.org-rel-x:hover path { stroke: var(--ds-color-surface); }
 .org-rel-fim { fill: transparent; pointer-events: none; }
 .org-canvas.org-rel-edit .org-rel-hit { pointer-events: stroke; cursor: pointer; }
 .org-canvas.org-rel-edit .org-rel-fim { pointer-events: all; cursor: grab; }
@@ -4635,6 +4642,18 @@ function _orgParesRel(ordem, layout) {
   });
   return pares;
 }
+function _orgPontoMedioRota(d) {
+  var q = (d.match(/-?\d+(?:\.\d+)?\s+-?\d+(?:\.\d+)?/g) || []).map(function(t) { return t.split(/\s+/).map(Number); });
+  if (q.length < 2) return q[0] || [0, 0];
+  var tot = 0, i, seg = [];
+  for (i = 1; i < q.length; i++) { var l = Math.abs(q[i][0] - q[i - 1][0]) + Math.abs(q[i][1] - q[i - 1][1]); seg.push(l); tot += l; }
+  var meta = tot / 2;
+  for (i = 0; i < seg.length; i++) {
+    if (meta <= seg[i] || i === seg.length - 1) { var t = seg[i] ? meta / seg[i] : 0; return [q[i][0] + (q[i + 1][0] - q[i][0]) * t, q[i][1] + (q[i + 1][1] - q[i][1]) * t]; }
+    meta -= seg[i];
+  }
+  return q[0];
+}
 function _orgRelHTML(L, ordem, V) {
   var pares = _orgParesRel(ordem, L);
   _orgEst.relPares = pares;
@@ -4648,7 +4667,9 @@ function _orgRelHTML(L, ordem, V) {
         + '<path class="org-rel-hit" d="' + r.d + '"><title>Clique para selecionar · Delete remove</title></path>'
         + '<circle cx="' + r.p0[0] + '" cy="' + r.p0[1] + '" r="2.5"></circle><circle cx="' + r.p1[0] + '" cy="' + r.p1[1] + '" r="2.5"></circle>'
         + '<circle class="org-rel-fim" data-a="' + r.a + '" data-b="' + r.b + '" data-fim="a" cx="' + r.p0[0] + '" cy="' + r.p0[1] + '" r="9"></circle>'
-        + '<circle class="org-rel-fim" data-a="' + r.a + '" data-b="' + r.b + '" data-fim="b" cx="' + r.p1[0] + '" cy="' + r.p1[1] + '" r="9"></circle></g>';
+        + '<circle class="org-rel-fim" data-a="' + r.a + '" data-b="' + r.b + '" data-fim="b" cx="' + r.p1[0] + '" cy="' + r.p1[1] + '" r="9"></circle>'
+        + (sel && !_orgEst.modoHier && planoPermiteEdicao() ? (function() { var m = _orgPontoMedioRota(r.d); return '<g class="org-rel-x" data-a="' + r.a + '" data-b="' + r.b + '" transform="translate(' + m[0] + ' ' + m[1] + ')"><title>Remover relacionamento</title><circle r="10"></circle><path d="M-4 -4 L4 4 M4 -4 L-4 4"></path></g>'; })() : '')
+        + '</g>';
     }).join('') + '</svg>';
 }
 function _orgRealcarRel(id) {
@@ -4980,6 +5001,7 @@ function _orgIniciarEventos() {
 
   vp.addEventListener('click', function(e) {
     if (_orgEst.suprimirClique) { _orgEst.suprimirClique = false; return; }
+    if (e.target.closest && e.target.closest('.org-rel-x')) { e.stopPropagation(); orgRemoverRelSelecionado(); return; }
     var hit = e.target.closest && e.target.closest('.org-rel-hit');
     if (hit) { var g = hit.parentNode; _orgEst.relSel = g.dataset.a + '|' + g.dataset.b; renderizarOrganograma(); return; }
     if (_orgEst.relSel && !e.target.closest('.org-card')) { _orgEst.relSel = null; renderizarOrganograma(); }
