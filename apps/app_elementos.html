@@ -1411,10 +1411,10 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
             <!-- Construtor do diagrama: hierarquia (modo explícito) e layout automático -->
             <div class="el-th-acoes hidden" id="org-edit-grupo">
-              <button type="button" class="el-th-btn hidden" id="org-btn-hier" onclick="orgToggleHierarquia()"
+              <button type="button" class="el-th-btn" id="org-btn-hier" style="display:none" onclick="orgToggleHierarquia()"
                       data-title="Reorganizar hierarquia (arraste sobre outro elemento)" aria-label="Reorganizar hierarquia" aria-pressed="false">
                 <span class="material-symbols-outlined">move_down</span></button>
-              <button type="button" class="el-th-btn hidden" id="org-btn-reset" onclick="orgRestaurarLayout()"
+              <button type="button" class="el-th-btn" id="org-btn-reset" style="display:none" onclick="orgRestaurarLayout()"
                       data-title="Restaurar layout automático" aria-label="Restaurar layout automático">
                 <span class="material-symbols-outlined">restart_alt</span></button>
             </div>
@@ -5262,10 +5262,10 @@ function _orgAtualizarBotoesEdicao() {
   var bh = document.getElementById('org-btn-hier'), br = document.getElementById('org-btn-reset');
   var g = document.getElementById('org-edit-grupo'), s = document.getElementById('org-edit-sep');
   if (bh) {
-    bh.classList.toggle('hidden', !podeHier); bh.classList.toggle('ativo', _orgEst.modoHier); bh.setAttribute('aria-pressed', _orgEst.modoHier ? 'true' : 'false');
+    bh.style.display = podeHier ? '' : 'none'; bh.classList.toggle('ativo', _orgEst.modoHier); bh.setAttribute('aria-pressed', _orgEst.modoHier ? 'true' : 'false');
     bh.dataset.title = _orgEst.modoHier ? 'Sair da reorganização da hierarquia' : 'Reorganizar hierarquia (arraste sobre outro elemento)';
   }
-  if (br) br.classList.toggle('hidden', !(podeOrg && temPos));
+  if (br) br.style.display = (podeOrg && temPos) ? '' : 'none';
   var mostra = podeHier || (podeOrg && temPos);
   if (g) g.classList.toggle('hidden', !mostra);
   if (s) s.classList.toggle('hidden', !mostra);
