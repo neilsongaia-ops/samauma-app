@@ -382,6 +382,26 @@ body.high-contrast .org-card-plano { background: #000; border: 2px solid #ffff00
 .org-card.org-rel-viz { border-color: var(--ds-color-relacao); box-shadow: 0 0 0 1px var(--ds-color-relacao); }
 .org-card:focus-visible { outline: 2px solid var(--ds-color-action); outline-offset: 2px; }
 .org-root.is-dragging .org-rel { opacity: .12; }
+/* Construtor do diagrama: arrastar livre, porta de relacionamento e linhas editáveis */
+.org-card.org-livre { cursor: grab; }
+.org-card.org-arrastando-livre { cursor: grabbing; box-shadow: var(--ds-shadow-2); z-index: 6; }
+.org-canvas.org-movendo .org-seg, .org-canvas.org-movendo .org-rel-layer { opacity: .15; }
+.org-port { position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--ds-color-relacao);
+  border: 2px solid var(--ds-color-surface); box-shadow: var(--ds-shadow-1); cursor: crosshair; z-index: 4; opacity: 0; transform: scale(.5);
+  transition: opacity var(--ds-duration-fast) var(--ds-ease-standard), transform var(--ds-duration-fast) var(--ds-ease-standard); }
+.org-card:hover .org-port, .org-card:focus-within .org-port, .org-canvas.org-rel-arrastando .org-port { opacity: 1; transform: scale(1); }
+.org-rel-hit { fill: none; stroke: transparent; stroke-width: 12; pointer-events: none; }
+.org-rel-fim { fill: transparent; pointer-events: none; }
+.org-canvas.org-rel-edit .org-rel-hit { pointer-events: stroke; cursor: pointer; }
+.org-canvas.org-rel-edit .org-rel-fim { pointer-events: all; cursor: grab; }
+.org-canvas.org-rel-edit .org-rel-fim:hover { fill: color-mix(in srgb, var(--ds-color-relacao) 30%, transparent); }
+.org-rel.selecionado { opacity: 1; }
+.org-rel.selecionado path:not(.org-rel-hit) { stroke-width: 3; }
+.org-rel.org-rel-oculta { opacity: 0 !important; }
+.org-rel-tmp { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 7; }
+.org-rel-tmp path { fill: none; stroke: var(--ds-color-relacao); stroke-width: 2; stroke-dasharray: 5 3; }
+.org-card.org-rel-alvo { outline: 2px solid var(--ds-color-relacao); outline-offset: 2px; }
+@media (max-width: 768px) { .org-port { display: none; } }
 body.high-contrast .org-rel { opacity: .5; }
 body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15; }
 @media (max-width: 768px) {
@@ -1388,6 +1408,17 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
             <div class="org-legenda" id="org-legenda"></div>
 
             <div style="flex:1"></div>
+
+            <!-- Construtor do diagrama: hierarquia (modo explícito) e layout automático -->
+            <div class="el-th-acoes hidden" id="org-edit-grupo">
+              <button type="button" class="el-th-btn hidden" id="org-btn-hier" onclick="orgToggleHierarquia()"
+                      data-title="Reorganizar hierarquia (arraste sobre outro elemento)" aria-label="Reorganizar hierarquia" aria-pressed="false">
+                <span class="material-symbols-outlined">move_down</span></button>
+              <button type="button" class="el-th-btn hidden" id="org-btn-reset" onclick="orgRestaurarLayout()"
+                      data-title="Restaurar layout automático" aria-label="Restaurar layout automático">
+                <span class="material-symbols-outlined">restart_alt</span></button>
+            </div>
+            <span class="org-sep hidden" id="org-edit-sep"></span>
 
             <!-- Relacionamentos: só aparece se o plano tiver algum -->
             <div class="el-th-acoes hidden" id="org-rel-grupo">
@@ -4343,6 +4374,16 @@ var _orgEst = {
 };
 _orgEst.mostrarRel = (function() { try { return localStorage.getItem('el_org_rel') !== '0'; } catch (e) { return true; } })();
 _orgEst.relCache = null;
+_orgEst.modoHier = false;   // false = arrastar move o cartão livremente; true = arrastar muda a hierarquia
+_orgEst.mov = null;         // arrasto livre em andamento
+_orgEst.relDrag = null;     // puxar/mover linha de relacionamento em andamento
+_orgEst.relSel = null;      // 'idA|idB' da linha selecionada
+var _elPosDiagrama = {};    // posições livres salvas do plano: { idElemento: {x, y} } (apiSalvarPosicoesDiagrama)
+var ORG_SNAP = 10;
+function planoPodeOrganizarDiagrama() {
+  var p = dadosDetalhados && dadosDetalhados.plano && dadosDetalhados.plano.permissoes;
+  return !!(p && p.organizarDiagrama);
+}
 var ORG_REL_MAX_REPOUSO = 60;  // acima disso, linhas só aparecem no hover/foco/seleção (anti-espaguete)
 var ORG_W = 236, ORG_H = 108, ORG_IND = 28, ORG_SG = 12, ORG_ST = 26, ORG_T = 2, ORG_P = 40;
 
@@ -4359,6 +4400,32 @@ function _orgDescendentes(o, id) {
   var s = new Set();
   (function w(k) { (o[k] || []).forEach(function(x) { s.add(x); w(x); }); })(id);
   return s;
+}
+/* Posição livre: nós com posição salva saem do layout automático e os conectores da hierarquia são refeitos a partir
+   dos retângulos reais (pai → filho, em cotovelo). Sem nenhuma posição salva, o layout automático fica intacto. */
+function _orgAplicarPosicoes(L, ordem) {
+  var P = _elPosDiagrama || {}, algum = false;
+  L.nodes.forEach(function(n) { var q = P[n.id]; if (n.id !== 'root' && q) { n.x = q.x; n.y = q.y; algum = true; } });
+  if (!algum) return L;
+  var byId = {}; L.nodes.forEach(function(n) { byId[n.id] = n; });
+  var V = _orgEst.V, segs = [], pais = _orgPais(ordem), w = 0, h = 0;
+  function seg(x1, y1, x2, y2, edge) {
+    if (y1 === y2) segs.push({ x: Math.min(x1, x2) - ORG_T / 2, y: y1 - ORG_T / 2, w: Math.abs(x1 - x2) + ORG_T, h: ORG_T, edge: edge });
+    else segs.push({ x: x1 - ORG_T / 2, y: Math.min(y1, y2), w: ORG_T, h: Math.abs(y1 - y2), edge: edge });
+  }
+  L.nodes.forEach(function(n) {
+    w = Math.max(w, n.x + n.w); h = Math.max(h, n.y + n.h);
+    var pn = n.id === 'root' ? null : byId[pais[n.id]]; if (!pn) return;
+    if (V) {
+      var x1 = pn.x + pn.w / 2, y1 = pn.y + pn.h, x2 = n.x + n.w / 2, y2 = n.y, mid = Math.round((y1 + y2) / 2);
+      seg(x1, y1, x1, mid, n.id); if (x1 !== x2) seg(Math.min(x1, x2), mid, Math.max(x1, x2), mid, n.id); seg(x2, mid, x2, y2, n.id);
+    } else {
+      var a1 = pn.x + pn.w, b1 = pn.y + pn.h / 2, a2 = n.x, b2 = n.y + n.h / 2, m = Math.round((a1 + a2) / 2);
+      seg(a1, b1, m, b1, n.id); if (b1 !== b2) seg(m, Math.min(b1, b2), m, Math.max(b1, b2), n.id); seg(m, b2, a2, b2, n.id);
+    }
+  });
+  L.segs = segs; L.w = w + ORG_P; L.h = h + ORG_P;
+  return L;
 }
 function _orgOrdemDeElementos(lista) {
   var ids = {};
@@ -4576,8 +4643,12 @@ function _orgRelHTML(L, ordem, V) {
   if (!_orgEst.relCache || _orgEst.relCache.k !== chave) _orgEst.relCache = { k: chave, rotas: _orgRotasRel(L, pares, V) };
   return '<svg class="org-rel-layer" width="' + L.w + '" height="' + L.h + '" aria-hidden="true">'
     + _orgEst.relCache.rotas.map(function(r) {
-      return '<g class="org-rel" data-a="' + r.a + '" data-b="' + r.b + '"><path d="' + r.d + '"></path>'
-        + '<circle cx="' + r.p0[0] + '" cy="' + r.p0[1] + '" r="2.5"></circle><circle cx="' + r.p1[0] + '" cy="' + r.p1[1] + '" r="2.5"></circle></g>';
+      var sel = _orgEst.relSel === r.a + '|' + r.b ? ' selecionado' : '';
+      return '<g class="org-rel' + sel + '" data-a="' + r.a + '" data-b="' + r.b + '"><path d="' + r.d + '"></path>'
+        + '<path class="org-rel-hit" d="' + r.d + '"><title>Clique para selecionar · Delete remove</title></path>'
+        + '<circle cx="' + r.p0[0] + '" cy="' + r.p0[1] + '" r="2.5"></circle><circle cx="' + r.p1[0] + '" cy="' + r.p1[1] + '" r="2.5"></circle>'
+        + '<circle class="org-rel-fim" data-a="' + r.a + '" data-b="' + r.b + '" data-fim="a" cx="' + r.p0[0] + '" cy="' + r.p0[1] + '" r="9"></circle>'
+        + '<circle class="org-rel-fim" data-a="' + r.a + '" data-b="' + r.b + '" data-fim="b" cx="' + r.p1[0] + '" cy="' + r.p1[1] + '" r="9"></circle></g>';
     }).join('') + '</svg>';
 }
 function _orgRealcarRel(id) {
@@ -4674,13 +4745,15 @@ function renderizarOrganograma() {
   }
 
   var ordem = _orgEst.ordem, V = _orgEst.V;
-  var L = _orgLayout(ordem, _orgEst.colapsados, V, _orgEst.compactar);
+  var L = _orgAplicarPosicoes(_orgLayout(ordem, _orgEst.colapsados, V, _orgEst.compactar), ordem);
   _orgEst.layout = L;
   var cod = _orgCodigos(ordem);
   var mapa = {};
   todos.forEach(function(e) { mapa[String(e.id)] = e; });
   var podeEditar = planoPermiteEdicao();
-  var arrastavel = podeEditar && !filtro;
+  var arrastavel = podeEditar && !filtro && _orgEst.modoHier;
+  var livre = planoPodeOrganizarDiagrama() && !_orgEst.modoHier;
+  var podeRel = podeEditar && !_orgEst.modoHier;
 
   var html = _orgEst.mostrarRel ? _orgRelHTML(L, ordem, V) : '';
   L.segs.forEach(function(s) {
@@ -4731,18 +4804,22 @@ function renderizarOrganograma() {
       + ' data-title="' + (col ? 'Expandir sub-elementos' : 'Recolher sub-elementos') + '" aria-label="' + (col ? 'Expandir sub-elementos' : 'Recolher sub-elementos') + '">'
       + '<span class="material-symbols-outlined">' + (col ? 'add' : 'remove') + '</span>' + (col ? _orgDescendentes(ordem, id).size : '') + '</button>' : '';
 
-    html += '<div class="org-card' + (sel ? ' selecionada' : '') + (movido ? ' org-movido' : '') + (arrastavel ? '' : ' org-somente-leitura') + '" data-id="' + id + '" tabindex="0" style="' + st + '">'
+    html += '<div class="org-card' + (sel ? ' selecionada' : '') + (movido ? ' org-movido' : '') + (arrastavel || livre ? '' : ' org-somente-leitura') + (livre ? ' org-livre' : '') + '" data-id="' + id + '" tabindex="0" style="' + st + '">'
       + '<div class="org-card-top">' + tipoHtml + '<span class="el-codigo">' + escapeHtml(cod[id]) + '</span>'
       + (movido ? '<span class="org-era" data-title="Código antes da reorganização">era ' + escapeHtml(_orgEst.base[id]) + '</span>' : '')
       + '<span class="org-flex"></span>' + acoes + '</div>'
       + '<div class="org-titulo" data-title="' + escapeHtml(el.titulo) + '">' + escapeHtml(el.titulo) + '</div>'
       + '<div class="org-card-base">' + respHtml + indHtml + chipRelacionadosHTML(el) + '</div>'
-      + toggle + '</div>';
+      + toggle
+      + (podeRel ? '<div class="org-port" data-port="' + id + '" style="' + (V ? 'left:calc(100% + 8px);top:50%' : 'left:50%;top:calc(100% + 8px)') + '" data-title="Arraste até outro elemento para relacioná-los"></div>' : '')
+      + '</div>';
   });
 
   html += '<div class="org-dropbar hidden" id="org-dropbar"></div>';
   canvas.innerHTML = html;
   canvas.classList.toggle('org-rel-repouso-off', (_orgEst.relPares || []).length > ORG_REL_MAX_REPOUSO);
+  canvas.classList.toggle('org-rel-edit', podeRel);
+  _orgAtualizarBotoesEdicao();
   _orgAtualizarBotaoRel();
   canvas.style.width = L.w + 'px';
   canvas.style.height = L.h + 'px';
@@ -4877,11 +4954,23 @@ function _orgIniciarEventos() {
 
   vp.addEventListener('pointerdown', function(e) {
     if (e.button !== 0) return;
+    var porta = e.target.closest && e.target.closest('.org-port');
+    if (porta && !_orgEst.modoHier && planoPermiteEdicao()) { e.preventDefault(); e.stopPropagation(); _orgIniciarRelDrag({ de: porta.dataset.port }); return; }
+    var fim = e.target.closest && e.target.closest('.org-rel-fim');
+    if (fim && !_orgEst.modoHier && planoPermiteEdicao()) {
+      e.preventDefault(); e.stopPropagation();
+      _orgIniciarRelDrag({ de: fim.dataset.fim === 'a' ? fim.dataset.b : fim.dataset.a, retirar: [fim.dataset.a, fim.dataset.b] });
+      return;
+    }
     if (e.target.closest('.org-toggle, .acoes-linha, button, a, input')) return;
     var card = e.target.closest('.org-card');
     if (card) {
-      if (card.dataset.id !== 'root' && planoPermiteEdicao() && !_orgEst.filtroAtivo) {
-        _orgEst.pend = { id: card.dataset.id, x: e.clientX, y: e.clientY };
+      if (card.dataset.id !== 'root') {
+        if (_orgEst.modoHier) {
+          if (planoPermiteEdicao() && !_orgEst.filtroAtivo) _orgEst.pend = { id: card.dataset.id, x: e.clientX, y: e.clientY, modo: 'hier' };
+        } else if (planoPodeOrganizarDiagrama()) {
+          _orgEst.pend = { id: card.dataset.id, x: e.clientX, y: e.clientY, modo: 'livre' };
+        }
       }
       return;
     }
@@ -4891,6 +4980,9 @@ function _orgIniciarEventos() {
 
   vp.addEventListener('click', function(e) {
     if (_orgEst.suprimirClique) { _orgEst.suprimirClique = false; return; }
+    var hit = e.target.closest && e.target.closest('.org-rel-hit');
+    if (hit) { var g = hit.parentNode; _orgEst.relSel = g.dataset.a + '|' + g.dataset.b; renderizarOrganograma(); return; }
+    if (_orgEst.relSel && !e.target.closest('.org-card')) { _orgEst.relSel = null; renderizarOrganograma(); }
     var tg = e.target.closest('.org-toggle');
     if (tg) {
       e.stopPropagation();
@@ -4907,7 +4999,7 @@ function _orgIniciarEventos() {
     if (card && card.dataset.id !== 'root') elDuploCliqueLinha(e, card.dataset.id);
   });
   vp.addEventListener('mouseover', function(e) {
-    if (_orgEst.drag) return;
+    if (_orgEst.drag || _orgEst.mov || _orgEst.relDrag) return;
     var card = e.target.closest('.org-card');
     if (card) _orgRealcarCaminho(card.dataset.id);
   });
@@ -4940,6 +5032,12 @@ function _orgIniciarEventos() {
     var ativo = elModoOrg && !elModoOrg.classList.contains('hidden');
     if (!ativo) return;
     if (e.key === 'Escape' && _orgEst.drag) { _orgEncerrarDrag(); return; }
+    if (e.key === 'Escape' && _orgEst.mov) { _orgCancelarMov(); return; }
+    if (e.key === 'Escape' && _orgEst.relDrag) { _orgEncerrarRelDrag(); return; }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && _orgEst.relSel && planoPermiteEdicao()
+        && !/INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) {
+      e.preventDefault(); orgRemoverRelSelecionado(); return;
+    }
     if (e.key === 'Escape' && _orgEst.fullscreen) { orgToggleFullscreen(false); return; }
     if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && _orgEst.hist.length
         && !/INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '')) {
@@ -4956,7 +5054,9 @@ function _orgOnMove(e) {
     vp.scrollTop = _orgEst.pan.st - (e.clientY - _orgEst.pan.y);
     return;
   }
+  if (_orgEst.relDrag) { _orgMoverRelDrag(e); return; }
   var pd = _orgEst.pend; if (!pd) return;
+  if (pd.modo === 'livre') { _orgMoverLivre(e, pd); return; }
   if (!_orgEst.drag) {
     if (Math.hypot(e.clientX - pd.x, e.clientY - pd.y) < 5) return;
     _orgIniciarDrag(pd.id);
@@ -5060,6 +5160,8 @@ function _orgOnUp() {
     if (vp) vp.classList.remove('is-panning');
     return;
   }
+  if (_orgEst.relDrag) { _orgSoltarRelDrag(); return; }
+  if (_orgEst.mov) { _orgSoltarMov(); return; }
   var d = _orgEst.drag;
   _orgEst.pend = null;
   if (!d) return;
@@ -5078,6 +5180,169 @@ function _orgEncerrarDrag() {
   var bar = document.getElementById('org-dropbar'); if (bar) bar.classList.add('hidden');
   document.querySelectorAll('.org-card.org-arrastando, .org-card.org-alvo-dentro').forEach(function(c) {
     c.classList.remove('org-arrastando', 'org-alvo-dentro');
+  });
+}
+
+/* ---- Arrastar livre (posição do cartão; qualquer status; não toca hierarquia nem relacionamentos) ---- */
+function _orgNoPorId(id) { return ((_orgEst.layout && _orgEst.layout.nodes) || []).filter(function(n) { return n.id === id; })[0] || null; }
+function _orgCoordCanvas(e) {
+  var vp = document.getElementById('org-viewport'), r = vp.getBoundingClientRect(), z = _orgEst.zoom;
+  return { x: (e.clientX - r.left + vp.scrollLeft) / z, y: (e.clientY - r.top + vp.scrollTop) / z };
+}
+function _orgAutoRolar(e) {
+  var vp = document.getElementById('org-viewport'), r = vp.getBoundingClientRect(), M = 40;
+  if (e.clientX < r.left + M) vp.scrollLeft -= 14; else if (e.clientX > r.right - M) vp.scrollLeft += 14;
+  if (e.clientY < r.top + M) vp.scrollTop -= 14; else if (e.clientY > r.bottom - M) vp.scrollTop += 14;
+}
+function _orgMoverLivre(e, pd) {
+  var vp = document.getElementById('org-viewport'), canvas = document.getElementById('org-canvas'); if (!vp || !canvas) return;
+  if (!_orgEst.mov) {
+    if (Math.hypot(e.clientX - pd.x, e.clientY - pd.y) < 5) return;
+    var ids = (_elSelecionados.has(pd.id) && _elSelecionados.size > 1) ? Array.from(_elSelecionados) : [pd.id], orig = {};
+    ids.forEach(function(id) { var n = _orgNoPorId(id); if (n) orig[id] = { x: n.x, y: n.y }; });
+    _orgEst.mov = { id: pd.id, orig: orig, x0: e.clientX, y0: e.clientY, sl: vp.scrollLeft, st: vp.scrollTop, dx: 0, dy: 0 };
+    canvas.classList.add('org-movendo');
+    document.body.style.userSelect = 'none';
+    Object.keys(orig).forEach(function(id) { var c = canvas.querySelector('.org-card[data-id="' + id + '"]'); if (c) c.classList.add('org-arrastando-livre'); });
+  }
+  _orgAutoRolar(e);
+  var m = _orgEst.mov, z = _orgEst.zoom;
+  m.dx = ((e.clientX - m.x0) + (vp.scrollLeft - m.sl)) / z; m.dy = ((e.clientY - m.y0) + (vp.scrollTop - m.st)) / z;
+  Object.keys(m.orig).forEach(function(id) {
+    var c = canvas.querySelector('.org-card[data-id="' + id + '"]'); if (!c) return;
+    c.style.left = Math.max(0, Math.round((m.orig[id].x + m.dx) / ORG_SNAP) * ORG_SNAP) + 'px';
+    c.style.top = Math.max(0, Math.round((m.orig[id].y + m.dy) / ORG_SNAP) * ORG_SNAP) + 'px';
+  });
+}
+function _orgFimMov() {
+  _orgEst.mov = null; _orgEst.pend = null;
+  document.body.style.userSelect = '';
+  var canvas = document.getElementById('org-canvas');
+  if (canvas) {
+    canvas.classList.remove('org-movendo');
+    canvas.querySelectorAll('.org-card.org-arrastando-livre').forEach(function(c) { c.classList.remove('org-arrastando-livre'); });
+  }
+}
+function _orgCancelarMov() { _orgFimMov(); renderizarOrganograma(); }
+function _orgSoltarMov() {
+  var m = _orgEst.mov; _orgEst.suprimirClique = true;
+  _orgFimMov();
+  var anterior = {}, lista = [];
+  Object.keys(m.orig).forEach(function(id) {
+    var x = Math.max(0, Math.round((m.orig[id].x + m.dx) / ORG_SNAP) * ORG_SNAP), y = Math.max(0, Math.round((m.orig[id].y + m.dy) / ORG_SNAP) * ORG_SNAP);
+    if (x === m.orig[id].x && y === m.orig[id].y) return;
+    anterior[id] = _elPosDiagrama[id] || null;
+    _elPosDiagrama[id] = { x: x, y: y };
+    lista.push({ id: id, x: x, y: y });
+  });
+  renderizarOrganograma();
+  if (!lista.length) return;
+  _elementosSDK.chamar('apiSalvarPosicoesDiagrama', _elCtx.idPlano, lista).then(function() {}, function(err) {
+    Object.keys(anterior).forEach(function(id) { if (anterior[id]) _elPosDiagrama[id] = anterior[id]; else delete _elPosDiagrama[id]; });
+    renderizarOrganograma();
+    if (typeof showMessage === 'function') showMessage('error', 'Não foi possível salvar a posição', escapeHtml(err.message));
+  });
+}
+function orgRestaurarLayout() {
+  if (!planoPodeOrganizarDiagrama() || !Object.keys(_elPosDiagrama).length) return;
+  showConfirm('Restaurar o layout automático?', 'As posições que você ajustou no diagrama serão descartadas para todos que veem este plano. Hierarquia e relacionamentos não mudam.', function() {
+    _elementosSDK.chamar('apiRestaurarLayoutDiagrama', _elCtx.idPlano).then(function() {
+      _elPosDiagrama = {}; _orgEst.relCache = null; renderizarOrganograma();
+    }, function(err) { if (typeof showMessage === 'function') showMessage('error', 'Não foi possível restaurar o layout', escapeHtml(err.message)); });
+  });
+}
+function orgToggleHierarquia() {
+  if (!planoPermiteEdicao()) return;
+  _orgEst.modoHier = !_orgEst.modoHier; _orgEst.relSel = null;
+  renderizarOrganograma();
+}
+function _orgAtualizarBotoesEdicao() {
+  var podeHier = planoPermiteEdicao(), podeOrg = planoPodeOrganizarDiagrama();
+  var temPos = Object.keys(_elPosDiagrama || {}).length > 0;
+  var bh = document.getElementById('org-btn-hier'), br = document.getElementById('org-btn-reset');
+  var g = document.getElementById('org-edit-grupo'), s = document.getElementById('org-edit-sep');
+  if (bh) {
+    bh.classList.toggle('hidden', !podeHier); bh.classList.toggle('ativo', _orgEst.modoHier); bh.setAttribute('aria-pressed', _orgEst.modoHier ? 'true' : 'false');
+    bh.dataset.title = _orgEst.modoHier ? 'Sair da reorganização da hierarquia' : 'Reorganizar hierarquia (arraste sobre outro elemento)';
+  }
+  if (br) br.classList.toggle('hidden', !(podeOrg && temPos));
+  var mostra = podeHier || (podeOrg && temPos);
+  if (g) g.classList.toggle('hidden', !mostra);
+  if (s) s.classList.toggle('hidden', !mostra);
+}
+
+/* ---- Puxar / mover linha de relacionamento (janela de edição de elementos) ---- */
+function _orgPortaDe(n, V) { return V ? { x: n.x + n.w, y: n.y + n.h / 2 } : { x: n.x + n.w / 2, y: n.y + n.h }; }
+function _orgIniciarRelDrag(o) {
+  var canvas = document.getElementById('org-canvas'), n = _orgNoPorId(o.de); if (!canvas || !n) return;
+  var p0 = o.retirar ? { x: n.x + n.w / 2, y: n.y + n.h / 2 } : _orgPortaDe(n, _orgEst.V);
+  _orgEst.relDrag = { de: o.de, retirar: o.retirar || null, p0: p0, alvo: null };
+  var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'org-rel-tmp'); svg.setAttribute('id', 'org-rel-tmp');
+  svg.setAttribute('width', _orgEst.layout.w); svg.setAttribute('height', _orgEst.layout.h);
+  svg.innerHTML = '<path d=""></path>';
+  canvas.appendChild(svg);
+  canvas.classList.add('org-rel-arrastando');
+  if (o.retirar) canvas.querySelectorAll('.org-rel').forEach(function(g) { if (g.dataset.a === o.retirar[0] && g.dataset.b === o.retirar[1]) g.classList.add('org-rel-oculta'); });
+  document.body.style.userSelect = 'none';
+}
+function _orgMoverRelDrag(e) {
+  var d = _orgEst.relDrag, canvas = document.getElementById('org-canvas'); if (!d || !canvas) return;
+  _orgAutoRolar(e);
+  var c = _orgCoordCanvas(e), alvo = null;
+  ((_orgEst.layout && _orgEst.layout.nodes) || []).forEach(function(n) {
+    if (alvo || n.id === 'root' || n.id === d.de) return;
+    if (c.x >= n.x - 4 && c.x <= n.x + n.w + 4 && c.y >= n.y - 4 && c.y <= n.y + n.h + 4) alvo = n.id;
+  });
+  d.alvo = alvo;
+  canvas.querySelectorAll('.org-card.org-rel-alvo').forEach(function(x) { x.classList.remove('org-rel-alvo'); });
+  if (alvo) { var cc = canvas.querySelector('.org-card[data-id="' + alvo + '"]'); if (cc) cc.classList.add('org-rel-alvo'); }
+  var xm = Math.round((d.p0.x + c.x) / 2), p = document.querySelector('#org-rel-tmp path');
+  if (p) p.setAttribute('d', 'M' + d.p0.x + ' ' + d.p0.y + ' L' + xm + ' ' + d.p0.y + ' L' + xm + ' ' + c.y + ' L' + c.x + ' ' + c.y);
+}
+function _orgEncerrarRelDrag() {
+  var canvas = document.getElementById('org-canvas');
+  _orgEst.relDrag = null; _orgEst.pend = null;
+  document.body.style.userSelect = '';
+  var t = document.getElementById('org-rel-tmp'); if (t) t.remove();
+  if (canvas) {
+    canvas.classList.remove('org-rel-arrastando');
+    canvas.querySelectorAll('.org-card.org-rel-alvo').forEach(function(x) { x.classList.remove('org-rel-alvo'); });
+    canvas.querySelectorAll('.org-rel-oculta').forEach(function(x) { x.classList.remove('org-rel-oculta'); });
+  }
+}
+function _orgSoltarRelDrag() {
+  var d = _orgEst.relDrag; _orgEst.suprimirClique = true;
+  _orgEncerrarRelDrag();
+  if (!d || !d.alvo) return;
+  if (d.retirar) {
+    if (d.alvo === d.retirar[0] || d.alvo === d.retirar[1]) return; // soltou no mesmo lugar
+    _orgAlterarRel([d.retirar], [[d.de, d.alvo]]);
+  } else {
+    _orgAlterarRel([], [[d.de, d.alvo]]);
+  }
+}
+function orgRemoverRelSelecionado() {
+  var k = _orgEst.relSel; if (!k) return;
+  var par = k.split('|');
+  var tit = function(id) { var e = (_elElementos || []).filter(function(x) { return String(x.id) === id; })[0]; return e ? e.titulo : id; };
+  showConfirm('Remover relacionamento?', escapeHtml(tit(par[0])) + ' deixa de estar relacionado a ' + escapeHtml(tit(par[1])) + '.', function() {
+    _orgEst.relSel = null; _orgAlterarRel([par], []);
+  });
+}
+function _orgAlterarRel(remover, adicionar) {
+  _elementosSDK.chamar('apiAlterarRelacionamentosElementos', _elCtx.idPlano, remover, adicionar).then(function() {
+    var porId = {}; (_elElementos || []).forEach(function(e) { porId[String(e.id)] = e; });
+    var tira = function(a, b) { var e = porId[a]; if (e) e.idsElementoRelacionado = (e.idsElementoRelacionado || []).filter(function(x) { return String(x) !== b; }); };
+    var poe = function(a, b) { var e = porId[a]; if (e) { e.idsElementoRelacionado = e.idsElementoRelacionado || []; if (e.idsElementoRelacionado.map(String).indexOf(b) < 0) e.idsElementoRelacionado.push(b); } };
+    remover.forEach(function(p) { tira(p[0], p[1]); tira(p[1], p[0]); });
+    adicionar.forEach(function(p) { poe(p[0], p[1]); poe(p[1], p[0]); });
+    _orgEst.relCache = null;
+    renderizarTabelaEstrutura();
+    _elementosSDK.reportarDados({ elementos: _elElementos, elementosSuperiores: _elElementosSuperiores });
+  }, function(err) {
+    renderizarOrganograma();
+    if (typeof showMessage === 'function') showMessage('error', 'Não foi possível alterar o relacionamento', escapeHtml(err.message));
   });
 }
 
@@ -5589,6 +5854,7 @@ function atualizarConteudoPlano() {
     _elElementos = res.elementos || [];
     _elElementosSuperiores = res.elementosSuperiores || [];
     _elPlanosSemVinculo = res.planosSuperioresSemPermissao || [];
+    _elPosDiagrama = res.posicoesDiagrama || {}; _orgEst.relCache = null;
     if (res.configElementos) { _elConfigElementos = res.configElementos; if (seletorSuperioresEl) seletorSuperioresEl.atualizar(); if (seletorRelacionadosEl) seletorRelacionadosEl.atualizar(); }
     renderizarTabelaEstrutura();
     renderizarGantt();
@@ -5624,6 +5890,7 @@ function _elIniciar() {
     _elElementos = res.elementos || [];
     _elElementosSuperiores = res.elementosSuperiores || [];
     _elPlanosSemVinculo = res.planosSuperioresSemPermissao || [];
+    _elPosDiagrama = res.posicoesDiagrama || {}; _orgEst.relCache = null;
     if (res.configElementos) { _elConfigElementos = res.configElementos; if (seletorSuperioresEl) seletorSuperioresEl.atualizar(); if (seletorRelacionadosEl) seletorRelacionadosEl.atualizar(); }
     renderizarTabelaEstrutura();
     renderizarGantt();
