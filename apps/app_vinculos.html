@@ -235,6 +235,55 @@ tr.is-decidir .vinc-sub { color: var(--ds-color-warning-fg); }
   .vinc-sub { white-space: normal; }
 }
 body.high-contrast .vinc-tag { border: 1px solid currentColor; }
+
+/* ── VÍNCULOS ÓRFÃOS: plano desvinculado de um superior (uma linha por superior; expande os itens) ── */
+.vinc-orf { margin: 0 0 16px; border: 1px solid var(--ds-color-border); border-left: 3px solid var(--ds-color-warning); border-radius: var(--ds-r-lg); overflow: hidden; }
+.vinc-orf-tabela { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.vinc-orf-tabela td { padding: 10px 12px; border-bottom: 1px solid var(--ds-color-border); font-size: var(--ds-text-sm); color: var(--ds-color-text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.vinc-orf-tabela tr:last-child td { border-bottom: none; }
+.vinc-orf-tabela col.vinc-orf-c-ico { width: 88px; }
+.vinc-orf-tabela col.vinc-orf-c-pend { width: 128px; }
+.vinc-orf-tabela col.vinc-orf-c-data { width: 220px; }
+.vinc-orf-tabela col.vinc-orf-c-n { width: 128px; }
+.vinc-orf-tabela col.vinc-orf-c-acoes { width: 104px; }
+.vinc-orf-tabela td.vinc-orf-col-nome { max-width: 0; }
+.vinc-orf-tabela td.vinc-orf-col-acoes { text-align: right; padding-right: 14px; overflow: visible; }
+.vinc-orf-linha { cursor: pointer; }
+.vinc-orf-linha td { background: color-mix(in srgb, var(--ds-color-warning-bg) 45%, var(--ds-color-surface)); }
+.vinc-orf-linha:hover td { background: var(--ds-color-warning-bg); }
+.vinc-orf-ico { display: inline-flex; align-items: center; gap: 2px; }
+.vinc-orf-ico .ds-icon-action { width: 28px; height: 28px; min-width: 28px; }
+.vinc-orf-alerta { font-size: 20px; color: var(--ds-color-warning-fg); }
+.vinc-orf-item td { background: var(--ds-color-surface); }
+.vinc-orf-item td.vinc-orf-col-nome { padding-left: 44px; }
+.vinc-orf-itemcel { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.vinc-orf-itemcel .vinc-tag { flex: none; }
+.vinc-orf-tit { color: var(--ds-color-text); overflow: hidden; text-overflow: ellipsis; }
+.vinc-orf-sup { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+.vinc-orf-sup .material-symbols-outlined { font-size: 16px; flex: none; }
+.vinc-orf-sup span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.vinc-tag--item { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); }
+.vinc-orf-linha .acoes-linha { opacity: 1; }
+@media (max-width: 1100px) { .vinc-orf-tabela col.vinc-orf-c-n { width: 112px; } .vinc-orf-tabela col.vinc-orf-c-data { width: 200px; } }
+@media (max-width: 768px) {
+  .vinc-orf { border: none; overflow: visible; }
+  .vinc-orf-item td.vinc-orf-col-nome { padding-left: 0; }
+  .vinc-orf-tabela, .vinc-orf-tabela tbody { display: block; }
+  .vinc-orf-tabela colgroup { display: none; }
+  .vinc-orf-tabela tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 12px; margin-bottom: 10px;
+    border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg); }
+  .vinc-orf-linha { border-left: 3px solid var(--ds-color-warning) !important; background: color-mix(in srgb, var(--ds-color-warning-bg) 45%, var(--ds-color-surface)); }
+  .vinc-orf-item { margin-left: 16px; }
+  .vinc-orf-tabela td { display: block; padding: 0; border: none; background: transparent !important; max-width: none; }
+  .vinc-orf-tabela td.vinc-orf-col-ico { order: 1; padding-left: 0 !important; }
+  .vinc-orf-tabela td.vinc-orf-col-pend { order: 2; flex: 1; }
+  .vinc-orf-tabela td.vinc-orf-col-acoes { order: 3; padding: 0; }
+  .vinc-orf-tabela td.vinc-orf-col-nome { order: 4; flex: 0 0 100%; }
+  .vinc-orf-tabela td.vinc-orf-col-det { order: 5; }
+  .vinc-orf-item td.vinc-orf-col-det { flex: 0 0 100%; }
+  .vinc-orf-item td.vinc-orf-col-pend { display: none; }
+}
 </style>
 
 <!-- Container principal da aba Vínculos (injetado em #vinculos-conteudo pelo host) -->
@@ -313,8 +362,10 @@ var _vincDadosCache = {
   planosVinculados: [],
   propostasEnviadas: [],
   propostasRecebidas: [],
-  planosSuperiores: []
+  planosSuperiores: [],
+  desvinculados: []
 };
+var _vincOrfAbertos = {};
 
 var estadoVinculos = {
   busca: '', filtroVinc: '', filtroStatus: '', filtroResp: '', filtroTipo: '',
@@ -620,8 +671,101 @@ function _vincSyncBarra() {
 
 function _vincAtualizarContadorAba() {
   var n = _vincListaUnica().filter(function(p) { return p.vtipo === 'decidir'; }).length;
-  var tit = n + (n === 1 ? ' vínculo aguarda sua decisão' : ' vínculos aguardam sua decisão');
-  _vinculosSDK.reportarAlerta(n, tit); // alerta (âmbar): vínculos que aguardam a decisão deste plano
+  var nOrf = 0;
+  (_vincDadosCache.desvinculados || []).forEach(function(d) { nOrf += (d.elementos || []).length + (d.indicadores || []).length; });
+  var partes = [];
+  if (n) partes.push(n + (n === 1 ? ' vínculo aguarda sua decisão' : ' vínculos aguardam sua decisão'));
+  if (nOrf) partes.push(nOrf + (nOrf === 1 ? ' vínculo órfão de plano desvinculado' : ' vínculos órfãos de plano desvinculado'));
+  // alerta (âmbar): decisões pendentes + vínculos órfãos (mesma soma feita por apiGetContagensAbas)
+  _vinculosSDK.reportarAlerta(n + nOrf, partes.join(' · '));
+}
+
+function _vincPlural(n, s, p) { return n + ' ' + (n === 1 ? s : p); }
+
+function _vincOrfaosHTML(podeEditar) {
+  var lista = _vincDadosCache.desvinculados || [];
+  if (!lista.length) return '';
+  var linhas = lista.map(function(d) {
+    var id = String(d.idPlanoSuperior || ''), idh = escapeHtml(id), idj = escapeHtml(escapeJsAttr(id));
+    var nome = d.nomePlanoSuperior || '(sem nome)', nomeJs = escapeHtml(escapeJsAttr(nome));
+    var els = d.elementos || [], inds = d.indicadores || [];
+    var aberto = !!_vincOrfAbertos[id];
+    var pend = d.vinculoAtual === 'Pendente'
+      ? '<span class="vinc-tag vinc-tag--aguardando" data-title="Novo pedido de vínculo aguardando aprovação"><span class="material-symbols-outlined">schedule</span><span>Pendente</span></span>' : '';
+    var acoes = acoesLinhaHTML('vinc-orf-' + idh, [
+      { icone: 'delete_sweep', rotulo: 'Excluir vínculos órfãos', onclick: "vincExcluirOrfaos('" + idj + "')", principal: true, perigo: true, oculto: !podeEditar },
+      { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: "carregarDetalhesPlano('" + idj + "')", principal: true }
+    ]);
+    var html = '<tr class="vinc-orf-linha" onclick="vincOrfCliqueLinha(event, \'' + idj + '\')">'
+      + '<td class="vinc-orf-col-ico"><span class="vinc-orf-ico">'
+      +   '<button type="button" class="ds-icon-action" onclick="event.stopPropagation(); vincOrfToggle(\'' + idj + '\')" aria-expanded="' + aberto + '" aria-controls="vinc-orf-itens-' + idh + '"'
+      +     ' aria-label="' + (aberto ? 'Ocultar' : 'Mostrar') + ' vínculos órfãos de ' + escapeHtml(nome) + '"><span class="material-symbols-outlined">' + (aberto ? 'expand_more' : 'chevron_right') + '</span></button>'
+      +   '<span class="material-symbols-outlined vinc-orf-alerta" data-title="Desvinculado do plano superior. Os vínculos abaixo ficam guardados, sem efeito, e voltam a valer se o vínculo for restabelecido." aria-hidden="true">warning</span>'
+      + '</span></td>'
+      + '<td class="vinc-orf-col-nome"><span class="vinc-nome" data-title="' + escapeHtml(nome) + '">' + escapeHtml(nome) + '</span></td>'
+      + '<td class="vinc-orf-col-pend">' + pend + '</td>'
+      + '<td class="vinc-orf-col-det"><span' + (d.desvinculadoPor ? ' data-title="Por ' + escapeHtml(d.desvinculadoPor) + '"' : '') + '>Desvinculado em ' + escapeHtml(d.desvinculadoEm || '—') + '</span></td>'
+      + '<td class="vinc-orf-col-det">' + _vincPlural(els.length, 'elemento', 'elementos') + '</td>'
+      + '<td class="vinc-orf-col-det">' + _vincPlural(inds.length, 'indicador', 'indicadores') + '</td>'
+      + '<td class="vinc-orf-col-acoes">' + acoes + '</td>'
+      + '</tr>';
+    if (aberto) {
+      var item = function(rot, ico, tit, sup) {
+        return '<tr class="vinc-orf-item" data-orf="' + idh + '">'
+          + '<td class="vinc-orf-col-nome" colspan="3"><span class="vinc-orf-itemcel"><span class="vinc-tag vinc-tag--item"><span class="material-symbols-outlined">' + ico + '</span><span>' + rot + '</span></span>'
+          +   '<span class="vinc-orf-tit" data-title="' + escapeHtml(tit) + '">' + escapeHtml(tit) + '</span></span></td>'
+          + '<td class="vinc-orf-col-det" colspan="4"><span class="vinc-orf-sup" data-title="' + escapeHtml(sup) + '"><span class="material-symbols-outlined" aria-label="vinculado a">arrow_forward</span><span>' + escapeHtml(sup) + '</span></span></td>'
+          + '</tr>';
+      };
+      html += els.map(function(e) { return item('Elemento', 'account_tree', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
+        + inds.map(function(i) { return item('Indicador', 'monitoring', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
+    }
+    return html;
+  }).join('');
+  return '<div class="vinc-orf" id="vinc-orf" role="region" aria-label="Planos superiores desvinculados">'
+    + '<table class="vinc-orf-tabela"><colgroup><col class="vinc-orf-c-ico"><col class="vinc-orf-c-nome"><col class="vinc-orf-c-pend"><col class="vinc-orf-c-data"><col class="vinc-orf-c-n"><col class="vinc-orf-c-n"><col class="vinc-orf-c-acoes"></colgroup>'
+    + '<tbody>' + linhas + '</tbody></table></div>';
+}
+
+function _vincRenderOrfaos() {
+  var wrap = document.getElementById('vinc-orf-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = _vincOrfaosHTML(!!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.vincular));
+}
+
+function vincOrfToggle(id) {
+  id = String(id);
+  if (_vincOrfAbertos[id]) delete _vincOrfAbertos[id]; else _vincOrfAbertos[id] = true;
+  _vincRenderOrfaos();
+}
+
+function vincOrfCliqueLinha(ev, id) {
+  if (ev.target.closest('button, a, .acoes-linha')) return;
+  vincOrfToggle(id);
+}
+
+function vincExcluirOrfaos(idSup) {
+  var idPlano = _vincCtx && _vincCtx.idPlano;
+  var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(idSup); })[0];
+  if (!idPlano || !d) return;
+  var nE = (d.elementos || []).length, nI = (d.indicadores || []).length;
+  var qtd = [nE ? _vincPlural(nE, 'vínculo de elemento', 'vínculos de elementos') : '', nI ? _vincPlural(nI, 'vínculo de indicador', 'vínculos de indicadores') : '']
+    .filter(Boolean).join(' e ');
+  showConfirm('Excluir vínculos órfãos?',
+    'Excluir de vez ' + qtd + ' com <strong>' + escapeHtml(d.nomePlanoSuperior || '') + '</strong>?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function(res) {
+          esconderLoader();
+          var n = ((res && res.elementos) || 0) + ((res && res.indicadores) || 0);
+          delete _vincOrfAbertos[String(idSup)];
+          showMessage('success', 'Excluídos', _vincPlural(n, 'vínculo órfão excluído.', 'vínculos órfãos excluídos.'));
+          carregarAbaVinculos();
+        })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+        .apiExcluirVinculosOrfaos(idPlano, idSup);
+    });
 }
 
 function renderizarTabelaVinculos() {
@@ -631,7 +775,8 @@ function renderizarTabelaVinculos() {
   var busca = estadoVinculos.busca;
 
   container.innerHTML =
-    '<div id="vinc-filtros" class="el-filtros">'
+    '<div id="vinc-orf-wrap">' + _vincOrfaosHTML(podeEditar) + '</div>'
+    + '<div id="vinc-filtros" class="el-filtros">'
     +   '<div class="el-search" id="vinc-search-wrap">'
     +     '<button type="button" class="ds-icon-action' + (busca ? ' hidden' : '') + '" id="vinc-search-toggle" onclick="vincAbrirBusca()" data-title="Buscar" aria-label="Buscar">'
     +       '<span class="material-symbols-outlined">search</span></button>'
@@ -1319,7 +1464,8 @@ function carregarAbaVinculos() {
       planosVinculados: (res && res.planosVinculados) || [],
       propostasEnviadas: (res && res.propostasEnviadas) || [],
       propostasRecebidas: (res && res.propostasRecebidas) || [],
-      planosSuperiores: (res && res.planosSuperiores) || []
+      planosSuperiores: (res && res.planosSuperiores) || [],
+      desvinculados: (res && res.desvinculados) || []
     };
     // O resumo do plano no cabeçalho (planosSuperiores) pertence ao host: informa via SDK
     _vinculosSDK.reportarDados({ plano: { planosSuperiores: _vincDadosCache.planosSuperiores } });
@@ -1357,7 +1503,8 @@ _vinculosSDK.aoContexto(function(ctx) {
   _vincCtx = ctx;
   _vincCarregado = false;
   _vincCarregando = false;
-  _vincDadosCache = { planosVinculados: [], propostasEnviadas: [], propostasRecebidas: [], planosSuperiores: [] };
+  _vincDadosCache = { planosVinculados: [], propostasEnviadas: [], propostasRecebidas: [], planosSuperiores: [], desvinculados: [] };
+  _vincOrfAbertos = {};
   estadoVinculos.busca = '';
   estadoVinculos.filtroVinc = '';
   estadoVinculos.filtroStatus = '';
@@ -1393,6 +1540,9 @@ window.abrirModalVincularPlano = abrirModalVincularPlano;
 window.fecharModalVincularPlano = fecharModalVincularPlano;
 window.vincToggleSelecionarTodos = vincToggleSelecionarTodos;
 window.vincCancelarSelecao = vincCancelarSelecao;
+window.vincOrfToggle = vincOrfToggle;
+window.vincOrfCliqueLinha = vincOrfCliqueLinha;
+window.vincExcluirOrfaos = vincExcluirOrfaos;
 window.estadoVinculos = estadoVinculos;
 window._vinculosSDK = _vinculosSDK;
 </script>
