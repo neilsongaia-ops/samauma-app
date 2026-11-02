@@ -367,6 +367,26 @@ body.org-fs-active, body.org-fs-active #main-content { overflow: hidden !importa
 body.high-contrast .org-card { border-color: #fff; }
 body.high-contrast .org-seg { background: #fff; }
 body.high-contrast .org-card-plano { background: #000; border: 2px solid #ffff00; color: #ffff00; }
+/* Relacionamentos entre elementos (simétricos): mesma cor do badge .el-chip-rel, tracejado para não confundir com a hierarquia */
+.el-chip-meta.el-chip-rel .material-symbols-outlined { color: var(--ds-color-relacao); }
+.org-rel-layer { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
+.org-rel { opacity: .28; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
+.org-rel path { fill: none; stroke: var(--ds-color-relacao); stroke-width: 1.5; stroke-dasharray: 5 3; stroke-linejoin: miter; }
+.org-rel circle { fill: var(--ds-color-relacao); }
+.org-rel.ativo { opacity: 1; }
+.org-rel.ativo path { stroke-width: 2.25; }
+.org-canvas.org-rel-repouso-off .org-rel:not(.ativo) { display: none; }
+.org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .08; }
+.org-canvas.org-rel-foco .org-card:not(.org-rel-viz):not(.org-rel-centro):not(.org-card-plano) { opacity: .55; }
+.org-canvas.org-rel-foco .org-seg:not(.org-seg-ativo) { opacity: .5; }
+.org-card.org-rel-viz { border-color: var(--ds-color-relacao); box-shadow: 0 0 0 1px var(--ds-color-relacao); }
+.org-card:focus-visible { outline: 2px solid var(--ds-color-action); outline-offset: 2px; }
+.org-root.is-dragging .org-rel { opacity: .12; }
+body.high-contrast .org-rel { opacity: .5; }
+body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15; }
+@media (max-width: 768px) {
+  .org-canvas .org-rel:not(.ativo) { display: none; }   /* mobile: linhas só do nó tocado (selecionado) */
+}
 /* --- GANTT CHART (Harmonizado com o padrão de tabelas do sistema) --- */
 #modo-gantt {
   width: 100%;
@@ -1369,6 +1389,14 @@ body.high-contrast .org-card-plano { background: #000; border: 2px solid #ffff00
 
             <div style="flex:1"></div>
 
+            <!-- Relacionamentos: só aparece se o plano tiver algum -->
+            <div class="el-th-acoes hidden" id="org-rel-grupo">
+              <button type="button" class="el-th-btn ativo" id="org-btn-rel" onclick="orgToggleRelacionamentos()"
+                      data-title="Ocultar relacionamentos" aria-label="Mostrar relacionamentos" aria-pressed="true">
+                <span class="material-symbols-outlined">hub</span></button>
+            </div>
+            <span class="org-sep hidden" id="org-rel-sep"></span>
+
             <!-- Orientação: De cima para baixo / Da esquerda para a direita (estilo el-th-btn) -->
             <div class="el-th-acoes" role="group" aria-label="Orientação do organograma">
               <button type="button" class="el-th-btn org-ori-btn ativo" id="org-btn-v" onclick="orgSetOrientacao(true)"
@@ -1635,6 +1663,7 @@ function criarSamaumaSDK() {
   };
 }
 </script>
+
 
 <script>
 // ================================================================
@@ -2804,6 +2833,30 @@ function chipsVinculoElementoHTML(el, supInfo) {
       resto.every(function (g) { return !g.semEfeito || g.pendente; }) && resto.some(function (g) { return g.pendente; }));
   }
   return html;
+}
+// Badge de relacionamento (N:N simétrico, mesmo plano): ícone hub + quantidade; a lista vai só no tooltip (máx. 12 itens + "e mais N").
+var EL_REL_TIP_MAX = 12, _elRelMapa = { src: null, len: -1, map: null };
+function _elMapaPorIdRel() {
+  var src = _elElementos || [];
+  if (_elRelMapa.src !== src || _elRelMapa.len !== src.length) {
+    var m = {}; src.forEach(function (e) { m[String(e.id)] = e; });
+    _elRelMapa = { src: src, len: src.length, map: m };
+  }
+  return _elRelMapa.map;
+}
+function _elRelacionadosDe(el) {
+  var ids = (el && el.idsElementoRelacionado) || [];
+  if (!ids.length) return [];
+  var m = _elMapaPorIdRel(), vistos = {};
+  return ids.map(function (i) { i = String(i); if (vistos[i] || i === String(el.id)) return null; vistos[i] = 1; return m[i] || null; })
+    .filter(Boolean).sort(function (a, b) { return compararCodigos(a.codigo, b.codigo); });
+}
+function chipRelacionadosHTML(el) {
+  var rel = _elRelacionadosDe(el), n = rel.length;
+  if (!n) return '';
+  var itens = rel.slice(0, EL_REL_TIP_MAX).map(function (r) { return ((r.codigo || '') + ' ' + (r.titulo || '')).trim(); });
+  var tip = (n === 1 ? 'Relacionado a: ' : 'Relacionado a ' + n + ' elementos: ') + itens.join('; ') + (n > EL_REL_TIP_MAX ? '; e mais ' + (n - EL_REL_TIP_MAX) : '');
+  return '<span class="el-chip-meta el-chip-rel" data-title="' + escapeHtml(tip) + '" aria-label="' + escapeHtml(tip) + '"><span class="material-symbols-outlined">hub</span><span class="el-chip-meta-txt">' + n + '</span></span>';
 }
 // Ícone de alerta "acima do limite" (VINCULO_ELEMENTO_LIMITE reduzido com vínculos já existentes): informativo,
 // nunca bloqueia. Igual ao alerta do indicador sem meta: ícone solto ao lado do título, sem chip.
@@ -4198,6 +4251,8 @@ function renderizarTabelaEstrutura() {
     }
     var chipVinc = chipsVinculoElementoHTML(no, supInfo);
     if (chipVinc) chipsList.push(chipVinc);
+    var chipRel = chipRelacionadosHTML(no);
+    if (chipRel) chipsList.push(chipRel);
     if (qtdInd > 0) {
       chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + (qtdInd === 1 ? ' ind.' : ' inds.') + '</span></span>');
     }
@@ -4286,6 +4341,9 @@ var _orgEst = {
   pend: null, drag: null, pan: null, layout: null, filtroAtivo: false,
   suprimirClique: false, iniciado: false, salvando: false, fullscreen: false
 };
+_orgEst.mostrarRel = (function() { try { return localStorage.getItem('el_org_rel') !== '0'; } catch (e) { return true; } })();
+_orgEst.relCache = null;
+var ORG_REL_MAX_REPOUSO = 60;  // acima disso, linhas só aparecem no hover/foco/seleção (anti-espaguete)
 var ORG_W = 236, ORG_H = 108, ORG_IND = 28, ORG_SG = 12, ORG_ST = 26, ORG_T = 2, ORG_P = 40;
 
 function _orgClonar(o) { var r = {}; Object.keys(o).forEach(function(k) { r[k] = o[k].slice(); }); return r; }
@@ -4374,6 +4432,185 @@ function _orgLayout(ordem, colapsados, V, compactar) {
   return { nodes: nodes, segs: segs, w: (V ? r.bc : r.bm) + ORG_P * 2, h: (V ? r.bm : r.bc) + ORG_P * 2 };
 }
 
+/* Rotas ortogonais dos relacionamentos (estilo BPMN, sem seta): A* numa grade esparsa formada pelos corredores
+   entre os nós (bordas ± ORG_REL_M). Custo = comprimento + penalidade por curva + penalidade por corredor já usado
+   (espalha as linhas). Linhas que ainda dividem o mesmo corredor recebem pequenos deslocamentos paralelos. */
+var ORG_REL_M = 7, ORG_REL_CURVA = 40;
+function _orgRotasRel(L, pares, V) {
+  var M = ORG_REL_M, I = 2, rects = L.nodes, byId = {};
+  rects.forEach(function(n) { byId[n.id] = n; });
+  function portas(n) {
+    var tx = V ? n.x + n.w * .25 : n.x + n.w / 2, bx = V ? n.x + n.w * .75 : n.x + n.w / 2;
+    var ly = V ? n.y + n.h / 2 : n.y + n.h * .3, ry = V ? n.y + n.h / 2 : n.y + n.h * .7;
+    return [
+      { bx: tx, by: n.y, sx: tx, sy: n.y - M, d: 3 },
+      { bx: bx, by: n.y + n.h, sx: bx, sy: n.y + n.h + M, d: 2 },
+      { bx: n.x, by: ly, sx: n.x - M, sy: ly, d: 1 },
+      { bx: n.x + n.w, by: ry, sx: n.x + n.w + M, sy: ry, d: 0 }
+    ];
+  }
+  var xs = {}, ys = {}, P = {};
+  var ad = function(o, v) { o[Math.round(v)] = 1; };
+  ad(xs, 0); ad(xs, L.w); ad(ys, 0); ad(ys, L.h);
+  rects.forEach(function(r) { ad(xs, r.x - M); ad(xs, r.x + r.w + M); ad(ys, r.y - M); ad(ys, r.y + r.h + M); });
+  pares.forEach(function(p) { [p.a, p.b].forEach(function(id) {
+    if (P[id] || !byId[id]) return;
+    P[id] = portas(byId[id]); P[id].forEach(function(q) { ad(xs, q.sx); ad(ys, q.sy); });
+  }); });
+  var X = Object.keys(xs).map(Number).sort(function(a, b) { return a - b; });
+  var Y = Object.keys(ys).map(Number).sort(function(a, b) { return a - b; });
+  var NX = X.length, NY = Y.length, ix = {}, iy = {};
+  X.forEach(function(v, i) { ix[v] = i; }); Y.forEach(function(v, i) { iy[v] = i; });
+  var livreC = {}, uso = {};
+  function livre(i, j, d) {  // aresta da grade saindo de (i,j) na direção d
+    var k = (j * NX + i) * 4 + d; if (k in livreC) return livreC[k];
+    var i2 = i + (d === 0 ? 1 : d === 1 ? -1 : 0), j2 = j + (d === 2 ? 1 : d === 3 ? -1 : 0), ok = true;
+    if (i2 < 0 || j2 < 0 || i2 >= NX || j2 >= NY) ok = false;
+    else {
+      var a = Math.min(X[i], X[i2]), b = Math.max(X[i], X[i2]), c = Math.min(Y[j], Y[j2]), e = Math.max(Y[j], Y[j2]);
+      for (var r = 0; r < rects.length && ok; r++) {
+        var q = rects[r];
+        if (b > q.x - I && a < q.x + q.w + I && e > q.y - I && c < q.y + q.h + I) ok = false;
+      }
+    }
+    livreC[k] = ok; return ok;
+  }
+  var DX = [1, -1, 0, 0], DY = [0, 0, 1, -1], OP = [1, 0, 3, 2];
+  function rotear(pa, pb) {
+    var alvos = {}, best = {}, prev = {}, heap = [];
+    pb.forEach(function(q) { alvos[iy[Math.round(q.sy)] * NX + ix[Math.round(q.sx)]] = q; });
+    var hx = pb.map(function(q) { return [q.sx, q.sy]; });
+    var h = function(i, j) { var m = Infinity; hx.forEach(function(t) { m = Math.min(m, Math.abs(X[i] - t[0]) + Math.abs(Y[j] - t[1])); }); return m; };
+    function push(k, g, f) { heap.push([f, k, g]); var c = heap.length - 1; while (c) { var p = (c - 1) >> 1; if (heap[p][0] <= heap[c][0]) break; var t = heap[p]; heap[p] = heap[c]; heap[c] = t; c = p; } }
+    function pop() { var top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; var c = 0; for (;;) { var l = 2 * c + 1, r = l + 1, m = c; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === c) break; var t = heap[m]; heap[m] = heap[c]; heap[c] = t; c = m; } } return top; }
+    pa.forEach(function(q, n) {
+      var i = ix[Math.round(q.sx)], j = iy[Math.round(q.sy)], k = (j * NX + i) * 4 + q.d;
+      best[k] = 0; prev[k] = 'S' + n; push(k, 0, h(i, j));
+    });
+    var fim = null, guard = 0;
+    while (heap.length && guard++ < 200000) {
+      var it = pop(), k = it[1], g = it[2];
+      if (typeof k === 'string') { fim = k; break; }
+      if (g > best[k]) continue;
+      var d = k % 4, cell = (k - d) / 4, i = cell % NX, j = (cell - i) / NX;
+      if (alvos[cell]) {  // chegar ao toco do destino: entrar na direção da borda
+        var q = alvos[cell], pen = d === OP[q.d] ? 0 : d === q.d ? 2 * ORG_REL_CURVA : ORG_REL_CURVA, gk = 'G' + cell;
+        if (best[gk] == null || g + pen < best[gk]) { best[gk] = g + pen; prev[gk] = k; push(gk, g + pen, g + pen); }
+      }
+      for (var nd = 0; nd < 4; nd++) {
+        if (nd === OP[d] || !livre(i, j, nd)) continue;
+        var i2 = i + DX[nd], j2 = j + DY[nd], len = Math.abs(X[i2] - X[i]) + Math.abs(Y[j2] - Y[j]);
+        var ek = Math.min(j * NX + i, j2 * NX + i2) + ':' + (nd < 2 ? 'h' : 'v');
+        var g2 = g + len * (1 + .6 * (uso[ek] || 0)) + (nd === d ? 0 : ORG_REL_CURVA), k2 = (j2 * NX + i2) * 4 + nd;
+        if (best[k2] == null || g2 < best[k2]) { best[k2] = g2; prev[k2] = k; push(k2, g2, g2 + h(i2, j2)); }
+      }
+    }
+    if (!fim) return null;
+    var cellsRev = [], k = prev[fim], q2 = alvos[+fim.slice(1)], q1;
+    for (;;) {
+      var d = k % 4, cell = (k - d) / 4; cellsRev.push(cell);
+      var p = prev[k];
+      if (typeof p === 'string') { q1 = pa[+p.slice(1)]; break; }
+      var c2 = (p - p % 4) / 4, ek = Math.min(cell, c2) + ':' + (d < 2 ? 'h' : 'v'); uso[ek] = (uso[ek] || 0) + 1;
+      k = p;
+    }
+    var pts = [[q1.bx, q1.by]];
+    cellsRev.reverse().forEach(function(c) { var i = c % NX; pts.push([X[i], Y[(c - i) / NX]]); });
+    pts.push([q2.bx, q2.by]);
+    var out = [pts[0]];  // remove pontos colineares
+    for (var n = 1; n < pts.length - 1; n++) {
+      var a = out[out.length - 1], b = pts[n], c = pts[n + 1];
+      if ((a[0] === b[0] && b[0] === c[0]) || (a[1] === b[1] && b[1] === c[1])) continue;
+      out.push(b);
+    }
+    out.push(pts[pts.length - 1]);
+    return out;
+  }
+  var rotas = [];
+  pares.forEach(function(p) { if (P[p.a] && P[p.b]) { var pts = rotear(P[p.a], P[p.b]); if (pts) rotas.push({ a: p.a, b: p.b, pts: pts }); } });
+  // Deslocamento paralelo: linhas no mesmo corredor (mesma coordenada e trechos sobrepostos) ganham ±2,5px cada
+  var grupos = {};
+  rotas.forEach(function(r, ri) { r.off = []; for (var s = 0; s < r.pts.length - 1; s++) {
+    var a = r.pts[s], b = r.pts[s + 1], hz = a[1] === b[1], key = (hz ? 'h' : 'v') + (hz ? a[1] : a[0]);
+    (grupos[key] = grupos[key] || []).push({ r: ri, s: s, lo: Math.min(hz ? a[0] : a[1], hz ? b[0] : b[1]), hi: Math.max(hz ? a[0] : a[1], hz ? b[0] : b[1]) });
+    r.off.push(0);
+  } });
+  Object.keys(grupos).forEach(function(key) {
+    var g = grupos[key].sort(function(a, b) { return a.lo - b.lo; }), trilhas = [];
+    g.forEach(function(t) { var k = 0; while (trilhas[k] != null && trilhas[k] > t.lo) k++; trilhas[k] = t.hi; t.k = k; });
+    var n = trilhas.length; if (n < 2) return;
+    var passo = Math.min(2.5, (ORG_REL_M - 1) * 2 / n);
+    g.forEach(function(t) { rotas[t.r].off[t.s] = (t.k - (n - 1) / 2) * passo; });
+  });
+  rotas.forEach(function(r) {
+    var p = r.pts, o = r.off, n = p.length, hz = function(s) { return p[s][1] === p[s + 1][1]; }, q = [];
+    for (var k = 0; k < n; k++) {
+      var x = p[k][0], y = p[k][1];
+      [k - 1, k].forEach(function(s) { if (s < 0 || s >= n - 1) return; if (hz(s)) y = p[k][1] + o[s]; else x = p[k][0] + o[s]; });
+      q.push([x, y]);
+    }
+    r.d = 'M' + q.map(function(v) { return v[0] + ' ' + v[1]; }).join(' L');
+    r.p0 = q[0]; r.p1 = q[n - 1];
+  });
+  return rotas;
+}
+function _orgParesRel(ordem, layout) {
+  var vis = {}, pais = _orgPais(ordem), vistos = {}, pares = [];
+  layout.nodes.forEach(function(n) { vis[n.id] = 1; });
+  // Filho de nó recolhido: a linha vai até o ancestral visível (recolhido). Filtrado: sem linha (o badge continua contando).
+  function visivel(id) { id = String(id); if (!(id in pais)) return null; while (id && id !== 'root' && !vis[id]) id = pais[id]; return id && id !== 'root' ? id : null; }
+  (_elElementos || []).forEach(function(e) {
+    (e.idsElementoRelacionado || []).forEach(function(r) {
+      var a = visivel(e.id), b = visivel(r); if (!a || !b || a === b) return;
+      var k = a < b ? a + '|' + b : b + '|' + a; if (vistos[k]) return; vistos[k] = 1;
+      pares.push({ a: a < b ? a : b, b: a < b ? b : a });
+    });
+  });
+  return pares;
+}
+function _orgRelHTML(L, ordem, V) {
+  var pares = _orgParesRel(ordem, L);
+  _orgEst.relPares = pares;
+  if (!pares.length) return '';
+  var chave = (V ? 'V' : 'H') + L.w + 'x' + L.h + ';' + L.nodes.map(function(n) { return n.id + ':' + n.x + ',' + n.y + ',' + n.w + ',' + n.h; }).join(';') + '#' + pares.map(function(p) { return p.a + '|' + p.b; }).join(';');
+  if (!_orgEst.relCache || _orgEst.relCache.k !== chave) _orgEst.relCache = { k: chave, rotas: _orgRotasRel(L, pares, V) };
+  return '<svg class="org-rel-layer" width="' + L.w + '" height="' + L.h + '" aria-hidden="true">'
+    + _orgEst.relCache.rotas.map(function(r) {
+      return '<g class="org-rel" data-a="' + r.a + '" data-b="' + r.b + '"><path d="' + r.d + '"></path>'
+        + '<circle cx="' + r.p0[0] + '" cy="' + r.p0[1] + '" r="2.5"></circle><circle cx="' + r.p1[0] + '" cy="' + r.p1[1] + '" r="2.5"></circle></g>';
+    }).join('') + '</svg>';
+}
+function _orgRealcarRel(id) {
+  var canvas = document.getElementById('org-canvas'); if (!canvas) return;
+  var svg = canvas.querySelector('.org-rel-layer'), viz = {}, tem = false;
+  canvas.querySelectorAll('.org-card.org-rel-viz, .org-card.org-rel-centro').forEach(function(c) { c.classList.remove('org-rel-viz', 'org-rel-centro'); });
+  if (svg) svg.querySelectorAll('.org-rel').forEach(function(g) {
+    var on = !!id && (g.dataset.a === id || g.dataset.b === id);
+    g.classList.toggle('ativo', on);
+    if (on) { tem = true; viz[g.dataset.a === id ? g.dataset.b : g.dataset.a] = 1; svg.appendChild(g); }
+  });
+  canvas.classList.toggle('org-rel-foco', tem);
+  if (!tem) return;
+  Object.keys(viz).forEach(function(v) { var c = canvas.querySelector('.org-card[data-id="' + v + '"]'); if (c) c.classList.add('org-rel-viz'); });
+  var c0 = canvas.querySelector('.org-card[data-id="' + id + '"]'); if (c0) c0.classList.add('org-rel-centro');
+}
+function orgToggleRelacionamentos() {
+  _orgEst.mostrarRel = !_orgEst.mostrarRel;
+  try { localStorage.setItem('el_org_rel', _orgEst.mostrarRel ? '1' : '0'); } catch (e) {}
+  renderizarOrganograma();
+}
+function _orgAtualizarBotaoRel() {
+  var tem = (_elElementos || []).some(function(e) { return (e.idsElementoRelacionado || []).length; });
+  var g = document.getElementById('org-rel-grupo'), s = document.getElementById('org-rel-sep'), b = document.getElementById('org-btn-rel');
+  if (g) g.classList.toggle('hidden', !tem);
+  if (s) s.classList.toggle('hidden', !tem);
+  if (b) {
+    var on = _orgEst.mostrarRel;
+    b.classList.toggle('ativo', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.dataset.title = on ? 'Ocultar relacionamentos' : 'Mostrar relacionamentos';
+  }
+}
+
 function renderizarOrganograma() {
   var canvas = document.getElementById('org-canvas');
   var vazio = document.getElementById('org-vazio');
@@ -4445,7 +4682,7 @@ function renderizarOrganograma() {
   var podeEditar = planoPermiteEdicao();
   var arrastavel = podeEditar && !filtro;
 
-  var html = '';
+  var html = _orgEst.mostrarRel ? _orgRelHTML(L, ordem, V) : '';
   L.segs.forEach(function(s) {
     html += '<div class="org-seg" data-edge="' + s.edge + '" style="left:' + s.x + 'px;top:' + s.y + 'px;width:' + s.w + 'px;height:' + s.h + 'px"></div>';
   });
@@ -4494,17 +4731,19 @@ function renderizarOrganograma() {
       + ' data-title="' + (col ? 'Expandir sub-elementos' : 'Recolher sub-elementos') + '" aria-label="' + (col ? 'Expandir sub-elementos' : 'Recolher sub-elementos') + '">'
       + '<span class="material-symbols-outlined">' + (col ? 'add' : 'remove') + '</span>' + (col ? _orgDescendentes(ordem, id).size : '') + '</button>' : '';
 
-    html += '<div class="org-card' + (sel ? ' selecionada' : '') + (movido ? ' org-movido' : '') + (arrastavel ? '' : ' org-somente-leitura') + '" data-id="' + id + '" style="' + st + '">'
+    html += '<div class="org-card' + (sel ? ' selecionada' : '') + (movido ? ' org-movido' : '') + (arrastavel ? '' : ' org-somente-leitura') + '" data-id="' + id + '" tabindex="0" style="' + st + '">'
       + '<div class="org-card-top">' + tipoHtml + '<span class="el-codigo">' + escapeHtml(cod[id]) + '</span>'
       + (movido ? '<span class="org-era" data-title="Código antes da reorganização">era ' + escapeHtml(_orgEst.base[id]) + '</span>' : '')
       + '<span class="org-flex"></span>' + acoes + '</div>'
       + '<div class="org-titulo" data-title="' + escapeHtml(el.titulo) + '">' + escapeHtml(el.titulo) + '</div>'
-      + '<div class="org-card-base">' + respHtml + indHtml + '</div>'
+      + '<div class="org-card-base">' + respHtml + indHtml + chipRelacionadosHTML(el) + '</div>'
       + toggle + '</div>';
   });
 
   html += '<div class="org-dropbar hidden" id="org-dropbar"></div>';
   canvas.innerHTML = html;
+  canvas.classList.toggle('org-rel-repouso-off', (_orgEst.relPares || []).length > ORG_REL_MAX_REPOUSO);
+  _orgAtualizarBotaoRel();
   canvas.style.width = L.w + 'px';
   canvas.style.height = L.h + 'px';
   _orgAplicarZoom();
@@ -4623,10 +4862,12 @@ function _orgMostrarCarregando(msg) {
 }
 
 function _orgRealcarCaminho(id) {
+  var id0 = id && id !== 'root' ? String(id) : null;
   var canvas = document.getElementById('org-canvas'); if (!canvas) return;
   var pais = _orgPais(_orgEst.ordem || {}), set = {};
   while (id && id !== 'root') { set[id] = true; id = pais[id]; }
   canvas.querySelectorAll('.org-seg').forEach(function(s) { s.classList.toggle('org-seg-ativo', !!set[s.dataset.edge]); });
+  _orgRealcarRel(id0);
 }
 
 function _orgIniciarEventos() {
@@ -4672,6 +4913,18 @@ function _orgIniciarEventos() {
   });
   vp.addEventListener('mouseleave', function() {
     if (!_orgEst.drag) _orgRealcarCaminho(_elSelecionados.size === 1 ? Array.from(_elSelecionados)[0] : null);
+  });
+  vp.addEventListener('focusin', function(e) {
+    var card = e.target.closest && e.target.closest('.org-card');
+    if (card && !_orgEst.drag) _orgRealcarCaminho(card.dataset.id);
+  });
+  vp.addEventListener('focusout', function(e) {
+    if (e.relatedTarget && vp.contains(e.relatedTarget)) return;
+    _orgRealcarCaminho(_elSelecionados.size === 1 ? Array.from(_elSelecionados)[0] : null);
+  });
+  vp.addEventListener('keydown', function(e) {
+    var card = e.target.classList && e.target.classList.contains('org-card') ? e.target : null;
+    if (card && e.key === 'Enter' && card.dataset.id !== 'root') { e.preventDefault(); elCliqueLinha(e, card.dataset.id); }
   });
   vp.addEventListener('wheel', function(e) {
     if (!(e.ctrlKey || e.metaKey)) return;
@@ -5213,6 +5466,8 @@ function renderizarTabelaDetalhes() {
     var chipsList = [];
     var chipVinc = chipsVinculoElementoHTML(item, supInfo);
     if (chipVinc) chipsList.push(chipVinc);
+    var chipRel = chipRelacionadosHTML(item);
+    if (chipRel) chipsList.push(chipRel);
     if (qtdInd > 0) {
       chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + (qtdInd === 1 ? ' ind.' : ' inds.') + '</span></span>');
     }
