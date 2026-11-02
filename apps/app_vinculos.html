@@ -183,9 +183,25 @@ function criarSamaumaSDK() {
 .vinc-sub { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 tr.is-decidir .vinc-sub { color: var(--ds-color-warning-fg); }
 :is(.vinc-tabela, .rsc-tabela) .resp-badge { max-width: 100%; }
-.vinc-status { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: var(--ds-radius-pill); background: var(--ds-color-surface-2);
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); white-space: nowrap; }
-.vinc-status i { width: 7px; height: 7px; border-radius: 50%; }
+/* nível do plano (mesmo visual da lista de planos: .pll-tipo) + seta de direção do vínculo aprovado */
+.vinc-plano { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.vinc-tipo-plano { flex-shrink: 0; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; white-space: nowrap;
+  padding: 1px 8px; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); }
+.vinc-seta { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--ds-radius-pill); }
+.vinc-seta .material-symbols-outlined { font-size: 18px; }
+.vinc-seta--superior    { background: var(--ds-color-info-bg); color: var(--ds-color-action); }
+.vinc-seta--subordinado { background: var(--ds-color-success-bg); color: var(--ds-color-success-fg); }
+.vinc-tipo-cel { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; }
+.vinc-tipo-cel .ds-icon-action { width: 28px; height: 28px; min-width: 28px; }
+
+/* linhas expandidas do plano desvinculado: um item por vínculo guardado */
+.vinc-tag--item { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); }
+.vinc-tabela tr.vinc-subitem td { padding: 8px 12px 8px 64px; background: color-mix(in srgb, var(--ds-color-danger) 4%, var(--ds-color-surface)); box-shadow: inset 3px 0 0 var(--ds-color-danger); }
+.vinc-subitem-cel { display: flex; align-items: center; gap: 12px; min-width: 0; font-size: var(--ds-text-sm); }
+.vinc-subitem-tit { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ds-color-text); }
+.vinc-subitem-sup { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; gap: 6px; color: var(--ds-color-text-muted); overflow: hidden; }
+.vinc-subitem-sup span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vinc-subitem-sup .material-symbols-outlined { font-size: 16px; flex: none; }
 
 /* decisão sempre visível */
 .vinc-decisao { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap; }
@@ -233,6 +249,10 @@ tr.is-decidir .vinc-sub { color: var(--ds-color-warning-fg); }
   .vinc-decisao .vinc-btn-recusar { border-color: var(--ds-color-border); }
   .vinc-decisao .vinc-btn-txt { display: inline; }
   .vinc-sub { white-space: normal; }
+  .vinc-tabela tr.vinc-subitem { display: block; margin: -6px 0 10px 16px; border-left: 3px solid var(--ds-color-danger); }
+  .vinc-tabela tr.vinc-subitem td { display: block; padding: 8px 10px; box-shadow: none; }
+  .vinc-subitem-cel { flex-wrap: wrap; gap: 4px 10px; }
+  .vinc-subitem-tit, .vinc-subitem-sup { flex: 1 1 100%; white-space: normal; }
 }
 body.high-contrast .vinc-tag { border: 1px solid currentColor; }
 
@@ -415,15 +435,13 @@ function _vincDados() {
     var partes = [];
     if (els) partes.push(_vincPlural(els, 'elemento', 'elementos'));
     if (inds) partes.push(_vincPlural(inds, 'indicador', 'indicadores'));
-    var itens = (d.elementos || []).map(function(e) { return e.tituloElemento + ' → ' + e.tituloElementoSuperior; })
-      .concat((d.indicadores || []).map(function(i) { return i.nomeIndicador + ' → ' + i.nomeIndicadorSuperior; }));
     return {
       id: d.idPlanoSuperior, nome: d.nomePlanoSuperior || '(sem nome)', tipo: d.tipo || '', status: d.status || '',
       responsavel: d.responsavel || '', tipoResponsavel: d.tipoResponsavel || '', respAdicionaisNomes: d.respAdicionaisNomes || [],
       anoInicio: d.anoInicio || '', anoFim: d.anoFim || '', progresso: (d.progresso !== undefined && d.progresso !== null) ? d.progresso : null,
       direcao: 'desvinculado',
       subTxt: 'Desvinculado em ' + (d.desvinculadoEm || '—') + ' · ' + partes.join(' e ') + ' sem efeito' + (d.vinculoAtual === 'Pendente' ? ' · novo pedido aguardando aprovação' : ''),
-      subTip: (d.desvinculadoPor ? 'Por ' + d.desvinculadoPor + ' · ' : '') + itens.join(' | ')
+      subTip: d.desvinculadoPor ? 'Desvinculado por ' + d.desvinculadoPor : ''
     };
   });
   return { superAprov: superAprov, subAprov: subAprov, pendentes: pendentes, desvinculados: desvinculados };
@@ -727,10 +745,7 @@ function renderizarTabelaVinculos() {
     +     '<span class="material-symbols-outlined">close</span></button>'
     +   '<span class="el-selecao-texto" id="vinc-selecao-texto">0 selecionados</span>'
     +   '<div class="el-selecao-divisor"></div>'
-    +   '<div class="el-selecao-acoes">'
-    +     '<button type="button" class="ds-icon-action" onclick="exportarVinculosCSV()" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
-    +     (podeEditar ? '<button type="button" class="ds-icon-action hidden" id="vinc-btn-desv-lote" onclick="vincDesvincularSelecionados()" data-title="Desvincular selecionados" aria-label="Desvincular selecionados"><span class="material-symbols-outlined">link_off</span></button>' : '')
-    +   '</div>'
+    +   '<div class="el-selecao-acoes" id="vinc-selecao-acoes"></div>'
     + '</div>'
 
     + '<div class="el-table-wrap">'
@@ -770,6 +785,12 @@ function renderizarTabelaVinculos() {
   _vincRenderCorpo();
 }
 
+var _VINC_STATUS_SLUG = {
+  'Em Elaboração': 'elaboracao', 'Em Análise': 'analise', 'Em Execução': 'execucao', 'Em Avaliação': 'avaliacao',
+  'Prorrogado': 'prorrogado', 'Em Revisão': 'revisao', 'Finalizado': 'finalizado', 'Cancelado': 'cancelado', 'Excluído': 'cancelado'
+};
+var _vincOrfAbertos = {};
+
 function _vincLinhaHTML(p, podeEditar) {
   var T = _VINC_TIPO[p.vtipo], D = _VINC_DIR[p.direcao];
   var chave = _vincChave(p), chj = escapeHtml(chave);
@@ -777,21 +798,17 @@ function _vincLinhaHTML(p, podeEditar) {
   var sel = !!estadoVinculos.selecionados[chave];
   var decidir = p.vtipo === 'decidir';
   var desv = p.vtipo === 'desvinculado';
-  var ehPendente = p.vtipo === 'decidir' || p.vtipo === 'aguardando';
-  var vig = p.anoInicio && p.anoFim ? (String(p.anoInicio) === String(p.anoFim) ? p.anoInicio : p.anoInicio + '–' + p.anoFim) : (p.anoInicio || p.anoFim || '');
-  var sub = desv ? p.subTxt : ((ehPendente && D) ? D.txt : [p.tipo, vig].filter(Boolean).join(' · '));
+  var aprovado = p.vtipo === 'superior' || p.vtipo === 'subordinado';
+  var ehPendente = decidir || p.vtipo === 'aguardando';
+  // linha explicativa só em alerta/pendência; vínculo aprovado fica só com o nome
+  var sub = desv ? p.subTxt : ((ehPendente && D) ? D.txt : '');
   var subTip = desv ? (p.subTip || sub) : sub;
   var idVincJs = escapeHtml(String(p.idVinculo || ''));
+  var abrirDet = "vincAbrirDetalhesPlano('" + chj + "')";
+  var itemDet = { icone: 'info', rotulo: 'Detalhes', onclick: abrirDet, principal: true };
 
   var acoes;
-  if (desv) {
-    acoes = podeEditar
-      ? '<div class="vinc-decisao">'
-        + '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm vinc-btn-recusar" onclick="event.stopPropagation(); vincExcluirOrfaos(\'' + idj + '\')" data-title="Excluir vínculos órfãos" aria-label="Excluir vínculos órfãos">'
-        +   '<span class="material-symbols-outlined">delete_sweep</span><span class="vinc-btn-txt">Excluir órfãos</span></button>'
-        + '</div>'
-      : '';
-  } else if (decidir) {
+  if (decidir) {
     var aceitar = p.direcao === 'filho'
       ? "aprovarVinculoPlano('" + idVincJs + "','" + nomeJs + "')"
       : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','ACEITAR')";
@@ -799,26 +816,33 @@ function _vincLinhaHTML(p, podeEditar) {
       ? "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')"
       : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','RECUSAR')";
     var rotAceitar = p.direcao === 'filho' ? 'Aprovar' : 'Aceitar';
-    acoes = podeEditar
-      ? '<div class="vinc-decisao">'
-        + '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm vinc-btn-recusar" onclick="' + recusar + '" data-title="Recusar" aria-label="Recusar">'
-        +   '<span class="material-symbols-outlined">close</span><span class="vinc-btn-txt">Recusar</span></button>'
-        + '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm" onclick="' + aceitar + '" data-title="' + rotAceitar + '" aria-label="' + rotAceitar + '">'
-        +   '<span class="material-symbols-outlined">check</span><span class="vinc-btn-txt">' + rotAceitar + '</span></button>'
-        + '</div>'
-      : '';
+    acoes = '<div class="vinc-decisao">'
+      + '<button type="button" class="ds-icon-action vinc-btn-info" onclick="' + abrirDet + '" data-title="Detalhes" aria-label="Detalhes"><span class="material-symbols-outlined">info</span></button>'
+      + (podeEditar
+        ? '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm vinc-btn-recusar" onclick="' + recusar + '" data-title="Recusar" aria-label="Recusar">'
+          +   '<span class="material-symbols-outlined">close</span><span class="vinc-btn-txt">Recusar</span></button>'
+          + '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm" onclick="' + aceitar + '" data-title="' + rotAceitar + '" aria-label="' + rotAceitar + '">'
+          +   '<span class="material-symbols-outlined">check</span><span class="vinc-btn-txt">' + rotAceitar + '</span></button>'
+        : '')
+      + '</div>';
+  } else if (desv) {
+    acoes = acoesLinhaHTML('vinc-' + chj, [
+      itemDet,
+      { icone: 'delete_sweep', rotulo: 'Excluir vínculos órfãos', onclick: "vincExcluirOrfaos('" + idj + "')", principal: true, perigo: true, oculto: !podeEditar }
+    ]);
   } else {
     var podeDefinirPrincipal = podeEditar && p.vtipo === 'superior' && p.papel && p.papel !== 'PRINCIPAL';
     acoes = acoesLinhaHTML('vinc-' + chj, [
+      itemDet,
       { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: "carregarDetalhesPlano('" + idj + "')", principal: true },
-      { icone: 'close', rotulo: 'Cancelar proposta', onclick: "cancelarPropostaVinculo('" + idVincJs + "','" + nomeJs + "')", principal: true, perigo: true,
+      { icone: 'close', rotulo: 'Cancelar proposta', onclick: "cancelarPropostaVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true,
         oculto: !(podeEditar && ehPendente && p.direcao === 'proposta_enviada') },
-      { icone: 'close', rotulo: 'Cancelar pedido', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", principal: true, perigo: true,
+      { icone: 'close', rotulo: 'Cancelar pedido', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true,
         oculto: !(podeEditar && ehPendente && p.direcao === 'superior') },
       { icone: 'star', rotulo: 'Definir como Principal', onclick: "definirPlanoSuperiorPrincipal('" + idVincJs + "','" + nomeJs + "')",
         oculto: !podeDefinirPrincipal },
-      { icone: 'link_off', rotulo: (p.vtipo === 'superior') ? 'Desvincular do plano superior' : 'Desvincular plano', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", principal: true, perigo: true,
-        oculto: !(podeEditar && !ehPendente && (p.vtipo === 'superior' || p.vtipo === 'subordinado')) }
+      { icone: 'link_off', rotulo: (p.vtipo === 'superior') ? 'Desvincular do plano superior' : 'Desvincular plano', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true,
+        oculto: !(podeEditar && aprovado) }
     ]);
   }
 
@@ -836,8 +860,9 @@ function _vincLinhaHTML(p, podeEditar) {
       + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '')
       + '</span>'
     : '—';
+  // status no padrão de badge do sistema (igual à lista de planos)
   var status = p.status
-    ? '<span class="vinc-status"><i style="background:' + (_VINC_COR_STATUS[p.status] || '#8a94a3') + '"></i>' + escapeHtml(p.status) + '</span>' : '—';
+    ? '<span class="ds-badge ds-badge--' + (_VINC_STATUS_SLUG[p.status] || 'finalizado') + '" style="white-space:nowrap">' + escapeHtml(p.status) + '</span>' : '—';
   var pct = (p.progresso == null || isNaN(Number(p.progresso))) ? null : Math.max(0, Math.min(100, Number(p.progresso)));
   var progHtml = pct === null
     ? '<span class="vinc-sem-prog" data-title="Sem elementos para calcular o progresso">—</span>'
@@ -845,17 +870,52 @@ function _vincLinhaHTML(p, podeEditar) {
       + '<div class="ds-kpi-track"><div class="ds-kpi-fill ds-tone-info" style="width:' + pct.toFixed(0) + '%"></div></div>'
       + '<span class="vinc-prog-txt">' + pct.toFixed(0) + '%</span></div>';
 
+  // coluna "Vínculo": superior/subordinado aprovados = só a seta; demais mantêm o selo com texto
+  var tag;
+  if (aprovado) {
+    tag = '<span class="vinc-seta vinc-seta--' + p.vtipo + '" data-title="' + escapeHtml(T.tip) + '" aria-label="' + escapeHtml(T.rot) + '"><span class="material-symbols-outlined">' + T.ico + '</span></span>';
+  } else {
+    var aberto = desv && !!_vincOrfAbertos[String(p.id)];
+    tag = '<span class="vinc-tipo-cel">'
+      + (desv ? '<button type="button" class="ds-icon-action" onclick="event.stopPropagation(); vincOrfToggle(\'' + idj + '\')" aria-expanded="' + aberto + '" aria-label="'
+          + (aberto ? 'Ocultar' : 'Mostrar') + ' vínculos guardados"><span class="material-symbols-outlined">' + (aberto ? 'expand_more' : 'chevron_right') + '</span></button>' : '')
+      + '<span class="vinc-tag vinc-tag--' + p.vtipo + '" data-title="' + escapeHtml(T.tip) + '"><span class="material-symbols-outlined">' + T.ico + '</span><span>' + T.rot + '</span></span>'
+      + '</span>';
+  }
+  var tipoPlano = p.tipo ? '<span class="vinc-tipo-plano">' + escapeHtml(p.tipo) + '</span>' : '';
+
   return '<tr class="vinc-linha' + ((decidir || desv) ? ' is-decidir' : '') + (desv ? ' is-desv' : '') + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"'
-    + ' onclick="vincCliqueLinha(event, \'' + chj + '\')" ondblclick="carregarDetalhesPlano(\'' + idj + '\')">'
+    + ' onclick="vincCliqueLinha(event, \'' + chj + '\')" ondblclick="' + abrirDet + '">'
     + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="vincToggleSelecao(\'' + chj + '\', this.checked)" aria-label="Selecionar ' + escapeHtml(p.nome || '') + '"></td>'
-    + '<td class="vinc-col-tipo"><span class="vinc-tag vinc-tag--' + p.vtipo + '" data-title="' + T.tip + '"><span class="material-symbols-outlined">' + T.ico + '</span><span>' + T.rot + '</span></span></td>'
-    + '<td class="vinc-col-nome"><div class="vinc-nome-cel"><span class="vinc-nome" data-title="' + escapeHtml(p.nome || '') + '">' + escapeHtml(p.nome || '(sem nome)') + '</span>'
-    +   '<span class="vinc-sub" data-title="' + escapeHtml(subTip) + '">' + escapeHtml(sub) + '</span></div></td>'
+    + '<td class="vinc-col-tipo">' + tag + '</td>'
+    + '<td class="vinc-col-nome"><div class="vinc-plano">' + tipoPlano + '<div class="vinc-nome-cel"><span class="vinc-nome" data-title="' + escapeHtml(p.nome || '') + '">' + escapeHtml(p.nome || '(sem nome)') + '</span>'
+    +   (sub ? '<span class="vinc-sub" data-title="' + escapeHtml(subTip) + '">' + escapeHtml(sub) + '</span>' : '') + '</div></div></td>'
     + '<td class="vinc-col-resp">' + resp + '</td>'
     + '<td class="vinc-col-status">' + status + '</td>'
     + '<td class="vinc-col-prog">' + progHtml + '</td>'
     + '<td class="vinc-col-acoes">' + acoes + '</td>'
     + '</tr>';
+}
+
+// itens guardados do plano desvinculado (linhas abaixo da linha expandida)
+function _vincOrfItensHTML(p) {
+  var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(p.id); })[0];
+  if (!d) return '';
+  var item = function(rot, ico, tit, sup) {
+    return '<tr class="vinc-subitem"><td colspan="7"><div class="vinc-subitem-cel">'
+      + '<span class="vinc-tag vinc-tag--item"><span class="material-symbols-outlined">' + ico + '</span><span>' + rot + '</span></span>'
+      + '<span class="vinc-subitem-tit" data-title="' + escapeHtml(tit) + '">' + escapeHtml(tit) + '</span>'
+      + '<span class="vinc-subitem-sup" data-title="' + escapeHtml(sup) + '"><span class="material-symbols-outlined" aria-label="vinculado a">arrow_forward</span><span>' + escapeHtml(sup) + '</span></span>'
+      + '</div></td></tr>';
+  };
+  return (d.elementos || []).map(function(e) { return item('Elemento', 'account_tree', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
+    + (d.indicadores || []).map(function(i) { return item('Indicador', 'monitoring', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
+}
+
+function vincOrfToggle(id) {
+  id = String(id);
+  if (_vincOrfAbertos[id]) delete _vincOrfAbertos[id]; else _vincOrfAbertos[id] = true;
+  _vincRenderCorpo();
 }
 
 function _vincRenderCorpo() {
@@ -885,7 +945,9 @@ function _vincRenderCorpo() {
     return;
   }
 
-  tbody.innerHTML = lista.map(function(p) { return _vincLinhaHTML(p, podeEditar); }).join('');
+  tbody.innerHTML = lista.map(function(p) {
+    return _vincLinhaHTML(p, podeEditar) + ((p.vtipo === 'desvinculado' && _vincOrfAbertos[String(p.id)]) ? _vincOrfItensHTML(p) : '');
+  }).join('');
   _vincAtualizarPaginacao(total, start);
   _vincAtualizarSelecao(listaCompleta);
 }
@@ -1005,45 +1067,136 @@ function _vincAtualizarSelecao(listaVisivel) {
   listaVisivel.forEach(function(p) { porChave[_vincChave(p)] = p; });
   Object.keys(estadoVinculos.selecionados).forEach(function(k) { if (!porChave[k]) delete estadoVinculos.selecionados[k]; });
   var chaves = Object.keys(estadoVinculos.selecionados), n = chaves.length;
-  var aprovados = chaves.filter(function(k) { var t = porChave[k].vtipo; return t === 'superior' || t === 'subordinado'; }).length;
+  var selecionados = chaves.map(function(k) { return porChave[k]; });
   var f = document.getElementById('vinc-filtros'), s = document.getElementById('vinc-filtros-selecao');
   if (f) f.classList.toggle('hidden', n > 0);
   if (s) s.classList.toggle('hidden', n === 0);
   var t = document.getElementById('vinc-selecao-texto'); if (t) t.textContent = n + (n === 1 ? ' selecionado' : ' selecionados');
-  var bd = document.getElementById('vinc-btn-desv-lote');
-  if (bd) {
-    bd.classList.toggle('hidden', !aprovados);
-    bd.setAttribute('data-title', 'Desvincular ' + aprovados + (aprovados === 1 ? ' plano' : ' planos'));
-  }
+  var barra = document.getElementById('vinc-selecao-acoes');
+  if (barra) barra.innerHTML = _vincAcoesLoteHTML(selecionados);
   var all = document.getElementById('chk-select-all-vinc');
   if (all) { all.checked = listaVisivel.length > 0 && n === listaVisivel.length; all.indeterminate = n > 0 && n < listaVisivel.length; }
 }
 
-function vincDesvincularSelecionados() {
-  var lista = _vincListaUnica().filter(function(p) {
-    return estadoVinculos.selecionados[_vincChave(p)] && (p.vtipo === 'superior' || p.vtipo === 'subordinado');
-  });
+// Ações da barra de seleção: só aparecem as que TODOS os itens selecionados aceitam (as "unico" só com 1 item).
+var _VINC_ACOES = [
+  { id: 'detalhes',    ico: 'info',         rot: 'Detalhes',                       unico: true, ok: function(p) { return true; } },
+  { id: 'abrir',       ico: 'open_in_new',  rot: 'Abrir plano',                    unico: true, ok: function(p) { return true; } },
+  { id: 'aprovar',     ico: 'check',        rot: 'Aprovar',                        edita: true,  ok: function(p) { return p.vtipo === 'decidir'; } },
+  { id: 'recusar',     ico: 'close',        rot: 'Recusar',                        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'decidir'; } },
+  { id: 'cancelar',    ico: 'cancel',       rot: 'Cancelar pedido ou proposta',    edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'aguardando'; } },
+  { id: 'desvincular', ico: 'link_off',     rot: 'Desvincular',                    edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'superior' || p.vtipo === 'subordinado'; } },
+  { id: 'excluirorf',  ico: 'delete_sweep', rot: 'Excluir vínculos órfãos',        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'desvinculado'; } },
+  { id: 'exportar',    ico: 'download',     rot: 'Exportar',                       ok: function(p) { return true; } }
+];
+
+function _vincAcoesLoteHTML(selecionados) {
+  var n = selecionados.length;
+  var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.vincular);
+  if (!n) return '';
+  return _VINC_ACOES.filter(function(a) {
+    return (!a.unico || n === 1) && (!a.edita || podeEditar) && selecionados.every(a.ok);
+  }).map(function(a) {
+    return '<button type="button" class="ds-icon-action" onclick="vincAcaoLote(\'' + a.id + '\')" data-title="' + escapeHtml(a.rot) + '" aria-label="' + escapeHtml(a.rot) + '"'
+      + (a.perigo ? ' style="color:var(--ds-color-danger-fg)"' : '') + '><span class="material-symbols-outlined">' + a.ico + '</span></button>';
+  }).join('');
+}
+
+function _vincSelecionadosLista() {
+  return _vincListaUnica().filter(function(p) { return estadoVinculos.selecionados[_vincChave(p)]; });
+}
+
+// chamada de servidor de cada ação, por item (decidir/aguardando variam conforme a direção do pedido)
+function _vincChamada(acao, p) {
+  var idv = p.idVinculo;
+  if (acao === 'aprovar')     return p.direcao === 'filho' ? ['apiAprovarVinculoPlano', idv] : ['apiResponderPropostaVinculoSubordinado', idv, 'ACEITAR'];
+  if (acao === 'recusar')     return p.direcao === 'filho' ? ['apiDesvincularVinculo', idv] : ['apiResponderPropostaVinculoSubordinado', idv, 'RECUSAR'];
+  if (acao === 'cancelar')    return p.direcao === 'proposta_enviada' ? ['apiCancelarPropostaVinculo', idv] : ['apiDesvincularVinculo', idv];
+  if (acao === 'desvincular') return ['apiDesvincularVinculo', idv];
+  if (acao === 'excluirorf')  return ['apiExcluirVinculosOrfaos', _vincCtx.idPlano, String(p.id)];
+  return null;
+}
+
+var _VINC_TXT_LOTE = {
+  aprovar:     { tit: 'Aprovar vínculos?',                 msg: 'aprovar',                ok: 'Aprovados',   okMsg: 'Vínculos aprovados.' },
+  recusar:     { tit: 'Recusar vínculos?',                 msg: 'recusar',                ok: 'Recusados',   okMsg: 'Vínculos recusados.' },
+  cancelar:    { tit: 'Cancelar pedidos e propostas?',     msg: 'cancelar',               ok: 'Cancelados',  okMsg: 'Pedidos e propostas cancelados.' },
+  desvincular: { tit: 'Desvincular planos?',               msg: 'desvincular',            ok: 'Desvinculados', okMsg: 'Vínculos removidos com sucesso.' },
+  excluirorf:  { tit: 'Excluir vínculos órfãos?',          msg: 'excluir os vínculos órfãos de', ok: 'Excluídos', okMsg: 'Vínculos órfãos excluídos.' }
+};
+
+function vincAcaoLote(acao) {
+  var lista = _vincSelecionadosLista();
   if (!lista.length) return;
-  showConfirm('Desvincular planos?',
-    'Deseja remover ' + lista.length + (lista.length === 1 ? ' vínculo' : ' vínculos') + '? Os planos subordinados voltam a ser independentes.',
-    function() {
-      mostrarLoader();
-      var pend = lista.length, erros = [];
-      lista.forEach(function(p) {
-        google.script.run
-          .withSuccessHandler(fim)
-          .withFailureHandler(function(err) { erros.push(err.message); fim(); })
-          .apiDesvincularVinculo(p.idVinculo);
-      });
-      function fim() {
-        if (--pend > 0) return;
+  var p = lista[0];
+  if (acao === 'detalhes') return vincAbrirDetalhesPlano(_vincChave(p));
+  if (acao === 'abrir') return carregarDetalhesPlano(String(p.id));
+  if (acao === 'exportar') return exportarVinculosCSV();
+  var idv = String(p.idVinculo || ''), nome = p.nome || '';
+  if (lista.length === 1) {            // um só item: mesmos diálogos da linha
+    if (acao === 'aprovar')     return p.direcao === 'filho' ? aprovarVinculoPlano(idv, nome) : responderPropostaVinculo(idv, nome, 'ACEITAR');
+    if (acao === 'recusar')     return p.direcao === 'filho' ? desvincularVinculo(idv, nome) : responderPropostaVinculo(idv, nome, 'RECUSAR');
+    if (acao === 'cancelar')    return p.direcao === 'proposta_enviada' ? cancelarPropostaVinculo(idv, nome) : desvincularVinculo(idv, nome);
+    if (acao === 'desvincular') return desvincularVinculo(idv, nome);
+    if (acao === 'excluirorf')  return vincExcluirOrfaos(String(p.id));
+  }
+  var t = _VINC_TXT_LOTE[acao];
+  if (!t) return;
+  showConfirm(t.tit, 'Deseja ' + t.msg + ' ' + lista.length + (acao === 'excluirorf' ? ' planos?' : ' itens selecionados?'), function() {
+    mostrarLoader();
+    var erros = [], i = 0;
+    (function prox() {
+      if (i >= lista.length) {
         esconderLoader();
         estadoVinculos.selecionados = {};
-        if (erros.length) showMessage('error', 'Alguns vínculos não foram removidos', escapeHtml(erros[0]));
-        else showMessage('success', 'Desvinculados', 'Vínculos removidos com sucesso.');
+        if (erros.length) showMessage('error', 'Alguns itens não foram processados', escapeHtml(erros[0]));
+        else showMessage('success', t.ok, t.okMsg);
         carregarAbaVinculos();
+        return;
       }
-    });
+      var c = _vincChamada(acao, lista[i++]);
+      google.script.run
+        .withSuccessHandler(prox)
+        .withFailureHandler(function(err) { erros.push((err && err.message) || String(err)); prox(); })[c[0]](...c.slice(1));
+    })();
+  });
+}
+
+// Barra lateral de detalhes (#detp-panel, do host) com o resumo do plano vinculado
+function vincAbrirDetalhesPlano(chave) {
+  var p = _vincListaUnica().filter(function(x) { return _vincChave(x) === String(chave); })[0];
+  if (!p) return;
+  var view = document.getElementById('detp-view-detalhes');
+  if (!view || typeof abrirPainelDetalhes !== 'function' || typeof _detpLinha !== 'function') { carregarDetalhesPlano(String(p.id)); return; }
+  if (typeof window._appNotificarPainelFechado === 'function') window._appNotificarPainelFechado();
+  var D = _VINC_DIR[p.direcao], T = _VINC_TIPO[p.vtipo];
+  var vig = p.anoInicio && p.anoFim ? (String(p.anoInicio) === String(p.anoFim) ? p.anoInicio : p.anoInicio + ' – ' + p.anoFim) : (p.anoInicio || p.anoFim || '');
+  var statusBadge = p.status ? '<span class="ds-badge ds-badge--' + (_VINC_STATUS_SLUG[p.status] || 'finalizado') + '">' + escapeHtml(p.status) + '</span>' : '';
+  var pct = (p.progresso == null || isNaN(Number(p.progresso))) ? '' : Math.round(Number(p.progresso)) + '%';
+  var nAdic = (p.respAdicionaisNomes && p.respAdicionaisNomes.length) || 0;
+  var resp = p.responsavel
+    ? '<div class="detp-resp-item"><span class="material-symbols-outlined">' + (p.tipoResponsavel === 'USER' ? 'person' : 'apartment') + '</span><span>' + escapeHtml(nomeRespExibicao(p.responsavel, p.tipoResponsavel)) + '</span><span class="detp-resp-papel">Principal</span></div>'
+      + (p.respAdicionaisNomes || []).map(function(n) { return '<div class="detp-resp-item"><span class="material-symbols-outlined">person</span><span>' + escapeHtml(n) + '</span><span class="detp-resp-papel">Adicional</span></div>'; }).join('')
+    : '';
+  var situacao = p.vtipo === 'desvinculado' ? p.subTxt : (D ? D.txt : T.tip);
+  var guardados = '';
+  if (p.vtipo === 'desvinculado') {
+    var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(p.id); })[0] || {};
+    guardados = (d.elementos || []).map(function(e) { return '<div class="detp-vinc-item">' + escapeHtml(e.tituloElemento || '') + ' → ' + escapeHtml(e.tituloElementoSuperior || '') + '</div>'; }).join('')
+      + (d.indicadores || []).map(function(i) { return '<div class="detp-vinc-item">' + escapeHtml(i.nomeIndicador || '') + ' → ' + escapeHtml(i.nomeIndicadorSuperior || '') + '</div>'; }).join('');
+  }
+  var cab = '<div style="margin-bottom:18px"><div style="margin-bottom:8px">' + (p.tipo ? '<span class="vinc-tipo-plano">' + escapeHtml(p.tipo) + '</span>' : '') + '</div>'
+    + '<h3 style="font-size:1.15rem;font-weight:600;margin:0;line-height:1.35;color:var(--ds-color-text)">' + escapeHtml(p.nome || '') + '</h3></div>';
+  var secoes = [
+    { titulo: 'Sobre o plano', html: _detpLinha('Nível', escapeHtml(p.tipo || '')) + _detpLinha('Status', statusBadge) + _detpLinha('Vigência', escapeHtml(vig)) + _detpLinha('Progresso', pct) },
+    { titulo: 'Vínculo', html: _detpLinha('Situação', escapeHtml(situacao || '')) + (p.papel ? _detpLinha('Papel', p.papel === 'PRINCIPAL' ? 'Principal' : 'Adicional') : '') },
+    { titulo: 'Vínculos guardados', html: guardados },
+    { titulo: 'Responsáveis', html: resp },
+    { titulo: 'Ações', html: '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"><button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" onclick="carregarDetalhesPlano(\'' + escapeHtml(String(p.id)) + '\')"><span class="material-symbols-outlined">open_in_new</span> Abrir plano</button></div>' }
+  ];
+  view.innerHTML = '<div style="padding:4px 0">' + cab + secoes.filter(function(x) { return x.html; })
+    .map(function(x) { return '<div class="detp-secao"><div class="detp-secao-titulo">' + x.titulo + '</div>' + x.html + '</div>'; }).join('') + '</div>';
+  abrirPainelDetalhes('detalhes');
 }
 
 function aprovarVinculoPlano(idVinculo, nomeFilho) {
@@ -1461,6 +1614,9 @@ window.fecharModalVincularPlano = fecharModalVincularPlano;
 window.vincToggleSelecionarTodos = vincToggleSelecionarTodos;
 window.vincCancelarSelecao = vincCancelarSelecao;
 window.vincExcluirOrfaos = vincExcluirOrfaos;
+window.vincOrfToggle = vincOrfToggle;
+window.vincAcaoLote = vincAcaoLote;
+window.vincAbrirDetalhesPlano = vincAbrirDetalhesPlano;
 window.estadoVinculos = estadoVinculos;
 window._vinculosSDK = _vinculosSDK;
 </script>
