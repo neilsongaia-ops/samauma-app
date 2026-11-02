@@ -236,54 +236,8 @@ tr.is-decidir .vinc-sub { color: var(--ds-color-warning-fg); }
 }
 body.high-contrast .vinc-tag { border: 1px solid currentColor; }
 
-/* ── VÍNCULOS ÓRFÃOS: plano desvinculado de um superior (uma linha por superior; expande os itens) ── */
-.vinc-orf { margin: 0 0 16px; border: 1px solid var(--ds-color-border); border-left: 3px solid var(--ds-color-warning); border-radius: var(--ds-r-lg); overflow: hidden; }
-.vinc-orf-tabela { width: 100%; border-collapse: collapse; table-layout: fixed; }
-.vinc-orf-tabela td { padding: 10px 12px; border-bottom: 1px solid var(--ds-color-border); font-size: var(--ds-text-sm); color: var(--ds-color-text-muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
-.vinc-orf-tabela tr:last-child td { border-bottom: none; }
-.vinc-orf-tabela col.vinc-orf-c-ico { width: 88px; }
-.vinc-orf-tabela col.vinc-orf-c-pend { width: 128px; }
-.vinc-orf-tabela col.vinc-orf-c-data { width: 220px; }
-.vinc-orf-tabela col.vinc-orf-c-n { width: 128px; }
-.vinc-orf-tabela col.vinc-orf-c-acoes { width: 104px; }
-.vinc-orf-tabela td.vinc-orf-col-nome { max-width: 0; }
-.vinc-orf-tabela td.vinc-orf-col-acoes { text-align: right; padding-right: 14px; overflow: visible; }
-.vinc-orf-linha { cursor: pointer; }
-.vinc-orf-linha td { background: color-mix(in srgb, var(--ds-color-warning-bg) 45%, var(--ds-color-surface)); }
-.vinc-orf-linha:hover td { background: var(--ds-color-warning-bg); }
-.vinc-orf-ico { display: inline-flex; align-items: center; gap: 2px; }
-.vinc-orf-ico .ds-icon-action { width: 28px; height: 28px; min-width: 28px; }
-.vinc-orf-alerta { font-size: 20px; color: var(--ds-color-warning-fg); }
-.vinc-orf-item td { background: var(--ds-color-surface); }
-.vinc-orf-item td.vinc-orf-col-nome { padding-left: 44px; }
-.vinc-orf-itemcel { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.vinc-orf-itemcel .vinc-tag { flex: none; }
-.vinc-orf-tit { color: var(--ds-color-text); overflow: hidden; text-overflow: ellipsis; }
-.vinc-orf-sup { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
-.vinc-orf-sup .material-symbols-outlined { font-size: 16px; flex: none; }
-.vinc-orf-sup span:last-child { overflow: hidden; text-overflow: ellipsis; }
-.vinc-tag--item { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); }
-.vinc-orf-linha .acoes-linha { opacity: 1; }
-@media (max-width: 1100px) { .vinc-orf-tabela col.vinc-orf-c-n { width: 112px; } .vinc-orf-tabela col.vinc-orf-c-data { width: 200px; } }
-@media (max-width: 768px) {
-  .vinc-orf { border: none; overflow: visible; }
-  .vinc-orf-item td.vinc-orf-col-nome { padding-left: 0; }
-  .vinc-orf-tabela, .vinc-orf-tabela tbody { display: block; }
-  .vinc-orf-tabela colgroup { display: none; }
-  .vinc-orf-tabela tr { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 12px; margin-bottom: 10px;
-    border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg); }
-  .vinc-orf-linha { border-left: 3px solid var(--ds-color-warning) !important; background: color-mix(in srgb, var(--ds-color-warning-bg) 45%, var(--ds-color-surface)); }
-  .vinc-orf-item { margin-left: 16px; }
-  .vinc-orf-tabela td { display: block; padding: 0; border: none; background: transparent !important; max-width: none; }
-  .vinc-orf-tabela td.vinc-orf-col-ico { order: 1; padding-left: 0 !important; }
-  .vinc-orf-tabela td.vinc-orf-col-pend { order: 2; flex: 1; }
-  .vinc-orf-tabela td.vinc-orf-col-acoes { order: 3; padding: 0; }
-  .vinc-orf-tabela td.vinc-orf-col-nome { order: 4; flex: 0 0 100%; max-width: none; }
-  .vinc-orf-tabela td.vinc-orf-col-det { order: 5; }
-  .vinc-orf-item td.vinc-orf-col-det { flex: 0 0 100%; }
-  .vinc-orf-item td.vinc-orf-col-pend { display: none; }
-}
+/* ── Vínculos órfãos: linha "Desvinculado" no topo da lista, no padrão das pendências (is-decidir) ── */
+.vinc-tag--desvinculado { background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg); }
 </style>
 
 <!-- Container principal da aba Vínculos (injetado em #vinculos-conteudo pelo host) -->
@@ -365,7 +319,6 @@ var _vincDadosCache = {
   planosSuperiores: [],
   desvinculados: []
 };
-var _vincOrfAbertos = {};
 
 var estadoVinculos = {
   busca: '', filtroVinc: '', filtroStatus: '', filtroResp: '', filtroTipo: '',
@@ -383,6 +336,7 @@ var estadoVincModal = {
 
 // Tipos de vínculo: ordem padrão, rótulo, ícone e frase explicativa (pendências)
 var _VINC_TIPO = {
+  desvinculado: { ord: -1, rot: 'Desvinculado', ico: 'link_off', tip: 'Plano superior do qual este plano foi desvinculado: os vínculos de elementos e indicadores ficam guardados, sem efeito, e voltam a valer se o vínculo for restabelecido' },
   decidir:     { ord: 0, rot: 'Aguarda você', ico: 'move_to_inbox', tip: 'Pendência que depende da sua decisão' },
   aguardando:  { ord: 1, rot: 'Aguardando',   ico: 'schedule',      tip: 'Pendência que depende do outro plano' },
   superior:    { ord: 2, rot: 'Superior',     ico: 'north',         tip: 'Plano ao qual este plano está subordinado' },
@@ -451,12 +405,29 @@ function _vincDados() {
   (_vincDadosCache.propostasRecebidas || []).forEach(function(p) {
     pendentes.push(Object.assign({}, p, { direcao: 'proposta_recebida' }));
   });
-  return { superAprov: superAprov, subAprov: subAprov, pendentes: pendentes };
+  var desvinculados = (_vincDadosCache.desvinculados || []).map(function(d) {
+    var els = (d.elementos || []).length, inds = (d.indicadores || []).length;
+    var partes = [];
+    if (els) partes.push(_vincPlural(els, 'elemento', 'elementos'));
+    if (inds) partes.push(_vincPlural(inds, 'indicador', 'indicadores'));
+    var itens = (d.elementos || []).map(function(e) { return e.tituloElemento + ' → ' + e.tituloElementoSuperior; })
+      .concat((d.indicadores || []).map(function(i) { return i.nomeIndicador + ' → ' + i.nomeIndicadorSuperior; }));
+    return {
+      id: d.idPlanoSuperior, nome: d.nomePlanoSuperior || '(sem nome)', tipo: d.tipo || '', status: d.status || '',
+      responsavel: d.responsavel || '', tipoResponsavel: d.tipoResponsavel || '', respAdicionaisNomes: d.respAdicionaisNomes || [],
+      anoInicio: d.anoInicio || '', anoFim: d.anoFim || '', progresso: (d.progresso !== undefined && d.progresso !== null) ? d.progresso : null,
+      direcao: 'desvinculado',
+      subTxt: 'Desvinculado em ' + (d.desvinculadoEm || '—') + ' · ' + partes.join(' e ') + ' sem efeito' + (d.vinculoAtual === 'Pendente' ? ' · novo pedido aguardando aprovação' : ''),
+      subTip: (d.desvinculadoPor ? 'Por ' + d.desvinculadoPor + ' · ' : '') + itens.join(' | ')
+    };
+  });
+  return { superAprov: superAprov, subAprov: subAprov, pendentes: pendentes, desvinculados: desvinculados };
 }
 
 function _vincListaUnica() {
   var d = _vincDados();
   var lista = []
+    .concat(d.desvinculados.map(function(p) { return Object.assign({}, p, { vtipo: 'desvinculado' }); }))
     .concat(d.pendentes.map(function(p) { return Object.assign({}, p, { vtipo: (_VINC_DIR[p.direcao] || {}).tipo || 'aguardando' }); }))
     .concat(d.superAprov.map(function(p) { return Object.assign({}, p, { vtipo: 'superior' }); }))
     .concat(d.subAprov.map(function(p) { return Object.assign({}, p, { vtipo: 'subordinado' }); }));
@@ -682,68 +653,6 @@ function _vincAtualizarContadorAba() {
 
 function _vincPlural(n, s, p) { return n + ' ' + (n === 1 ? s : p); }
 
-function _vincOrfaosHTML(podeEditar) {
-  var lista = _vincDadosCache.desvinculados || [];
-  if (!lista.length) return '';
-  var linhas = lista.map(function(d) {
-    var id = String(d.idPlanoSuperior || ''), idh = escapeHtml(id), idj = escapeHtml(escapeJsAttr(id));
-    var nome = d.nomePlanoSuperior || '(sem nome)', nomeJs = escapeHtml(escapeJsAttr(nome));
-    var els = d.elementos || [], inds = d.indicadores || [];
-    var aberto = !!_vincOrfAbertos[id];
-    var pend = d.vinculoAtual === 'Pendente'
-      ? '<span class="vinc-tag vinc-tag--aguardando" data-title="Novo pedido de vínculo aguardando aprovação"><span class="material-symbols-outlined">schedule</span><span>Pendente</span></span>' : '';
-    var acoes = acoesLinhaHTML('vinc-orf-' + idh, [
-      { icone: 'delete_sweep', rotulo: 'Excluir vínculos órfãos', onclick: "vincExcluirOrfaos('" + idj + "')", principal: true, perigo: true, oculto: !podeEditar },
-      { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: "carregarDetalhesPlano('" + idj + "')", principal: true }
-    ]);
-    var html = '<tr class="vinc-orf-linha" onclick="vincOrfCliqueLinha(event, \'' + idj + '\')">'
-      + '<td class="vinc-orf-col-ico"><span class="vinc-orf-ico">'
-      +   '<button type="button" class="ds-icon-action" onclick="event.stopPropagation(); vincOrfToggle(\'' + idj + '\')" aria-expanded="' + aberto + '" aria-controls="vinc-orf-itens-' + idh + '"'
-      +     ' aria-label="' + (aberto ? 'Ocultar' : 'Mostrar') + ' vínculos órfãos de ' + escapeHtml(nome) + '"><span class="material-symbols-outlined">' + (aberto ? 'expand_more' : 'chevron_right') + '</span></button>'
-      +   '<span class="material-symbols-outlined vinc-orf-alerta" data-title="Desvinculado do plano superior. Os vínculos abaixo ficam guardados, sem efeito, e voltam a valer se o vínculo for restabelecido." aria-hidden="true">warning</span>'
-      + '</span></td>'
-      + '<td class="vinc-orf-col-nome"><span class="vinc-nome" data-title="' + escapeHtml(nome) + '">' + escapeHtml(nome) + '</span></td>'
-      + '<td class="vinc-orf-col-pend">' + pend + '</td>'
-      + '<td class="vinc-orf-col-det"><span' + (d.desvinculadoPor ? ' data-title="Por ' + escapeHtml(d.desvinculadoPor) + '"' : '') + '>Desvinculado em ' + escapeHtml(d.desvinculadoEm || '—') + '</span></td>'
-      + '<td class="vinc-orf-col-det">' + _vincPlural(els.length, 'elemento', 'elementos') + '</td>'
-      + '<td class="vinc-orf-col-det">' + _vincPlural(inds.length, 'indicador', 'indicadores') + '</td>'
-      + '<td class="vinc-orf-col-acoes">' + acoes + '</td>'
-      + '</tr>';
-    if (aberto) {
-      var item = function(rot, ico, tit, sup) {
-        return '<tr class="vinc-orf-item" data-orf="' + idh + '">'
-          + '<td class="vinc-orf-col-nome" colspan="3"><span class="vinc-orf-itemcel"><span class="vinc-tag vinc-tag--item"><span class="material-symbols-outlined">' + ico + '</span><span>' + rot + '</span></span>'
-          +   '<span class="vinc-orf-tit" data-title="' + escapeHtml(tit) + '">' + escapeHtml(tit) + '</span></span></td>'
-          + '<td class="vinc-orf-col-det" colspan="4"><span class="vinc-orf-sup" data-title="' + escapeHtml(sup) + '"><span class="material-symbols-outlined" aria-label="vinculado a">arrow_forward</span><span>' + escapeHtml(sup) + '</span></span></td>'
-          + '</tr>';
-      };
-      html += els.map(function(e) { return item('Elemento', 'account_tree', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
-        + inds.map(function(i) { return item('Indicador', 'monitoring', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
-    }
-    return html;
-  }).join('');
-  return '<div class="vinc-orf" id="vinc-orf" role="region" aria-label="Planos superiores desvinculados">'
-    + '<table class="vinc-orf-tabela"><colgroup><col class="vinc-orf-c-ico"><col class="vinc-orf-c-nome"><col class="vinc-orf-c-pend"><col class="vinc-orf-c-data"><col class="vinc-orf-c-n"><col class="vinc-orf-c-n"><col class="vinc-orf-c-acoes"></colgroup>'
-    + '<tbody>' + linhas + '</tbody></table></div>';
-}
-
-function _vincRenderOrfaos() {
-  var wrap = document.getElementById('vinc-orf-wrap');
-  if (!wrap) return;
-  wrap.innerHTML = _vincOrfaosHTML(!!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.vincular));
-}
-
-function vincOrfToggle(id) {
-  id = String(id);
-  if (_vincOrfAbertos[id]) delete _vincOrfAbertos[id]; else _vincOrfAbertos[id] = true;
-  _vincRenderOrfaos();
-}
-
-function vincOrfCliqueLinha(ev, id) {
-  if (ev.target.closest('button, a, .acoes-linha')) return;
-  vincOrfToggle(id);
-}
-
 function vincExcluirOrfaos(idSup) {
   var idPlano = _vincCtx && _vincCtx.idPlano;
   var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(idSup); })[0];
@@ -759,7 +668,6 @@ function vincExcluirOrfaos(idSup) {
         .withSuccessHandler(function(res) {
           esconderLoader();
           var n = ((res && res.elementos) || 0) + ((res && res.indicadores) || 0);
-          delete _vincOrfAbertos[String(idSup)];
           showMessage('success', 'Excluídos', _vincPlural(n, 'vínculo órfão excluído.', 'vínculos órfãos excluídos.'));
           carregarAbaVinculos();
         })
@@ -775,8 +683,7 @@ function renderizarTabelaVinculos() {
   var busca = estadoVinculos.busca;
 
   container.innerHTML =
-    '<div id="vinc-orf-wrap">' + _vincOrfaosHTML(podeEditar) + '</div>'
-    + '<div id="vinc-filtros" class="el-filtros">'
+    '<div id="vinc-filtros" class="el-filtros">'
     +   '<div class="el-search" id="vinc-search-wrap">'
     +     '<button type="button" class="ds-icon-action' + (busca ? ' hidden' : '') + '" id="vinc-search-toggle" onclick="vincAbrirBusca()" data-title="Buscar" aria-label="Buscar">'
     +       '<span class="material-symbols-outlined">search</span></button>'
@@ -864,13 +771,22 @@ function _vincLinhaHTML(p, podeEditar) {
   var idj = escapeHtml(String(p.id)), nomeJs = escapeJsAttr(p.nome || '');
   var sel = !!estadoVinculos.selecionados[chave];
   var decidir = p.vtipo === 'decidir';
+  var desv = p.vtipo === 'desvinculado';
   var ehPendente = p.vtipo === 'decidir' || p.vtipo === 'aguardando';
   var vig = p.anoInicio && p.anoFim ? (String(p.anoInicio) === String(p.anoFim) ? p.anoInicio : p.anoInicio + '–' + p.anoFim) : (p.anoInicio || p.anoFim || '');
-  var sub = (ehPendente && D) ? D.txt : [p.tipo, vig].filter(Boolean).join(' · ');
+  var sub = desv ? p.subTxt : ((ehPendente && D) ? D.txt : [p.tipo, vig].filter(Boolean).join(' · '));
+  var subTip = desv ? (p.subTip || sub) : sub;
   var idVincJs = escapeHtml(String(p.idVinculo || ''));
 
   var acoes;
-  if (decidir) {
+  if (desv) {
+    acoes = podeEditar
+      ? '<div class="vinc-decisao">'
+        + '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm vinc-btn-recusar" onclick="event.stopPropagation(); vincExcluirOrfaos(\'' + idj + '\')" data-title="Excluir vínculos órfãos" aria-label="Excluir vínculos órfãos">'
+        +   '<span class="material-symbols-outlined">delete_sweep</span><span class="vinc-btn-txt">Excluir órfãos</span></button>'
+        + '</div>'
+      : '';
+  } else if (decidir) {
     var aceitar = p.direcao === 'filho'
       ? "aprovarVinculoPlano('" + idVincJs + "','" + nomeJs + "')"
       : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','ACEITAR')";
@@ -924,12 +840,12 @@ function _vincLinhaHTML(p, podeEditar) {
       + '<div class="ds-kpi-track"><div class="ds-kpi-fill ds-tone-info" style="width:' + pct.toFixed(0) + '%"></div></div>'
       + '<span class="vinc-prog-txt">' + pct.toFixed(0) + '%</span></div>';
 
-  return '<tr class="vinc-linha' + (decidir ? ' is-decidir' : '') + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"'
+  return '<tr class="vinc-linha' + ((decidir || desv) ? ' is-decidir' : '') + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"'
     + ' onclick="vincCliqueLinha(event, \'' + chj + '\')" ondblclick="carregarDetalhesPlano(\'' + idj + '\')">'
     + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="vincToggleSelecao(\'' + chj + '\', this.checked)" aria-label="Selecionar ' + escapeHtml(p.nome || '') + '"></td>'
     + '<td class="vinc-col-tipo"><span class="vinc-tag vinc-tag--' + p.vtipo + '" data-title="' + T.tip + '"><span class="material-symbols-outlined">' + T.ico + '</span><span>' + T.rot + '</span></span></td>'
     + '<td class="vinc-col-nome"><div class="vinc-nome-cel"><span class="vinc-nome" data-title="' + escapeHtml(p.nome || '') + '">' + escapeHtml(p.nome || '(sem nome)') + '</span>'
-    +   '<span class="vinc-sub" data-title="' + escapeHtml(sub) + '">' + escapeHtml(sub) + '</span></div></td>'
+    +   '<span class="vinc-sub" data-title="' + escapeHtml(subTip) + '">' + escapeHtml(sub) + '</span></div></td>'
     + '<td class="vinc-col-resp">' + resp + '</td>'
     + '<td class="vinc-col-status">' + status + '</td>'
     + '<td class="vinc-col-prog">' + progHtml + '</td>'
@@ -1504,7 +1420,6 @@ _vinculosSDK.aoContexto(function(ctx) {
   _vincCarregado = false;
   _vincCarregando = false;
   _vincDadosCache = { planosVinculados: [], propostasEnviadas: [], propostasRecebidas: [], planosSuperiores: [], desvinculados: [] };
-  _vincOrfAbertos = {};
   estadoVinculos.busca = '';
   estadoVinculos.filtroVinc = '';
   estadoVinculos.filtroStatus = '';
@@ -1540,8 +1455,6 @@ window.abrirModalVincularPlano = abrirModalVincularPlano;
 window.fecharModalVincularPlano = fecharModalVincularPlano;
 window.vincToggleSelecionarTodos = vincToggleSelecionarTodos;
 window.vincCancelarSelecao = vincCancelarSelecao;
-window.vincOrfToggle = vincOrfToggle;
-window.vincOrfCliqueLinha = vincOrfCliqueLinha;
 window.vincExcluirOrfaos = vincExcluirOrfaos;
 window.estadoVinculos = estadoVinculos;
 window._vinculosSDK = _vinculosSDK;
