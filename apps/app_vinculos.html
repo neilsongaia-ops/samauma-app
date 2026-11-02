@@ -237,7 +237,12 @@ tr.is-decidir .vinc-sub { color: var(--ds-color-warning-fg); }
 body.high-contrast .vinc-tag { border: 1px solid currentColor; }
 
 /* ── Vínculos órfãos: linha "Desvinculado" no topo da lista, no padrão das pendências (is-decidir) ── */
-.vinc-tag--desvinculado { background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg); }
+.vinc-tag--desvinculado { background: color-mix(in srgb, var(--ds-color-danger) 14%, var(--ds-color-surface)); color: var(--ds-color-danger); }
+.vinc-tabela tr.vinc-linha.is-decidir.is-desv td { background: color-mix(in srgb, var(--ds-color-danger) 9%, var(--ds-color-surface)); }
+.vinc-tabela tr.vinc-linha.is-decidir.is-desv td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-danger); }
+.vinc-tabela tr.vinc-linha.is-decidir.is-desv:hover td { background: color-mix(in srgb, var(--ds-color-danger) 16%, var(--ds-color-surface)); }
+tr.is-decidir.is-desv .vinc-sub { color: var(--ds-color-danger); }
+@media (max-width: 768px) { .vinc-tabela tr.vinc-linha.is-decidir.is-desv { border-left-color: var(--ds-color-danger); } }
 </style>
 
 <!-- Container principal da aba Vínculos (injetado em #vinculos-conteudo pelo host) -->
@@ -840,7 +845,7 @@ function _vincLinhaHTML(p, podeEditar) {
       + '<div class="ds-kpi-track"><div class="ds-kpi-fill ds-tone-info" style="width:' + pct.toFixed(0) + '%"></div></div>'
       + '<span class="vinc-prog-txt">' + pct.toFixed(0) + '%</span></div>';
 
-  return '<tr class="vinc-linha' + ((decidir || desv) ? ' is-decidir' : '') + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"'
+  return '<tr class="vinc-linha' + ((decidir || desv) ? ' is-decidir' : '') + (desv ? ' is-desv' : '') + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"'
     + ' onclick="vincCliqueLinha(event, \'' + chj + '\')" ondblclick="carregarDetalhesPlano(\'' + idj + '\')">'
     + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="vincToggleSelecao(\'' + chj + '\', this.checked)" aria-label="Selecionar ' + escapeHtml(p.nome || '') + '"></td>'
     + '<td class="vinc-col-tipo"><span class="vinc-tag vinc-tag--' + p.vtipo + '" data-title="' + T.tip + '"><span class="material-symbols-outlined">' + T.ico + '</span><span>' + T.rot + '</span></span></td>'
