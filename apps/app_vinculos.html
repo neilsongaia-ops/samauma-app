@@ -149,13 +149,10 @@ function criarSamaumaSDK() {
 
 <style>
 /* ── VÍNCULOS: lista única (reaproveita .el-tabela / .el-toggle-btn / acoesLinhaHTML do host) ──
-   Classes próprias (.vinc-lista, .vinc-row, .vinc-c-*) para não herdar o bloco antigo de .vinc-tabela
-   que ainda existe em pages_plano_detalhe.html. Situação = só ícone colorido + faixa lateral. */
+   Classes próprias (.vinc-lista, .vinc-row, .vinc-c-*). Situação = só ícone colorido + faixa lateral. */
 #view-vinculos .el-tabela thead th { top: calc(var(--det-sticky-top) + var(--det-tabs-h) + 56px); }
 .vinc-lista { --vinc-azul: var(--ds-color-info-fg); --vinc-verde: var(--ds-color-success-fg); --vinc-ambar: var(--ds-color-warning-fg);
-  --vinc-roxo: #7b2cbf; --vinc-vermelho: var(--ds-color-danger-fg); }
-[data-ds-theme="dark"] .vinc-lista { --vinc-roxo: #c9a2ff; }
-body.high-contrast .vinc-lista { --vinc-roxo: #d6b8ff; }
+  --vinc-roxo: var(--ds-color-pending); --vinc-vermelho: var(--ds-color-danger-fg); }
 .vinc-row--superior    { --vinc-cor: var(--vinc-azul); }
 .vinc-row--subordinado { --vinc-cor: var(--vinc-verde); }
 .vinc-row--decidir     { --vinc-cor: var(--vinc-ambar); }

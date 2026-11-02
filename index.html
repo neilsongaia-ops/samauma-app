@@ -533,6 +533,7 @@ body.high-contrast .wizard-msg-vazio { background: #111; }
   --ds-color-warning: #f9ab00; --ds-color-warning-bg: #fff8e1; --ds-color-warning-fg: #b06000;
   --ds-color-danger:  #d93025; --ds-color-danger-bg:  #fce8e6; --ds-color-danger-fg:  #c5221f;
   --ds-color-info:    #1967d2; --ds-color-info-bg:    #e8f0fe; --ds-color-info-fg:    #1967d2;
+  --ds-color-pending: #7b2cbf;
 
   /* -- Status de plano (FONTE ÚNICA — substitui as ~5 cópias divergentes) -- */
   --ds-status-elaboracao-bg: #fff8e1; --ds-status-elaboracao-fg: #b06000;
@@ -679,6 +680,7 @@ body.high-contrast .wizard-msg-vazio { background: #111; }
   --ds-color-warning: #f0b429; --ds-color-warning-bg: #3a2c0d; --ds-color-warning-fg: #f0b429;
   --ds-color-danger:  #ff6b60; --ds-color-danger-bg:  #3a1614; --ds-color-danger-fg:  #ff8a80;
   --ds-color-info:    #8ab4ff; --ds-color-info-bg:    #10233f; --ds-color-info-fg:    #8ab4ff;
+  --ds-color-pending: #c9a2ff;
 
   --ds-status-elaboracao-bg: #3a2c0d; --ds-status-elaboracao-fg: #f0b429;
   --ds-status-analise-bg:    #10233f; --ds-status-analise-fg:    #8ab4ff;
@@ -746,6 +748,7 @@ body.high-contrast {
   --ds-color-warning: #ffcc00; --ds-color-warning-bg: #1a1400; --ds-color-warning-fg: #ffcc00;
   --ds-color-danger:  #ff5555; --ds-color-danger-bg:  #1a0000; --ds-color-danger-fg:  #ff8080;
   --ds-color-info:    #00ffff; --ds-color-info-bg:    #001a1a; --ds-color-info-fg:    #00ffff;
+  --ds-color-pending: #d6b8ff;
 
   --ds-status-elaboracao-bg: #000; --ds-status-elaboracao-fg: #ffcc00;
   --ds-status-analise-bg:    #000; --ds-status-analise-fg:    #66ccff;
@@ -12842,14 +12845,14 @@ body.high-contrast .rsc-tabela tr.rsc-linha { border-color: #fff; }
 .ind-tabela col.ind-col-freq,  .ind-tabela .ind-col-freq  { width: 120px; overflow: hidden; box-sizing: border-box; }
 .ind-tabela col.ind-col-resp,  .ind-tabela .ind-col-resp  { width: 180px; overflow: hidden; box-sizing: border-box; }
 .ind-tabela col.ind-col-acoes, .ind-tabela .ind-col-acoes { width: 180px; min-width: 180px; text-align: right; padding-left: 4px; padding-right: 12px; box-sizing: border-box; }
-:is(.ind-tabela, .vinc-tabela, .mon-tabela, .rsc-tabela) thead th.th-sortable { cursor: pointer; user-select: none; transition: color var(--ds-duration-fast) var(--ds-ease-standard); }
-:is(.ind-tabela, .vinc-tabela, .mon-tabela, .rsc-tabela) thead th.th-sortable:hover { color: var(--ds-color-action); }
-:is(.ind-tabela, .vinc-tabela, .mon-tabela, .rsc-tabela) thead th .sort-icon {
+:is(.ind-tabela, .mon-tabela, .rsc-tabela) thead th.th-sortable { cursor: pointer; user-select: none; transition: color var(--ds-duration-fast) var(--ds-ease-standard); }
+:is(.ind-tabela, .mon-tabela, .rsc-tabela) thead th.th-sortable:hover { color: var(--ds-color-action); }
+:is(.ind-tabela, .mon-tabela, .rsc-tabela) thead th .sort-icon {
   display: inline-flex; align-items: center; vertical-align: middle;
   font-family: 'Material Symbols Outlined'; font-size: 16px;
   font-weight: normal; margin-left: 4px; color: var(--ds-color-action);
 }
-:is(.ind-tabela, .vinc-tabela, .mon-tabela, .rsc-tabela) thead th .sort-icon:empty { display: none; }
+:is(.ind-tabela, .mon-tabela, .rsc-tabela) thead th .sort-icon:empty { display: none; }
 .ind-tabela tbody tr.ind-linha { cursor: pointer; }
 .ind-tabela tbody tr.ind-linha td { padding-top: 12px; padding-bottom: 12px; }
 .ind-tabela tbody tr.ind-linha.is-open td { border-bottom-color: transparent; }
@@ -13012,94 +13015,6 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
 }
 body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { border-color: #fff; }
 
-/* ── VÍNCULOS: lista única (reaproveita .el-tabela) ──────────── */
-#view-vinculos .el-tabela thead th { top: calc(var(--det-sticky-top) + var(--det-tabs-h) + 56px); }
-.vinc-tabela col.vinc-col-tipo,   .vinc-tabela .vinc-col-tipo   { width: 130px; }
-.vinc-tabela col.vinc-col-nome,   .vinc-tabela .vinc-col-nome   { width: auto; max-width: 0; overflow: hidden; }
-.vinc-tabela col.vinc-col-resp,   .vinc-tabela .vinc-col-resp   { width: 175px; white-space: nowrap; overflow: hidden; }
-.vinc-tabela col.vinc-col-status, .vinc-tabela .vinc-col-status { width: 120px; }
-.vinc-tabela col.vinc-col-prog,   .vinc-tabela .vinc-col-prog   { width: 115px; white-space: nowrap; }
-.vinc-tabela col.vinc-col-acoes,  .vinc-tabela .vinc-col-acoes  { width: 208px; text-align: right; padding-left: 4px; padding-right: 14px; box-sizing: border-box; }
-.vinc-tabela tbody tr.vinc-linha { cursor: pointer; }
-.vinc-tabela tbody tr.vinc-linha td { padding-top: 10px; padding-bottom: 10px; }
-
-/* barra de progresso do plano vinculado */
-.vinc-prog { display: flex; align-items: center; gap: 8px; }
-.vinc-prog .ds-kpi-track { width: 68px; flex: none; }
-.vinc-prog-txt { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); min-width: 32px; }
-.vinc-sem-prog { color: var(--ds-color-text-muted); }
-
-/* cores por tipo de vínculo */
-.vinc-tag { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 10px 3px 8px; border-radius: var(--ds-radius-pill);
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); white-space: nowrap; }
-.vinc-tag .material-symbols-outlined { font-size: 15px; }
-.vinc-tag span:last-child { overflow: hidden; text-overflow: ellipsis; }
-.vinc-tag--decidir     { background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg); }
-.vinc-tag--aguardando  { background: color-mix(in srgb, #7b2cbf 12%, var(--ds-color-surface)); color: #7b2cbf; }
-.vinc-tag--superior    { background: var(--ds-color-info-bg); color: var(--ds-color-action); }
-.vinc-tag--subordinado { background: var(--ds-color-success-bg); color: var(--ds-color-success-fg); }
-.vinc-tabela tr.vinc-linha.is-decidir td { background: color-mix(in srgb, var(--ds-color-warning-bg) 45%, var(--ds-color-surface)); }
-.vinc-tabela tr.vinc-linha.is-decidir td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-warning); }
-.vinc-tabela tr.vinc-linha.is-decidir:hover td { background: var(--ds-color-warning-bg); }
-
-.vinc-nome-cel { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.vinc-nome { font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.vinc-sub { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-tr.is-decidir .vinc-sub { color: var(--ds-color-warning-fg); }
-:is(.vinc-tabela, .rsc-tabela) .resp-badge { max-width: 100%; }
-.vinc-status { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: var(--ds-radius-pill); background: var(--ds-color-surface-2);
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); white-space: nowrap; }
-.vinc-status i { width: 7px; height: 7px; border-radius: 50%; }
-
-/* decisão sempre visível */
-.vinc-decisao { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; white-space: nowrap; }
-.vinc-decisao .ds-btn {
-  height: 30px; min-height: 30px; padding: 0 10px;
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
-  gap: 4px; border-radius: var(--ds-r-md); white-space: nowrap; flex-shrink: 0;
-}
-.vinc-decisao .ds-btn .material-symbols-outlined { font-size: 16px; }
-
-/* hover-actions nas demais linhas */
-.vinc-tabela tr.vinc-linha:not(.is-decidir) .acoes-linha { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
-.vinc-tabela tr.vinc-linha:hover .acoes-linha,
-.vinc-tabela tr.vinc-linha.selecionada .acoes-linha,
-.vinc-tabela tr.vinc-linha .acoes-linha:focus-within,
-.vinc-tabela tr.vinc-linha .acoes-linha:has([aria-expanded="true"]) { opacity: 1; }
-
-@media (max-width: 1100px) {
-  .vinc-tabela .vinc-col-resp, .vinc-tabela .vinc-col-status, .vinc-tabela .vinc-col-prog { display: none; }
-  .vinc-tabela col.vinc-col-resp, .vinc-tabela col.vinc-col-status, .vinc-tabela col.vinc-col-prog { width: 0; }
-  .vinc-tabela col.vinc-col-acoes, .vinc-tabela .vinc-col-acoes { width: 90px; padding-right: 10px; }
-  .vinc-decisao .vinc-btn-txt { display: none; }          /* só ícones ✓ ✕ */
-  .vinc-decisao .ds-btn { width: 30px; min-width: 30px; padding: 0; justify-content: center; }
-  .vinc-decisao .ds-btn .material-symbols-outlined { font-size: 18px; }
-}
-
-/* mobile: galeria de cards (diretriz docs/design_system.md) */
-@media (max-width: 768px) {
-  .vinc-tabela, .vinc-tabela tbody { display: block; }
-  .vinc-tabela colgroup, .vinc-tabela thead { display: none; }
-  .vinc-tabela tr.vinc-linha {
-    display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "chk tipo acoes" "nome nome nome" "dec dec dec";
-    gap: 6px 8px; padding: 12px; margin-bottom: 10px; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
-  }
-  .vinc-tabela tr.vinc-linha.is-decidir { border-left: 3px solid var(--ds-color-warning); }
-  .vinc-tabela tr.vinc-linha td { display: block; padding: 0; border: none; width: auto; max-width: none; background: transparent !important; box-shadow: none !important; }
-  .vinc-tabela tr.vinc-linha td.el-col-check { grid-area: chk; }
-  .vinc-tabela tr.vinc-linha td.vinc-col-tipo { grid-area: tipo; }
-  .vinc-tabela tr.vinc-linha td.vinc-col-nome { grid-area: nome; }
-  .vinc-tabela tr.vinc-linha td.vinc-col-acoes { grid-area: acoes; }
-  .vinc-tabela tr.vinc-linha .acoes-linha { opacity: 1; }
-  .vinc-tabela tr.vinc-linha.is-decidir td.vinc-col-acoes { grid-area: dec; }
-  .vinc-decisao { display: flex; width: 100%; }
-  .vinc-decisao .ds-btn { flex: 1; width: auto; height: 44px; }
-  .vinc-decisao .vinc-btn-recusar { border-color: var(--ds-color-border); }
-  .vinc-decisao .vinc-btn-txt { display: inline; }
-  .vinc-sub { white-space: normal; }
-}
-body.high-contrast .vinc-tag { border: 1px solid currentColor; }
-
 .tab-cnt--alerta, .ds-tab-count--alerta { background: var(--ds-color-warning-bg) !important; color: var(--ds-color-warning-fg) !important; }
 
 /* Seções e cards de vidro */
@@ -13136,7 +13051,7 @@ body.high-contrast .view-mode-toggle { background: #000; border-color: #fff; }
 }
 
 @media print {
-  .ds-sidebar, .det-header-actions, .elem-main-toolbar, .det-tabs, .el-th-acoes, .el-filtros, .pagination-bar, .mon-col-acoes, .rsc-col-acoes, .ind-col-acoes, .vinc-col-acoes, button {
+  .ds-sidebar, .det-header-actions, .elem-main-toolbar, .det-tabs, .el-th-acoes, .el-filtros, .pagination-bar, .mon-col-acoes, .rsc-col-acoes, .ind-col-acoes, button {
     display: none !important;
   }
   body, #main-content, .view-section, .el-tabela {
