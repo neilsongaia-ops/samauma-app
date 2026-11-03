@@ -107,6 +107,7 @@ body.high-contrast .wiz-rail-item.wiz-rail-atual { background: #222; }
 .el-alerta-ico { font-size: 16px; color: var(--ds-color-warning-fg); flex-shrink: 0; }
 .el-chip-meta.el-chip-vinculo .el-chip-aviso { font-size: 14px; color: var(--ds-color-warning-fg); margin-left: -2px; }
 .el-chip-meta.el-chip-vinculo.el-chip-desvinculado .material-symbols-outlined:first-child { color: var(--ds-color-danger-fg); }
+.el-chip-meta.el-chip-vinculo.el-chip-pendente .material-symbols-outlined:first-child { color: var(--ds-color-pending); }
 .el-chip-meta.el-chip-vinculo .el-chip-aguardando { color: var(--ds-color-pending); }
 .elwiz-info { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; margin-left: 4px; }
 .elwiz-obrig { font-size: 10px; font-weight: var(--ds-weight-bold); letter-spacing: .3px; text-transform: uppercase; color: var(--ds-color-danger-fg); }
@@ -2849,11 +2850,12 @@ function obterInfoSuperioresElemento(el) {
 // aviso (relógio roxo quando é só pedido de vínculo aguardando aprovação); só some quando os órfãos são excluídos de vez (aba Vínculos). Mais de 3 planos: o resto vira "+N".
 var EL_CHIPS_VINCULO_MAX = 3;
 function _chipVinculoUnicoHTML(qtd, semEfeito, tip, rotulo, pendente) {
-  // desvinculado (sem efeito e sem pedido pendente): clipe CORTADO em vermelho no lugar do clipe; pendente: clipe + relógio roxo
-  var desv = semEfeito && !pendente;
-  return '<span class="el-chip-meta el-chip-vinculo' + (desv ? ' el-chip-desvinculado' : '') + '" data-title="' + escapeHtml(tip) + '"><span class="material-symbols-outlined"' + (desv ? ' aria-label="Plano desvinculado: vínculo sem efeito"' : '') + '>' + (desv ? 'link_off' : 'link') + '</span>'
-    + '<span class="el-chip-meta-txt">' + escapeHtml(rotulo != null ? rotulo : String(qtd)) + '</span>'
-    + (semEfeito && pendente ? '<span class="material-symbols-outlined el-chip-aviso el-chip-aguardando" aria-label="Aguardando aprovação do vínculo entre os planos">schedule</span>' : '') + '</span>';
+  // O ícone único do badge diz o estado: clipe = vínculo válido; relógio roxo = aguardando aprovação; clipe cortado vermelho = desvinculado
+  var desv = semEfeito && !pendente, pend = semEfeito && pendente;
+  var ico = desv ? 'link_off' : (pend ? 'schedule' : 'link');
+  var aria = desv ? ' aria-label="Plano desvinculado: vínculo sem efeito"' : (pend ? ' aria-label="Aguardando aprovação do vínculo entre os planos"' : '');
+  return '<span class="el-chip-meta el-chip-vinculo' + (desv ? ' el-chip-desvinculado' : '') + (pend ? ' el-chip-pendente' : '') + '" data-title="' + escapeHtml(tip) + '"><span class="material-symbols-outlined"' + aria + '>' + ico + '</span>'
+    + '<span class="el-chip-meta-txt">' + escapeHtml(rotulo != null ? rotulo : String(qtd)) + '</span></span>';
 }
 function _tipVinculoPlanoEl(g) {
   var t = (g.nome || 'Plano superior') + ': ' + (g.itens || []).filter(Boolean).join('; ');

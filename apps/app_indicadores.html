@@ -171,6 +171,7 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
 .ind-vinc-chips .el-chip-meta:focus-visible { outline: 2px solid var(--ds-color-focus, var(--ds-color-primary)); outline-offset: 1px; }
 .ind-vinc-chips .el-chip-aviso { font-size: 14px; color: var(--ds-color-warning-fg); margin-left: -2px; }
 .ind-vinc-chips .el-chip-desvinculado .material-symbols-outlined:first-child { color: var(--ds-color-danger-fg); }
+.ind-vinc-chips .el-chip-pendente .material-symbols-outlined:first-child { color: var(--ds-color-pending); }
 .ind-vinc-chips .el-chip-aguardando { color: var(--ds-color-pending); }
 .ind-vinc-mob { display: none; }
 .ind-freq { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1171,11 +1172,10 @@ function _indTipVinculoPlano(g) {
   return t;
 }
 function _indChipVinculoHTML(rotulo, semEfeito, pendente, tip) {
-  // desvinculado: clipe CORTADO em vermelho no lugar do clipe; pendente: clipe + relógio roxo
-  var desv = semEfeito && !pendente;
-  return '<span class="el-chip-meta el-chip-vinculo' + (desv ? ' el-chip-desvinculado' : '') + '" tabindex="0" role="img" data-title="' + escapeHtml(tip) + '" aria-label="' + escapeHtml('Vínculo superior — ' + tip) + '">'
-    + '<span class="material-symbols-outlined" aria-hidden="true">' + (desv ? 'link_off' : 'link') + '</span><span class="el-chip-meta-txt" aria-hidden="true">' + escapeHtml(rotulo) + '</span>'
-    + (semEfeito && pendente ? '<span class="material-symbols-outlined el-chip-aviso el-chip-aguardando" aria-hidden="true">schedule</span>' : '')
+  // O ícone único do badge diz o estado: clipe = vínculo válido; relógio roxo = aguardando aprovação; clipe cortado vermelho = desvinculado
+  var desv = semEfeito && !pendente, pend = semEfeito && pendente;
+  return '<span class="el-chip-meta el-chip-vinculo' + (desv ? ' el-chip-desvinculado' : '') + (pend ? ' el-chip-pendente' : '') + '" tabindex="0" role="img" data-title="' + escapeHtml(tip) + '" aria-label="' + escapeHtml('Vínculo superior — ' + tip) + '">'
+    + '<span class="material-symbols-outlined" aria-hidden="true">' + (desv ? 'link_off' : (pend ? 'schedule' : 'link')) + '</span><span class="el-chip-meta-txt" aria-hidden="true">' + escapeHtml(rotulo) + '</span>'
     + '</span>';
 }
 function _indChipsVinculoHTML(p) {
