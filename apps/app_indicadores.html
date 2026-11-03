@@ -183,8 +183,6 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
 /* Pintura da linha (só fundo, sem barra lateral — mesmos tons da aba Vínculos).
    Prioridade: desvinculado > aguardando > sem metas; a cor vem do caso mais grave (uma única classe ind-caso-*). */
 .ind-tabela tr.ind-caso-semmeta { --ind-cor: var(--ds-color-warning-fg); }
-.ind-tabela tr.ind-caso-aguardando { --ind-cor: var(--ds-color-pending); }
-.ind-tabela tr.ind-caso-desvinculado { --ind-cor: var(--ds-color-danger-fg); }
 .ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada) td { background: color-mix(in srgb, var(--ind-cor) 12%, var(--ds-color-surface)); }
 .ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada):hover td { background: color-mix(in srgb, var(--ind-cor) 20%, var(--ds-color-surface)); }
 body.high-contrast .ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada) td { background: #000; }
@@ -819,9 +817,9 @@ function _indPrioridadePeso(p, anos) {
   return 3;
 }
 
-// Itens que pedem atenção (linha pintada) vêm SEMPRE no topo, qualquer que seja a ordenação escolhida; a ordenação do usuário
-// só decide a ordem dentro de cada grupo. Ordem dos grupos: desvinculado > aguardando aprovação > sem metas > normais.
-var IND_ORDEM_CASO = { desvinculado: 0, aguardando: 1, semmeta: 2, '': 3 };
+// Indicadores SEM METAS (linha pintada) vêm SEMPRE no topo, qualquer que seja a ordenação escolhida; a ordenação do usuário
+// só decide a ordem dentro de cada grupo (sem metas, depois os demais).
+var IND_ORDEM_CASO = { semmeta: 0, '': 1 };
 function _indRankAtencao(p) {
   return IND_ORDEM_CASO[_indCasoLinha(p, !p.metas || p.metas.length === 0)];
 }
@@ -1189,11 +1187,9 @@ function _indChipsVinculoHTML(p) {
   }
   return '<span class="ind-vinc-chips">' + html + '</span>';
 }
-// Caso de atenção que pinta a linha. Prioridade: desvinculado > aguardando > sem metas. Normal/aprovado: sem cor.
+// Único caso que pinta a linha (e sobe ao topo): indicador SEM METAS. Desvinculação/pendência de vínculo de plano superior
+// NÃO é alerta aqui (o indicador segue válido no plano): quem sinaliza isso é só o badge de vínculo.
 function _indCasoLinha(p, isPendente) {
-  var g = p.vinculosPlanos || [];
-  if (g.some(function (x) { return x.semEfeito && !x.pendente; })) return 'desvinculado';
-  if (g.some(function (x) { return x.semEfeito && x.pendente; })) return 'aguardando';
   return isPendente ? 'semmeta' : '';
 }
 
