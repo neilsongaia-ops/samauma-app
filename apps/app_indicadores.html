@@ -818,13 +818,20 @@ function _indPrioridadePeso(p, anos) {
   return 3;
 }
 
+// Itens que pedem atenção (linha pintada) vêm SEMPRE no topo, qualquer que seja a ordenação escolhida; a ordenação do usuário
+// só decide a ordem dentro de cada grupo. Ordem dos grupos: desvinculado > aguardando aprovação > sem metas > normais.
+var IND_ORDEM_CASO = { desvinculado: 0, aguardando: 1, semmeta: 2, '': 3 };
+function _indRankAtencao(p) {
+  return IND_ORDEM_CASO[_indCasoLinha(p, !p.metas || p.metas.length === 0)];
+}
 function _indSortLista(lista) {
   var sort = estadoIndicadores.sort || { col: 'prioridade', dir: 'asc' };
   var col = sort.col, dir = sort.dir === 'asc' ? 1 : -1;
   var todasMetas = _indMetas.length ? _indMetas : ((dadosDetalhados && dadosDetalhados.metas) || []);
   var anos = _indAnosVigencia(todasMetas);
   return (lista || []).slice().sort(function(a, b) {
-    var res = 0;
+    var res = 0, ranking = _indRankAtencao(a) - _indRankAtencao(b);
+    if (ranking) return ranking;
     if (col === 'metas') {
       var ma = (a.metas || []).length, mb = (b.metas || []).length;
       res = (ma - mb) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
