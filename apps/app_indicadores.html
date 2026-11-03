@@ -181,7 +181,7 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
 .ind-resp .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); flex-shrink: 0; }
 
 /* Pintura da linha (só fundo, sem barra lateral — mesmos tons da aba Vínculos).
-   Prioridade: desvinculado > aguardando > sem metas; a cor vem do caso mais grave (uma única classe ind-caso-*). */
+   Só o indicador SEM METAS é pintado (vínculo desfeito/pendente é indicado apenas pelo badge). */
 .ind-tabela tr.ind-caso-semmeta { --ind-cor: var(--ds-color-warning-fg); }
 .ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada) td { background: color-mix(in srgb, var(--ind-cor) 12%, var(--ds-color-surface)); }
 .ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada):hover td { background: color-mix(in srgb, var(--ind-cor) 20%, var(--ds-color-surface)); }
