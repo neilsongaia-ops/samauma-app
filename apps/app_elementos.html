@@ -4295,7 +4295,7 @@ function renderizarTabelaEstrutura() {
     var chipRel = chipRelacionadosHTML(no);
     if (chipRel) chipsList.push(chipRel);
     if (qtdInd > 0) {
-      chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + (qtdInd === 1 ? ' ind.' : ' inds.') + '</span></span>');
+      chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + '</span></span>');
     }
     var chipsHtml = chipsList.length > 0 ? '<div class="el-meta-chips">' + chipsList.join('') + '</div>' : '';
 
@@ -5759,7 +5759,7 @@ function renderizarTabelaDetalhes() {
     var chipRel = chipRelacionadosHTML(item);
     if (chipRel) chipsList.push(chipRel);
     if (qtdInd > 0) {
-      chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + (qtdInd === 1 ? ' ind.' : ' inds.') + '</span></span>');
+      chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + '</span></span>');
     }
     var chipsHtml = chipsList.length > 0 ? '<div class="el-meta-chips">' + chipsList.join('') + '</div>' : '';
 
