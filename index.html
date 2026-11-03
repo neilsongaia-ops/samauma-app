@@ -10482,7 +10482,7 @@ function solicitarExclusao(id, nomePlano) {
          com 1 clique — abre o painel lateral (#detp-panel). -->
     <button type="button" class="ds-icon-action" onclick="abrirDetalhesPlanoPainel()"
             data-title="Detalhes do plano" aria-label="Detalhes do plano">
-      <span class="material-symbols-outlined">info</span>
+      <span class="material-symbols-outlined">right_panel_open</span>
     </button>
   </div>
 
@@ -13936,7 +13936,7 @@ function renderizarBotoesTramite(plano) {
   const acao = _detAcaoTramitePrincipal(plano);
   container.innerHTML = acao
     ? _botaoTramite(acao.onclick, acao.rotulo, acao.icone, acao.dica)
-    : _botaoTramite('abrirDetalhesPlanoPainel()', 'Detalhes', 'info', 'Detalhes do plano');
+    : _botaoTramite('abrirDetalhesPlanoPainel()', 'Detalhes', 'right_panel_open', 'Detalhes do plano');
   setTimeout(function() {
     detAtualizarOffsetsSticky();
     detAtualizarSetaTabs();

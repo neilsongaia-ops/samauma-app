@@ -1546,7 +1546,7 @@ function _indAtualizarSelecao(listaVisivel) {
       var indId = Object.keys(estadoIndicadores.selecionados)[0];
       var indObj = _indListaAtiva().find(function(i) { return String(i.id) === String(indId); });
       acoesCont.innerHTML = acoesLinhaHTML('indsel-' + indId, [
-        { icone: 'info', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + indId + "')", principal: true },
+        { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + indId + "')", principal: true },
         { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + indId + "')", principal: true, oculto: !podeEditar },
         { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + indId + "')", principal: true, oculto: !podeEditar },
         { icone: 'download', rotulo: 'Exportar CSV', onclick: "exportarIndicadoresMetasCSV()", principal: true },

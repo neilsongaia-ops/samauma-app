@@ -3209,7 +3209,7 @@ function _elAtualizarSelecaoVisual() {
       var elId = Array.from(_elSelecionados)[0];
       var elObj = (_elElementos || []).find(function(e) { return String(e.id) === elId; });
       acoesCont.innerHTML = acoesLinhaHTML('elsel-' + elId, [
-        { icone: 'info', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + elId + "')", principal: true },
+        { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + elId + "')", principal: true },
         { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + elId + "')", principal: true, oculto: !podeEditar },
         { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + elId + "')", principal: true, oculto: !podeEditar },
         { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + elId + "','" + escapeJsAttr(elObj ? elObj.titulo : '') + "')", cor: 'var(--ds-color-danger-fg)', oculto: !podeEditar }
@@ -4067,7 +4067,7 @@ function renderizarGantt() {
 
     var tbId = 'gantt-tb-' + el.id;
     var acoes = typeof acoesLinhaHTML === 'function' ? acoesLinhaHTML(tbId, [
-      { icone: 'info', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + el.id + "')", principal: true },
+      { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + el.id + "')", principal: true },
       { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + el.id + "')", principal: true, oculto: !podeEditarElemento },
       { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + el.id + "','" + escapeJsAttr(el.titulo) + "')", perigo: true, oculto: !podeEditarElemento }
     ]) : '';
@@ -4330,7 +4330,7 @@ function renderizarTabelaEstrutura() {
     // Ações
     var tbId = 'el-tb-' + id;
     var acoes = acoesLinhaHTML(tbId, [
-      { icone: 'info', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
+      { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
       { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + id + "')", principal: true, oculto: !podeEditarElemento },
       { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + id + "')", oculto: !podeEditarElemento },
       { icone: 'monitoring', rotulo: 'Indicadores', onclick: "abrirModalIndicador('" + id + "')", oculto: !podeEditarElemento },
@@ -4816,7 +4816,7 @@ function renderizarOrganograma() {
     var indHtml = nInd ? '<span class="el-chip-meta el-chip-ind" data-title="' + nInd + (nInd === 1 ? ' indicador' : ' indicadores') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + nInd + '</span></span>' : '';
 
     var acoes = acoesLinhaHTML('org-tb-' + id, [
-      { icone: 'info', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
+      { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
       { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + id + "')", principal: true, oculto: !podeEditar },
       { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + id + "')", oculto: !podeEditar },
       { icone: 'monitoring', rotulo: 'Indicadores', onclick: "abrirModalIndicador('" + id + "')", oculto: !podeEditar },
@@ -5807,7 +5807,7 @@ function renderizarTabelaDetalhes() {
     // Ações
     var tbId = 'w5-tb-' + id;
     var acoes = acoesLinhaHTML(tbId, [
-      { icone: 'info', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
+      { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
       { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + id + "')", principal: true, oculto: !podeEditarElemento },
       { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + id + "')", oculto: !podeEditarElemento },
       { icone: 'monitoring', rotulo: 'Indicadores', onclick: "abrirModalIndicador('" + id + "')", oculto: !podeEditarElemento },
