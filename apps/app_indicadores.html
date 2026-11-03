@@ -172,7 +172,6 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
 .ind-vinc-chips .el-chip-aviso { font-size: 14px; color: var(--ds-color-warning-fg); margin-left: -2px; }
 .ind-vinc-chips .el-chip-aguardando { color: var(--ds-color-pending); }
 .ind-vinc-mob { display: none; }
-.ind-alerta-ico { font-size: 16px; color: var(--ds-color-warning-fg); flex-shrink: 0; }
 .ind-freq { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ind-resp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
 .ind-resp .material-symbols-outlined { font-size: 16px; color: var(--ds-color-text-muted); flex-shrink: 0; }
@@ -1205,8 +1204,6 @@ function _indLinhaHTML(p, anos, podeEditar) {
   var isPendente = (!p.metas || p.metas.length === 0);
   var sup = _indChipsVinculoHTML(p);
   var caso = _indCasoLinha(p, isPendente);
-  var alerta = isPendente
-    ? '<span class="material-symbols-outlined ind-alerta-ico" data-title="Indicador sem metas definidas">warning</span>' : '';
   var resp;
   if (p.responsavel) {
     var respNome = nomeRespExibicao(p.responsavel, p.tipoResponsavel);
@@ -1249,7 +1246,7 @@ function _indLinhaHTML(p, anos, podeEditar) {
     + ' onclick="indCliqueLinha(event, \'' + idj + '\')" ondblclick="indDuploCliqueLinha(event, \'' + idj + '\')">'
     + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="indToggleSelecao(\'' + idj + '\', this.checked)" aria-label="Selecionar indicador"></td>'
     + '<td class="el-col-expand"><button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" onclick="event.stopPropagation(); indToggleExpand(\'' + idj + '\')" aria-label="Expandir"><span class="material-symbols-outlined ind-seta" aria-hidden="true">chevron_right</span></button></td>'
-    + '<td class="ind-col-nome"><div class="ind-nome-cel"><div class="ind-titulo-cel"><span class="ind-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</span>' + alerta + sup + '</div>'
+    + '<td class="ind-col-nome"><div class="ind-nome-cel"><div class="ind-titulo-cel"><span class="ind-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</span>' + sup + '</div>'
     + '</div></td>'
     + '<td class="ind-col-cob">' + (sup ? '<div class="ind-vinc-mob">' + sup + '</div>' : '') + _indCoberturaHTML(p, anos) + '</td>'
     + '<td class="ind-col-freq"><span class="ind-freq" data-title="' + escapeHtml(_indFreqTxt(p)) + '">' + escapeHtml(p.frequencia || '—') + '</span></td>'
