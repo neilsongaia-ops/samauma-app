@@ -165,8 +165,13 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
 .ind-titulo-cel { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .ind-nome { font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium); color: var(--ds-color-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.ind-sub { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ind-sup-ico { font-size: 16px; color: var(--ds-color-text-muted); flex-shrink: 0; }
+/* Badges de vínculo com planos superiores: mesmo componente da aba Elementos (.el-chip-meta.el-chip-vinculo) */
+.ind-vinc-chips { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.ind-vinc-chips .el-chip-meta { cursor: help; }
+.ind-vinc-chips .el-chip-meta:focus-visible { outline: 2px solid var(--ds-color-focus, var(--ds-color-primary)); outline-offset: 1px; }
+.ind-vinc-chips .el-chip-aviso { font-size: 14px; color: var(--ds-color-warning-fg); margin-left: -2px; }
+.ind-vinc-chips .el-chip-aguardando { color: var(--ds-color-pending); }
+.ind-vinc-mob { display: none; }
 .ind-alerta-ico { font-size: 16px; color: var(--ds-color-warning-fg); flex-shrink: 0; }
 .ind-freq { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ind-resp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
@@ -174,11 +179,15 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
 .ind-resp-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .ind-resp .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); flex-shrink: 0; }
 
-/* Linha com pendência de meta (estilo is-decidir de Vínculos / is-pendente-tratamento de Riscos) */
-.ind-tabela tr.ind-linha.is-pendente-meta td { background: color-mix(in srgb, var(--ds-color-warning-bg) 45%, var(--ds-color-surface)); }
-.ind-tabela tr.ind-linha.is-pendente-meta td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-warning); }
-.ind-tabela tr.ind-linha.is-pendente-meta:hover td { background: var(--ds-color-warning-bg); }
-.ind-tabela tr.ind-linha.is-pendente-meta .ind-sub { color: var(--ds-color-warning-fg); font-weight: var(--ds-weight-semibold); }
+/* Pintura da linha (só fundo, sem barra lateral — mesmos tons da aba Vínculos).
+   Prioridade: desvinculado > aguardando > sem metas; a cor vem do caso mais grave (uma única classe ind-caso-*). */
+.ind-tabela tr.ind-caso-semmeta { --ind-cor: var(--ds-color-warning-fg); }
+.ind-tabela tr.ind-caso-aguardando { --ind-cor: var(--ds-color-pending); }
+.ind-tabela tr.ind-caso-desvinculado { --ind-cor: var(--ds-color-danger-fg); }
+.ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada) td { background: color-mix(in srgb, var(--ind-cor) 12%, var(--ds-color-surface)); }
+.ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada):hover td { background: color-mix(in srgb, var(--ind-cor) 20%, var(--ds-color-surface)); }
+body.high-contrast .ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada) td { background: #000; }
+body.high-contrast .ind-tabela tr.ind-linha[class*="ind-caso-"] td.ind-col-nome { box-shadow: none; }
 .ind-decisao { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; white-space: nowrap; }
 .ind-decisao .ind-btn-proativo {
   height: 30px; min-height: 30px; padding: 0 10px;
@@ -292,8 +301,9 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
     display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "chk freq acoes" "nome nome nome" "cob cob cob";
     gap: 6px 8px; padding: 12px; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
   }
+  .ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada) { background: color-mix(in srgb, var(--ind-cor) 12%, var(--ds-color-surface)); }
+  .ind-tabela tr.ind-linha[class*="ind-caso-"] td { background: transparent !important; }
   .ind-tabela tr.ind-linha.is-pendente-meta {
-    border-left: 3px solid var(--ds-color-warning);
     grid-template-areas: "chk freq acoes" "nome nome nome" "cob cob cob" "dec dec dec";
   }
   .ind-tabela tr.ind-linha:not(.is-open) { margin-bottom: 10px; }
@@ -307,7 +317,9 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
   .ind-tabela tr.ind-linha.is-pendente-meta td.ind-col-acoes { grid-area: dec; width: auto; }
   .ind-tabela tr.ind-linha.is-pendente-meta .ind-decisao { display: flex; width: 100%; gap: 6px; margin-top: 4px; }
   .ind-tabela tr.ind-linha.is-pendente-meta .ind-decisao .ind-btn-proativo { flex: 1; height: 44px; font-size: var(--ds-text-sm); }
-  .ind-sub { white-space: normal; }
+  .ind-titulo-cel .ind-vinc-chips { display: none; }
+  .ind-vinc-mob { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ind-vinc-mob:empty { display: none; }
   .ind-tabela tr.ind-linha td.ind-col-nome { grid-area: nome; }
   .ind-tabela tr.ind-linha td.ind-col-cob { grid-area: cob; }
   .ind-tabela tr.ind-linha .acoes-linha { opacity: 1; }
@@ -1143,14 +1155,49 @@ function _indFaixaHTML(p, anos, podeEditar) {
   return '<div class="ind-faixa" style="--ind-anos:' + Math.max(1, anos.length) + '">' + cols + '</div>';
 }
 
+// Badges de vínculo superior: um por plano (link + qtd); desvinculado = triângulo, aguardando = relógio roxo; >3 planos vira "+N".
+// Sem plano superior: nenhum badge. Mesmo componente visual de chipsVinculoElementoHTML (aba Elementos).
+var IND_CHIPS_VINCULO_MAX = 3;
+function _indTipVinculoPlano(g) {
+  var t = (g.nome || 'Plano superior') + ': ' + (g.itens || []).filter(Boolean).join('; ');
+  if (g.semEfeito) t += g.pendente ? '  (aguardando aprovação do vínculo entre os planos)' : '  (plano desvinculado — vínculo sem efeito)';
+  return t;
+}
+function _indChipVinculoHTML(rotulo, semEfeito, pendente, tip) {
+  return '<span class="el-chip-meta el-chip-vinculo" tabindex="0" role="img" data-title="' + escapeHtml(tip) + '" aria-label="' + escapeHtml('Vínculo superior — ' + tip) + '">'
+    + '<span class="material-symbols-outlined" aria-hidden="true">link</span><span class="el-chip-meta-txt" aria-hidden="true">' + escapeHtml(rotulo) + '</span>'
+    + (semEfeito ? (pendente
+        ? '<span class="material-symbols-outlined el-chip-aviso el-chip-aguardando" aria-hidden="true">schedule</span>'
+        : '<span class="material-symbols-outlined el-chip-aviso" aria-hidden="true">warning</span>') : '')
+    + '</span>';
+}
+function _indChipsVinculoHTML(p) {
+  var g = (p.vinculosPlanos || []).filter(function (x) { return x && x.qtd > 0; });
+  if (!g.length) return '';
+  var html = g.slice(0, IND_CHIPS_VINCULO_MAX).map(function (x) { return _indChipVinculoHTML(String(x.qtd), x.semEfeito, x.pendente, _indTipVinculoPlano(x)); }).join('');
+  var resto = g.slice(IND_CHIPS_VINCULO_MAX);
+  if (resto.length) {
+    var todosPend = resto.every(function (x) { return x.semEfeito && x.pendente; });
+    html += _indChipVinculoHTML('+' + resto.length, true, todosPend, resto.map(_indTipVinculoPlano).join('  |  '));
+  }
+  return '<span class="ind-vinc-chips">' + html + '</span>';
+}
+// Caso de atenção que pinta a linha. Prioridade: desvinculado > aguardando > sem metas. Normal/aprovado: sem cor.
+function _indCasoLinha(p, isPendente) {
+  var g = p.vinculosPlanos || [];
+  if (g.some(function (x) { return x.semEfeito && !x.pendente; })) return 'desvinculado';
+  if (g.some(function (x) { return x.semEfeito && x.pendente; })) return 'aguardando';
+  return isPendente ? 'semmeta' : '';
+}
+
 function _indLinhaHTML(p, anos, podeEditar) {
   var id = String(p.id), idj = escapeHtml(id), nomeJs = escapeJsAttr(p.nome);
   var aberto = !!estadoIndicadores.expandidos[id];
   var sel = !!estadoIndicadores.selecionados[id];
   var ativo = estadoIndicadores.painelId === id;
   var isPendente = (!p.metas || p.metas.length === 0);
-  var sup = (p.indicadoresSuperioresNomes || []).length
-    ? '<span class="material-symbols-outlined ind-sup-ico" data-title="Contribui para: ' + escapeHtml(p.indicadoresSuperioresNomes.join('; ')) + '">link</span>' : '';
+  var sup = _indChipsVinculoHTML(p);
+  var caso = _indCasoLinha(p, isPendente);
   var alerta = isPendente
     ? '<span class="material-symbols-outlined ind-alerta-ico" data-title="Indicador sem metas definidas">warning</span>' : '';
   var resp;
@@ -1184,12 +1231,9 @@ function _indLinhaHTML(p, anos, podeEditar) {
     ]);
   }
 
-  var subTexto = isPendente
-    ? 'Pendente: cadastrar metas para a vigência'
-    : (p.elemento ? ((p.elemento.codigo ? p.elemento.codigo + ' ' : '') + p.elemento.titulo) : (p.unidade ? 'Unidade: ' + p.unidade : ''));
-
   var cls = 'ind-linha'
     + (isPendente ? ' is-pendente-meta' : '')
+    + (caso ? ' ind-caso-' + caso : '')
     + (aberto ? ' is-open' : '')
     + (sel ? ' selecionada' : '')
     + (ativo ? ' ind-ativa' : '');
@@ -1199,9 +1243,8 @@ function _indLinhaHTML(p, anos, podeEditar) {
     + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="indToggleSelecao(\'' + idj + '\', this.checked)" aria-label="Selecionar indicador"></td>'
     + '<td class="el-col-expand"><button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" onclick="event.stopPropagation(); indToggleExpand(\'' + idj + '\')" aria-label="Expandir"><span class="material-symbols-outlined ind-seta" aria-hidden="true">chevron_right</span></button></td>'
     + '<td class="ind-col-nome"><div class="ind-nome-cel"><div class="ind-titulo-cel"><span class="ind-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</span>' + alerta + sup + '</div>'
-    + (subTexto ? '<span class="ind-sub" data-title="' + escapeHtml(subTexto) + '">' + escapeHtml(subTexto) + '</span>' : '')
     + '</div></td>'
-    + '<td class="ind-col-cob">' + _indCoberturaHTML(p, anos) + '</td>'
+    + '<td class="ind-col-cob">' + (sup ? '<div class="ind-vinc-mob">' + sup + '</div>' : '') + _indCoberturaHTML(p, anos) + '</td>'
     + '<td class="ind-col-freq"><span class="ind-freq" data-title="' + escapeHtml(_indFreqTxt(p)) + '">' + escapeHtml(p.frequencia || '—') + '</span></td>'
     + '<td class="ind-col-resp">' + resp + '</td>'
     + '<td class="ind-col-acoes">' + acoes + '</td>'
