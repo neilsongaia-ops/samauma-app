@@ -10106,7 +10106,7 @@ function _renderizarTabela(planos) {
 
     // Ações da linha: 2 diretas + ⋮ (components_acoes_linha.html); aparecem no hover
     var acoes = acoesLinhaHTML('pll-' + p.id, [
-      { icone: 'visibility', rotulo: 'Ver detalhes', onclick: 'abrirDetalhesDaLista(' + p.id + ')', principal: true },
+      { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: 'abrirDetalhesDaLista(' + p.id + ')', principal: true },
       { icone: 'edit', rotulo: 'Editar', onclick: 'abrirModalEdicaoPlano(' + p.id + ')', principal: true, oculto: !perm.editar },
       { icone: 'delete', rotulo: 'Excluir', onclick: "solicitarExclusao(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", perigo: true, oculto: !perm.excluir }
     ]);
@@ -10345,7 +10345,7 @@ function _pllRenderizarAcoesSelecao(qtd) {
     var p = selecionados[0];
     var perm = (p && p.permissoes) || {};
     alvo.innerHTML = p ? acoesLinhaHTML('plsel-' + p.id, [
-      { icone: 'visibility', rotulo: 'Ver detalhes', onclick: 'abrirDetalhesDaLista(' + p.id + ')', principal: true },
+      { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: 'abrirDetalhesDaLista(' + p.id + ')', principal: true },
       { icone: 'edit', rotulo: 'Editar', onclick: 'abrirModalEdicaoPlano(' + p.id + ')', principal: true, oculto: !perm.editar },
       { icone: 'delete', rotulo: 'Excluir', onclick: "solicitarExclusao(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", cor: 'var(--ds-color-danger-fg)', oculto: !perm.excluir }
     ], { maxDireto: 3 }) : '';
