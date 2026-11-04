@@ -10495,10 +10495,16 @@ function pllLixeiraPrazoTexto(p) {
   return n === 0 ? 'apaga hoje' : 'apaga em ' + n + (n === 1 ? ' dia' : ' dias');
 }
 
+// O servidor manda excluidoEm em milissegundos (epoch); mostra dd/mm/aaaa.
+function pllLixeiraDataTexto(v) {
+  var d = new Date(isNaN(Number(v)) ? v : Number(v));
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
+}
+
 function pllLixeiraRegraTexto(p) {
   var lx = (p && p.lixeira) || {};
   return 'Planos na lixeira são apagados definitivamente ' + (lx.retencaoDias || 90) + ' dias após a exclusão'
-    + (lx.excluidoEm ? ' (excluído em ' + lx.excluidoEm + ').' : '.');
+    + (lx.excluidoEm ? ' (excluído em ' + pllLixeiraDataTexto(lx.excluidoEm) + ').' : '.');
 }
 
 function pllLixeiraPrazoHTML(p) {
