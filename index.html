@@ -20457,7 +20457,7 @@ function carmRender() {
     return '<div class="carm-opcao"><label><input type="radio" name="carm-tipo" value="' + escapeHtml(t.id) + '"' +
       (t.id === estadoCarm.tipoEscolhido ? ' checked' : '') + ' onchange="carmEscolher(this.value)"> ' + escapeHtml(t.rotulo) + '</label>' +
       '<span class="carm-teste" id="carm-teste-' + escapeHtml(t.id) + '"></span>' +
-      '<button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" onclick="carmTestar('' + escapeHtml(t.id) + '')">Testar conexão</button></div>';
+      '<button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" data-tipo="' + escapeHtml(t.id) + '" onclick="carmTestar(this.dataset.tipo)">Testar conexão</button></div>';
   }).join('');
   const sujo = estadoCarm.tipoEscolhido !== estadoCarm.tipoSalvo;
   document.getElementById('carm-btn-salvar').disabled = !sujo;
