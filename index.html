@@ -14024,7 +14024,10 @@ function _detAbrirMenuAcoes(ev) {
     grupos.push({ itens: exportar });
   }
 
-  if (perm.excluir) grupos.push({ itens: [{ icone: 'delete', label: 'Excluir plano', onclick: 'confirmarExclusaoPlanoAtual()', perigo: true }] });
+  if (p.status === 'Excluído') {
+    // Plano na lixeira: Restaurar é o botão principal; aqui entra a exclusão sem volta (confirma digitando o nome)
+    if (perm.excluirDefinitivo) grupos.push({ itens: [{ icone: 'delete_forever', label: 'Excluir definitivamente', onclick: 'detExcluirDefinitivamenteAtual()', perigo: true }] });
+  } else if (perm.excluir) grupos.push({ itens: [{ icone: 'delete', label: 'Excluir plano', onclick: 'confirmarExclusaoPlanoAtual()', perigo: true }] });
 
   _detMontarMenu(gatilho, grupos);
 }
@@ -15259,6 +15262,13 @@ function responderColaboracaoPendente(idSolicitacao, idElemento, resposta) {
     .apiResponderSolicitacaoColaboracao(idSolicitacao, resposta, '');
 }
 
+
+// Exclusão definitiva do plano que está na lixeira (confirmação e chamada: pllExcluirDefinitivo, em pages_planos_lista.html)
+function detExcluirDefinitivamenteAtual() {
+  const p = dadosDetalhados && dadosDetalhados.plano;
+  if (!p || p.status !== 'Excluído') return;
+  pllExcluirDefinitivo(p.id, p.nome, function() { navigate('planos'); });
+}
 
 function confirmarExclusaoPlanoAtual() {
   if(!dadosDetalhados || !dadosDetalhados.plano) return;
