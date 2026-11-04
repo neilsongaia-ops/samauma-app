@@ -9637,9 +9637,12 @@ let estadoPlanos = {
 // usuário — então espera (até ~5s) antes de montar/classificar, senão tudo cai em "Outras unidades".
 function initPlanos() {
   var tentativas = 0;
+  // O spinner é desenhado UMA vez: recriá-lo a cada volta da espera (100 ms) reiniciava a animação
+  // e ele parecia travado/tremendo.
+  var esperando = false;
   (function aguardar() {
     if ((typeof usuarioLogado !== 'undefined' && usuarioLogado) || tentativas++ > 50) { _pllIniciar(); return; }
-    _pllMostrarCarregando();
+    if (!esperando) { esperando = true; _pllMostrarCarregando(); }
     setTimeout(aguardar, 100);
   })();
 }
@@ -10435,7 +10438,7 @@ function executarAcaoLotePlanos(acao) {
     showConfirm(
       'Excluir Planos?',
       'Deseja excluir os ' + ids.length + ' plano' + (ids.length > 1 ? 's' : '') +
-        ' selecionado' + (ids.length > 1 ? 's' : '') + '? Eles serão movidos para a Lixeira.',
+        ' selecionado' + (ids.length > 1 ? 's' : '') + '? Eles serão movidos para a Lixeira e poderão ser restaurados em até 90 dias.',
       function() { _excluirEmLote(ids); }
     );
   }
@@ -10581,7 +10584,7 @@ function _finalizarAcaoLote(erros) {
       'Operação concluída. ' + erros + ' item(ns) não pud' + (erros > 1 ? 'eram' : 'e') + ' ser processado' + (erros > 1 ? 's' : '') + '.',
       function() { initPlanos(); });
   } else {
-    showMessage('success', 'Concluído', 'Operação realizada com sucesso.',
+    showMessage('success', 'Planos excluídos', 'Os planos foram movidos para a Lixeira e poderão ser restaurados em até 90 dias. Depois disso são apagados definitivamente.',
       function() { initPlanos(); });
   }
 }
@@ -10591,13 +10594,13 @@ function _finalizarAcaoLote(erros) {
 function solicitarExclusao(id, nomePlano) {
   showConfirm(
     'Excluir Plano?',
-    'Tem certeza que deseja excluir o plano "<strong>' + escapeHtml(nomePlano) + '</strong>"?<br>O plano será movido para a Lixeira.',
+    'Tem certeza que deseja excluir o plano "<strong>' + escapeHtml(nomePlano) + '</strong>"?<br>O plano será movido para a Lixeira e poderá ser restaurado em até 90 dias.',
     function() {
       mostrarLoader();
       google.script.run
         .withSuccessHandler(function() {
           esconderLoader();
-          showMessage('success', 'Plano Excluído', 'O plano foi movido para a Lixeira.', function() {
+          showMessage('success', 'Plano excluído', 'O plano foi movido para a Lixeira e poderá ser restaurado em até 90 dias. Depois disso é apagado definitivamente.', function() {
             invalidarCacheListaPlanos();
             initPlanos();
           });
@@ -15299,14 +15302,14 @@ function confirmarExclusaoPlanoAtual() {
   const p = dadosDetalhados.plano;
   showConfirm(
     'Excluir este Plano?',
-    `Tem certeza que deseja excluir o plano <strong>${escapeHtml(p.nome)}</strong>?<br>O plano será marcado como excluído e deixará de aparecer nas listagens.`,
+    `Tem certeza que deseja excluir o plano <strong>${escapeHtml(p.nome)}</strong>?<br>O plano será movido para a Lixeira e poderá ser restaurado em até 90 dias.`,
     function() {
       mostrarLoader();
       google.script.run
         .withSuccessHandler(() => {
           esconderLoader();
           invalidarCacheListaPlanos();
-          showMessage('success', 'Plano Excluído', 'Redirecionando...', () => navigate('planos'));
+          showMessage('success', 'Plano excluído', 'O plano foi movido para a Lixeira e poderá ser restaurado em até 90 dias. Depois disso é apagado definitivamente.', () => navigate('planos'));
         })
         .withFailureHandler(err => {
           esconderLoader();
