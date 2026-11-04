@@ -2292,9 +2292,15 @@ var SeletorResponsaveis = (function() {
     function atualizarLimite() {
       var c = cheio(), l = limiteAtual();
       if (limiteIco) {
+        // Um único (i) por rótulo: com o limite atingido, ele substitui o (i) geral e junta os dois textos.
+        var geral = limiteIco.parentNode && limiteIco.parentNode.querySelector('.selresp-info, .elwiz-info');
+        if (geral && !geral.hasAttribute('data-selresp-geral')) geral.setAttribute('data-selresp-geral', geral.getAttribute('data-title') || '');
+        var textoGeral = geral ? geral.getAttribute('data-selresp-geral') : '';
+        var textoLim = typeof cfg.textoLimite === 'function' ? cfg.textoLimite(l)
+          : 'Limite de ' + l + ' responsáve' + (l === 1 ? 'l' : 'is') + ' atingido neste plano. Remova um para incluir outro.';
         limiteIco.classList.toggle('hidden', !c);
-        limiteIco.setAttribute('data-title', c ? (typeof cfg.textoLimite === 'function' ? cfg.textoLimite(l)
-          : 'Limite de ' + l + ' responsáve' + (l === 1 ? 'l' : 'is') + ' atingido neste plano. Remova um para incluir outro.') : '');
+        limiteIco.setAttribute('data-title', c ? (textoGeral ? textoGeral + ' ' : '') + textoLim : '');
+        if (geral) geral.classList.toggle('hidden', c);
       }
       input.setAttribute('placeholder', c ? 'Limite atingido' : placeholderPadrao);
     }
