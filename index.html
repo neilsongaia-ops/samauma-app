@@ -9730,7 +9730,9 @@ function abrirDetalhesDaLista(id) {
 function _montarAbas() {
   const isAdminDev = usuarioLogado &&
     (usuarioLogado.papeis || []).some(function(p) { return p === 'ADMIN' || p === 'DEV'; });
-  estadoPlanos.abas = isAdminDev
+  // dono do plano também vê seus planos excluídos (o servidor só devolve a quem pode restaurar)
+  const temExcluidos = (estadoPlanos.dadosBrutos || []).some(function(p) { return p.status === 'Excluído'; });
+  estadoPlanos.abas = (isAdminDev || temExcluidos)
     ? ABAS_BASE.concat([ABA_LIXEIRA])
     : ABAS_BASE.slice();
 }
@@ -10130,7 +10132,9 @@ function _renderizarTabela(planos) {
     var vz = _pllTemFiltroAtivo()
       ? { icon: 'filter_alt_off', titulo: 'Nenhum resultado para os filtros',
           detalhe: 'Tente ampliar ou limpar os filtros aplicados.' }
-      : { icon: 'inbox', titulo: 'Nenhum plano encontrado',
+      : estadoPlanos.abaAtiva === 'lixeira'
+        ? { icon: 'delete_sweep', titulo: 'A lixeira está vazia', detalhe: 'Planos excluídos aparecem aqui até serem restaurados ou apagados.' }
+        : { icon: 'inbox', titulo: 'Nenhum plano encontrado',
           detalhe: 'Não há planos nesta aba no momento.' };
     tbody.innerHTML = '<tr class="pll-linha-msg"><td colspan="8"><div class="el-empty-state">' +
       '<span class="material-symbols-outlined el-esi">' + vz.icon + '</span>' +
@@ -10155,8 +10159,11 @@ function _renderizarTabela(planos) {
     var acoes = acoesLinhaHTML('pll-' + p.id, [
       { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: 'abrirDetalhesDaLista(' + p.id + ')', principal: true },
       { icone: 'edit', rotulo: 'Editar', onclick: 'abrirModalEdicaoPlano(' + p.id + ')', principal: true, oculto: !perm.editar },
-      { icone: 'delete', rotulo: 'Excluir', onclick: "solicitarExclusao(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", perigo: true, oculto: !perm.excluir }
-    ]);
+      { icone: 'delete', rotulo: 'Excluir', onclick: "solicitarExclusao(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", perigo: true, oculto: !perm.excluir || p.status === 'Excluído' },
+      { icone: 'restore', rotulo: 'Restaurar', onclick: "pllRestaurarPlano(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", oculto: !(p.status === 'Excluído' && perm.restaurar) },
+      { icone: 'delete_forever', rotulo: 'Excluir definitivamente', onclick: "pllExcluirDefinitivo(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", perigo: true, oculto: !(p.status === 'Excluído' && perm.excluirDefinitivo) }
+    ], p.status === 'Excluído' ? { maxDireto: 0 } : undefined);
+    var lixHtml = pllLixeiraPrazoHTML(p);
 
     var nomeResp = p.nomeResponsavel || 'Não definido';
     var nomeRespExib = nomeRespExibicao(nomeResp, p.tipoResponsavel);  // servidor: 1º e último nome (global, index.html)
@@ -10197,13 +10204,13 @@ function _renderizarTabela(planos) {
         '</div></div></td>' +
       '<td class="pll-col-vig"><span class="pll-vig">' + vigencia + '</span></td>' +
       '<td class="pll-col-resp">' + respHtml + '</td>' +
-      '<td class="pll-col-status"><span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span></td>' +
+      '<td class="pll-col-status"><span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' + lixHtml + '</td>' +
       '<td class="pll-col-prog">' + progHtml + '</td>' +
       '<td class="pll-col-acoes">' + acoes + '</td>' +
       // Card (só mobile): status + vigência + responsável + progresso, tudo à vista, sem rolar de lado
       '<td class="pll-col-card"><div class="pll-card-meta">' +
         '<span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' +
-        '<span class="pll-vig">' + vigencia + '</span>' + respHtml + '</div>' +
+        '<span class="pll-vig">' + vigencia + '</span>' + respHtml + lixHtml + '</div>' +
         '<div class="pll-card-prog">' + progHtml + '</div></td>';
     tbody.appendChild(tr);
   });
@@ -10395,7 +10402,20 @@ function _pllRenderizarAcoesSelecao(qtd) {
       { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: 'abrirDetalhesDaLista(' + p.id + ')', principal: true },
       { icone: 'edit', rotulo: 'Editar', onclick: 'abrirModalEdicaoPlano(' + p.id + ')', principal: true, oculto: !perm.editar },
       { icone: 'delete', rotulo: 'Excluir', onclick: "solicitarExclusao(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", cor: 'var(--ds-color-danger-fg)', oculto: !perm.excluir }
-    ], { maxDireto: 3 }) : '';
+    ].concat(p && p.status === 'Excluído' ? [
+      { icone: 'restore', rotulo: 'Restaurar', onclick: "pllRestaurarPlano(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", oculto: !perm.restaurar },
+      { icone: 'delete_forever', rotulo: 'Excluir definitivamente', onclick: "pllExcluirDefinitivo(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", cor: 'var(--ds-color-danger-fg)', oculto: !perm.excluirDefinitivo }
+    ] : []).map(function(it) { return (it.icone === 'edit' || it.icone === 'delete') && p.status === 'Excluído' ? Object.assign({}, it, { oculto: true }) : it; }), { maxDireto: 3 }) : '';
+    return;
+  }
+
+  var todosExcluidos = selecionados.length > 0 && selecionados.every(function(p) { return p.status === 'Excluído'; });
+  if (todosExcluidos) {
+    var podeRest = selecionados.every(function(p) { return (p.permissoes || {}).restaurar; });
+    var podeDef  = selecionados.every(function(p) { return (p.permissoes || {}).excluirDefinitivo; });
+    alvo.innerHTML =
+      (podeRest ? '<button type="button" class="ds-icon-action" onclick="executarAcaoLotePlanos(\'restaurar\')" data-title="Restaurar selecionados" aria-label="Restaurar selecionados"><span class="material-symbols-outlined">restore</span></button>' : '') +
+      (podeDef ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" onclick="executarAcaoLotePlanos(\'excluirDefinitivo\')" data-title="Excluir definitivamente" aria-label="Excluir definitivamente"><span class="material-symbols-outlined">delete_forever</span></button>' : '');
     return;
   }
 
@@ -10419,6 +10439,119 @@ function executarAcaoLotePlanos(acao) {
       function() { _excluirEmLote(ids); }
     );
   }
+  if (acao === 'restaurar') {
+    showConfirm('Restaurar planos?', 'Restaurar os ' + ids.length + ' planos selecionados? Cada um volta ao status de antes da exclusão.',
+      function() { _pllExecutarLoteSequencial(ids, function(id) { return ['apiTramitarPlano', Number(id), 'RESTAURAR', '']; }, 'Restaurados'); });
+  }
+  if (acao === 'excluirDefinitivo') {
+    var nomes = estadoPlanos.dadosBrutos.filter(function(p) { return estadoPlanos.selecionados.has(String(p.id)); })
+      .map(function(p) { return '<li>' + escapeHtml(p.nome || '') + '</li>'; }).join('');
+    showConfirm('Excluir definitivamente ' + ids.length + ' planos?',
+      '<ul style="margin:0 0 8px; padding-left:18px">' + nomes + '</ul>' +
+      '<strong>Tudo destes planos será apagado e não pode ser recuperado</strong> — elementos, indicadores, metas, resultados, riscos, fórum e vínculos.',
+      function() { _pllExecutarLoteSequencial(ids, function(id) { return ['apiExcluirPlanoDefinitivo', Number(id)]; }, 'Excluídos definitivamente'); });
+  }
+}
+
+// Executa em sequência (um por vez) e relata sucessos/falhas no fim
+function _pllExecutarLoteSequencial(ids, chamada, rotuloOk) {
+  mostrarLoader();
+  var ok = 0, falhas = [], i = 0;
+  var porId = {}; estadoPlanos.dadosBrutos.forEach(function(p) { porId[String(p.id)] = p.nome; });
+  (function prox() {
+    if (i >= ids.length) {
+      esconderLoader();
+      limparSelecaoPlanos();
+      invalidarCacheListaPlanos();
+      if (falhas.length) {
+        showMessage('warning', 'Concluído com falhas', rotuloOk + ': ' + ok + '. Falharam ' + falhas.length + ':<br>' +
+          falhas.map(function(f) { return '<strong>' + escapeHtml(f.nome) + '</strong>: ' + escapeHtml(f.erro); }).join('<br>'),
+          function() { initPlanos(); });
+      } else {
+        showMessage('success', 'Concluído', rotuloOk + ': ' + ok + '.', function() { initPlanos(); });
+      }
+      return;
+    }
+    var id = ids[i++], c = chamada(id);
+    google.script.run
+      .withSuccessHandler(function() { ok++; prox(); })
+      .withFailureHandler(function(err) { falhas.push({ nome: porId[String(id)] || ('#' + id), erro: (err && err.message) || String(err) }); prox(); })
+      [c[0]].apply(null, c.slice(1));
+  })();
+}
+
+// ---- Lixeira: prazo, restaurar, excluir definitivamente --------------------
+// Usadas também pelo detalhe do plano (pages_plano_detalhe.html).
+
+var PLL_LIXEIRA_POUCOS_DIAS = 7;
+
+function pllLixeiraPrazoTexto(p) {
+  var lx = p && p.status === 'Excluído' && p.lixeira;
+  if (!lx || !lx.excluidoEm || lx.diasRestantes == null || isNaN(Number(lx.diasRestantes))) return '';
+  var n = Math.max(0, Number(lx.diasRestantes));
+  return n === 0 ? 'apaga hoje' : 'apaga em ' + n + (n === 1 ? ' dia' : ' dias');
+}
+
+function pllLixeiraRegraTexto(p) {
+  var lx = (p && p.lixeira) || {};
+  return 'Planos na lixeira são apagados definitivamente ' + (lx.retencaoDias || 90) + ' dias após a exclusão'
+    + (lx.excluidoEm ? ' (excluído em ' + lx.excluidoEm + ').' : '.');
+}
+
+function pllLixeiraPrazoHTML(p) {
+  var txt = pllLixeiraPrazoTexto(p);
+  if (!txt) return '';
+  var poucos = Number(p.lixeira.diasRestantes) <= PLL_LIXEIRA_POUCOS_DIAS;
+  return '<span class="pll-lix-prazo" tabindex="0" data-title="' + escapeHtml(pllLixeiraRegraTexto(p)) + '" style="display:inline-flex; align-items:center; gap:2px; margin-left:6px; font-size:0.8rem; white-space:nowrap; color:' +
+    (poucos ? 'var(--ds-color-danger-fg)' : 'var(--ds-color-text-muted)') + (poucos ? '; font-weight:600' : '') + '">' + escapeHtml(txt) +
+    '<span class="material-symbols-outlined" style="font-size:14px" aria-hidden="true">info</span></span>';
+}
+
+// aoConcluir(resposta) opcional — sem ele, recarrega a lista
+function pllRestaurarPlano(id, nomePlano, aoConcluir) {
+  showConfirm('Restaurar plano?', 'Restaurar o plano <strong>' + escapeHtml(nomePlano || '') + '</strong>? Ele volta ao status de antes da exclusão.', function() {
+    mostrarLoader();
+    google.script.run
+      .withSuccessHandler(function(res) {
+        esconderLoader();
+        invalidarCacheListaPlanos();
+        var st = res && (res.status && res.status !== 'ok' ? res.status : (res.novoStatus || (res.plano && res.plano.status)));
+        showMessage('success', 'Plano restaurado', st ? 'O plano voltou para <strong>' + escapeHtml(st) + '</strong>.' : 'O plano voltou à lista de planos.', function() {
+          if (typeof aoConcluir === 'function') aoConcluir(res); else initPlanos();
+        });
+      })
+      .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro ao restaurar', escapeHtml((err && err.message) || String(err))); })
+      .apiTramitarPlano(Number(id), 'RESTAURAR', '');
+  });
+}
+
+var _pllConfNomeDigitado = '';
+function pllExcluirDefinitivo(id, nomePlano, aoConcluir) {
+  _pllConfNomeDigitado = '';
+  showConfirm('Excluir definitivamente?',
+    'O plano <strong>' + escapeHtml(nomePlano || '') + '</strong> e <strong>tudo do plano será apagado e não pode ser recuperado</strong> — elementos, indicadores, metas, resultados, riscos, fórum e vínculos.' +
+    '<label style="display:block; margin-top:12px; font-size:0.85rem">Digite o nome do plano para confirmar' +
+    '<input type="text" class="ds-input" autocomplete="off" style="display:block; width:100%; margin-top:4px" oninput="_pllConfNomeDigitado = this.value"></label>',
+    function() {
+      if (String(_pllConfNomeDigitado).trim() !== String(nomePlano || '').trim()) {
+        showMessage('error', 'Nome não confere', 'Nada foi apagado. Digite o nome exato do plano para confirmar.');
+        return;
+      }
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function(res) {
+          esconderLoader();
+          invalidarCacheListaPlanos();
+          estadoPlanos.dadosBrutos = (estadoPlanos.dadosBrutos || []).filter(function(p) { return String(p.id) !== String(id); });
+          var tr = document.querySelector('#tbody-planos .plano-select-checkbox[data-id="' + id + '"]');
+          if (tr && tr.closest('tr')) tr.closest('tr').remove();
+          showMessage('success', 'Plano apagado', 'O plano <strong>' + escapeHtml((res && res.nome) || nomePlano || '') + '</strong> foi apagado definitivamente.', function() {
+            if (typeof aoConcluir === 'function') aoConcluir(res); else initPlanos();
+          });
+        })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro ao excluir', escapeHtml((err && err.message) || String(err))); })
+        .apiExcluirPlanoDefinitivo(Number(id));
+    });
 }
 
 function _excluirEmLote(ids) {
@@ -10496,6 +10629,19 @@ function solicitarExclusao(id, nomePlano) {
       <button id="btn-solicitacao-cancelar" class="btn btn-outline btn-sm hidden" onclick="cancelarSolicitacaoPendente()">Cancelar solicitação</button>
       <button id="btn-solicitacao-recusar" class="btn btn-outline btn-sm text-danger hidden" onclick="abrirModalResponderSolicitacao('RECUSAR')">Recusar</button>
       <button id="btn-solicitacao-confirmar" class="btn btn-primary btn-sm hidden" onclick="abrirModalResponderSolicitacao('CONFIRMAR')">Confirmar</button>
+    </div>
+  </div>
+
+  <!-- Faixa: plano na lixeira (restaurar / excluir definitivamente) -->
+  <div id="det-lixeira-banner" class="hidden" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; background: var(--ds-color-danger-bg); border:1px solid var(--ds-color-danger-fg); border-radius:8px; padding:10px 14px; margin:0 0 16px">
+    <div style="display:flex; align-items:center; gap:10px">
+      <span class="material-symbols-outlined" style="color:var(--ds-color-danger-fg)">delete</span>
+      <strong id="det-lixeira-texto">Este plano está na lixeira</strong>
+      <span id="det-lixeira-info" class="material-symbols-outlined" tabindex="0" style="font-size:16px; color:var(--ds-color-text-muted); cursor:help">info</span>
+    </div>
+    <div style="display:flex; gap:8px; flex-shrink:0">
+      <button id="btn-det-lixeira-excluir" class="btn btn-outline btn-sm text-danger hidden" onclick="detLixeiraExcluirDefinitivo()">Excluir definitivamente</button>
+      <button id="btn-det-lixeira-restaurar" class="btn btn-primary btn-sm hidden" onclick="detLixeiraRestaurar()">Restaurar</button>
     </div>
   </div>
 
@@ -13107,6 +13253,8 @@ function limparTelaDetalhes(trocouDePlano, manterAba) {
   if (badgeAv) { badgeAv.classList.add('hidden'); badgeAv.innerHTML = ''; }
   const banner = document.getElementById('solicitacao-banner');
   if (banner) banner.classList.add('hidden');
+  const bannerLix = document.getElementById('det-lixeira-banner');
+  if (bannerLix) bannerLix.classList.add('hidden');
   const btnNovoItem = document.getElementById('btn-novo-item');
   if (btnNovoItem) btnNovoItem.classList.add('hidden');
 
@@ -13340,6 +13488,7 @@ function renderizarHeader() {
   // depois que o app injeta, então não dá pra mexer nele direto daqui.
 
   renderizarSolicitacaoBanner(p);
+  detRenderizarBannerLixeira(p);
   renderizarBotoesTramite(p);
   _detpRenderDetalhes(); // Painel de detalhes (#detp-panel): mantém sempre atualizado, aberto ou não
   _detPrepararListenersSticky();
@@ -13350,6 +13499,33 @@ function renderizarHeader() {
 }
 
 // --- CONCORDÂNCIA MÚTUA (PLANOS NEGOCIADOS) ---
+
+// --- LIXEIRA ---
+let _detLixeiraPlano = null;
+function detRenderizarBannerLixeira(plano) {
+  const banner = document.getElementById('det-lixeira-banner');
+  if (!banner) return;
+  const naLixeira = plano && plano.status === 'Excluído';
+  _detLixeiraPlano = naLixeira ? plano : null;
+  banner.classList.toggle('hidden', !naLixeira);
+  if (!naLixeira) return;
+  const perm = plano.permissoes || {};
+  const prazo = typeof pllLixeiraPrazoTexto === 'function' ? pllLixeiraPrazoTexto(plano) : '';
+  document.getElementById('det-lixeira-texto').textContent = 'Este plano está na lixeira' + (prazo ? ' — ' + prazo : '');
+  const info = document.getElementById('det-lixeira-info');
+  const regra = typeof pllLixeiraRegraTexto === 'function' ? pllLixeiraRegraTexto(plano) : '';
+  info.setAttribute('data-title', regra); info.setAttribute('aria-label', regra);
+  document.getElementById('btn-det-lixeira-restaurar').classList.toggle('hidden', !perm.restaurar);
+  document.getElementById('btn-det-lixeira-excluir').classList.toggle('hidden', !perm.excluirDefinitivo);
+}
+function detLixeiraRestaurar() {
+  const p = _detLixeiraPlano; if (!p) return;
+  pllRestaurarPlano(p.id, p.nome, function() { carregarDetalhesPlano(p.id); });
+}
+function detLixeiraExcluirDefinitivo() {
+  const p = _detLixeiraPlano; if (!p) return;
+  pllExcluirDefinitivo(p.id, p.nome, function() { navigate('planos'); });
+}
 
 function renderizarSolicitacaoBanner(plano) {
   const banner = document.getElementById('solicitacao-banner');
@@ -13801,7 +13977,7 @@ function _detAcaoTramitePrincipal(plano) {
     if (perm.concluir && !temSolicitacaoPendente) return { onclick: "tramitarPlano('CONCLUIR')", rotulo: 'Concluir', icone: 'task_alt', dica: 'Concluir o plano' };
   } else if (status === 'Em Avaliação') {
     if (perm.prorrogar && !temSolicitacaoPendente) return { onclick: 'abrirModalProrrogar()', rotulo: 'Prorrogar', icone: 'more_time', dica: 'Prorrogar o plano' };
-  } else if (status === 'Excluído' || status === 'Cancelado') {
+  } else if (status === 'Cancelado') {
     if (perm.restaurar) return { onclick: "tramitarPlano('RESTAURAR')", rotulo: 'Restaurar', icone: 'restore', dica: 'Restaurar o plano' };
   }
   return null;
