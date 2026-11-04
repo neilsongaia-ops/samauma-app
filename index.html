@@ -20075,6 +20075,9 @@ function confirmarEncerrarRevisao(idRevisao) {
         <button type="button" class="csis-tab-btn" id="csis-tab-padroes" onclick="csisMudarSecao('padroes')">
           <span class="material-symbols-outlined icon-sm">rule_settings</span> Padrões dos planos
         </button>
+        <button type="button" class="csis-tab-btn" id="csis-tab-armazenamento" onclick="csisMudarSecao('armazenamento')">
+          <span class="material-symbols-outlined icon-sm">cloud_upload</span> Armazenamento
+        </button>
         <button type="button" class="csis-tab-btn" id="csis-tab-apps" onclick="csisMudarSecao('apps')">
           <span class="material-symbols-outlined icon-sm">extension</span> Apps / Extensões
         </button>
@@ -20229,6 +20232,23 @@ function confirmarEncerrarRevisao(idRevisao) {
       </div>
     </div>
 
+    <!-- ===== Seção: Armazenamento de arquivos (evidências e fotos) ===== -->
+    <div id="csis-painel-armazenamento" class="csis-painel hidden">
+      <section class="ds-card cfa-secao">
+        <div class="cfa-secao-cabecalho">
+          <h3 class="ds-section-title"><span class="material-symbols-outlined">cloud_upload</span> Onde guardar os arquivos novos
+            <span class="material-symbols-outlined carm-info" data-title="Vale para evidências de indicadores e fotos de perfil. Trocar o destino afeta só os arquivos enviados daqui em diante; os já guardados continuam acessíveis onde estão.">info</span>
+          </h3>
+        </div>
+        <div id="carm-opcoes" aria-live="polite"></div>
+      </section>
+      <div class="cfa-rodape">
+        <span class="cfa-status" id="carm-status"></span>
+        <button type="button" class="ds-btn ds-btn--ghost" id="carm-btn-descartar" onclick="carmCarregar()" disabled>Descartar alterações</button>
+        <button type="button" class="ds-btn ds-btn--primary" id="carm-btn-salvar" onclick="carmSalvar()" disabled>Salvar alterações</button>
+      </div>
+    </div>
+
     <!-- ===== Seção: Apps e Extensões ===== -->
     <div id="csis-painel-apps" class="csis-painel hidden">
       <section class="ds-card cfa-secao">
@@ -20251,6 +20271,12 @@ function confirmarEncerrarRevisao(idRevisao) {
 </div>
 
 <style>
+.carm-info { font-size: 16px; vertical-align: middle; color: var(--ds-color-text-muted); cursor: help; margin-left: 4px; }
+.carm-opcao { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--ds-color-border, #e5e7eb); flex-wrap: wrap; }
+.carm-opcao label { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 220px; cursor: pointer; font-weight: 600; }
+.carm-teste { font-size: 0.82rem; color: var(--ds-color-text-muted); min-width: 140px; }
+.carm-teste.ok { color: #1e7e34; }
+.carm-teste.erro { color: var(--danger, #c62828); }
 .csis-header {
   background: var(--ds-color-surface); border: 3px solid var(--ds-color-surface);
   border-radius: var(--ds-radius-md) var(--ds-radius-md) 0 0;
@@ -20375,7 +20401,7 @@ body.high-contrast .csis-header-icone { background: #111; color: #0ff; }
 // Hub interno por abas — CSIS_SECOES lista as chaves com painel implementado;
 // as demais abas no HTML são placeholders "Em breve" (<span aria-disabled>,
 // sem onclick — nunca chamam csisMudarSecao).
-const CSIS_SECOES = ['avaliacao', 'catalogo', 'padroes', 'apps'];
+const CSIS_SECOES = ['avaliacao', 'catalogo', 'padroes', 'armazenamento', 'apps'];
 let estadoCsis = { secaoAtual: 'avaliacao' };
 
 function initConfigSistema() {
@@ -20402,7 +20428,67 @@ function csisMudarSecao(chave, semRecarregar) {
   if (chave === 'avaliacao' && typeof cfaCarregar === 'function') cfaCarregar();
   if (chave === 'catalogo' && typeof catopcCarregar === 'function') catopcCarregar();
   if (chave === 'padroes' && typeof cpdCarregar === 'function') cpdCarregar();
+  if (chave === 'armazenamento' && typeof carmCarregar === 'function') carmCarregar();
   if (chave === 'apps' && typeof csisAppsCarregar === 'function') csisAppsCarregar();
+}
+
+// ---- Seção: Armazenamento ----
+let estadoCarm = { tipoSalvo: '', tipoEscolhido: '', tipos: [] };
+
+function carmCarregar() {
+  document.getElementById('carm-status').textContent = 'Carregando…';
+  document.getElementById('carm-btn-salvar').disabled = true;
+  document.getElementById('carm-btn-descartar').disabled = true;
+  google.script.run
+    .withSuccessHandler(function(c) {
+      estadoCarm = { tipoSalvo: c.tipo, tipoEscolhido: c.tipo, tipos: c.tipos || [] };
+      document.getElementById('carm-status').textContent = '';
+      carmRender();
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('carm-status').textContent = '';
+      showMessage('error', 'Erro', 'Não foi possível carregar o armazenamento: ' + escapeHtml(err.message));
+    })
+    .apiGetConfigArmazenamento();
+}
+
+function carmRender() {
+  document.getElementById('carm-opcoes').innerHTML = estadoCarm.tipos.map(function(t) {
+    return '<div class="carm-opcao"><label><input type="radio" name="carm-tipo" value="' + escapeHtml(t.id) + '"' +
+      (t.id === estadoCarm.tipoEscolhido ? ' checked' : '') + ' onchange="carmEscolher(this.value)"> ' + escapeHtml(t.rotulo) + '</label>' +
+      '<span class="carm-teste" id="carm-teste-' + escapeHtml(t.id) + '"></span>' +
+      '<button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" onclick="carmTestar('' + escapeHtml(t.id) + '')">Testar conexão</button></div>';
+  }).join('');
+  const sujo = estadoCarm.tipoEscolhido !== estadoCarm.tipoSalvo;
+  document.getElementById('carm-btn-salvar').disabled = !sujo;
+  document.getElementById('carm-btn-descartar').disabled = !sujo;
+}
+
+function carmEscolher(tipo) { estadoCarm.tipoEscolhido = tipo; carmRender(); }
+
+function carmTestar(tipo) {
+  const el = document.getElementById('carm-teste-' + tipo);
+  el.className = 'carm-teste'; el.textContent = 'Testando…';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      el.className = 'carm-teste ' + (r.ok ? 'ok' : 'erro');
+      el.textContent = r.ok ? 'Conexão ok' : (r.mensagem || 'Falhou');
+    })
+    .withFailureHandler(function(err) { el.className = 'carm-teste erro'; el.textContent = err.message; })
+    .apiTestarArmazenamento(tipo);
+}
+
+function carmSalvar() {
+  mostrarLoader();
+  google.script.run
+    .withSuccessHandler(function(res) {
+      esconderLoader();
+      estadoCarm.tipoSalvo = estadoCarm.tipoEscolhido = res.tipo;
+      carmRender();
+      showMessage('success', 'Armazenamento atualizado', 'Os próximos arquivos serão guardados no destino escolhido. Os já enviados continuam acessíveis.');
+    })
+    .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
+    .apiSalvarConfigArmazenamento({ tipo: estadoCarm.tipoEscolhido });
 }
 
 // ---- Seção: Avaliação ----
