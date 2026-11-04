@@ -157,7 +157,8 @@ function criarSamaumaSDK() {
 .vinc-row--subordinado { --vinc-cor: var(--vinc-verde); }
 .vinc-row--decidir     { --vinc-cor: var(--vinc-ambar); }
 .vinc-row--aguardando  { --vinc-cor: var(--vinc-roxo); }
-.vinc-row--desvinculado, .vinc-sub { --vinc-cor: var(--vinc-vermelho); }
+.vinc-row--desvinculado, .vinc-row--recusado, .vinc-sub { --vinc-cor: var(--vinc-vermelho); }
+.vinc-info { font-size: 16px; color: var(--ds-color-text-muted, currentColor); vertical-align: middle; margin-left: 4px; cursor: help; flex: none; }
 
 .vinc-lista col.vinc-c-sit,    .vinc-lista .vinc-c-sit    { width: 96px; padding-left: 12px; padding-right: 8px; overflow: hidden; }
 .vinc-lista col.vinc-c-nome,   .vinc-lista .vinc-c-nome   { width: auto; max-width: 0; overflow: hidden; }
@@ -172,10 +173,12 @@ function criarSamaumaSDK() {
 /* alerta visual: só pendência/desvinculação pinta a linha; vínculo aprovado e válido fica sem cor */
 .vinc-lista tbody tr.vinc-row--decidir:not(.selecionada) td,
 .vinc-lista tbody tr.vinc-row--aguardando:not(.selecionada) td,
-.vinc-lista tbody tr.vinc-row--desvinculado:not(.selecionada) td { background: color-mix(in srgb, var(--vinc-cor) 12%, var(--ds-color-surface)); }
+.vinc-lista tbody tr.vinc-row--desvinculado:not(.selecionada) td,
+.vinc-lista tbody tr.vinc-row--recusado:not(.selecionada) td { background: color-mix(in srgb, var(--vinc-cor) 12%, var(--ds-color-surface)); }
 .vinc-lista tbody tr.vinc-row--decidir:not(.selecionada):hover td,
 .vinc-lista tbody tr.vinc-row--aguardando:not(.selecionada):hover td,
-.vinc-lista tbody tr.vinc-row--desvinculado:not(.selecionada):hover td { background: color-mix(in srgb, var(--vinc-cor) 20%, var(--ds-color-surface)); }
+.vinc-lista tbody tr.vinc-row--desvinculado:not(.selecionada):hover td,
+.vinc-lista tbody tr.vinc-row--recusado:not(.selecionada):hover td { background: color-mix(in srgb, var(--vinc-cor) 20%, var(--ds-color-surface)); }
 .vinc-lista tbody tr.vinc-sub td { background: color-mix(in srgb, var(--vinc-cor) 6%, var(--ds-color-surface)); }
 
 /* situação: só ícone colorido; a explicação fica no tooltip */
@@ -258,7 +261,8 @@ function criarSamaumaSDK() {
   }
   .vinc-lista tbody tr.vinc-row--decidir:not(.selecionada),
   .vinc-lista tbody tr.vinc-row--aguardando:not(.selecionada),
-  .vinc-lista tbody tr.vinc-row--desvinculado:not(.selecionada) { background: color-mix(in srgb, var(--vinc-cor) 12%, var(--ds-color-surface)); }
+  .vinc-lista tbody tr.vinc-row--desvinculado:not(.selecionada),
+  .vinc-lista tbody tr.vinc-row--recusado:not(.selecionada) { background: color-mix(in srgb, var(--vinc-cor) 12%, var(--ds-color-surface)); }
   .vinc-lista tbody tr.vinc-row.selecionada { background: var(--ds-sidebar-item-active); }
   .vinc-lista tbody tr td { display: block; padding: 0 !important; border: none; width: auto !important; max-width: none; min-width: 0; background: transparent !important; box-shadow: none !important; overflow: visible; }
   .vinc-lista tbody tr.vinc-row td.el-col-check { grid-area: chk; }
@@ -362,7 +366,8 @@ var _vincDadosCache = {
   propostasEnviadas: [],
   propostasRecebidas: [],
   planosSuperiores: [],
-  desvinculados: []
+  desvinculados: [],
+  recusadas: []
 };
 
 var estadoVinculos = {
@@ -382,6 +387,7 @@ var estadoVincModal = {
 // Tipos de vínculo: ordem padrão, rótulo (filtro/painel), ícone e cor (via classe .vinc-row--<tipo>)
 var _VINC_TIPO = {
   desvinculado: { ord: -1, rot: 'Desvinculado', ico: 'link_off' },
+  recusado:     { ord: -1, rot: 'Recusado',     ico: 'block' },
   decidir:      { ord: 0,  rot: 'Aguarda você', ico: 'move_to_inbox' },
   aguardando:   { ord: 1,  rot: 'Aguardando',   ico: 'schedule' },
   superior:     { ord: 2,  rot: 'Superior',     ico: 'north' },
@@ -397,7 +403,7 @@ var _VINC_DIR = {
 
 // Frase do tooltip da situação (substitui o antigo subtítulo sob o nome)
 function _vincTipSituacao(p) {
-  if (p.vtipo === 'desvinculado') return p.subTxt;
+  if (p.vtipo === 'desvinculado' || p.vtipo === 'recusado') return p.subTxt;
   var D = _VINC_DIR[p.direcao];
   if (D) return D.txt;
   if (p.vtipo === 'superior') return 'Plano superior' + (p.papel === 'PRINCIPAL' ? ' principal' : p.papel === 'ADICIONAL' ? ' adicional' : '');
@@ -464,23 +470,37 @@ function _vincDados() {
     var partes = [];
     if (els) partes.push(_vincPlural(els, 'elemento', 'elementos'));
     if (inds) partes.push(_vincPlural(inds, 'indicador', 'indicadores'));
+    var lixeira = d.status === 'Excluído' && !d.desvinculadoEm;
     return {
       id: d.idPlanoSuperior, nome: d.nomePlanoSuperior || '(sem nome)', tipo: d.tipo || '', status: d.status || '',
       responsavel: d.responsavel || '', tipoResponsavel: d.tipoResponsavel || '', respAdicionaisNomes: d.respAdicionaisNomes || [],
       anoInicio: d.anoInicio || '', anoFim: d.anoFim || '', progresso: (d.progresso !== undefined && d.progresso !== null) ? d.progresso : null,
       direcao: 'desvinculado',
       desvinculadoEm: d.desvinculadoEm || '', desvinculadoPor: d.desvinculadoPor || '', vinculoAtual: d.vinculoAtual || '',
-      subTxt: 'Desvinculado em ' + (d.desvinculadoEm || '—') + (d.desvinculadoPor ? ' por ' + d.desvinculadoPor : '')
-        + (partes.length ? ' · ' + partes.join(' e ') + ' sem efeito' : '') + (d.vinculoAtual === 'Pendente' ? ' · novo pedido aguardando aprovação' : '')
+      lixeira: lixeira,
+      subTxt: (lixeira ? 'Plano na lixeira' : 'Desvinculado em ' + (d.desvinculadoEm || '—') + (d.desvinculadoPor ? ' por ' + d.desvinculadoPor : ''))
+        + (partes.length ? ' · ' + partes.join(' e ') + ' sem efeito' + (lixeira ? '; voltam a valer se o plano for restaurado' : '') : '') + (d.vinculoAtual === 'Pendente' ? ' · novo pedido aguardando aprovação' : '')
     };
   });
-  return { superAprov: superAprov, subAprov: subAprov, pendentes: pendentes, desvinculados: desvinculados };
+  // recusadas: só chegam para quem pediu/propôs. Direção no tooltip, como as pendentes.
+  var recusadas = (_vincDadosCache.recusadas || []).map(function(r) {
+    var dirTxt = r.direcao === 'proposta' ? 'Você propôs que ele seja subordinado a este plano' : 'Você pediu vínculo a este plano superior';
+    var quando = [r.recusadoPor ? 'por ' + r.recusadoPor : '', r.recusadoEm ? 'em ' + r.recusadoEm : ''].filter(Boolean).join(' ');
+    return Object.assign(_vincMapSuperior(r), {
+      direcao: r.direcao === 'proposta' ? 'proposta' : 'pedido', statusVinculo: 'Recusado',
+      recusadoPor: r.recusadoPor || '', recusadoEm: r.recusadoEm || '',
+      podePedirDeNovo: r.podePedirDeNovo === true, motivoNaoPodePedirDeNovo: r.motivoNaoPodePedirDeNovo || '',
+      subTxt: dirTxt + ' · recusado' + (quando ? ' ' + quando : '')
+    });
+  });
+  return { superAprov: superAprov, subAprov: subAprov, pendentes: pendentes, desvinculados: desvinculados, recusadas: recusadas };
 }
 
 function _vincListaUnica() {
   var d = _vincDados();
   var lista = []
     .concat(d.desvinculados.map(function(p) { return Object.assign({}, p, { vtipo: 'desvinculado' }); }))
+    .concat(d.recusadas.map(function(p) { return Object.assign({}, p, { vtipo: 'recusado' }); }))
     .concat(d.pendentes.map(function(p) { return Object.assign({}, p, { vtipo: (_VINC_DIR[p.direcao] || {}).tipo || 'aguardando' }); }))
     .concat(d.superAprov.map(function(p) { return Object.assign({}, p, { vtipo: 'superior' }); }))
     .concat(d.subAprov.map(function(p) { return Object.assign({}, p, { vtipo: 'subordinado' }); }));
@@ -839,7 +859,7 @@ function _vincLinhaHTML(p, podeEditar) {
   if (decidir && podeEditar) {
     var filho = p.direcao === 'filho';
     var aceitar = filho ? "aprovarVinculoPlano('" + idVincJs + "','" + nomeJs + "')" : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','ACEITAR')";
-    var recusar = filho ? "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')" : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','RECUSAR')";
+    var recusar = filho ? "desvincularVinculo('" + idVincJs + "','" + nomeJs + "',true)" : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','RECUSAR')";
     var rotAceitar = filho ? 'Aprovar' : 'Aceitar';
     // ⋮: no desktop só barra lateral + abrir plano (os botões de texto já fazem o resto); no mobile, tudo
     var menu = acoesLinhaHTML(idAcoes, [
@@ -864,6 +884,9 @@ function _vincLinhaHTML(p, podeEditar) {
     if (aguardando) itens.push(p.direcao === 'proposta_enviada'
       ? { icone: 'cancel', rotulo: 'Cancelar proposta', onclick: "cancelarPropostaVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar }
       : { icone: 'cancel', rotulo: 'Cancelar pedido', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar });
+    if (p.vtipo === 'recusado') itens.push(
+      { icone: 'replay', rotulo: 'Pedir de novo', onclick: "vincPedirDeNovo('" + chj + "')", oculto: !(podeEditar && p.podePedirDeNovo) },
+      { icone: 'visibility_off', rotulo: 'Dispensar', onclick: "vincDispensarRecusado('" + idVincJs + "','" + nomeJs + "')", oculto: !podeEditar });
     if (desv) itens.push({ icone: 'delete_sweep', rotulo: 'Excluir vínculos órfãos', onclick: "vincExcluirOrfaos('" + idj + "')", perigo: true, oculto: !podeEditar });
     acoes = acoesLinhaHTML(idAcoes, itens, { maxDireto: 1 });
   }
@@ -897,7 +920,10 @@ function _vincLinhaHTML(p, podeEditar) {
         ? '<button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" onclick="event.stopPropagation(); vincOrfToggle(\'' + idj + '\')" aria-expanded="' + aberto + '" aria-label="Vínculos guardados">'
           + '<span class="material-symbols-outlined">chevron_right</span></button>' : '') + '</td>'
     + '<td class="vinc-c-sit"><span class="vinc-sit" tabindex="0" role="img" data-title="' + tip + '" aria-label="' + escapeHtml(T.rot) + ': ' + tip + '"><span class="material-symbols-outlined" aria-hidden="true">' + T.ico + '</span></span></td>'
-    + '<td class="vinc-c-nome"><div class="vinc-plano">' + nivel + '<span class="vinc-nome" data-title="' + escapeHtml(p.nome || '') + '">' + escapeHtml(p.nome || '(sem nome)') + '</span></div></td>'
+    + '<td class="vinc-c-nome"><div class="vinc-plano">' + nivel + '<span class="vinc-nome" data-title="' + escapeHtml(p.nome || '') + '">' + escapeHtml(p.nome || '(sem nome)') + '</span>'
+      + (p.vtipo === 'recusado' && !p.podePedirDeNovo && p.motivoNaoPodePedirDeNovo
+        ? '<span class="material-symbols-outlined vinc-info" tabindex="0" data-title="' + escapeHtml(p.motivoNaoPodePedirDeNovo) + '" aria-label="' + escapeHtml(p.motivoNaoPodePedirDeNovo) + '">info</span>' : '')
+      + '</div></td>'
     + '<td class="vinc-c-resp">' + resp + '</td>'
     + '<td class="vinc-c-status">' + status + '</td>'
     + '<td class="vinc-c-prog">' + progHtml + '</td>'
@@ -1108,6 +1134,7 @@ var _VINC_ACOES = [
   { id: 'recusar',     ico: 'close',        rot: 'Recusar',                        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'decidir'; } },
   { id: 'cancelar',    ico: 'cancel',       rot: 'Cancelar pedido ou proposta',    edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'aguardando'; } },
   { id: 'desvincular', ico: 'link_off',     rot: 'Desvincular',                    edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'superior' || p.vtipo === 'subordinado'; } },
+  { id: 'dispensar',   ico: 'visibility_off', rot: 'Dispensar',                    edita: true,  ok: function(p) { return p.vtipo === 'recusado'; } },
   { id: 'excluirorf',  ico: 'delete_sweep', rot: 'Excluir vínculos órfãos',        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'desvinculado'; } },
   { id: 'exportar',    ico: 'download',     rot: 'Exportar',                       ok: function(p) { return true; } }
 ];
@@ -1132,7 +1159,8 @@ function _vincSelecionadosLista() {
 function _vincChamada(acao, p) {
   var idv = p.idVinculo;
   if (acao === 'aprovar')     return p.direcao === 'filho' ? ['apiAprovarVinculoPlano', idv] : ['apiResponderPropostaVinculoSubordinado', idv, 'ACEITAR'];
-  if (acao === 'recusar')     return p.direcao === 'filho' ? ['apiDesvincularVinculo', idv] : ['apiResponderPropostaVinculoSubordinado', idv, 'RECUSAR'];
+  if (acao === 'dispensar')   return ['apiDispensarVinculoRecusado', idv];
+  if (acao === 'recusar')     return p.direcao === 'filho' ? ['apiDesvincularVinculo', idv, true] : ['apiResponderPropostaVinculoSubordinado', idv, 'RECUSAR'];
   if (acao === 'cancelar')    return p.direcao === 'proposta_enviada' ? ['apiCancelarPropostaVinculo', idv] : ['apiDesvincularVinculo', idv];
   if (acao === 'desvincular') return ['apiDesvincularVinculo', idv];
   if (acao === 'excluirorf')  return ['apiExcluirVinculosOrfaos', _vincCtx.idPlano, String(p.id)];
@@ -1144,6 +1172,7 @@ var _VINC_TXT_LOTE = {
   recusar:     { tit: 'Recusar vínculos?',                 msg: 'recusar',                ok: 'Recusados',   okMsg: 'Vínculos recusados.' },
   cancelar:    { tit: 'Cancelar pedidos e propostas?',     msg: 'cancelar',               ok: 'Cancelados',  okMsg: 'Pedidos e propostas cancelados.' },
   desvincular: { tit: 'Desvincular planos?',               msg: 'desvincular',            ok: 'Desvinculados', okMsg: 'Vínculos removidos com sucesso.' },
+  dispensar:   { tit: 'Dispensar recusas?',                msg: 'dispensar',              ok: 'Dispensadas', okMsg: 'Recusas dispensadas.' },
   excluirorf:  { tit: 'Excluir vínculos órfãos?',          msg: 'excluir os vínculos órfãos de', ok: 'Excluídos', okMsg: 'Vínculos órfãos excluídos.' }
 };
 
@@ -1157,7 +1186,8 @@ function vincAcaoLote(acao) {
   var idv = String(p.idVinculo || ''), nome = p.nome || '';
   if (lista.length === 1) {            // um só item: mesmos diálogos da linha
     if (acao === 'aprovar')     return p.direcao === 'filho' ? aprovarVinculoPlano(idv, nome) : responderPropostaVinculo(idv, nome, 'ACEITAR');
-    if (acao === 'recusar')     return p.direcao === 'filho' ? desvincularVinculo(idv, nome) : responderPropostaVinculo(idv, nome, 'RECUSAR');
+    if (acao === 'dispensar')   return vincDispensarRecusado(idv, nome);
+    if (acao === 'recusar')     return p.direcao === 'filho' ? desvincularVinculo(idv, nome, true) : responderPropostaVinculo(idv, nome, 'RECUSAR');
     if (acao === 'cancelar')    return p.direcao === 'proposta_enviada' ? cancelarPropostaVinculo(idv, nome) : desvincularVinculo(idv, nome);
     if (acao === 'desvincular') return desvincularVinculo(idv, nome);
     if (acao === 'excluirorf')  return vincExcluirOrfaos(String(p.id));
@@ -1204,7 +1234,7 @@ function vincAbrirDetalhesPlano(chave) {
   var guardados = '';
   if (p.vtipo === 'desvinculado') {
     var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(p.id); })[0] || {};
-    vinc += _detpLinha('Desvinculado em', '<span' + (p.desvinculadoPor ? ' data-title="' + escapeHtml(p.desvinculadoPor) + '"' : '') + '>' + escapeHtml(p.desvinculadoEm || '—') + '</span>')
+    vinc += p.lixeira ? _detpLinha('Plano', 'Na lixeira · os vínculos voltam a valer se for restaurado') : _detpLinha('Desvinculado em', '<span' + (p.desvinculadoPor ? ' data-title="' + escapeHtml(p.desvinculadoPor) + '"' : '') + '>' + escapeHtml(p.desvinculadoEm || '—') + '</span>')
       + (p.vinculoAtual === 'Pendente' ? _detpLinha('Novo pedido', 'Aguardando aprovação') : '');
     var it = function(ico, rot, tit, sup) {
       return '<div class="detp-ind-item"><span class="material-symbols-outlined vinc-detp-guard" data-title="' + rot + '" aria-label="' + rot + '">' + ico + '</span>'
@@ -1212,6 +1242,10 @@ function vincAbrirDetalhesPlano(chave) {
     };
     guardados = (d.elementos || []).map(function(e) { return it('account_tree', 'Elemento', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
       + (d.indicadores || []).map(function(i) { return it('monitoring', 'Indicador', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
+  } else if (p.vtipo === 'recusado') {
+    vinc += _detpLinha(p.direcao === 'proposta' ? 'Proposta' : 'Pedido', p.direcao === 'proposta' ? 'Ser superior deste plano' : 'Ser subordinado deste plano')
+      + _detpLinha('Recusado em', '<span' + (p.recusadoPor ? ' data-title="' + escapeHtml(p.recusadoPor) + '"' : '') + '>' + escapeHtml(p.recusadoEm || '—') + '</span>')
+      + (!p.podePedirDeNovo && p.motivoNaoPodePedirDeNovo ? _detpLinha('Pedir de novo', escapeHtml(p.motivoNaoPodePedirDeNovo)) : '');
   } else if (D) {
     vinc += _detpLinha('Pedido', escapeHtml(D.txt.split(' · ')[0]));
   } else if (p.papel) {
@@ -1245,16 +1279,47 @@ function aprovarVinculoPlano(idVinculo, nomeFilho) {
   );
 }
 
-function desvincularVinculo(idVinculo, nomeAlvo) {
+// recusa = true quando é RECUSAR um pedido pendente recebido (direcao 'filho'): o solicitante passa a ver a recusa
+function desvincularVinculo(idVinculo, nomeAlvo, recusa) {
   showConfirm(
-    'Desvincular Plano?',
-    'Deseja remover este vínculo com <strong>' + escapeHtml(nomeAlvo) + '</strong>?',
+    recusa ? 'Recusar pedido?' : 'Desvincular Plano?',
+    recusa ? 'Deseja recusar o pedido de vínculo de <strong>' + escapeHtml(nomeAlvo) + '</strong>?'
+           : 'Deseja remover este vínculo com <strong>' + escapeHtml(nomeAlvo) + '</strong>?',
     function() {
       mostrarLoader();
       google.script.run
         .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
         .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
-        .apiDesvincularVinculo(idVinculo);
+        .apiDesvincularVinculo(idVinculo, recusa === true);
+    }
+  );
+}
+
+function vincDispensarRecusado(idVinculo, nomeAlvo) {
+  if (!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.vincular)) return;
+  mostrarLoader();
+  _vinculosSDK.chamar('apiDispensarVinculoRecusado', idVinculo).then(function() {
+    esconderLoader();
+    _vincDadosCache.recusadas = (_vincDadosCache.recusadas || []).filter(function(r) { return String(r.idVinculo) !== String(idVinculo); });
+    estadoVinculos.selecionados = {};
+    _vincAtualizarContadorAba();
+    renderizarTabelaVinculos();
+  }).catch(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml((err && err.message) || String(err))); });
+}
+
+function vincPedirDeNovo(chave) {
+  var p = _vincListaUnica().filter(function(x) { return _vincChave(x) === String(chave); })[0];
+  if (!p || !p.podePedirDeNovo || !_vincCtx) return;
+  var proposta = p.direcao === 'proposta';
+  showConfirm(
+    proposta ? 'Propor de novo?' : 'Pedir de novo?',
+    (proposta ? 'Propor novamente que <strong>' + escapeHtml(p.nome || '') + '</strong> seja subordinado a este plano?'
+              : 'Pedir novamente vínculo ao plano superior <strong>' + escapeHtml(p.nome || '') + '</strong>?'),
+    function() {
+      mostrarLoader();
+      _vinculosSDK.chamar(proposta ? 'apiPropoQuerVinculoSubordinado' : 'apiVincularASuperior', _vincCtx.idPlano, String(p.id))
+        .then(function() { esconderLoader(); carregarAbaVinculos(); })
+        .catch(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml((err && err.message) || String(err))); });
     }
   );
 }
@@ -1572,7 +1637,8 @@ function carregarAbaVinculos() {
       propostasEnviadas: (res && res.propostasEnviadas) || [],
       propostasRecebidas: (res && res.propostasRecebidas) || [],
       planosSuperiores: (res && res.planosSuperiores) || [],
-      desvinculados: (res && res.desvinculados) || []
+      desvinculados: (res && res.desvinculados) || [],
+      recusadas: (res && res.recusadas) || []
     };
     // O resumo do plano no cabeçalho (planosSuperiores) pertence ao host: informa via SDK
     _vinculosSDK.reportarDados({ plano: { planosSuperiores: _vincDadosCache.planosSuperiores } });
@@ -1610,7 +1676,7 @@ _vinculosSDK.aoContexto(function(ctx) {
   _vincCtx = ctx;
   _vincCarregado = false;
   _vincCarregando = false;
-  _vincDadosCache = { planosVinculados: [], propostasEnviadas: [], propostasRecebidas: [], planosSuperiores: [], desvinculados: [] };
+  _vincDadosCache = { planosVinculados: [], propostasEnviadas: [], propostasRecebidas: [], planosSuperiores: [], desvinculados: [], recusadas: [] };
   estadoVinculos.busca = '';
   estadoVinculos.filtroVinc = '';
   estadoVinculos.filtroStatus = '';
