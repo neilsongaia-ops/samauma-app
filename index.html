@@ -10641,19 +10641,6 @@ function solicitarExclusao(id, nomePlano) {
     </div>
   </div>
 
-  <!-- Faixa: plano na lixeira (restaurar / excluir definitivamente) -->
-  <div id="det-lixeira-banner" class="hidden" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; background: var(--ds-color-danger-bg); border:1px solid var(--ds-color-danger-fg); border-radius:8px; padding:10px 14px; margin:0 0 16px">
-    <div style="display:flex; align-items:center; gap:10px">
-      <span class="material-symbols-outlined" style="color:var(--ds-color-danger-fg)">delete</span>
-      <strong id="det-lixeira-texto">Este plano está na lixeira</strong>
-      <span id="det-lixeira-info" class="material-symbols-outlined" tabindex="0" style="font-size:16px; color:var(--ds-color-text-muted); cursor:help">info</span>
-    </div>
-    <div style="display:flex; gap:8px; flex-shrink:0">
-      <button id="btn-det-lixeira-excluir" class="btn btn-outline btn-sm text-danger hidden" onclick="detLixeiraExcluirDefinitivo()">Excluir definitivamente</button>
-      <button id="btn-det-lixeira-restaurar" class="btn btn-primary btn-sm hidden" onclick="detLixeiraRestaurar()">Restaurar</button>
-    </div>
-  </div>
-
   <!-- Hero aberto: só título + status + avaliação.
        Em repouso, título e botão/ações (div logo abaixo, sobreposta a esta linha)
        ficam lado a lado. Ao rolar, o título some; as ações sobem até o topo e param;
@@ -13262,8 +13249,6 @@ function limparTelaDetalhes(trocouDePlano, manterAba) {
   if (badgeAv) { badgeAv.classList.add('hidden'); badgeAv.innerHTML = ''; }
   const banner = document.getElementById('solicitacao-banner');
   if (banner) banner.classList.add('hidden');
-  const bannerLix = document.getElementById('det-lixeira-banner');
-  if (bannerLix) bannerLix.classList.add('hidden');
   const btnNovoItem = document.getElementById('btn-novo-item');
   if (btnNovoItem) btnNovoItem.classList.add('hidden');
 
@@ -13497,7 +13482,6 @@ function renderizarHeader() {
   // depois que o app injeta, então não dá pra mexer nele direto daqui.
 
   renderizarSolicitacaoBanner(p);
-  detRenderizarBannerLixeira(p);
   renderizarBotoesTramite(p);
   _detpRenderDetalhes(); // Painel de detalhes (#detp-panel): mantém sempre atualizado, aberto ou não
   _detPrepararListenersSticky();
@@ -13508,33 +13492,6 @@ function renderizarHeader() {
 }
 
 // --- CONCORDÂNCIA MÚTUA (PLANOS NEGOCIADOS) ---
-
-// --- LIXEIRA ---
-let _detLixeiraPlano = null;
-function detRenderizarBannerLixeira(plano) {
-  const banner = document.getElementById('det-lixeira-banner');
-  if (!banner) return;
-  const naLixeira = plano && plano.status === 'Excluído';
-  _detLixeiraPlano = naLixeira ? plano : null;
-  banner.classList.toggle('hidden', !naLixeira);
-  if (!naLixeira) return;
-  const perm = plano.permissoes || {};
-  const prazo = typeof pllLixeiraPrazoTexto === 'function' ? pllLixeiraPrazoTexto(plano) : '';
-  document.getElementById('det-lixeira-texto').textContent = 'Este plano está na lixeira' + (prazo ? ' — ' + prazo : '');
-  const info = document.getElementById('det-lixeira-info');
-  const regra = typeof pllLixeiraRegraTexto === 'function' ? pllLixeiraRegraTexto(plano) : '';
-  info.setAttribute('data-title', regra); info.setAttribute('aria-label', regra);
-  document.getElementById('btn-det-lixeira-restaurar').classList.toggle('hidden', !perm.restaurar);
-  document.getElementById('btn-det-lixeira-excluir').classList.toggle('hidden', !perm.excluirDefinitivo);
-}
-function detLixeiraRestaurar() {
-  const p = _detLixeiraPlano; if (!p) return;
-  pllRestaurarPlano(p.id, p.nome, function() { carregarDetalhesPlano(p.id); });
-}
-function detLixeiraExcluirDefinitivo() {
-  const p = _detLixeiraPlano; if (!p) return;
-  pllExcluirDefinitivo(p.id, p.nome, function() { navigate('planos'); });
-}
 
 function renderizarSolicitacaoBanner(plano) {
   const banner = document.getElementById('solicitacao-banner');
@@ -13986,7 +13943,7 @@ function _detAcaoTramitePrincipal(plano) {
     if (perm.concluir && !temSolicitacaoPendente) return { onclick: "tramitarPlano('CONCLUIR')", rotulo: 'Concluir', icone: 'task_alt', dica: 'Concluir o plano' };
   } else if (status === 'Em Avaliação') {
     if (perm.prorrogar && !temSolicitacaoPendente) return { onclick: 'abrirModalProrrogar()', rotulo: 'Prorrogar', icone: 'more_time', dica: 'Prorrogar o plano' };
-  } else if (status === 'Cancelado') {
+  } else if (status === 'Excluído' || status === 'Cancelado') {
     if (perm.restaurar) return { onclick: "tramitarPlano('RESTAURAR')", rotulo: 'Restaurar', icone: 'restore', dica: 'Restaurar o plano' };
   }
   return null;
