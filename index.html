@@ -2201,7 +2201,10 @@ _atualizarBotaoSidebar();
       filtroCompetencia: true,           // aplica usuarioLogado.unidadesComCompetencia
       filtroUnidades: fn(lista)=>lista,      // filtro extra opcional (ex.: subárvore da Unidade do plano)
       filtroUsuarios: fn(lista)=>lista,  // filtro extra opcional
-      onChange: fn                       // opcional, chamado a cada inclusão/remoção
+      onChange: fn,                      // opcional, chamado a cada inclusão/remoção
+      getLimite: fn()=>número|null,      // opcional; máximo de responsáveis (null = sem limite). Itens com colaborador:true não contam
+      textoLimite: fn(lim)=>string,      // opcional; tooltip do (i) exibido ao atingir o limite
+      limiteAncoraId: 'id'               // opcional; onde pôr o (i) do limite quando o rótulo fica fora do widget
     });
     sel.getLista()  -> [{id, tipo, nome}]
     sel.setLista(arr); sel.limpar(); sel.setDisabled(true/false)
@@ -2223,6 +2226,9 @@ _atualizarBotaoSidebar();
 }
 .selresp-pop.hidden { display: none; }
 .selresp-wrap .plw-chips { margin-top: 8px; }
+.selresp-limite { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; }
+.selresp-limite.hidden { display: none; }
+.plw-pop-item[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
 body.high-contrast .selresp-pop { background: #000; border-color: #fff; }
 </style>
 
@@ -2250,7 +2256,8 @@ var SeletorResponsaveis = (function() {
     container.innerHTML =
       (cfg.label
         ? '<div class="selresp-label"><label class="ds-label" style="margin:0">' + esc(cfg.label) + '</label>' +
-          (cfg.helpText ? '<span class="material-symbols-outlined selresp-info" data-title="' + esc(cfg.helpText) + '">info</span>' : '') + '</div>'
+          (cfg.helpText ? '<span class="material-symbols-outlined selresp-info" data-title="' + esc(cfg.helpText) + '">info</span>' : '') +
+          '<span class="material-symbols-outlined selresp-limite hidden" tabindex="0" role="img" aria-label="Limite de responsáveis atingido">info</span></div>'
         : '') +
       '<div class="selresp-wrap">' +
         '<div class="plw-busca"><span class="material-symbols-outlined" aria-hidden="true">person_add</span>' +
@@ -2264,6 +2271,33 @@ var SeletorResponsaveis = (function() {
     var pop = container.querySelector('.selresp-pop');
     var chipsDiv = container.querySelector('.selresp-chips');
     var wrap = container.querySelector('.selresp-wrap');
+    var placeholderPadrao = input.getAttribute('placeholder');
+    var limiteIco = container.querySelector('.selresp-limite');
+    if (!limiteIco && cfg.limiteAncoraId && document.getElementById(cfg.limiteAncoraId)) {
+      limiteIco = document.createElement('span');
+      limiteIco.className = 'material-symbols-outlined selresp-limite hidden';
+      limiteIco.setAttribute('tabindex', '0'); limiteIco.setAttribute('role', 'img');
+      limiteIco.setAttribute('aria-label', 'Limite de responsáveis atingido');
+      limiteIco.textContent = 'info';
+      document.getElementById(cfg.limiteAncoraId).appendChild(limiteIco);
+    }
+    function limiteAtual() {
+      var l = typeof cfg.getLimite === 'function' ? cfg.getLimite() : null;
+      return (l === null || l === undefined || l === '' || isNaN(Number(l))) ? null : Number(l);
+    }
+    function cheio() {
+      var l = limiteAtual();
+      return l !== null && estado.lista.filter(function(r) { return !r.colaborador; }).length >= l;
+    }
+    function atualizarLimite() {
+      var c = cheio(), l = limiteAtual();
+      if (limiteIco) {
+        limiteIco.classList.toggle('hidden', !c);
+        limiteIco.setAttribute('data-title', c ? (typeof cfg.textoLimite === 'function' ? cfg.textoLimite(l)
+          : 'Limite de ' + l + ' responsáve' + (l === 1 ? 'l' : 'is') + ' atingido neste plano. Remova um para incluir outro.') : '');
+      }
+      input.setAttribute('placeholder', c ? 'Limite atingido' : placeholderPadrao);
+    }
 
     function infoUnidade(id) {
       var unidades = (cfg.getUnidades ? cfg.getUnidades() : []) || [];
@@ -2280,12 +2314,14 @@ var SeletorResponsaveis = (function() {
     function alternar(id, tipo, nome) {
       var i = indice(id, tipo);
       if (i > -1) estado.lista.splice(i, 1);
+      else if (cheio()) return;
       else { estado.lista.push({ id: String(id), tipo: tipo, nome: nome }); input.value = ''; estado.ativo = 0; }
       renderChips(); renderPop(); notificar();
     }
 
     // ---- chips ----
     function renderChips() {
+      atualizarLimite();
       chipsDiv.innerHTML = estado.lista.map(function(r, idx) {
         var curto, titulo, ico;
         if (r.tipo === 'USER') { curto = nomeCurto(r.nome); titulo = 'Servidor: ' + r.nome; ico = 'person'; }
@@ -2326,8 +2362,9 @@ var SeletorResponsaveis = (function() {
     }
 
     function itemHtml(idx, avCls, avHtml, prim, sub, selecionado) {
+      var bloq = !selecionado && cheio();
       return '<button type="button" role="option" class="plw-pop-item' + (idx === estado.ativo ? ' plw-ativo' : '') + '" data-idx="' + idx +
-        '" aria-selected="' + selecionado + '" tabindex="-1"><span class="plw-av ' + avCls + '">' + avHtml + '</span>' +
+        '" aria-selected="' + selecionado + '"' + (bloq ? ' aria-disabled="true"' : '') + ' tabindex="-1"><span class="plw-av ' + avCls + '">' + avHtml + '</span>' +
         '<span class="plw-pop-txt"><span class="plw-pop-prim"><span>' + prim + '</span></span><span class="plw-pop-sub">' + sub + '</span></span>' +
         '<span class="material-symbols-outlined plw-pop-chk" aria-hidden="true">check</span></button>';
     }
@@ -2411,7 +2448,9 @@ var SeletorResponsaveis = (function() {
       getLista: function() { return estado.lista.slice(); },
       setLista: function(arr) {
         estado.lista = (arr || []).map(function(r) {
-          return { id: String(r.id), tipo: r.tipo === 'USER' ? 'USER' : 'UNIDADE', nome: r.nome || '' };
+          var o = { id: String(r.id), tipo: r.tipo === 'USER' ? 'USER' : 'UNIDADE', nome: r.nome || '' };
+          if (r.colaborador) o.colaborador = true;
+          return o;
         });
         renderChips();
       },
@@ -2424,7 +2463,8 @@ var SeletorResponsaveis = (function() {
         input.disabled = !!v;
         if (v) estado.aberto = false;
         renderChips(); renderPop();
-      }
+      },
+      atualizarLimite: function() { renderChips(); renderPop(); }
     };
   }
 
@@ -6756,7 +6796,7 @@ function _mktAppInstalar(idApp, btn) {
 .cfgp-linha--filho { padding-left: 28px; }
 .cfgp-linha-seta { font-size: 18px; color: var(--ds-color-text-muted); margin: 1px -8px 0 -26px; }
 .cfgp-linha-info { flex: 1 1 200px; min-width: 0; }
-.cfgp-linha-rotulo { font-size: 14px; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.cfgp-linha-rotulo { font-size: 14px; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); text-wrap: pretty; overflow-wrap: anywhere; }
 .cfgp-linha-desc { font-size: 12.8px; color: var(--ds-color-text-muted); margin-top: 3px; line-height: 1.4; }
 .cfgp-linha--inativa .cfgp-linha-rotulo, .cfgp-linha--inativa .cfgp-linha-desc { opacity: .55; }
 .cfgp-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 6px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
@@ -7200,6 +7240,7 @@ function _cfgRenderCab() {
 // Navegação por grupos (+ busca) e conteúdo. aplicarFoco=false mantém o foco no campo de busca ao digitar.
 function _cfgRenderNavECorpo() { _cfgRenderNav(); _cfgRenderConteudo(); _cfgRenderCab(); }
 
+var _CFG_ICONE_GRUPO = { RESPONSAVEIS: 'groups' }; // reserva se o catálogo vier sem ícone
 function _cfgGrupos() { return ((_cfg.dados && _cfg.dados.grupos) || []).slice().sort(function (a, b) { return a.ordem - b.ordem; }); }
 function _cfgRenderNav() {
   var itens = _cfg.dados.itens, mobile = _cfgMobile(), termo = _cfgNorm(_cfg.busca).trim();
@@ -7211,8 +7252,8 @@ function _cfgRenderNav() {
     var atual = !mobile && !termo && _cfg.grupo === g.chave;
     var travado = gi.length && gi.every(function (i) { return i.motivo && (i.motivo.codigo === 'STATUS' || i.motivo.codigo === 'TRAVADO_ADMIN'); });
     return '<button type="button" class="cfgp-nav-item' + (atual ? ' ativo' : '') + '" data-cfg-grupo="' + escapeHtml(g.chave) + '"' + (atual ? ' aria-current="page"' : '') + '>' +
-      '<span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(g.icone || 'settings') + '</span>' +
-      '<span class="cfgp-nav-rotulo">' + escapeHtml(g.rotulo) + '</span>' +
+      '<span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(g.icone || _CFG_ICONE_GRUPO[g.chave] || 'settings') + '</span>' +
+      '<span class="cfgp-nav-rotulo" data-title="' + escapeHtml(g.rotulo) + '">' + escapeHtml(g.rotulo) + '</span>' +
       (nViol > 0 ? '<span class="cfgp-nav-alerta" aria-label="' + nViol + ' configuração(ões) com itens acima do limite">' + nViol + '</span>' : '') +
       (travado && !mg ? '<span class="material-symbols-outlined cfgp-nav-trava" aria-label="Contém configurações travadas">lock</span>' : '') +
       '<span class="material-symbols-outlined cfgp-nav-seta" aria-hidden="true">chevron_right</span></button>';
@@ -7249,7 +7290,7 @@ function _cfgSecaoHTML(g, lista, violPorChave) {
   var temStatus = lista.find(function (i) { return i.motivo && i.motivo.codigo === 'STATUS'; });
   var operEditaveis = lista.some(function (i) { return !i.estrutural && i.editavel; });
   var h = '<section class="cfgp-secao" aria-label="' + escapeHtml(g.rotulo) + '">' +
-    '<h3><span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(g.icone || 'settings') + '</span>' + escapeHtml(g.rotulo) + '</h3>' +
+    '<h3><span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(g.icone || _CFG_ICONE_GRUPO[g.chave] || 'settings') + '</span>' + escapeHtml(g.rotulo) + '</h3>' +
     (g.descricao ? '<p class="cfgp-secao-desc">' + escapeHtml(g.descricao) + '</p>' : '');
 
   if (temStatus) {

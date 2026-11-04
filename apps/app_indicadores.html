@@ -1776,6 +1776,8 @@ function _initSeletorRespInd() {
     helpText: 'Unidades ou servidores que lançam os resultados deste indicador. Pode adicionar mais de um.',
     getUnidades: function() { return unidadesContextoPermitidoInd; },
     getUsuarios: function() { return cacheUsuariosInd; },
+    getLimite: function() { return _indConfig.respIndicadorLimite; },
+    textoLimite: function(l) { return 'Este plano permite até ' + l + ' responsáve' + (l === 1 ? 'l' : 'is') + ' pela coleta por indicador. Remova um para incluir outro.'; },
     filtroUsuarios: function(lista) {
       var setUnidadeIds = new Set(unidadesContextoPermitidoInd.map(function(u) { return String(u.id); }));
       var setExclusivos = new Set(usuariosExclusivosContextoInd.map(String));
@@ -2181,6 +2183,10 @@ function _indAtualizarGrupos() {
 
 // Elemento(s) mudou: tira o principal dos "outros" e os superiores que deixaram de valer
 function _indAoMudarElementos() {
+  _indAoMudarElementosBase();
+  definirContextoPermitidoInd();
+}
+function _indAoMudarElementosBase() {
   if (seletorElemExtraInd) {
     var op = _indOpcoesElementos(idElementoAtualInd);
     var ids = seletorElemExtraInd.getIds();
@@ -2212,6 +2218,7 @@ function _indPrepararVinculos(idsAdic, idsSup) {
   seletorSupInd.setCarregando(!_indCarregado);
   if (!_indCarregado) _indFilaAposCarga.push(function() { seletorSupInd.setCarregando(false); _indAtualizarGrupos(); });
   _indAtualizarGrupos();
+  definirContextoPermitidoInd();
 }
 
 function prepararDadosResponsavelInd() {
@@ -2246,14 +2253,23 @@ function definirContextoPermitidoInd() {
     unidadesContextoPermitidoInd = cacheUnidadesInd;
     return;
   }
-  var el = idElementoAtualInd && dadosDetalhados && dadosDetalhados.elementos
-    ? dadosDetalhados.elementos.find(function(e) { return String(e.id) === String(idElementoAtualInd); })
-    : null;
-  var herdados = _respElementoParaListaInd(el);
-  var unidadesHerdadas = herdados.filter(function(r) { return r.tipo === 'UNIDADE'; }).map(function(r) { return r.id; });
-  var usuariosHerdados = herdados.filter(function(r) { return r.tipo === 'USER'; }).map(function(r) { return r.id; });
+  // União dos responsáveis de TODOS os elementos do indicador (principal + "Também aferido em").
+  // Se algum elemento ainda não tem responsável (ou nenhum foi escolhido), vale o plano inteiro (espelha o servidor).
+  var elems = (dadosDetalhados && dadosDetalhados.elementos) || [];
+  var idsEl = _indIdsElementosAtuais();
+  var algumSemResp = idsEl.length === 0;
+  var unidadesHerdadas = [], usuariosHerdados = [];
+  idsEl.forEach(function(id) {
+    var el = elems.find(function(e) { return String(e.id) === String(id); });
+    var herdados = _respElementoParaListaInd(el);
+    if (!herdados.length) { algumSemResp = true; return; }
+    herdados.forEach(function(r) {
+      var alvo = r.tipo === 'USER' ? usuariosHerdados : unidadesHerdadas;
+      if (alvo.indexOf(String(r.id)) < 0) alvo.push(String(r.id));
+    });
+  });
 
-  if (unidadesHerdadas.length === 0 && usuariosHerdados.length === 0) {
+  if (algumSemResp) {
     var idUnidadePlano = String(pl.idUnidade).trim();
     var hier = processarHierarquiaInd(cacheUnidadesInd);
     var mapa = hier.mapa, raizesGlobais = hier.raizesGlobais;
@@ -2780,6 +2796,7 @@ function _indIniciar() {
     _indMetas = (res && res.metas) || [];
     _indDefinicaoEditavel = (res && res.definicaoEditavel) || { editavel: true, motivo: '' };
     _indConfig = (res && res.configIndicadores) || { vinculoIndicadorLimite: null, elementosLimite: null };
+    if (seletorRespInd && seletorRespInd.atualizarLimite) seletorRespInd.atualizarLimite();
     _indCarregado = true;
     _indCarregando = false;
 

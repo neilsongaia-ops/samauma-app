@@ -1119,7 +1119,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
           <div class="wizard-step hidden" data-step="3" id="wizard-step-3">
             <h2 class="elwiz-titulo">Responsáveis</h2>
 
-            <div class="elwiz-secao-titulo">Responsáveis pela execução <span class="material-symbols-outlined elwiz-info" aria-hidden="true" data-title="Unidades ou servidores. Pode adicionar mais de um.">info</span></div>
+            <div class="elwiz-secao-titulo" id="el-selresp-rotulo">Responsáveis pela execução <span class="material-symbols-outlined elwiz-info" aria-hidden="true" data-title="Unidades ou servidores. Pode adicionar mais de um.">info</span></div>
             <div id="el-selresp"></div>
           </div>
 
@@ -2008,6 +2008,9 @@ function _initSeletorRespElemento() {
   if (seletorRespElemento) return;
   seletorRespElemento = SeletorResponsaveis.criar({
     containerId: 'el-selresp',
+    limiteAncoraId: 'el-selresp-rotulo',
+    getLimite: function() { return _elConfigElementos.respElementoLimite; },
+    textoLimite: function(l) { return 'Este plano permite até ' + l + ' responsáve' + (l === 1 ? 'l' : 'is') + ' pela execução por elemento (colaboradores não contam). Remova um para incluir outro.'; },
     getUnidades: function() { return unidadesContextoPermitidoEl; },
     getUsuarios: function() { return cacheUsuariosEl; },
     filtroUsuarios: function(lista) {
@@ -5880,7 +5883,7 @@ function atualizarConteudoPlano() {
     _elElementosSuperiores = res.elementosSuperiores || [];
     _elPlanosSemVinculo = res.planosSuperioresSemPermissao || [];
     _elPosDiagrama = res.posicoesDiagrama || {}; _orgEst.relCache = null;
-    if (res.configElementos) { _elConfigElementos = res.configElementos; if (seletorSuperioresEl) seletorSuperioresEl.atualizar(); if (seletorRelacionadosEl) seletorRelacionadosEl.atualizar(); }
+    if (res.configElementos) { _elConfigElementos = res.configElementos; if (seletorSuperioresEl) seletorSuperioresEl.atualizar(); if (seletorRelacionadosEl) seletorRelacionadosEl.atualizar(); if (seletorRespElemento && seletorRespElemento.atualizarLimite) seletorRespElemento.atualizarLimite(); }
     renderizarTabelaEstrutura();
     renderizarGantt();
     renderizarTabelaDetalhes();
@@ -5916,7 +5919,7 @@ function _elIniciar() {
     _elElementosSuperiores = res.elementosSuperiores || [];
     _elPlanosSemVinculo = res.planosSuperioresSemPermissao || [];
     _elPosDiagrama = res.posicoesDiagrama || {}; _orgEst.relCache = null;
-    if (res.configElementos) { _elConfigElementos = res.configElementos; if (seletorSuperioresEl) seletorSuperioresEl.atualizar(); if (seletorRelacionadosEl) seletorRelacionadosEl.atualizar(); }
+    if (res.configElementos) { _elConfigElementos = res.configElementos; if (seletorSuperioresEl) seletorSuperioresEl.atualizar(); if (seletorRelacionadosEl) seletorRelacionadosEl.atualizar(); if (seletorRespElemento && seletorRespElemento.atualizarLimite) seletorRespElemento.atualizarLimite(); }
     renderizarTabelaEstrutura();
     renderizarGantt();
     renderizarTabelaDetalhes();

@@ -338,6 +338,40 @@ function _monitParseData(str) {
   return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
 }
 
+// Elementos do indicador (principal primeiro). Sem elementos[] (payload antigo) cai no elemento vinculado.
+function _monitIdsElementosInd(ind) {
+  var ids = (ind.idsElementos && ind.idsElementos.length) ? ind.idsElementos
+    : (ind.elementos && ind.elementos.length) ? ind.elementos.map(function(e) { return e.id; })
+    : (ind.elementoVinculado ? [ind.elementoVinculado] : []);
+  return ids.map(String);
+}
+function _monitRotulosElementosInd(ind) {
+  if (ind.elementos && ind.elementos.length) {
+    return ind.elementos.map(function(e) { return e.label || ((e.codigo ? e.codigo + ' ' : '') + (e.titulo || '')).trim(); }).filter(Boolean);
+  }
+  return ind.elemLabel ? [ind.elemLabel] : [];
+}
+// Até 3 visíveis; acima disso, 2 + "mais N elementos" com os demais no tooltip (mesmo padrão da aba Indicadores)
+function _monitElementosIndHTML(ind) {
+  var rot = _monitRotulosElementosInd(ind);
+  if (!rot.length) return '—';
+  var vis = rot.length > 3 ? rot.slice(0, 2) : rot;
+  var h = '<span class="mon-det-elems" style="display:flex;flex-direction:column;gap:2px">' + vis.map(function(r) {
+    return '<span data-title="' + escapeHtml(r) + '">' + escapeHtml(r) + '</span>';
+  }).join('');
+  if (rot.length > vis.length) {
+    var n = rot.length - vis.length;
+    h += '<span class="rsc-link" tabindex="0" style="align-self:flex-start" data-title="' + escapeHtml(rot.slice(vis.length).join('; ')) + '">mais ' + n + ' elemento' + (n > 1 ? 's' : '') + '</span>';
+  }
+  return h + '</span>';
+}
+// Peso pode ser decimal (média dos pesos dos elementos): pt-BR, até 2 casas, sem zeros sobrando
+function _monitFmtPeso(p) {
+  var n = Number(p);
+  if (p === null || p === undefined || p === '' || isNaN(n)) return '';
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
 function _monitDetLinha(label, valor) {
   return valor ? '<div class="detp-linha"><span class="detp-linha-label">' + label + '</span>'
     + '<span class="detp-linha-valor">' + valor + '</span></div>' : '';
@@ -580,10 +614,10 @@ function _monitFiltrar(lista) {
       if (estadoMonit.filtroElem && !_monitDentroDoElemento(item.id, estadoMonit.filtroElem)) return false;
       if (b && (String(item.codigo || '') + ' ' + String(item.titulo || '') + ' ' + resp).toLowerCase().indexOf(b) === -1) return false;
     } else {
-      if (estadoMonit.filtroElem && !_monitDentroDoElemento(item.elementoVinculado, estadoMonit.filtroElem)) return false;
+      if (estadoMonit.filtroElem && !_monitIdsElementosInd(item).some(function(idE) { return _monitDentroDoElemento(idE, estadoMonit.filtroElem); })) return false;
       if (estadoMonit.filtroConceito && item.conceitoLabel !== estadoMonit.filtroConceito) return false;
       if (estadoMonit.filtroResp && resp.indexOf(estadoMonit.filtroResp) === -1) return false;
-      if (b && (String(item.nome || '') + ' ' + String(item.elemLabel || '') + ' ' + resp).toLowerCase().indexOf(b) === -1) return false;
+      if (b && (String(item.nome || '') + ' ' + _monitRotulosElementosInd(item).join(' ') + ' ' + resp).toLowerCase().indexOf(b) === -1) return false;
     }
     return true;
   });
@@ -720,7 +754,7 @@ function exportarMonitoramento() {
     lista.forEach(function(i) {
       linhas.push([
         i.nome || '',
-        i.elemLabel || '',
+        _monitRotulosElementosInd(i).join('; '),
         i.interpretacao || '',
         _isNum(i.valorRealizado) ? String(i.valorRealizado) : '',
         _isNum(i.valorMeta) ? String(i.valorMeta) : '',
@@ -1488,7 +1522,7 @@ function _monitRenderCorpo() {
         +   '<span class="mon-barra-val">' + (tem ? Math.round(ind.alcance) + '%' : '—') + '</span></div></td>'
         + '<td class="mon-col-conc">' + _perfBadgeConceito(ind.conceito) + '</td>'
         + '<td class="mon-col-contrib">' + (_isNum(ind.contribuicao)
-            ? '<span class="mon-contrib" data-title="Peso ' + ind.peso + ' × ' + ind.pontos + ' ponto(s) = ' + _fmtNumBR(ind.contribuicao) + ' de ' + _fmtNumBR(ind.contribuicaoMax) + ' possíveis">'
+            ? '<span class="mon-contrib" data-title="Peso ' + _monitFmtPeso(ind.peso) + ' × ' + ind.pontos + ' ponto(s) = ' + _fmtNumBR(ind.contribuicao) + ' de ' + _fmtNumBR(ind.contribuicaoMax) + ' possíveis">'
               + '<strong>' + _fmtNumBR(ind.contribuicao) + '</strong><span> / ' + _fmtNumBR(ind.contribuicaoMax) + '</span></span>'
             : '—') + '</td>'
         + '<td class="mon-col-acoes">' + acoes + '</td>'
@@ -1503,10 +1537,10 @@ function _monitRenderCorpo() {
                      : '<div class="mon-det-vazio"><span class="material-symbols-outlined">hourglass_empty</span>Ainda sem resultados validados</div>')
         + '</div>'
         + '<div class="mon-det-ficha">'
-        +   _monitDetLinha('Elemento', escapeHtml(ind.elemLabel || '—'))
+        +   _monitDetLinha(_monitRotulosElementosInd(ind).length > 1 ? 'Elementos' : 'Elemento', _monitElementosIndHTML(ind))
         +   _monitDetLinha('Realizado / meta', realMeta)
         +   _monitDetLinha('Apuração', ind.tipoCalculo === 'CONTINUO' ? 'Contínua' : 'Singular')
-        +   _monitDetLinha('Peso', String(ind.peso))
+        +   _monitDetLinha('Peso', _monitFmtPeso(ind.peso))
         +   _monitDetLinha('Pontos', _isNum(ind.pontos) ? ind.pontos + ' de ' + ((_perfDados.faixas && _perfDados.faixas.PONTOS_MAXIMOS) || 3) : '')
         +   _monitDetLinha('Referência', ind.periodo ? escapeHtml(ind.periodo) : '')
         +   (ind.responsavel ? _monitDetLinha('Responsável', escapeHtml(ind.responsavel)) : '')
