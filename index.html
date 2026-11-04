@@ -1302,6 +1302,17 @@ body.high-contrast .ds-pasta { --pasta-line: #fff; --pasta-strip: #000; --pasta-
           <span class="nav-item-label">Início</span>
         </button>
 
+        <button type="button" class="nav-item" data-menu="Mensagens" onclick="navigate('mensagens', { view: 'caixa' }); fecharMenuMobile()">
+          <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">inbox</span>
+          <span class="nav-item-label">Mensagens</span>
+          <span class="ntf-nav-badge hidden" id="ntf-nav-badge" aria-hidden="true"></span>
+        </button>
+        <!-- Só quem pode enviar (ADMIN/DEV ou dirigente de unidade) — revelado em ntfAposLogin() (components_notificacoes.html) -->
+        <button type="button" class="nav-item hidden" id="nav-item-mensagens-enviadas" data-menu="Mensagens enviadas" onclick="navigate('mensagens-enviadas'); fecharMenuMobile()">
+          <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">campaign</span>
+          <span class="nav-item-label">Mensagens enviadas</span>
+        </button>
+
         <!-- Planejamento (menu em cascata — ver docs/design_system.md "Menu principal em cascata") -->
         <div class="nav-item-group" id="navgroup-planejamento">
           <button type="button" class="nav-item nav-item-parent" data-menu="Planejamento" aria-label="Planejamento"
@@ -1498,6 +1509,9 @@ body.high-contrast .ds-pasta { --pasta-line: #fff; --pasta-strip: #000; --pasta-
         <button type="button" class="user-menu-item" onclick="abrirPerfil()">
           <span class="material-symbols-outlined">account_circle</span> Perfil
         </button>
+        <button type="button" class="user-menu-item" onclick="fecharUserMenu(); navigate('mensagens', { view: 'prefs' }); fecharMenuMobile()">
+          <span class="material-symbols-outlined">tune</span> Preferências de notificação
+        </button>
         <button type="button" class="user-menu-item" onclick="toggleAltoContraste(); fecharUserMenu()">
           <span class="material-symbols-outlined">contrast</span> Alto Contraste
         </button>
@@ -1528,9 +1542,9 @@ body.high-contrast .ds-pasta { --pasta-line: #fff; --pasta-strip: #000; --pasta-
     </div>
 
     <div class="tb-actions">
-      <button type="button" class="tb-icon-btn" data-title="Notificações" aria-label="Notificações">
+      <button type="button" class="tb-icon-btn" id="ntf-sino-btn" data-title="Notificações" aria-label="Notificações" aria-haspopup="dialog" onclick="ntfToggleSino(event)">
         <span class="material-symbols-outlined">notifications</span>
-        <span class="tb-dot" aria-hidden="true"></span>
+        <span class="ntf-badge hidden" id="ntf-badge" aria-hidden="true"></span>
       </button>
       <button type="button" class="tb-icon-btn" id="btn-tema" onclick="alternarTema()"
         data-title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro">
@@ -1918,6 +1932,7 @@ function initHeader() {
       document.getElementById('user-menu-email').innerText = user.email;
 
       _headerRevelarItensAdmin(user);
+      if (typeof ntfAposLogin === 'function') ntfAposLogin();
     })
     .apiGetHeaderInfo();
 }
@@ -7907,6 +7922,210 @@ function applySysStyle(tipo) {
   }
 }
 </script>
+    <!-- ARQUIVO: components_notificacoes.html
+     Sino do cabeçalho, contagem (polling), destino do clique (link profundo), parâmetros de URL dos e-mails (?notif, ?caixa,
+     ?preferencias) e helpers compartilhados pela caixa de entrada, preferências, mensagens e configuração global.
+     Prefixo de globais: ntf. Contrato com o servidor: docs/notificacoes.md. -->
+
+<style>
+  /* ---- sino ---- */
+  .ntf-badge { position: absolute; top: 3px; right: 2px; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; border-radius: 999px;
+    background: var(--ds-color-danger-fg); color: #fff; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .ntf-nav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: var(--ds-color-action); color: #fff;
+    font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
+  .ds-sb-collapsed .ntf-nav-badge { display: none; }
+  #ntf-sino-btn { position: relative; }
+  .ntf-sino-painel { position: fixed; top: 52px; right: 12px; width: 380px; max-width: calc(100vw - 16px); background: var(--ds-glass-bg-strong); backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid var(--ds-glass-border); border-radius: 10px; box-shadow: var(--ds-glass-shadow-strong); overflow: hidden; z-index: 1000; }
+  .ntf-sino-topo { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--ds-glass-border); }
+  .ntf-sino-topo strong { font-size: 14px; font-weight: 600; }
+  .ntf-sino-topo span { font-size: 12px; color: var(--ds-color-text-muted); }
+  .ntf-sino-item { width: 100%; display: flex; gap: 10px; align-items: flex-start; text-align: left; border: none; background: transparent; padding: 10px 14px; cursor: pointer;
+    border-bottom: 1px solid var(--ds-glass-border); font-family: inherit; color: var(--ds-color-text); }
+  .ntf-sino-item:hover { background: var(--ds-sidebar-item-hover); }
+  .ntf-sino-item .ntf-ico { font-size: 20px; margin-top: 1px; color: var(--ds-color-text-muted); }
+  .ntf-sino-item.nao-lida .ntf-ico { color: var(--ds-color-action); }
+  .ntf-sino-item.nao-lida .ntf-t { font-weight: 600; }
+  .ntf-sino-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .ntf-t, .ntf-r { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+  .ntf-r { font-size: 12px; color: var(--ds-color-text-muted); }
+  .ntf-sino-hora { font-size: 12px; color: var(--ds-color-text-muted); white-space: nowrap; }
+  .ntf-sino-vazio { padding: 24px 14px; text-align: center; font-size: 13px; color: var(--ds-color-text-muted); }
+  .ntf-sino-rodape { width: 100%; min-height: 44px; border: none; background: none; color: var(--ds-color-action); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; }
+  .ntf-sino-rodape:hover { background: var(--ds-sidebar-item-hover); }
+  @media (max-width: 768px) { .ntf-sino-painel { top: 60px; left: 8px; right: 8px; width: auto; } }
+
+  /* ---- interruptor (preferências e configuração global) ---- */
+  .ntf-sw { width: 36px; height: 20px; border-radius: 999px; border: none; padding: 2px; cursor: pointer; background: var(--ds-color-border); display: flex; flex-shrink: 0; }
+  .ntf-sw > span { width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .12s; }
+  .ntf-sw.on { background: var(--ds-color-action); }
+  .ntf-sw.on > span { transform: translateX(16px); }
+  .ntf-sw:disabled { opacity: .45; cursor: not-allowed; }
+  .ntf-info { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; }
+</style>
+
+<div id="ntf-sino-painel" class="ntf-sino-painel hidden" role="dialog" aria-label="Notificações"></div>
+
+<script>
+var NTF_ICONES = { 'Planos': 'description', 'Responsabilidades': 'assignment_ind', 'Vínculos': 'link', 'Solicitações': 'forum', 'Mensagens da administração': 'campaign', 'Prazos e alertas': 'alarm' };
+var NTF_CHAVE_PARAM = 'samauma_param_notif';
+var _ntf = { cont: 0, perfil: 'USUARIO', poll: null, sinoAberto: false };
+
+// ---- parâmetros de URL dos e-mails: guardados ao carregar (antes do login por código) e consumidos depois dele ----
+(function () {
+  try {
+    var q = new URLSearchParams(location.search), p = null;
+    if (q.get('notif')) p = { tipo: 'notif', id: q.get('notif') };
+    else if (q.get('preferencias') === 'notificacoes') p = { tipo: 'prefs' };
+    else if (q.get('caixa') === '1') p = { tipo: 'caixa' };
+    if (!p) return;
+    sessionStorage.setItem(NTF_CHAVE_PARAM, JSON.stringify(p));
+    q.delete('notif'); q.delete('preferencias'); q.delete('caixa');
+    var qs = q.toString();
+    history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+  } catch (e) { /* sem sessionStorage: o link abre o app normalmente, só não leva ao destino */ }
+})();
+
+// ---- helpers compartilhados ----
+function ntfIcone(grupo) { return NTF_ICONES[grupo] || 'notifications'; }
+function ntfMs(iso) { var t = Date.parse(iso); return isNaN(t) ? 0 : t; }
+function ntfHora(iso) {
+  var d = new Date(ntfMs(iso)), h = new Date();
+  if (d.toDateString() === h.toDateString()) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+function ntfRotuloDia(iso) {
+  var d = new Date(ntfMs(iso)); d.setHours(0, 0, 0, 0);
+  var h = new Date(); h.setHours(0, 0, 0, 0);
+  var dif = Math.round((h - d) / 864e5);
+  if (dif === 0) return 'Hoje';
+  if (dif === 1) return 'Ontem';
+  return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+}
+function ntfSwitchHtml(on, desabilitado, onclick, rotulo) {
+  return '<button type="button" class="ntf-sw' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" aria-label="' + escapeHtml(rotulo || '') + '"'
+    + (desabilitado ? ' disabled' : '') + ' onclick="' + onclick + '"><span></span></button>';
+}
+function ntfInfoHtml(texto) { return '<span class="material-symbols-outlined ntf-info" data-title="' + escapeHtml(texto) + '">info</span>'; }
+function ntfErro(err) { showMessage('error', 'Não foi possível concluir', escapeHtml((err && err.message) || 'Erro inesperado.')); }
+function ntfNeutro() { showMessage('info', 'Item indisponível', 'Este item não está mais disponível ou você não tem acesso a ele.'); }
+function ntfChamar(nome, args, ok, falha) {
+  var r = google.script.run.withSuccessHandler(ok || function () {}).withFailureHandler(falha || ntfErro);
+  r[nome].apply(r, args || []);
+}
+
+// ---- contagem / sino ----
+function ntfDefinirContagem(n) {
+  _ntf.cont = n || 0;
+  var txt = _ntf.cont > 99 ? '99+' : String(_ntf.cont);
+  var b = document.getElementById('ntf-badge'), nb = document.getElementById('ntf-nav-badge');
+  if (b) { b.textContent = txt; b.classList.toggle('hidden', !_ntf.cont); }
+  if (nb) { nb.textContent = txt; nb.classList.toggle('hidden', !_ntf.cont); }
+  if (typeof cxaAtualizarContagemAbas === 'function') cxaAtualizarContagemAbas();
+}
+function ntfContar() {
+  if (document.hidden) return;
+  ntfChamar('apiGetNotificacoesContagem', [], function (r) { ntfDefinirContagem(r && r.naoLidas); }, function () {});
+}
+
+function ntfToggleSino(ev) {
+  if (ev) ev.stopPropagation();
+  if (_ntf.sinoAberto) return ntfFecharSino();
+  _ntf.sinoAberto = true;
+  var el = document.getElementById('ntf-sino-painel');
+  el.classList.remove('hidden');
+  el.innerHTML = '<div class="ntf-sino-topo"><strong>Notificações</strong></div><div class="ntf-sino-vazio"><span class="material-symbols-outlined">progress_activity</span></div>';
+  ntfChamar('apiGetNotificacoes', [{ aba: 'todas', limite: 5, offset: 0 }], function (r) {
+    if (!_ntf.sinoAberto) return;
+    ntfDefinirContagem(r.naoLidas);
+    var itens = r.itens || [];
+    el.innerHTML = '<div class="ntf-sino-topo"><strong>Notificações</strong><span>' + (r.naoLidas ? r.naoLidas + ' não lidas' : '') + '</span></div>'
+      + (itens.length ? itens.map(function (n) {
+        return '<button type="button" class="ntf-sino-item' + (n.lida ? '' : ' nao-lida') + '" onclick="ntfAbrirDoSino(\'' + escapeHtml(n.id) + '\')">'
+          + '<span class="material-symbols-outlined ntf-ico">' + ntfIcone(n.grupo) + '</span>'
+          + '<span class="ntf-sino-corpo"><span class="ntf-t">' + escapeHtml(n.titulo) + '</span><span class="ntf-r">' + escapeHtml(n.resumo) + '</span></span>'
+          + '<span class="ntf-sino-hora">' + ntfHora(n.atualizadoEm) + '</span></button>';
+      }).join('') : '<div class="ntf-sino-vazio">Nenhuma notificação</div>')
+      + '<button type="button" class="ntf-sino-rodape" onclick="ntfFecharSino(); navigate(\'mensagens\', { view: \'caixa\' })">Ver tudo</button>';
+    el._itens = itens;
+  }, function (e) { ntfFecharSino(); ntfErro(e); });
+}
+function ntfFecharSino() {
+  _ntf.sinoAberto = false;
+  var el = document.getElementById('ntf-sino-painel');
+  if (el) el.classList.add('hidden');
+}
+function ntfAbrirDoSino(id) {
+  var el = document.getElementById('ntf-sino-painel');
+  var n = (el._itens || []).find(function (x) { return String(x.id) === String(id); });
+  ntfFecharSino();
+  if (n) ntfAbrir(n);
+}
+document.addEventListener('mousedown', function (e) {
+  if (!_ntf.sinoAberto) return;
+  if (e.target.closest('#ntf-sino-painel') || e.target.closest('#ntf-sino-btn')) return;
+  ntfFecharSino();
+});
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && _ntf.sinoAberto) ntfFecharSino(); });
+
+// ---- abrir uma notificação: marca como lida e segue o link ----
+function ntfAbrir(n) {
+  if (!n.lida) ntfChamar('apiMarcarNotificacoes', [[n.id], 'LIDA'], function () { ntfContar(); if (typeof cxaRecarregar === 'function') cxaRecarregar(); }, function () {});
+  ntfSeguirLink(n.link);
+}
+function ntfSeguirLink(l) {
+  if (!l) return ntfNeutro();
+  if (l.pagina === 'mensagem' && l.idObjeto) return navigate('mensagens', { view: 'leitura', id: l.idObjeto });
+  if (l.pagina === 'plano' && l.idPlano) return ntfAbrirPlano(l);
+  ntfNeutro();
+}
+var NTF_ABAS_PLANO = { elementos: 'elementos', monitoramento: 'monitoramento', vinculos: 'vinculos', riscos: 'riscos', forum: 'forum', indicadores: 'metas' };
+function ntfAbrirPlano(l) {
+  // o servidor revalida a permissão em apiGetPlanoCompleto; se negar, o próprio carregamento mostra o erro e volta à lista
+  carregarDetalhesPlano(l.idPlano);
+  var aba = NTF_ABAS_PLANO[l.aba];
+  if (aba && typeof mudarView === 'function') mudarView(aba);
+  if (l.idObjeto) ntfDestacar(String(l.idObjeto), 0);
+}
+// destaca o objeto (elemento/indicador) assim que a aba o desenhar; desiste depois de ~6 s
+function ntfDestacar(id, tentativa) {
+  var el = document.querySelector('#page-plano-detalhe [data-id="' + id + '"]');
+  if (el && el.offsetParent !== null) {
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.style.transition = 'background-color .4s'; var antes = el.style.backgroundColor;
+    el.style.backgroundColor = 'var(--ds-sidebar-item-active)';
+    setTimeout(function () { el.style.backgroundColor = antes; }, 2500);
+    return;
+  }
+  if (tentativa < 20) setTimeout(function () { ntfDestacar(id, tentativa + 1); }, 300);
+}
+
+// ---- início (depois do login): contagem, perfil de mensageria, parâmetro de URL ----
+function ntfAposLogin() {
+  ntfContar();
+  if (!_ntf.poll) _ntf.poll = setInterval(ntfContar, 30000);
+  ntfChamar('apiGetPerfilMensagem', [], function (r) {
+    _ntf.perfil = (r && r.perfil) || 'USUARIO';
+    var it = document.getElementById('nav-item-mensagens-enviadas');
+    if (it) it.classList.toggle('hidden', _ntf.perfil === 'USUARIO');
+  }, function () {});
+  ntfConsumirParametro();
+}
+function ntfConsumirParametro() {
+  var p = null;
+  try { p = JSON.parse(sessionStorage.getItem(NTF_CHAVE_PARAM) || 'null'); sessionStorage.removeItem(NTF_CHAVE_PARAM); } catch (e) { p = null; }
+  if (!p) return;
+  if (p.tipo === 'prefs') return navigate('mensagens', { view: 'prefs' });
+  if (p.tipo === 'caixa') return navigate('mensagens', { view: 'caixa' });
+  if (p.tipo === 'notif') {
+    ntfChamar('apiGetNotificacao', [p.id], function (n) {
+      if (!n) { navigate('mensagens', { view: 'caixa' }); return ntfNeutro(); }
+      ntfAbrir(n);
+    });
+  }
+}
+</script>
+
     <script>
 /**
  * Utilitários genéricos de UI usados por qualquer app isolado
@@ -20123,6 +20342,9 @@ function confirmarEncerrarRevisao(idRevisao) {
         <button type="button" class="csis-tab-btn" id="csis-tab-apps" onclick="csisMudarSecao('apps')">
           <span class="material-symbols-outlined icon-sm">extension</span> Apps / Extensões
         </button>
+        <button type="button" class="csis-tab-btn" id="csis-tab-notificacoes" onclick="csisMudarSecao('notificacoes')">
+          <span class="material-symbols-outlined icon-sm">notifications</span> Notificações
+        </button>
         <span class="csis-tab-btn csis-tab-em-breve" data-title="Limite de tópicos fixados por usuário e outras regras do Fórum" aria-disabled="true">
           <span class="material-symbols-outlined icon-sm">forum</span> Fórum <span class="ds-badge">Em breve</span>
         </span>
@@ -20304,6 +20526,15 @@ function confirmarEncerrarRevisao(idRevisao) {
         </div>
       </section>
     </div>
+    <!-- ===== Seção: Notificações (tipos, e-mail, alertas) ===== -->
+    <div id="csis-painel-notificacoes" class="csis-painel hidden">
+      <div class="cnt-sub">
+        <button type="button" class="cnt-sub-btn active" id="cnt-sub-tipos" onclick="cntSub('tipos')">Tipos</button>
+        <button type="button" class="cnt-sub-btn" id="cnt-sub-email" onclick="cntSub('email')">E-mail</button>
+        <button type="button" class="cnt-sub-btn" id="cnt-sub-alertas" onclick="cntSub('alertas')">Alertas</button>
+      </div>
+      <section class="ds-card cfa-secao"><div id="cnt-corpo" style="padding:8px 20px 16px"></div></section>
+    </div>
     <!-- Próximas seções (Desempenho/Prazos/Fórum) entram aqui como novos
          <div id="csis-painel-<chave>" class="csis-painel hidden">, mais uma
          aba clicável equivalente acima e uma entrada em CSIS_SECOES. -->
@@ -20313,6 +20544,22 @@ function confirmarEncerrarRevisao(idRevisao) {
 </div>
 
 <style>
+.cnt-sub { display: flex; gap: 8px; margin-bottom: 12px; }
+.cnt-sub-btn { height: 34px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--ds-color-border); background: var(--ds-color-surface); color: var(--ds-color-text); cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; }
+.cnt-sub-btn.active { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); color: var(--ds-color-action); }
+.cnt-grupo { margin-top: 14px; padding: 6px 0; font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--ds-color-text-muted); border-bottom: 1px solid var(--ds-color-border); }
+.cnt-tipo { display: grid; grid-template-columns: minmax(0, 1fr) repeat(4, 110px); gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--ds-color-border); font-size: 13px; }
+.cnt-tipo small { display: block; color: var(--ds-color-text-muted); margin-top: 2px; }
+.cnt-tipo-cab { font-size: 12px; font-weight: 600; color: var(--ds-color-text-muted); }
+.cnt-campo { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; max-width: 520px; font-size: 13px; font-weight: 500; }
+.cnt-in { height: 38px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--ds-color-border); border-radius: 4px; background: var(--ds-color-surface); color: var(--ds-color-text); font-family: inherit; font-size: 14px; max-width: 240px; }
+.cnt-in-larga { max-width: 100%; }
+.cnt-nota { font-size: 13px; color: var(--ds-color-text-muted); }
+@media (max-width: 768px) {
+  .cnt-tipo { grid-template-columns: repeat(4, 1fr); }
+  .cnt-tipo > span:first-child { grid-column: 1 / -1; }
+  .cnt-tipo-cab { display: none; }
+}
 .carm-info { font-size: 16px; vertical-align: middle; color: var(--ds-color-text-muted); cursor: help; margin-left: 4px; }
 .carm-opcao { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--ds-color-border, #e5e7eb); flex-wrap: wrap; }
 .carm-opcao label { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 220px; cursor: pointer; font-weight: 600; }
@@ -20443,7 +20690,7 @@ body.high-contrast .csis-header-icone { background: #111; color: #0ff; }
 // Hub interno por abas — CSIS_SECOES lista as chaves com painel implementado;
 // as demais abas no HTML são placeholders "Em breve" (<span aria-disabled>,
 // sem onclick — nunca chamam csisMudarSecao).
-const CSIS_SECOES = ['avaliacao', 'catalogo', 'padroes', 'armazenamento', 'apps'];
+const CSIS_SECOES = ['avaliacao', 'catalogo', 'padroes', 'armazenamento', 'apps', 'notificacoes'];
 let estadoCsis = { secaoAtual: 'avaliacao' };
 
 function initConfigSistema() {
@@ -20472,6 +20719,106 @@ function csisMudarSecao(chave, semRecarregar) {
   if (chave === 'padroes' && typeof cpdCarregar === 'function') cpdCarregar();
   if (chave === 'armazenamento' && typeof carmCarregar === 'function') carmCarregar();
   if (chave === 'apps' && typeof csisAppsCarregar === 'function') csisAppsCarregar();
+  if (chave === 'notificacoes' && typeof cntSub === 'function') cntSub(estadoCnt.sub);
+}
+
+// ---- Seção: Notificações (prefixo cnt) ----
+// Tipos: catálogo com 4 interruptores por tipo; E-mail: limites e URL; Alertas: dias e lembretes.
+let estadoCnt = { sub: 'tipos', tipos: null, email: null, alertas: null };
+
+function cntSub(s) {
+  estadoCnt.sub = s;
+  ['tipos', 'email', 'alertas'].forEach(function(k) { document.getElementById('cnt-sub-' + k).classList.toggle('active', k === s); });
+  const corpo = document.getElementById('cnt-corpo');
+  corpo.innerHTML = '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>';
+  const api = { tipos: 'apiGetConfigNotificacoes', email: 'apiGetConfigEmailNotificacoes', alertas: 'apiGetConfigAlertasNotificacoes' }[s];
+  ntfChamar(api, [], function(r) { estadoCnt[s] = r; cntRender(); }, function(e) { corpo.innerHTML = ''; ntfErro(e); });
+}
+function cntRender() {
+  const s = estadoCnt.sub, r = estadoCnt[s], corpo = document.getElementById('cnt-corpo');
+  if (!r) return;
+  if (s === 'tipos') corpo.innerHTML = cntHtmlTipos(r);
+  else corpo.innerHTML = cntHtmlCampos(s, r);
+}
+function cntHtmlTipos(r) {
+  const grupos = {}, ordem = [];
+  (r.grupos || []).forEach(function(g) { grupos[g.grupo] = g.itens; ordem.push(g.grupo); });
+  const sw = function(on, dis, ch, c, rot) { return ntfSwitchHtml(on, dis, "cntTipo('" + ch + "','" + c + "')", rot); };
+  return '<div class="cnt-tipo cnt-tipo-cab"><span>Tipo</span><span>Ativa</span><span>Padrão no app</span><span>Padrão por e-mail</span><span>Travada ' + ntfInfoHtml('Trava a escolha: o usuário não pode mudar nas preferências.') + '</span></div>'
+    + ordem.map(function(g) {
+      return '<div class="cnt-grupo">' + escapeHtml(g) + '</div>' + grupos[g].map(function(t) {
+        const obrig = !!t.obrigatoria;
+        return '<div class="cnt-tipo"><span><strong>' + escapeHtml(t.rotulo) + '</strong>' + (t.descricao ? '<small>' + escapeHtml(t.descricao) + '</small>' : '') + '</span>'
+          + sw(t.ativa, obrig, t.chave, 'ativa', 'Ativa') + sw(t.padraoApp, !t.ativa, t.chave, 'padraoApp', 'Padrão no app')
+          + sw(t.padraoEmail, !t.ativa || !t.padraoApp, t.chave, 'padraoEmail', 'Padrão por e-mail') + sw(t.forcada, !t.ativa, t.chave, 'forcada', 'Travada') + '</div>';
+      }).join('');
+    }).join('');
+}
+function cntTipo(chave, campo) {
+  let t = null;
+  estadoCnt.tipos.grupos.forEach(function(g) { g.itens.forEach(function(x) { if (x.chave === chave) t = x; }); });
+  if (!t) return;
+  const antes = { ativa: t.ativa, padraoApp: t.padraoApp, padraoEmail: t.padraoEmail, forcada: t.forcada };
+  t[campo] = !t[campo];
+  if (campo === 'padraoApp' && !t.padraoApp) t.padraoEmail = false;
+  if (campo === 'padraoEmail' && t.padraoEmail) t.padraoApp = true;
+  cntRender();
+  ntfChamar('apiSalvarConfigNotificacoes', [chave, { ativa: t.ativa, padraoApp: t.padraoApp, padraoEmail: t.padraoEmail, forcada: t.forcada }], function() {}, function(e) {
+    Object.assign(t, antes); cntRender(); ntfErro(e);
+  });
+}
+const CNT_CAMPOS = {
+  email: [
+    { k: 'ativo', t: 'sw', r: 'Enviar notificações por e-mail' },
+    { k: 'tetoUsuarioDia', t: 'n', r: 'Teto de e-mails por usuário por dia' },
+    { k: 'tetoGlobalDia', t: 'n', r: 'Teto global de e-mails por dia' },
+    { k: 'validadeHoras', t: 'n', r: 'Validade do envio (horas)', i: 'Depois disso, um e-mail pendente não é mais enviado.' },
+    { k: 'lotePorExecucao', t: 'n', r: 'E-mails por rodada (a cada 5 min)' },
+    { k: 'urlBase', t: 'txt', r: 'Endereço do sistema nos links' }
+  ],
+  alertas: [
+    { k: 'ativo', t: 'sw', r: 'Gerar alertas programados' },
+    { k: 'diasPrazo', t: 'lista', r: 'Avisar de prazos com antecedência (dias)', i: 'Até 5 valores entre 1 e 365, separados por vírgula.' },
+    { k: 'diasVigencia', t: 'lista', r: 'Avisar do fim da vigência do plano (dias)' },
+    { k: 'diasLixeira', t: 'lista', r: 'Avisar da exclusão definitiva na lixeira (dias)' },
+    { k: 'lembreteAtrasoDias', t: 'n', r: 'Repetir lembrete de atraso a cada (dias)' },
+    { k: 'maxLembretesAtraso', t: 'n', r: 'Máximo de lembretes de atraso' },
+    { k: 'janelaMetaAtrasoDias', t: 'n', r: 'Janela para considerar meta atrasada (dias)' }
+  ]
+};
+function cntHtmlCampos(s, r) {
+  const cfg = r.config || {};
+  let h = '';
+  if (s === 'email') h += '<p class="cnt-nota">Enviados hoje: <strong>' + (r.enviadosHoje || 0) + '</strong></p>';
+  h += CNT_CAMPOS[s].map(function(c) {
+    const v = cfg[c.k], inf = c.i ? ' ' + ntfInfoHtml(c.i) : '';
+    let ctl;
+    if (c.t === 'sw') ctl = ntfSwitchHtml(!!v, false, "cntCampoSw('" + c.k + "')", c.r);
+    else if (c.t === 'n') ctl = '<input class="cnt-in" type="number" id="cnt-f-' + c.k + '" value="' + (v === undefined || v === null ? '' : escapeHtml(String(v))) + '">';
+    else if (c.t === 'lista') ctl = '<input class="cnt-in" id="cnt-f-' + c.k + '" value="' + escapeHtml((v || []).join(', ')) + '">';
+    else ctl = '<input class="cnt-in cnt-in-larga" id="cnt-f-' + c.k + '" value="' + escapeHtml(v || '') + '">';
+    return '<div class="cnt-campo"><label for="cnt-f-' + c.k + '">' + escapeHtml(c.r) + inf + '</label>' + ctl + '</div>';
+  }).join('');
+  return h + '<div class="cfa-rodape" style="justify-content:flex-end"><button type="button" class="ds-btn ds-btn--primary" onclick="cntSalvar()">Salvar alterações</button></div>';
+}
+function cntCampoSw(k) { estadoCnt[estadoCnt.sub].config[k] = !estadoCnt[estadoCnt.sub].config[k]; cntColher(); cntRender(); }
+function cntColher() {
+  const s = estadoCnt.sub, cfg = estadoCnt[s].config;
+  CNT_CAMPOS[s].forEach(function(c) {
+    const el = document.getElementById('cnt-f-' + c.k);
+    if (!el) return;
+    if (c.t === 'n') cfg[c.k] = el.value === '' ? '' : Number(el.value);
+    else if (c.t === 'lista') cfg[c.k] = el.value.split(/[,\s;]+/).filter(Boolean).map(Number);
+    else cfg[c.k] = el.value.trim();
+  });
+  return cfg;
+}
+function cntSalvar() {
+  const s = estadoCnt.sub, cfg = cntColher();
+  ntfChamar(s === 'email' ? 'apiSalvarConfigEmailNotificacoes' : 'apiSalvarConfigAlertasNotificacoes', [cfg], function() {
+    showMessage('success', 'Configuração salva', '');
+    cntSub(s);
+  });
 }
 
 // ---- Seção: Armazenamento ----
@@ -20993,6 +21340,636 @@ function csisAppSalvar(idApp) {
       showMessage('error', 'Erro ao salvar status', escapeHtml(err.message));
     })
     .apiAtualizarStatusApp(idApp, novoStatus, novoSub);
+}
+</script>
+
+       <!-- ARQUIVO: pages_mensagens.html
+     Caixa de entrada (notificações + mensagens da administração), leitura de mensagem e preferências do usuário.
+     Prefixo de globais: cxa. Helpers do sino/contagem/link em components_notificacoes.html (prefixo ntf). -->
+
+<div id="page-mensagens" class="page-content hidden">
+  <div id="cxa-raiz"></div>
+</div>
+
+<style>
+  #page-mensagens h1.cxa-titulo { margin: 0; font-size: 30px; font-weight: 600; color: var(--ds-color-heading); }
+  .cxa-cabecalho { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .cxa-cabecalho .cxa-esp { flex: 1; }
+  .cxa-btn-icone { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--ds-glass-border); background: var(--ds-glass-bg-strong); cursor: pointer; color: var(--ds-color-text-muted);
+    display: inline-flex; align-items: center; justify-content: center; }
+  .cxa-btn-icone:hover { color: var(--ds-color-action); }
+  .cxa-btn-icone.pq { width: 36px; height: 36px; }
+  .cxa-abas { display: flex; gap: 4px; border-bottom: 1px solid var(--ds-color-border); overflow-x: auto; overflow-y: hidden; }
+  .cxa-aba { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit;
+    color: var(--ds-color-text-muted); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+  .cxa-aba.ativa { color: var(--ds-color-action); border-bottom-color: var(--ds-color-action); }
+  .cxa-aba .material-symbols-outlined { font-size: 18px; }
+  .cxa-aba-n { font-size: 12px; padding: 0 6px; border-radius: 999px; background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
+  .cxa-barra { position: sticky; top: -20px; z-index: 5; background: var(--ds-color-surface); padding: 12px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--ds-color-border); }
+  .cxa-barra input[type=checkbox], .cxa-linha input[type=checkbox] { width: 18px; height: 18px; margin: 0 6px 0 4px; accent-color: var(--ds-color-action); }
+  .cxa-busca { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--ds-color-border); flex: 0 1 300px; min-width: 160px; }
+  .cxa-busca input { flex: 1; min-width: 0; border: none; outline: none; background: none; font-size: 13px; font-family: inherit; color: var(--ds-color-text); }
+  .cxa-busca .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
+  .cxa-busca button { border: none; background: none; cursor: pointer; color: var(--ds-color-text-muted); display: flex; padding: 0; }
+  .cxa-filtro { height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--ds-color-border); background: var(--ds-color-surface); color: var(--ds-color-text); font-size: 13px; font-weight: 500;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-family: inherit; }
+  .cxa-filtro.ativo { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); color: var(--ds-color-action); }
+  .cxa-menu { position: absolute; top: 40px; left: 0; min-width: 240px; background: var(--ds-glass-bg-strong); border: 1px solid var(--ds-glass-border); border-radius: 10px; box-shadow: var(--ds-glass-shadow-strong); padding: 6px; z-index: 1000; }
+  .cxa-menu button { width: 100%; min-height: 36px; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: none; background: none; border-radius: 6px; cursor: pointer; text-align: left;
+    font-size: 13px; color: var(--ds-color-text); font-family: inherit; }
+  .cxa-menu button:hover { background: var(--ds-sidebar-item-hover); }
+  .cxa-menu .material-symbols-outlined { font-size: 18px; color: var(--ds-color-action); }
+  .cxa-pag { margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--ds-color-text-muted); }
+  .cxa-pag button { width: 32px; height: 32px; border: none; background: none; cursor: pointer; color: inherit; display: inline-flex; align-items: center; justify-content: center; }
+  .cxa-pag button:disabled { opacity: .35; cursor: default; }
+  .cxa-dia { font-size: 12px; font-weight: 600; color: var(--ds-color-text-muted); text-transform: uppercase; letter-spacing: .4px; padding: 16px 4px 6px; }
+  .cxa-vazio { padding: 56px 16px; text-align: center; color: var(--ds-color-text-muted); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .cxa-vazio strong { font-size: 16px; color: var(--ds-color-text); font-weight: 600; }
+  .cxa-lista { display: flex; flex-direction: column; }
+  .cxa-linha { display: grid; grid-template-columns: 24px 24px 24px 200px minmax(0, 1fr) 64px; grid-template-areas: "sel star ico tag txt hora"; align-items: center; gap: 4px 10px;
+    padding: 8px 10px; cursor: pointer; user-select: none; background: var(--ds-color-surface-2); border-bottom: 1px solid var(--ds-color-border); }
+  .cxa-linha.nao-lida { background: var(--ds-color-surface); }
+  .cxa-linha.sel { background: var(--ds-sidebar-item-active); }
+  .cxa-linha:hover { box-shadow: inset 1px 0 0 var(--ds-color-border), inset -1px 0 0 var(--ds-color-border), 0 1px 2px rgba(16, 38, 73, .12); }
+  .cxa-linha .c-sel { grid-area: sel; } .cxa-linha .c-star { grid-area: star; } .cxa-linha .c-ico { grid-area: ico; }
+  .cxa-linha .c-tag { grid-area: tag; display: flex; gap: 6px; align-items: center; min-width: 0; }
+  .cxa-linha .c-txt { grid-area: txt; min-width: 0; display: flex; gap: 6px; align-items: baseline; overflow: hidden; }
+  .cxa-linha .c-res { grid-area: res; display: none; font-size: 13px; color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cxa-linha .c-hora { grid-area: hora; font-size: 12px; color: var(--ds-color-text-muted); white-space: nowrap; justify-self: end; }
+  .cxa-linha .c-ico { font-size: 20px; color: var(--ds-color-text-muted); }
+  .cxa-linha.nao-lida .c-ico { color: var(--ds-color-action); }
+  .cxa-linha.nao-lida .c-titulo, .cxa-linha.nao-lida .c-hora { font-weight: 600; }
+  .cxa-linha .c-titulo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; max-width: 70%; }
+  .cxa-linha .c-inline { color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 100 0; min-width: 0; }
+  .cxa-rotulo { font-size: 12px; color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cxa-estrela { border: none; background: none; cursor: pointer; padding: 0; display: flex; color: var(--ds-color-text-muted); }
+  .cxa-estrela.on { color: var(--ds-color-warning-fg); }
+  .cxa-estrela.on .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+  .cxa-estrela .material-symbols-outlined { font-size: 20px; }
+  .cxa-pilula { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .cxa-pilula .material-symbols-outlined { font-size: 14px; }
+  .cxa-qtd { font-size: 12px; font-weight: 600; padding: 0 6px; border-radius: 999px; background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); color: var(--ds-color-text-muted); flex-shrink: 0; }
+  @media (max-width: 1100px) { .cxa-linha { grid-template-columns: 24px 24px 24px 130px minmax(0, 1fr) 64px; } }
+  @media (max-width: 768px) {
+    #page-mensagens h1.cxa-titulo { font-size: 24px; }
+    .cxa-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+    .cxa-linha { grid-template-columns: 24px 24px minmax(0, 1fr) auto; grid-template-areas: "sel ico tag star" "txt txt txt txt" "res res res hora"; padding: 12px; border: 1px solid var(--ds-color-border);
+      border-radius: 10px; background: var(--ds-color-surface); }
+    .cxa-linha.sel { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); }
+    .cxa-linha .c-star { grid-area: star; justify-self: end; }
+    .cxa-linha .c-titulo { max-width: 100%; }
+    .cxa-linha .c-inline { display: none; }
+    .cxa-linha .c-res { display: block; }
+    .cxa-linha:hover { box-shadow: none; }
+  }
+
+  /* leitura */
+  .cxa-artigo { max-width: 760px; margin: 0 auto; }
+  .cxa-artigo-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; font-size: 13px; color: var(--ds-color-text-muted); }
+  .cxa-cat { padding: 3px 12px; border-radius: 999px; background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); font-size: 12px; font-weight: 500; }
+  .cxa-cat.urgente { background: var(--ds-color-danger-bg); color: var(--ds-color-danger-fg); }
+  .cxa-artigo h1 { margin: 0 0 8px; font-size: 30px; font-weight: 600; color: var(--ds-color-heading); text-wrap: pretty; }
+  .cxa-artigo .cxa-resumo { margin: 0 0 24px; font-size: 16px; color: var(--ds-color-text-muted); text-wrap: pretty; }
+  .nt-corpo { font-size: 15px; line-height: 1.6; }
+  .nt-corpo img { max-width: 100%; height: auto; }
+  .nt-corpo blockquote { border-left: 3px solid var(--ds-color-border); margin: 0; padding-left: 12px; color: var(--ds-color-text-muted); }
+
+  /* preferências */
+  .cxa-prefs { max-width: 760px; display: flex; flex-direction: column; gap: 24px; }
+  .cxa-pref-grupo-topo { display: flex; align-items: center; gap: 10px; padding: 0 4px 8px; border-bottom: 1px solid var(--ds-color-border); }
+  .cxa-pref-grupo-topo .material-symbols-outlined { font-size: 20px; color: var(--ds-color-action); }
+  .cxa-pref-grupo-topo strong { flex: 1; font-size: 16px; font-weight: 600; }
+  .cxa-pref-col { width: 72px; text-align: center; font-size: 12px; color: var(--ds-color-text-muted); }
+  .cxa-pref-linha { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--ds-color-border); min-height: 24px; }
+  .cxa-pref-rotulo { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; }
+  .cxa-pref-sw { width: 72px; display: flex; justify-content: center; }
+</style>
+
+<script>
+var CXA_LIM = 20;
+var _cxa = { view: 'caixa', aba: 'todas', grupo: '', busca: '', offset: 0, res: null, sel: {}, carregando: false, grupos: null, menuGrupo: false, prefs: null, leitura: null, reqSeq: 0, tBusca: null };
+
+function cxaRaiz() { return document.getElementById('cxa-raiz'); }
+
+function initMensagens(extra) {
+  var view = extra.view || 'caixa';
+  _cxa.view = view;
+  _cxa.menuGrupo = false;
+  var crumbs = { caixa: [{ label: 'Mensagens' }], leitura: [{ label: 'Mensagens', page: 'mensagens' }, { label: 'Leitura' }], prefs: [{ label: 'Mensagens', page: 'mensagens' }, { label: 'Preferências de notificação' }] };
+  setBreadcrumb(crumbs[view] || crumbs.caixa);
+  if (view === 'leitura') return cxaCarregarLeitura(extra.id);
+  if (view === 'prefs') return cxaCarregarPrefs();
+  if (!_cxa.grupos) cxaCarregarGrupos();
+  cxaCarregar({ offset: 0 });
+}
+
+// ============ CAIXA ============
+function cxaCarregarGrupos() {
+  ntfChamar('apiGetPreferenciasNotificacao', [], function (r) {
+    _cxa.grupos = (r.grupos || []).map(function (g) { return g.grupo; });
+  }, function () { _cxa.grupos = []; });
+}
+function cxaRecarregar() { if (_cxa.view === 'caixa' && !document.getElementById('page-mensagens').classList.contains('hidden')) cxaCarregar({}); }
+function cxaCarregar(patch) {
+  Object.assign(_cxa, patch || {});
+  var seq = ++_cxa.reqSeq;
+  _cxa.carregando = !_cxa.res;
+  cxaRenderCaixa();
+  ntfChamar('apiGetNotificacoes', [{ aba: _cxa.aba, busca: _cxa.busca, grupo: _cxa.grupo, limite: CXA_LIM, offset: _cxa.offset }], function (r) {
+    if (seq !== _cxa.reqSeq) return;
+    _cxa.res = r; _cxa.carregando = false;
+    _cxa.sel = {};
+    ntfDefinirContagem(r.naoLidas);
+    cxaRenderCaixa();
+  }, function (e) { _cxa.carregando = false; cxaRenderCaixa(); ntfErro(e); });
+}
+function cxaAtualizarContagemAbas() { if (_cxa.view === 'caixa' && _cxa.res) cxaRenderAbas(); }
+function cxaItem(id) { return ((_cxa.res && _cxa.res.itens) || []).find(function (n) { return String(n.id) === String(id); }); }
+function cxaSelIds() { return Object.keys(_cxa.sel).filter(function (k) { return _cxa.sel[k]; }); }
+
+function cxaRenderAbas() {
+  var def = [['todas', 'Todas', 'inbox'], ['naoLidas', 'Não lidas', 'mark_email_unread'], ['estreladas', 'Estreladas', 'star'], ['arquivadas', 'Arquivadas', 'archive']];
+  var el = document.getElementById('cxa-abas');
+  if (!el) return;
+  el.innerHTML = def.map(function (a) {
+    return '<button type="button" class="cxa-aba' + (_cxa.aba === a[0] ? ' ativa' : '') + '" onclick="cxaMudarAba(\'' + a[0] + '\')"><span class="material-symbols-outlined">' + a[2] + '</span>' + a[1]
+      + (a[0] === 'naoLidas' && _ntf.cont ? '<span class="cxa-aba-n">' + _ntf.cont + '</span>' : '') + '</button>';
+  }).join('');
+}
+
+function cxaRenderCaixa() {
+  var raiz = cxaRaiz();
+  if (_cxa.view !== 'caixa') return;
+  var foco = document.activeElement && document.activeElement.id === 'cxa-busca' ? document.activeElement.selectionStart : null;
+  var res = _cxa.res || { itens: [], total: 0 };
+  var sels = cxaSelIds(), selItens = res.itens.filter(function (n) { return _cxa.sel[n.id]; });
+  var ini = res.total ? _cxa.offset + 1 : 0, fim = Math.min(_cxa.offset + CXA_LIM, res.total);
+
+  var barra = '<input type="checkbox" aria-label="Selecionar todos"' + (res.itens.length && selItens.length === res.itens.length ? ' checked' : '') + ' onchange="cxaToggleTodos()">';
+  if (!selItens.length) {
+    barra += '<div class="cxa-busca"><span class="material-symbols-outlined">search</span><input id="cxa-busca" value="' + escapeHtml(_cxa.busca) + '" placeholder="Buscar" aria-label="Buscar" oninput="cxaBuscar(this.value)">'
+      + (_cxa.busca ? '<button type="button" aria-label="Limpar busca" onclick="cxaBuscar(\'\', true)"><span class="material-symbols-outlined">close</span></button>' : '') + '</div>';
+    barra += '<div style="position:relative"><button type="button" class="cxa-filtro' + (_cxa.grupo ? ' ativo' : '') + '" onclick="cxaToggleMenuGrupo()">' + escapeHtml(_cxa.grupo || 'Grupo') + '<span class="material-symbols-outlined" style="font-size:18px">arrow_drop_down</span></button>';
+    if (_cxa.menuGrupo) {
+      barra += '<div class="cxa-menu">' + [''].concat(_cxa.grupos || []).map(function (g, i) {
+        return '<button type="button" onclick="cxaFiltrarGrupo(' + i + ')"><span class="material-symbols-outlined" style="visibility:' + (_cxa.grupo === g ? 'visible' : 'hidden') + '">check</span>' + escapeHtml(g || 'Todos') + '</button>';
+      }).join('') + '</div>';
+    }
+    barra += '</div>';
+  } else {
+    var todasLidas = selItens.every(function (n) { return n.lida; }), todasArq = selItens.every(function (n) { return n.arquivada; }), todasEst = selItens.every(function (n) { return n.estrelada; });
+    var A = function (icone, rot, acao) { return '<button type="button" class="cxa-btn-icone pq" data-title="' + rot + '" aria-label="' + rot + '" onclick="cxaLote(\'' + acao + '\')"><span class="material-symbols-outlined" style="font-size:20px">' + icone + '</span></button>'; };
+    barra += '<span style="font-size:13px;font-weight:500;margin-right:4px">' + selItens.length + (selItens.length > 1 ? ' selecionadas' : ' selecionada') + '</span>'
+      + (todasLidas ? A('mark_email_unread', 'Marcar como não lida', 'NAO_LIDA') : A('drafts', 'Marcar como lida', 'LIDA'))
+      + (todasArq ? A('unarchive', 'Desarquivar', 'DESARQUIVAR') : A('archive', 'Arquivar', 'ARQUIVAR'))
+      + (todasEst ? A('star', 'Desestrelar', 'DESESTRELAR') : A('star', 'Estrelar', 'ESTRELAR'));
+  }
+  barra += '<div class="cxa-pag"><span>' + (res.total ? ini + '–' + fim + ' de ' + res.total : '') + '</span>'
+    + '<button type="button" aria-label="Anterior"' + (_cxa.offset === 0 ? ' disabled' : '') + ' onclick="cxaPagina(-1)"><span class="material-symbols-outlined" style="font-size:20px">chevron_left</span></button>'
+    + '<button type="button" aria-label="Próxima"' + (fim >= res.total ? ' disabled' : '') + ' onclick="cxaPagina(1)"><span class="material-symbols-outlined" style="font-size:20px">chevron_right</span></button></div>';
+
+  var lista = '';
+  if (_cxa.carregando) lista = '<div class="cxa-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
+  else if (!res.itens.length) lista = '<div class="cxa-vazio"><span class="material-symbols-outlined" style="font-size:40px;opacity:.6">inbox</span><strong>Nada por aqui</strong><span style="font-size:13px">'
+    + (_cxa.busca || _cxa.grupo ? 'Nenhum resultado para o filtro.' : 'Sem notificações nesta aba.') + '</span></div>';
+  else {
+    var dias = [];
+    res.itens.forEach(function (n) { var r = ntfRotuloDia(n.atualizadoEm), d = dias.find(function (x) { return x.rotulo === r; }); if (!d) dias.push(d = { rotulo: r, itens: [] }); d.itens.push(n); });
+    lista = dias.map(function (d) { return '<div class="cxa-dia">' + escapeHtml(d.rotulo) + '</div><div class="cxa-lista">' + d.itens.map(cxaLinhaHtml).join('') + '</div>'; }).join('');
+  }
+
+  raiz.innerHTML = '<div class="cxa-cabecalho"><h1 class="cxa-titulo cxa-esp">Mensagens</h1>'
+    + '<button type="button" class="cxa-btn-icone" data-title="Preferências de notificação" aria-label="Preferências de notificação" onclick="navigate(\'mensagens\', { view: \'prefs\' })"><span class="material-symbols-outlined" style="font-size:20px">tune</span></button>'
+    + (_ntf.perfil !== 'USUARIO' ? '<button type="button" class="btn btn-outline" onclick="navigate(\'mensagens-enviadas\')"><span class="material-symbols-outlined" style="font-size:18px">campaign</span> Mensagens enviadas</button>' : '')
+    + '</div><div class="cxa-abas" id="cxa-abas"></div><div class="cxa-barra">' + barra + '</div>' + lista;
+  cxaRenderAbas();
+  if (foco !== null) { var b = document.getElementById('cxa-busca'); if (b) { b.focus(); b.setSelectionRange(foco, foco); } }
+}
+
+function cxaLinhaHtml(n) {
+  var id = escapeHtml(n.id), sel = !!_cxa.sel[n.id];
+  return '<div class="cxa-linha' + (n.lida ? '' : ' nao-lida') + (sel ? ' sel' : '') + '" onclick="cxaClique(event, \'' + id + '\')">'
+    + '<input class="c-sel" type="checkbox"' + (sel ? ' checked' : '') + ' aria-label="Selecionar" onclick="event.stopPropagation(); cxaSelecionar(\'' + id + '\')">'
+    + '<button type="button" class="cxa-estrela c-star' + (n.estrelada ? ' on' : '') + '" data-title="' + (n.estrelada ? 'Desestrelar' : 'Estrelar') + '" aria-label="' + (n.estrelada ? 'Desestrelar' : 'Estrelar') + '" onclick="event.stopPropagation(); cxaEstrela(\'' + id + '\')"><span class="material-symbols-outlined">star</span></button>'
+    + '<span class="material-symbols-outlined c-ico">' + ntfIcone(n.grupo) + '</span>'
+    + '<div class="c-tag">' + (n.origem === 'MENSAGEM' ? '<span class="cxa-pilula"><span class="material-symbols-outlined">campaign</span>Mensagem</span>' : '')
+    + '<span class="cxa-rotulo" data-title="' + escapeHtml(n.rotulo) + '">' + escapeHtml(n.rotulo) + '</span></div>'
+    + '<div class="c-txt"><span class="c-titulo" data-title="' + escapeHtml(n.titulo) + '">' + escapeHtml(n.titulo) + '</span>'
+    + (n.qtd > 1 ? '<span class="cxa-qtd" data-title="Ocorrências agrupadas">' + n.qtd + '</span>' : '')
+    + (n.resumo ? '<span class="c-inline">— ' + escapeHtml(n.resumo) + '</span>' : '') + '</div>'
+    + (n.resumo ? '<span class="c-res">' + escapeHtml(n.resumo) + '</span>' : '')
+    + '<span class="c-hora">' + ntfHora(n.atualizadoEm) + '</span></div>';
+}
+
+function cxaMudarAba(aba) { cxaCarregar({ aba: aba, offset: 0, sel: {} }); }
+function cxaPagina(d) { cxaCarregar({ offset: Math.max(0, _cxa.offset + d * CXA_LIM) }); }
+function cxaBuscar(v, agora) {
+  _cxa.busca = v;
+  clearTimeout(_cxa.tBusca);
+  if (agora) return cxaCarregar({ offset: 0 });
+  _cxa.tBusca = setTimeout(function () { cxaCarregar({ offset: 0 }); }, 250);
+}
+function cxaToggleMenuGrupo() { _cxa.menuGrupo = !_cxa.menuGrupo; cxaRenderCaixa(); }
+function cxaFiltrarGrupo(i) { var g = [''].concat(_cxa.grupos || [])[i] || ''; _cxa.menuGrupo = false; cxaCarregar({ grupo: g, offset: 0 }); }
+document.addEventListener('mousedown', function (e) { if (_cxa.menuGrupo && !e.target.closest('.cxa-menu') && !e.target.closest('.cxa-filtro')) { _cxa.menuGrupo = false; cxaRenderCaixa(); } });
+function cxaSelecionar(id) { _cxa.sel[id] = !_cxa.sel[id]; cxaRenderCaixa(); }
+function cxaToggleTodos() {
+  var itens = (_cxa.res && _cxa.res.itens) || [], todos = itens.length && cxaSelIds().length === itens.length;
+  _cxa.sel = {}; if (!todos) itens.forEach(function (n) { _cxa.sel[n.id] = true; });
+  cxaRenderCaixa();
+}
+function cxaClique(ev, id) {
+  if (ev.ctrlKey || ev.metaKey) return cxaSelecionar(id);
+  var n = cxaItem(id); if (!n) return;
+  _cxa.sel = {};
+  ntfAbrir(n);
+}
+function cxaMarcar(ids, acao) { ntfChamar('apiMarcarNotificacoes', [ids, acao], function () { cxaCarregar({}); ntfContar(); }); }
+function cxaEstrela(id) { var n = cxaItem(id); if (n) cxaMarcar([n.id], n.estrelada ? 'DESESTRELAR' : 'ESTRELAR'); }
+function cxaLote(acao) { var ids = cxaSelIds(); _cxa.sel = {}; if (ids.length) cxaMarcar(ids, acao); }
+
+// ============ LEITURA DE MENSAGEM ============
+function cxaCarregarLeitura(id) {
+  cxaRaiz().innerHTML = '<div class="cxa-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
+  ntfChamar('apiLerMensagemSistema', [id], function (m) {
+    _cxa.leitura = m;
+    ntfContar();
+    var d = new Date(ntfMs(m.publicadaEm)).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+    cxaRaiz().innerHTML = '<article class="cxa-artigo"><div class="cxa-artigo-meta"><span class="cxa-cat' + (m.categoria === 'MSG_URGENTE' ? ' urgente' : '') + '">' + escapeHtml(m.categoriaRotulo) + '</span>'
+      + '<span>' + d + '</span>' + (m.editada ? '<span style="font-size:12px">· editada</span>' : '') + '</div>'
+      + '<h1>' + escapeHtml(m.titulo) + '</h1><p class="cxa-resumo">' + escapeHtml(m.resumo) + '</p><div class="nt-corpo" id="cxa-corpo"></div></article>';
+    document.getElementById('cxa-corpo').innerHTML = m.corpoHtml; // já sanitizado no servidor (ao salvar e ao servir)
+  }, function () { navigate('mensagens', { view: 'caixa' }); ntfNeutro(); });
+}
+
+// ============ PREFERÊNCIAS ============
+function cxaCarregarPrefs() {
+  cxaRaiz().innerHTML = '<div class="cxa-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
+  ntfChamar('apiGetPreferenciasNotificacao', [], function (r) { _cxa.prefs = r; cxaRenderPrefs(); });
+}
+function cxaRenderPrefs() {
+  var grupos = (_cxa.prefs.grupos || []).filter(function (g) { return g.itens.length; });
+  cxaRaiz().innerHTML = '<h1 class="cxa-titulo" style="margin-bottom:20px">Preferências de notificação</h1><div class="cxa-prefs">' + grupos.map(function (g, gi) {
+    return '<section><div class="cxa-pref-grupo-topo"><span class="material-symbols-outlined">' + ntfIcone(g.grupo) + '</span><strong>' + escapeHtml(g.grupo) + '</strong>'
+      + '<span class="cxa-pref-col">No app</span><span class="cxa-pref-col">Por e-mail</span></div>'
+      + g.itens.map(function (it, ii) {
+        var base = 'cxaPref(' + gi + ', ' + ii + ', ';
+        return '<div class="cxa-pref-linha"><span class="cxa-pref-rotulo">' + escapeHtml(it.rotulo) + ' ' + ntfInfoHtml(it.descricao)
+          + (it.travada ? ' <span class="material-symbols-outlined ntf-info" data-title="Definido pela administração; não pode ser alterado.">lock</span>' : '') + '</span>'
+          + '<span class="cxa-pref-sw">' + ntfSwitchHtml(it.app, it.travada, base + '\'app\')', 'No app') + '</span>'
+          + '<span class="cxa-pref-sw">' + (it.app ? ntfSwitchHtml(it.email, it.travada, base + '\'email\')', 'Por e-mail') : '') + '</span></div>';
+      }).join('') + '</section>';
+  }).join('') + '</div>';
+}
+function cxaPref(gi, ii, qual) {
+  var grupos = (_cxa.prefs.grupos || []).filter(function (g) { return g.itens.length; });
+  var it = grupos[gi].itens[ii], antes = { app: it.app, email: it.email };
+  if (qual === 'app') { it.app = !it.app; if (!it.app) it.email = false; } else { it.email = !it.email; it.app = true; }
+  cxaRenderPrefs();
+  ntfChamar('apiSalvarPreferenciaNotificacao', [it.chave, it.app, it.email], function () {}, function (e) { it.app = antes.app; it.email = antes.email; cxaRenderPrefs(); ntfErro(e); });
+}
+</script>
+
+       <!-- ARQUIVO: pages_mensagens_enviadas.html
+     Mensagens da administração: lista com métricas e criador/editor (ADMIN/DEV e dirigentes de unidade; o servidor recusa os demais).
+     Prefixo de globais: mse. Helpers compartilhados (chamadas, switch, erros) em components_notificacoes.html (ntf). -->
+
+<div id="page-mensagens-enviadas" class="page-content hidden">
+  <div id="mse-raiz"></div>
+</div>
+
+<style>
+  #page-mensagens-enviadas h1.mse-titulo { margin: 0; font-size: 30px; font-weight: 600; color: var(--ds-color-heading); }
+  .mse-cabecalho { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .mse-cabecalho .mse-esp { flex: 1; }
+  .mse-vazio { padding: 56px 16px; text-align: center; color: var(--ds-color-text-muted); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .mse-vazio strong { font-size: 16px; color: var(--ds-color-text); font-weight: 600; }
+  .mse-grade { display: grid; grid-template-columns: minmax(0, 1fr) 150px 110px 90px 90px 130px 110px; gap: 10px; align-items: center; }
+  .mse-cab { padding: 8px 10px; border-bottom: 1px solid var(--ds-color-border); font-size: 12px; font-weight: 600; color: var(--ds-color-text-muted); }
+  .mse-linha { padding: 10px; border-bottom: 1px solid var(--ds-color-border); background: var(--ds-color-surface); }
+  .mse-tit { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .mse-tit span:first-child { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mse-tit span:last-child { font-size: 12px; color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mse-cat { font-size: 13px; color: var(--ds-color-text-muted); }
+  .mse-st { padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); }
+  .mse-st.AGENDADA { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
+  .mse-st.PUBLICADA { background: var(--ds-color-success-bg); color: var(--ds-color-success-fg); }
+  .mse-st.CANCELADA { background: var(--ds-color-danger-bg); color: var(--ds-color-danger-fg); }
+  .mse-acoes { display: flex; gap: 4px; justify-content: flex-end; }
+  .mse-btn-ico { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--ds-glass-border); background: var(--ds-glass-bg-strong); cursor: pointer; color: var(--ds-color-text-muted); display: inline-flex; align-items: center; justify-content: center; }
+  .mse-btn-ico:hover { color: var(--ds-color-action); }
+  .mse-btn-ico.perigo:hover { color: var(--ds-color-danger-fg); }
+  .mse-btn-ico .material-symbols-outlined { font-size: 18px; }
+  .mse-grade .lbl { display: none; }
+  @media (max-width: 768px) {
+    #page-mensagens-enviadas h1.mse-titulo { font-size: 24px; }
+    .mse-cab { display: none; }
+    .mse-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+    .mse-linha { border: 1px solid var(--ds-color-border); border-radius: 10px; padding: 12px; }
+    .mse-grade { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "cat st ac" "tit tit tit" "ent lid em"; gap: 6px 10px; }
+    .mse-grade > .g-tit { grid-area: tit; } .mse-grade > .g-cat { grid-area: cat; } .mse-grade > .g-st { grid-area: st; }
+    .mse-grade > .g-ent { grid-area: ent; } .mse-grade > .g-lid { grid-area: lid; } .mse-grade > .g-em { grid-area: em; } .mse-grade > .g-ac { grid-area: ac; }
+    .mse-grade .lbl { display: inline; }
+  }
+
+  /* editor */
+  .mse-form { max-width: 820px; display: flex; flex-direction: column; gap: 18px; }
+  .mse-campo { display: flex; flex-direction: column; gap: 6px; }
+  .mse-rotulo { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; }
+  .mse-rotulo .mse-cont { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--ds-color-text-muted); }
+  .mse-input, .mse-select { height: 40px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--ds-color-border); border-radius: 4px; font-size: 14px; font-family: inherit;
+    background: var(--ds-color-surface); color: var(--ds-color-text); width: 100%; }
+  .mse-select { max-width: 360px; }
+  .mse-input.data { max-width: 240px; }
+  .mse-linha-sw { display: flex; align-items: center; gap: 10px; }
+  .mse-linha-sw strong { font-weight: 500; font-size: 14px; }
+  .mse-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .mse-chip { height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--ds-color-border); background: var(--ds-color-surface); color: var(--ds-color-text); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; }
+  .mse-chip.ativo { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); color: var(--ds-color-action); }
+  .mse-lista-aud { border: 1px solid var(--ds-color-border); border-radius: 8px; max-height: 260px; overflow-y: auto; }
+  .mse-opcao { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--ds-color-border); }
+  .mse-opcao:last-child { border-bottom: none; }
+  .mse-opcao:hover { background: var(--ds-sidebar-item-hover); }
+  .mse-opcao input { width: 16px; height: 16px; margin: 0; accent-color: var(--ds-color-action); }
+  .mse-opcao small { color: var(--ds-color-text-muted); margin-left: auto; }
+  .mse-ferramentas { display: flex; gap: 2px; flex-wrap: wrap; padding: 6px; border: 1px solid var(--ds-color-border); border-bottom: none; border-radius: 8px 8px 0 0; background: var(--ds-color-surface-2); }
+  .mse-ferramentas button { width: 34px; height: 34px; border: none; background: none; border-radius: 6px; cursor: pointer; color: var(--ds-color-text-muted); display: inline-flex; align-items: center; justify-content: center; }
+  .mse-ferramentas button:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
+  .mse-ferramentas .material-symbols-outlined { font-size: 20px; }
+  .mse-editor { min-height: 240px; max-height: 520px; overflow-y: auto; padding: 12px; border: 1px solid var(--ds-color-border); border-radius: 0 0 8px 8px; background: var(--ds-color-surface); color: var(--ds-color-text);
+    font-size: 15px; line-height: 1.6; outline: none; }
+  .mse-editor:focus { border-color: var(--ds-color-action); }
+  .mse-editor img { max-width: 100%; height: auto; }
+  .mse-editor blockquote { border-left: 3px solid var(--ds-color-border); margin: 0; padding-left: 12px; color: var(--ds-color-text-muted); }
+  .mse-erro { font-size: 12px; color: var(--ds-color-danger-fg); }
+  .mse-rodape { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 4px; }
+  .mse-rodape .mse-aud-txt { font-size: 13px; color: var(--ds-color-text-muted); margin-right: auto; }
+  .mse-rodape button:disabled { opacity: .5; cursor: not-allowed; }
+</style>
+
+<script>
+var _mse = { view: 'lista', itens: null, opcoes: null, form: null, nAud: null, audBusca: '', imgErro: '', tAud: null };
+var MSE_AUD = { TODOS: 'Todos', PAPEIS: 'Papéis', UNIDADES: 'Unidades', USUARIOS: 'Usuários', PLANOS: 'Responsáveis de planos' };
+var MSE_TAGS = 'P BR STRONG B EM I U S DEL UL OL LI H2 H3 H4 BLOCKQUOTE A IMG HR CODE PRE'.split(' ');
+
+function mseRaiz() { return document.getElementById('mse-raiz'); }
+function initMensagensEnviadas() { mseCarregarLista(); }
+
+// ============ LISTA ============
+function mseCarregarLista() {
+  _mse.view = 'lista';
+  mseRaiz().innerHTML = '<div class="mse-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
+  ntfChamar('apiGetMensagensSistema', [], function (r) { _mse.itens = r.itens || []; mseRenderLista(); }, function (e) {
+    navigate('mensagens', { view: 'caixa' }); ntfErro(e);
+  });
+}
+function mseFmtData(iso) { var t = ntfMs(iso); return t ? new Date(t).toLocaleDateString('pt-BR') : '—'; }
+function mseRenderLista() {
+  var ST = { RASCUNHO: 'Rascunho', AGENDADA: 'Agendada', PUBLICADA: 'Publicada', CANCELADA: 'Cancelada', EXPIRADA: 'Expirada' };
+  var itens = _mse.itens || [];
+  var html = '<div class="mse-cabecalho"><h1 class="mse-titulo mse-esp">Mensagens enviadas</h1>'
+    + '<button type="button" class="btn btn-primary" onclick="mseAbrirEditor(null)"><span class="material-symbols-outlined" style="font-size:18px">add</span> Nova mensagem</button></div>';
+  if (!itens.length) html += '<div class="mse-vazio"><span class="material-symbols-outlined" style="font-size:40px;opacity:.6">campaign</span><strong>Nenhuma mensagem</strong></div>';
+  else {
+    html += '<div class="mse-grade mse-cab"><span>Mensagem</span><span>Categoria</span><span>Status</span><span>Entregues</span><span>Lidas</span><span>E-mails</span><span></span></div><div class="mse-lista">';
+    html += itens.map(function (m, i) {
+      var pub = m.status === 'PUBLICADA' || m.status === 'EXPIRADA' || m.status === 'CANCELADA', x = m.metricas || {};
+      var sub = (m.status === 'AGENDADA' ? 'Agendada para ' + new Date(ntfMs(m.agendadaPara)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : mseFmtData(m.publicadaEm)) + (m.editada ? ' · editada' : '');
+      var ac = '';
+      if (m.modoEdicao !== 'NENHUMA') ac += '<button type="button" class="mse-btn-ico" data-title="' + (m.status === 'PUBLICADA' ? 'Corrigir' : 'Editar') + '" aria-label="' + (m.status === 'PUBLICADA' ? 'Corrigir' : 'Editar') + '" onclick="mseAbrirEditor(' + i + ')"><span class="material-symbols-outlined">edit</span></button>';
+      if (m.status === 'PUBLICADA' || m.status === 'AGENDADA') ac += '<button type="button" class="mse-btn-ico perigo" data-title="Cancelar mensagem" aria-label="Cancelar mensagem" onclick="mseCancelar(' + i + ')"><span class="material-symbols-outlined">cancel</span></button>';
+      if (m.status === 'RASCUNHO') ac += '<button type="button" class="mse-btn-ico perigo" data-title="Excluir" aria-label="Excluir" onclick="mseExcluir(' + i + ')"><span class="material-symbols-outlined">delete</span></button>';
+      return '<div class="mse-grade mse-linha"><div class="mse-tit g-tit"><span data-title="' + escapeHtml(m.titulo) + '">' + escapeHtml(m.titulo) + '</span><span>' + escapeHtml(sub) + '</span></div>'
+        + '<span class="mse-cat g-cat">' + escapeHtml(m.categoriaRotulo) + '</span><span class="g-st"><span class="mse-st ' + m.status + '">' + ST[m.status] + '</span></span>'
+        + '<span class="g-ent">' + (pub ? (x.entregues || 0) + '<span class="lbl"> entregues</span>' : '—') + '</span>'
+        + '<span class="g-lid">' + (pub ? (x.lidas || 0) + '<span class="lbl"> lidas</span>' : '—') + '</span>'
+        + '<span class="g-em">' + (pub ? (x.emailsEnviados || 0) + ' / ' + (x.emailsPendentes || 0) + ' pend.' : '—') + '</span><span class="mse-acoes g-ac">' + ac + '</span></div>';
+    }).join('') + '</div>';
+  }
+  mseRaiz().innerHTML = html;
+}
+function mseCancelar(i) {
+  var m = _mse.itens[i];
+  showConfirm('Cancelar mensagem?', 'Ela sai das caixas de entrada de quem ainda não leu.', function () {
+    ntfChamar('apiCancelarMensagemSistema', [m.id], mseCarregarLista);
+  });
+}
+function mseExcluir(i) {
+  var m = _mse.itens[i];
+  showConfirm('Excluir rascunho?', 'Esta ação não pode ser desfeita.', function () {
+    ntfChamar('apiExcluirMensagemSistema', [m.id], mseCarregarLista);
+  });
+}
+
+// ============ EDITOR ============
+function mseLocal(iso) {
+  var t = ntfMs(iso); if (!t) return '';
+  var d = new Date(t), p = function (n) { return ('0' + n).slice(-2); };
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+function mseAbrirEditor(i) {
+  var m = i === null ? null : _mse.itens[i];
+  _mse.view = 'editor'; _mse.nAud = null; _mse.audBusca = ''; _mse.imgErro = '';
+  setBreadcrumb([{ label: 'Mensagens', page: 'mensagens' }, { label: 'Mensagens enviadas', page: 'mensagens-enviadas' }, { label: m ? (m.status === 'PUBLICADA' ? 'Corrigir mensagem' : 'Editar mensagem') : 'Nova mensagem' }]);
+  mseRaiz().innerHTML = '<div class="mse-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
+  ntfChamar('apiGetOpcoesMensagem', [], function (op) {
+    _mse.opcoes = op;
+    var base = { id: null, titulo: '', resumo: '', corpoHtml: '', categoria: op.categorias[0].chave, audiencia: { tipo: op.tiposAudiencia[0], ids: [] }, unidadesModo: 'todas', obrigatoria: false, enviarEmail: false, agendadaPara: '', expiraEm: '', status: 'RASCUNHO' };
+    if (!m) { _mse.form = base; return mseRenderEditor(); }
+    ntfChamar('apiGetMensagemSistemaParaEditar', [m.id], function (c) {
+      var f = Object.assign(base, c);
+      f.agendadaPara = mseLocal(c.agendadaPara); f.expiraEm = mseLocal(c.expiraEm);
+      f.audiencia = { tipo: c.audiencia.tipo, ids: (c.audiencia.ids || []).map(String) };
+      f.unidadesModo = op.perfil === 'DIRIGENTE' && f.audiencia.tipo === 'UNIDADES' && f.audiencia.ids.length && f.audiencia.ids.length < (op.unidadesPermitidas || []).length ? 'algumas' : 'todas';
+      _mse.form = f; mseRenderEditor();
+    }, function (e) { mseCarregarLista(); ntfErro(e); });
+  }, function (e) { navigate('mensagens', { view: 'caixa' }); ntfErro(e); });
+}
+function mseAudEfetiva() {
+  var f = _mse.form, op = _mse.opcoes;
+  if (op.perfil === 'DIRIGENTE' && f.audiencia.tipo === 'UNIDADES' && f.unidadesModo === 'todas') return { tipo: 'UNIDADES', ids: (op.unidadesDirigidas || []).map(String) };
+  return { tipo: f.audiencia.tipo, ids: f.audiencia.ids.slice() };
+}
+function mseAudVazia() {
+  var f = _mse.form, op = _mse.opcoes;
+  if (f.audiencia.tipo === 'TODOS') return false;
+  if (op.perfil === 'DIRIGENTE' && f.audiencia.tipo === 'UNIDADES' && f.unidadesModo === 'todas') return false;
+  return !f.audiencia.ids.length;
+}
+
+function mseRenderEditor() {
+  var f = _mse.form, op = _mse.opcoes, L = op.limites, pub = f.status === 'PUBLICADA';
+  var h = '<div class="mse-cabecalho"><button type="button" class="mse-btn-ico" aria-label="Voltar" onclick="mseCarregarLista()"><span class="material-symbols-outlined">arrow_back</span></button>'
+    + '<h1 class="mse-titulo mse-esp">' + (f.id ? (pub ? 'Corrigir mensagem' : 'Editar mensagem') : 'Nova mensagem') + '</h1></div><div class="mse-form">';
+  h += '<label class="mse-campo"><span class="mse-rotulo">Título<span class="mse-cont" id="mse-c-tit"></span></span><input class="mse-input" id="mse-tit" maxlength="' + L.tituloMax + '" value="' + escapeHtml(f.titulo) + '" oninput="mseCampo(\'titulo\', this.value)"></label>';
+  h += '<label class="mse-campo"><span class="mse-rotulo">Resumo ' + ntfInfoHtml('Aparece na caixa de entrada e no e-mail.') + '<span class="mse-cont" id="mse-c-res"></span></span><input class="mse-input" id="mse-res" maxlength="' + L.resumoMax + '" value="' + escapeHtml(f.resumo) + '" oninput="mseCampo(\'resumo\', this.value)"></label>';
+  if (!pub) {
+    h += '<label class="mse-campo"><span class="mse-rotulo">Categoria</span><select class="mse-select" id="mse-cat" onchange="mseCampo(\'categoria\', this.value)">'
+      + op.categorias.map(function (c) { return '<option value="' + escapeHtml(c.chave) + '"' + (c.chave === f.categoria ? ' selected' : '') + ' title="' + escapeHtml(c.descricao) + '">' + escapeHtml(c.rotulo) + '</option>'; }).join('') + '</select></label>';
+    h += '<div class="mse-campo"><span class="mse-rotulo">Destinatários</span><div class="mse-chips" id="mse-aud-tipos"></div><div id="mse-aud-modo"></div><div id="mse-aud-lista"></div></div>';
+    if (op.permiteObrigatoria) h += '<div class="mse-linha-sw" id="mse-sw-obrig"></div>';
+    h += '<div class="mse-linha-sw" id="mse-sw-email"></div>';
+    h += '<div style="display:flex;gap:16px;flex-wrap:wrap"><label class="mse-campo"><span class="mse-rotulo">Agendar para</span><input type="datetime-local" class="mse-input data" id="mse-agenda" value="' + escapeHtml(f.agendadaPara) + '" oninput="mseCampo(\'agendadaPara\', this.value)"></label>'
+      + '<label class="mse-campo"><span class="mse-rotulo">Expira em</span><input type="datetime-local" class="mse-input data" id="mse-expira" value="' + escapeHtml(f.expiraEm) + '" oninput="mseCampo(\'expiraEm\', this.value)"></label></div>';
+  }
+  h += '<div class="mse-campo"><span class="mse-rotulo">Mensagem<span class="mse-cont" id="mse-c-corpo"></span></span>' + mseFerramentasHtml()
+    + '<div class="mse-editor" id="mse-corpo" contenteditable="true" oninput="mseAtualizar()"></div><div class="mse-erro" id="mse-img-erro"></div>'
+    + '<input type="file" id="mse-arquivo" accept="' + escapeHtml(L.mimesImagem.join(',')) + '" class="hidden" onchange="mseArquivo(this)"></div>';
+  h += '<div class="mse-rodape" id="mse-rodape"></div></div>';
+  mseRaiz().innerHTML = h;
+  document.getElementById('mse-corpo').innerHTML = f.corpoHtml || '';
+  mseRenderAud(); mseAtualizar(); if (!pub) mseContarAud();
+}
+function mseFerramentasHtml() {
+  var F = [['format_bold', 'Negrito', "cmd('bold')"], ['format_italic', 'Itálico', "cmd('italic')"], ['format_underlined', 'Sublinhado', "cmd('underline')"], ['strikethrough_s', 'Tachado', "cmd('strikeThrough')"],
+    ['format_h2', 'Título', "cmd('formatBlock','h2')"], ['format_h3', 'Subtítulo', "cmd('formatBlock','h3')"], ['format_list_bulleted', 'Lista', "cmd('insertUnorderedList')"], ['format_list_numbered', 'Lista numerada', "cmd('insertOrderedList')"],
+    ['format_quote', 'Citação', "cmd('formatBlock','blockquote')"], ['code', 'Código', "cmd('formatBlock','pre')"], ['horizontal_rule', 'Linha', "cmd('insertHorizontalRule')"],
+    ['link', 'Link', 'link'], ['image', 'Imagem', 'imagem'], ['format_clear', 'Limpar formatação', "cmd('removeFormat')"]];
+  return '<div class="mse-ferramentas">' + F.map(function (x) {
+    var oc = x[2] === 'link' ? 'mseLink()' : x[2] === 'imagem' ? "document.getElementById('mse-arquivo').click()" : 'mse' + x[2].replace('cmd(', 'Cmd(');
+    return '<button type="button" data-title="' + x[1] + '" aria-label="' + x[1] + '" onmousedown="event.preventDefault()" onclick="' + oc + '"><span class="material-symbols-outlined">' + x[0] + '</span></button>';
+  }).join('') + '</div>';
+}
+function mseCmd(c, v) { document.getElementById('mse-corpo').focus(); document.execCommand(c, false, v); mseAtualizar(); }
+function mseLink() {
+  var u = prompt('Endereço (http, https ou mailto)');
+  if (u && /^(https?:|mailto:)/i.test(u)) mseCmd('createLink', u);
+}
+function mseCampo(k, v) { _mse.form[k] = v; mseAtualizar(); if (k === 'agendadaPara') mseAtualizar(); }
+
+function mseSanitizar(html) {
+  var doc = new DOMParser().parseFromString('<div>' + html + '</div>', 'text/html');
+  var limpa = function (el) {
+    Array.prototype.slice.call(el.childNodes).forEach(function (n) {
+      if (n.nodeType === 3) return;
+      if (n.nodeType !== 1) { n.remove(); return; }
+      limpa(n);
+      if (MSE_TAGS.indexOf(n.tagName) === -1) { n.replaceWith.apply(n, Array.prototype.slice.call(n.childNodes)); return; }
+      var keep = n.tagName === 'A' ? ['href'] : n.tagName === 'IMG' ? ['src', 'alt'] : [];
+      Array.prototype.slice.call(n.attributes).forEach(function (a) { if (keep.indexOf(a.name) === -1) n.removeAttribute(a.name); });
+      if (n.tagName === 'A' && !/^(https?:|mailto:)/i.test(n.getAttribute('href') || '')) n.replaceWith.apply(n, Array.prototype.slice.call(n.childNodes));
+    });
+  };
+  var raiz = doc.body.firstChild; limpa(raiz); return raiz.innerHTML;
+}
+
+// ---- audiência ----
+function mseRenderAud() {
+  var f = _mse.form, op = _mse.opcoes;
+  if (f.status === 'PUBLICADA') return;
+  document.getElementById('mse-aud-tipos').innerHTML = op.tiposAudiencia.map(function (t) {
+    return '<button type="button" class="mse-chip' + (f.audiencia.tipo === t ? ' ativo' : '') + '" onclick="mseTipoAud(\'' + t + '\')">' + MSE_AUD[t] + '</button>';
+  }).join('');
+  var modo = document.getElementById('mse-aud-modo'), lista = document.getElementById('mse-aud-lista');
+  var dirUnid = op.perfil === 'DIRIGENTE' && f.audiencia.tipo === 'UNIDADES';
+  modo.innerHTML = dirUnid ? '<div class="mse-chips" style="margin-top:4px"><button type="button" class="mse-chip' + (f.unidadesModo === 'todas' ? ' ativo' : '') + '" onclick="mseModoUnid(\'todas\')">Todas as minhas unidades</button>'
+    + '<button type="button" class="mse-chip' + (f.unidadesModo === 'algumas' ? ' ativo' : '') + '" onclick="mseModoUnid(\'algumas\')">Escolher algumas</button></div>' : '';
+  if (f.audiencia.tipo === 'TODOS' || (dirUnid && f.unidadesModo === 'todas')) { lista.innerHTML = ''; return; }
+  var ids = f.audiencia.ids, b = _mse.audBusca.toLowerCase(), t = f.audiencia.tipo, opcoes = [];
+  var O = function (id, rotulo, sub, nivel) { return { id: String(id), rotulo: rotulo, sub: sub || '', nivel: nivel || 0 }; };
+  if (t === 'PAPEIS') opcoes = (op.papeis || []).map(function (x) { return O(x.id, x.nome); });
+  if (t === 'UNIDADES') {
+    var us = op.unidadesPermitidas || [], vistos = {};
+    var ids_ = {}; us.forEach(function (u) { ids_[String(u.id)] = true; });
+    var anda = function (pai, n) {
+      us.filter(function (u) { var p = u.idPai ? String(u.idPai) : ''; return pai === '' ? (!p || !ids_[p]) : p === pai; }).forEach(function (u) {
+        if (vistos[u.id]) return; vistos[u.id] = true; opcoes.push(O(u.id, (u.sigla ? u.sigla + ' — ' : '') + u.nome, '', n)); anda(String(u.id), n + 1);
+      });
+    };
+    anda('', 0);
+  }
+  if (t === 'USUARIOS') {
+    var un = {}; (op.unidadesPermitidas || []).forEach(function (u) { un[String(u.id)] = u.sigla; });
+    opcoes = (op.usuarios || []).filter(function (u) { return !b || u.nome.toLowerCase().indexOf(b) !== -1; }).map(function (u) { return O(u.id, nomeRespExibicao(u.nome, 'USER'), un[String(u.idUnidade)] || ''); });
+  }
+  if (t === 'PLANOS') opcoes = (op.planos || []).filter(function (x) { return !b || x.nome.toLowerCase().indexOf(b) !== -1; }).map(function (x) { return O(x.id, x.nome); });
+  lista.innerHTML = ((t === 'USUARIOS' || t === 'PLANOS') ? '<input class="mse-input" id="mse-aud-busca" style="margin-bottom:8px" placeholder="Buscar" aria-label="Buscar" value="' + escapeHtml(_mse.audBusca) + '" oninput="mseBuscaAud(this.value)">' : '')
+    + '<div class="mse-lista-aud">' + (opcoes.length ? opcoes.map(function (o) {
+      return '<label class="mse-opcao" style="padding-left:' + (12 + o.nivel * 20) + 'px"><input type="checkbox"' + (ids.indexOf(o.id) !== -1 ? ' checked' : '') + ' onchange="mseToggleAud(\'' + escapeHtml(o.id) + '\')">'
+        + escapeHtml(o.rotulo) + (o.sub ? '<small>' + escapeHtml(o.sub) + '</small>' : '') + '</label>';
+    }).join('') : '<div class="mse-opcao">Nenhum resultado.</div>') + '</div>';
+  if (document.getElementById('mse-aud-busca') && _mse.audFoco) { var bx = document.getElementById('mse-aud-busca'); bx.focus(); bx.setSelectionRange(bx.value.length, bx.value.length); }
+}
+function mseTipoAud(t) { _mse.form.audiencia = { tipo: t, ids: [] }; _mse.audBusca = ''; _mse.audFoco = false; mseRenderAud(); mseAtualizar(); mseContarAud(); }
+function mseModoUnid(m) { _mse.form.unidadesModo = m; _mse.form.audiencia = { tipo: 'UNIDADES', ids: [] }; mseRenderAud(); mseAtualizar(); mseContarAud(); }
+function mseToggleAud(id) {
+  var ids = _mse.form.audiencia.ids, i = ids.indexOf(id);
+  if (i === -1) ids.push(id); else ids.splice(i, 1);
+  mseAtualizar(); mseContarAud();
+}
+function mseBuscaAud(v) { _mse.audBusca = v; _mse.audFoco = true; mseRenderAud(); }
+function mseContarAud() {
+  clearTimeout(_mse.tAud);
+  _mse.tAud = setTimeout(function () {
+    if (!_mse.form || mseAudVazia()) { _mse.nAud = null; return mseAtualizar(); }
+    ntfChamar('apiContarAudienciaMensagem', [mseAudEfetiva()], function (r) { _mse.nAud = r.total; mseAtualizar(); });
+  }, 250);
+}
+
+// ---- contadores, interruptores e rodapé ----
+function mseAtualizar() {
+  var f = _mse.form; if (!f || _mse.view !== 'editor') return;
+  var L = _mse.opcoes.limites, pub = f.status === 'PUBLICADA';
+  var corpo = document.getElementById('mse-corpo'); if (!corpo) return;
+  var len = corpo.innerHTML.length;
+  var set = function (id, t) { var e = document.getElementById(id); if (e) e.textContent = t; };
+  set('mse-c-tit', f.titulo.length + '/' + L.tituloMax); set('mse-c-res', f.resumo.length + '/' + L.resumoMax); set('mse-c-corpo', len + '/' + L.corpoMax);
+  set('mse-img-erro', _mse.imgErro);
+  if (!pub) {
+    var so = document.getElementById('mse-sw-obrig');
+    if (so) so.innerHTML = ntfSwitchHtml(f.obrigatoria, false, 'mseSw(\'obrigatoria\')', 'Obrigatória') + '<strong>Obrigatória</strong>' + ntfInfoHtml('Chega a todos os destinatários, mesmo a quem desligou este tipo nas preferências.');
+    var se = document.getElementById('mse-sw-email');
+    if (se) se.innerHTML = ntfSwitchHtml(f.enviarEmail, false, 'mseSw(\'enviarEmail\')', 'Enviar por e-mail') + '<strong>Enviar por e-mail</strong>';
+  }
+  var fut = !pub && f.agendadaPara && new Date(f.agendadaPara) > new Date();
+  var invalido = !f.titulo.trim() || !f.resumo.trim() || !corpo.textContent.trim() || (!pub && mseAudVazia()) || len > L.corpoMax;
+  var rod = document.getElementById('mse-rodape');
+  var aud = !pub && _mse.nAud !== null && !mseAudVazia() ? 'Será enviada a ' + _mse.nAud.toLocaleString('pt-BR') + (_mse.nAud === 1 ? ' pessoa' : ' pessoas') : '';
+  rod.innerHTML = '<span class="mse-aud-txt">' + aud + '</span>'
+    + (pub ? '' : '<button type="button" class="btn btn-outline" onclick="mseSalvarRascunho()">Salvar rascunho</button>')
+    + '<button type="button" class="btn btn-primary"' + (invalido ? ' disabled' : '') + ' onclick="msePublicar()">' + (pub ? 'Salvar correção' : fut ? 'Agendar' : 'Publicar') + '</button>';
+}
+function mseSw(k) { _mse.form[k] = !_mse.form[k]; mseAtualizar(); }
+
+// ---- imagens ----
+function mseArquivo(inp) {
+  var file = inp.files[0]; inp.value = '';
+  if (!file) return;
+  var L = _mse.opcoes.limites, corpo = document.getElementById('mse-corpo');
+  if (L.mimesImagem.indexOf(file.type) === -1) { _mse.imgErro = 'Formato não aceito. Use PNG, JPG, WEBP ou GIF.'; return mseAtualizar(); }
+  if (file.size > L.imagemMaxBytes) { _mse.imgErro = 'Imagem acima de ' + Math.round(L.imagemMaxBytes / 1048576) + ' MB.'; return mseAtualizar(); }
+  if (corpo.querySelectorAll('img').length >= L.imagensMax) { _mse.imgErro = 'Limite de ' + L.imagensMax + ' imagens por mensagem.'; return mseAtualizar(); }
+  _mse.imgErro = ''; mseAtualizar();
+  var rd = new FileReader();
+  rd.onload = function () {
+    ntfChamar('apiEnviarImagemMensagem', [{ nome: file.name, dataUrl: rd.result }], function (r) {
+      corpo.focus(); document.execCommand('insertHTML', false, '<img src="' + escapeHtml(r.url) + '" alt="">'); mseAtualizar();
+    });
+  };
+  rd.readAsDataURL(file);
+}
+
+// ---- salvar / publicar ----
+function msePayload() {
+  var f = _mse.form, corpo = document.getElementById('mse-corpo');
+  var ms = function (v) { return v ? new Date(v).getTime() : ''; };
+  return { id: f.id, titulo: f.titulo.trim(), resumo: f.resumo.trim(), corpoHtml: mseSanitizar(corpo.innerHTML), categoria: f.categoria, audiencia: f.status === 'PUBLICADA' ? undefined : mseAudEfetiva(),
+    obrigatoria: !!f.obrigatoria, enviarEmail: !!f.enviarEmail, agendadaPara: ms(f.agendadaPara), expiraEm: ms(f.expiraEm) };
+}
+function mseSalvar(depois) {
+  ntfChamar('apiSalvarMensagemSistema', [msePayload()], function (r) { _mse.form.id = r.id; depois(r.id); });
+}
+function mseSalvarRascunho() { mseSalvar(function () { showMessage('success', 'Rascunho salvo', ''); mseCarregarLista(); }); }
+function msePublicar() {
+  var f = _mse.form;
+  if (f.status === 'PUBLICADA') return mseSalvar(function () { showMessage('success', 'Correção salva', 'Quem já recebeu vê o texto corrigido.'); mseCarregarLista(); });
+  var quando = f.agendadaPara && new Date(f.agendadaPara) > new Date() ? new Date(f.agendadaPara).getTime() : null;
+  var txt = 'Será enviada a ' + (_mse.nAud || 0).toLocaleString('pt-BR') + ' pessoas' + (quando ? ' em ' + new Date(quando).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ' agora') + '.';
+  showConfirm(quando ? 'Agendar mensagem?' : 'Publicar mensagem?', txt, function () {
+    mseSalvar(function (id) {
+      ntfChamar('apiPublicarMensagemSistema', quando ? [id, quando] : [id], function () { mseCarregarLista(); });
+    });
+  });
 }
 </script>
 
@@ -22960,6 +23937,21 @@ function navigate(pageName, extra) {
         { label: 'Logs e Auditoria' }
       ]);
       if (typeof initLogs === 'function') initLogs();
+      break;
+
+    case 'mensagens':
+      // Caixa de entrada, leitura de mensagem e preferências (pages_mensagens.html). extra = { view: 'caixa'|'leitura'|'prefs', id? }
+      document.getElementById('page-mensagens').classList.remove('hidden');
+      ativarMenu('Mensagens');
+      if (typeof initMensagens === 'function') initMensagens(extra || {});
+      break;
+
+    case 'mensagens-enviadas':
+      // Só ADMIN/DEV e dirigentes de unidade (o servidor recusa os demais) — pages_mensagens_enviadas.html
+      document.getElementById('page-mensagens-enviadas').classList.remove('hidden');
+      ativarMenu('Mensagens enviadas');
+      setBreadcrumb([{ label: 'Mensagens', page: 'mensagens' }, { label: 'Mensagens enviadas' }]);
+      if (typeof initMensagensEnviadas === 'function') initMensagensEnviadas();
       break;
 
     case 'config-sistema':
