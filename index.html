@@ -20470,6 +20470,12 @@ function confirmarEncerrarRevisao(idRevisao) {
   .csis-app-ico { font-size: 20px; color: var(--ds-color-text-muted); }
   .csis-app-nome { flex: 1 1 160px; min-width: 0; display: flex; align-items: center; gap: 8px; font-weight: 500; }
   .csis-app-nome small { font-weight: 400; font-size: 12px; color: var(--ds-color-text-muted); }
+  .csis-app-sub { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 32px; padding: 0 6px 0 10px; border: none; border-radius: 8px; background: none;
+    color: var(--ds-color-text); font-family: inherit; font-size: 13px; cursor: pointer; text-align: left; }
+  .csis-app-sub:hover, .csis-app-sub[aria-expanded="true"] { background: var(--ds-sidebar-item-hover); }
+  .csis-app-sub.vazio { color: var(--ds-color-text-muted); }
+  .csis-app-sub > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .csis-app-sub .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); flex-shrink: 0; }
 
   .csis-rodape { position: sticky; bottom: -20px; background: var(--ds-color-surface); display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 4px; border-top: 1px solid var(--ds-color-border); margin-top: 16px; }
   .csis-rodape .csis-status { flex: 1; font-size: 13px; color: var(--ds-color-text-muted); }
@@ -20494,8 +20500,10 @@ function confirmarEncerrarRevisao(idRevisao) {
     .csis-tipo-cab { display: none; }
     .csis-tipo-sw small { display: block; }
     .csis-trava, .csis-ord button { min-width: 44px; min-height: 44px; justify-content: center; }
+    .csis-app-sub { order: 10; flex: 1 1 100%; min-height: 44px; margin-left: 22px; padding-left: 10px; justify-content: space-between; }
   }
   body.high-contrast .csis-abas, body.high-contrast .csis-rodape { background: #000; }
+  body.high-contrast .csis-app-sub { color: #fff; border: 1px solid #fff; }
 </style>
 
 <script>
@@ -20763,7 +20771,9 @@ function csisTipo(chave, campo) {
 }
 
 // ---------- painel: apps (salva na hora) ----------
-// d = { apps: [ { id, nome, icone, versao, status } ], status: [ { valor, rotulo, badge, descricao } ] }
+// d = { apps: [ { id, nome, icone, versao, status, idAppSubstituto, nomeAppSubstituto } ], status: [ { valor, rotulo, badge, descricao } ] }
+// Gravação: salvar(idApp, status, idAppSubstituto) — substituto só vale com status DESCONTINUADO ('' nos demais).
+var CSIS_APP_DESC = 'Descontinuado';
 var CSIS_APP_STATUS = [{ valor: 'ATIVO', rotulo: 'Ativo', badge: 'success' }, { valor: 'OCULTO', rotulo: 'Oculto', badge: 'neutral', descricao: 'Some para novos planos.' }, { valor: 'DESCONTINUADO', rotulo: 'Descontinuado', badge: 'danger', descricao: 'Os planos mostram um aviso.' }];
 function csisStatusApps(d) { return d.status && d.status.length ? d.status : CSIS_APP_STATUS; }
 function csisHtmlApps(d) {
@@ -20773,20 +20783,56 @@ function csisHtmlApps(d) {
     var s = sts.find(function (x) { return x.valor === a.status; }) || { rotulo: a.status, badge: 'neutral' };
     return '<div class="csis-linha"><span class="material-symbols-outlined csis-app-ico">' + escapeHtml(a.icone || 'extension') + '</span>'
       + '<span class="csis-app-nome">' + escapeHtml(a.nome) + (a.versao ? '<small>v' + escapeHtml(a.versao) + '</small>' : '') + csisInfo(a.descricao) + '</span>'
+      + (a.status === CSIS_APP_DESC ? '<button type="button" class="csis-app-sub' + (a.idAppSubstituto ? '' : ' vazio') + '" aria-haspopup="menu" aria-expanded="false" data-title="Alterar substituto" onclick="csisMenuSubstituto(this, \'' + escapeJsAttr(a.id) + '\', false)"><span>'
+        + (a.idAppSubstituto ? 'Substituído por ' + escapeHtml(a.nomeAppSubstituto || csisNomeApp(d, a.idAppSubstituto)) : 'Sem substituto') + '</span><span class="material-symbols-outlined">arrow_drop_down</span></button>' : '')
       + '<span class="ds-badge ds-badge--' + s.badge + '">' + escapeHtml(s.rotulo) + '</span>'
       + '<button type="button" class="acoes-btn" data-title="Alterar situação" aria-label="Alterar situação" aria-haspopup="menu" onclick="csisMenuApp(this, \'' + escapeJsAttr(a.id) + '\')"><span class="material-symbols-outlined">more_vert</span></button></div>';
   }).join('');
 }
+var _csisAppBtn = null;
 function csisMenuApp(btn, id) {
   var d = csisDados(), a = d.apps.find(function (x) { return x.id === id; });
+  _csisAppBtn = btn;
   abrirMenuSelecao(btn, [{ itens: csisStatusApps(d).map(function (s) {
     return { label: s.rotulo, ativo: s.valor === a.status, dot: 'var(--ds-color-' + (s.badge === 'neutral' ? 'text-muted' : s.badge + '-fg') + ')', onclick: "csisStatusApp('" + escapeJsAttr(id) + "', '" + escapeJsAttr(s.valor) + "')" };
   }) }]);
 }
+function csisNomeApp(d, id) { var x = (d.apps || []).find(function (y) { return y.id === id; }); return x ? x.nome : ''; }
+// Passo 2 do menu (ao escolher Descontinuado) ou troca direta do substituto: só apps não descontinuados, nunca o próprio.
+function csisMenuSubstituto(btn, id, aoDescontinuar) {
+  var d = csisDados(), a = d.apps.find(function (x) { return x.id === id; });
+  if (!a || !btn || !btn.isConnected) return;
+  var atual = aoDescontinuar ? '' : (a.idAppSubstituto || '');
+  var cands = d.apps.filter(function (x) { return x.id !== id && x.status !== CSIS_APP_DESC; });
+  var fn = function (v) { return "csisSalvarApp('" + escapeJsAttr(id) + "', '" + CSIS_APP_DESC + "', '" + escapeJsAttr(v) + "')"; };
+  abrirMenuSelecao(btn, [{ label: 'Substituto', itens: [{ label: 'Sem substituto', ativo: !atual, onclick: fn('') }].concat(cands.map(function (x) {
+    return { label: x.nome, ativo: x.id === atual, onclick: fn(x.id) };
+  })) }]);
+  // abrirMenuSelecao não desenha ícone: acrescenta o do app em cada item.
+  var itens = document.querySelectorAll('#menu-selecao-aberto .acoes-menu-item');
+  Array.prototype.forEach.call(itens, function (el, i) {
+    var ic = document.createElement('span');
+    ic.className = 'material-symbols-outlined'; ic.setAttribute('aria-hidden', 'true');
+    ic.textContent = i === 0 ? 'block' : (cands[i - 1].icone || 'extension');
+    el.insertBefore(ic, el.children[1] || null);
+  });
+}
 function csisStatusApp(id, st) {
-  var d = csisDados(), antes = JSON.stringify(d), a = d.apps.find(function (x) { return x.id === id; });
+  var d = csisDados(), a = d.apps.find(function (x) { return x.id === id; });
   if (!a || a.status === st) return;
-  a.status = st; csisSalvarJa('salvar', [id, st], antes);
+  if (st === CSIS_APP_DESC) {
+    var btn = _csisAppBtn; // o menu acabou de fechar: reabre no mesmo gatilho, já no passo do substituto
+    return setTimeout(function () { csisMenuSubstituto(btn, id, true); }, 0);
+  }
+  csisSalvarApp(id, st, '');
+}
+function csisSalvarApp(id, st, sub) {
+  var d = csisDados(), antes = JSON.stringify(d), a = d.apps.find(function (x) { return x.id === id; });
+  if (!a) return;
+  if (st !== CSIS_APP_DESC || sub === id) sub = '';
+  if (a.status === st && (a.idAppSubstituto || '') === sub) return;
+  a.status = st; a.idAppSubstituto = sub; a.nomeAppSubstituto = sub ? csisNomeApp(d, sub) : '';
+  csisSalvarJa('salvar', [id, st, sub], antes);
 }
 </script>
 
