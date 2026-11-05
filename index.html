@@ -1302,16 +1302,38 @@ body.high-contrast .ds-pasta { --pasta-line: #fff; --pasta-strip: #000; --pasta-
           <span class="nav-item-label">Início</span>
         </button>
 
-        <button type="button" class="nav-item" data-menu="Mensagens" onclick="navigate('mensagens', { view: 'caixa' }); fecharMenuMobile()">
-          <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">inbox</span>
-          <span class="nav-item-label">Mensagens</span>
-          <span class="ntf-nav-badge hidden" id="ntf-nav-badge" aria-hidden="true"></span>
-        </button>
-        <!-- Só quem pode enviar (ADMIN/DEV ou dirigente de unidade) — revelado em ntfAposLogin() (components_notificacoes.html) -->
-        <button type="button" class="nav-item hidden" id="nav-item-mensagens-enviadas" data-menu="Mensagens enviadas" onclick="navigate('mensagens-enviadas'); fecharMenuMobile()">
-          <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">campaign</span>
-          <span class="nav-item-label">Mensagens enviadas</span>
-        </button>
+        <!-- Mensagens: grupo com uma pasta por situação. Enviadas/Rascunhos/Programadas só para quem pode enviar (ADMIN/DEV ou dirigente) — reveladas em ntfAposLogin() (components_notificacoes.html) -->
+        <div class="nav-item-group" id="navgroup-mensagens">
+          <button type="button" class="nav-item nav-item-parent" data-menu="Mensagens" aria-label="Mensagens"
+            onclick="toggleNavSubmenu('mensagens', event)" aria-haspopup="true" aria-expanded="false">
+            <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">mail</span>
+            <span class="nav-item-label">Mensagens</span>
+            <span class="ntf-nav-badge hidden" id="ntf-nav-badge" aria-hidden="true"></span>
+            <span class="material-symbols-outlined nav-caret" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="nav-submenu" id="submenu-mensagens" data-label="Mensagens">
+            <button type="button" class="nav-submenu-item" onclick="navigate('mensagens', { view: 'caixa', pasta: 'entrada' }); fecharNavSubmenus(); fecharMenuMobile()">
+              <span class="material-symbols-outlined">inbox</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Caixa de entrada</span></span>
+            </button>
+            <button type="button" class="nav-submenu-item ntf-so-remetente hidden" onclick="navigate('mensagens', { view: 'caixa', pasta: 'enviadas' }); fecharNavSubmenus(); fecharMenuMobile()">
+              <span class="material-symbols-outlined">send</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Enviadas</span></span>
+            </button>
+            <button type="button" class="nav-submenu-item ntf-so-remetente hidden" onclick="navigate('mensagens', { view: 'caixa', pasta: 'rascunhos' }); fecharNavSubmenus(); fecharMenuMobile()">
+              <span class="material-symbols-outlined">draft</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Rascunhos</span></span>
+            </button>
+            <button type="button" class="nav-submenu-item ntf-so-remetente hidden" onclick="navigate('mensagens', { view: 'caixa', pasta: 'programadas' }); fecharNavSubmenus(); fecharMenuMobile()">
+              <span class="material-symbols-outlined">schedule_send</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Programadas</span></span>
+            </button>
+            <button type="button" class="nav-submenu-item" onclick="navigate('mensagens', { view: 'caixa', pasta: 'excluidas' }); fecharNavSubmenus(); fecharMenuMobile()">
+              <span class="material-symbols-outlined">delete</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Excluídas</span></span>
+            </button>
+          </div>
+        </div>
 
         <!-- Planejamento (menu em cascata — ver docs/design_system.md "Menu principal em cascata") -->
         <div class="nav-item-group" id="navgroup-planejamento">
@@ -8108,8 +8130,7 @@ function ntfAposLogin() {
   if (!_ntf.poll) _ntf.poll = setInterval(ntfContar, 30000);
   ntfChamar('apiGetPerfilMensagem', [], function (r) {
     _ntf.perfil = (r && r.perfil) || 'USUARIO';
-    var it = document.getElementById('nav-item-mensagens-enviadas');
-    if (it) it.classList.toggle('hidden', _ntf.perfil === 'USUARIO');
+    document.querySelectorAll('.ntf-so-remetente').forEach(function (el) { el.classList.toggle('hidden', _ntf.perfil === 'USUARIO'); });
   }, function () {});
   ntfConsumirParametro();
 }
@@ -8118,7 +8139,7 @@ function ntfConsumirParametro() {
   try { p = JSON.parse(sessionStorage.getItem(NTF_CHAVE_PARAM) || 'null'); sessionStorage.removeItem(NTF_CHAVE_PARAM); } catch (e) { p = null; }
   if (!p) return;
   if (p.tipo === 'prefs') return navigate('notificacoes', { view: 'prefs' });
-  if (p.tipo === 'caixa') return navigate('mensagens', { view: 'caixa' });
+  if (p.tipo === 'caixa') return navigate('mensagens', { view: 'caixa', pasta: 'entrada' });
   if (p.tipo === 'notif') {
     ntfChamar('apiGetNotificacao', [p.id], function (n) {
       if (!n) { navigate('notificacoes'); return ntfNeutro(); }
@@ -21346,208 +21367,256 @@ function csisAppSalvar(idApp) {
 </script>
 
        <!-- ARQUIVO: pages_mensagens.html
-     Caixa de mensagens da administração (como e-mails: clicar abre o conteúdo na própria página). Notificações do sistema ficam em
-     pages_notificacoes.html e no sino. Prefixo de globais: cxa. Helpers em components_notificacoes.html (ntf). -->
+     Mensagens da administração, no padrão da lista de planos: pastas do menu lateral (Caixa de entrada, Enviadas, Rascunhos, Programadas, Excluídas),
+     abas, busca expansível, paginação, ações ao passar o mouse e leitura com barra de ferramentas (estilo Gmail). Escrever/editar: pages_mensagens_enviadas.html.
+     Notificações do sistema ficam no sino e em pages_notificacoes.html. Prefixo de globais: cxa. Helpers em components_notificacoes.html (ntf). -->
 
 <div id="page-mensagens" class="page-content hidden">
   <div id="cxa-raiz"></div>
 </div>
 
 <style>
-  #page-mensagens h1.cxa-titulo { margin: 0; font-size: 30px; font-weight: 600; color: var(--ds-color-heading); }
-  .cxa-cabecalho { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-  .cxa-cabecalho .cxa-esp { flex: 1; }
-  .cxa-btn-icone { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--ds-glass-border); background: var(--ds-glass-bg-strong); cursor: pointer; color: var(--ds-color-text-muted);
-    display: inline-flex; align-items: center; justify-content: center; }
-  .cxa-btn-icone:hover { color: var(--ds-color-action); }
-  .cxa-btn-icone.pq { width: 36px; height: 36px; }
-  .cxa-abas { display: flex; gap: 4px; border-bottom: 1px solid var(--ds-color-border); overflow-x: auto; overflow-y: hidden; }
-  .cxa-aba { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit;
-    color: var(--ds-color-text-muted); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
-  .cxa-aba.ativa { color: var(--ds-color-action); border-bottom-color: var(--ds-color-action); }
-  .cxa-aba .material-symbols-outlined { font-size: 18px; }
-  .cxa-aba-n { font-size: 12px; padding: 0 6px; border-radius: 999px; background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
-  .cxa-barra { position: sticky; top: -20px; z-index: 5; background: var(--ds-color-surface); padding: 12px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--ds-color-border); }
-  .cxa-barra input[type=checkbox], .cxa-linha input[type=checkbox] { width: 18px; height: 18px; margin: 0 6px 0 4px; accent-color: var(--ds-color-action); }
-  .cxa-busca { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--ds-color-border); flex: 0 1 300px; min-width: 160px; }
-  .cxa-busca input { flex: 1; min-width: 0; border: none; outline: none; background: none; font-size: 13px; font-family: inherit; color: var(--ds-color-text); }
-  .cxa-busca .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
-  .cxa-busca button { border: none; background: none; cursor: pointer; color: var(--ds-color-text-muted); display: flex; padding: 0; }
-  .cxa-filtro { height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--ds-color-border); background: var(--ds-color-surface); color: var(--ds-color-text); font-size: 13px; font-weight: 500;
-    cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-family: inherit; }
-  .cxa-filtro.ativo { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); color: var(--ds-color-action); }
-  .cxa-menu { position: absolute; top: 40px; left: 0; min-width: 240px; background: var(--ds-glass-bg-strong); border: 1px solid var(--ds-glass-border); border-radius: 10px; box-shadow: var(--ds-glass-shadow-strong); padding: 6px; z-index: 1000; }
-  .cxa-menu button { width: 100%; min-height: 36px; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: none; background: none; border-radius: 6px; cursor: pointer; text-align: left;
-    font-size: 13px; color: var(--ds-color-text); font-family: inherit; }
-  .cxa-menu button:hover { background: var(--ds-sidebar-item-hover); }
-  .cxa-menu .material-symbols-outlined { font-size: 18px; color: var(--ds-color-action); }
-  .cxa-pag { margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--ds-color-text-muted); }
-  .cxa-pag button { width: 32px; height: 32px; border: none; background: none; cursor: pointer; color: inherit; display: inline-flex; align-items: center; justify-content: center; }
-  .cxa-pag button:disabled { opacity: .35; cursor: default; }
-  .cxa-dia { font-size: 12px; font-weight: 600; color: var(--ds-color-text-muted); text-transform: uppercase; letter-spacing: .4px; padding: 16px 4px 6px; }
-  .cxa-vazio { padding: 56px 16px; text-align: center; color: var(--ds-color-text-muted); display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  .cxa-vazio strong { font-size: 16px; color: var(--ds-color-text); font-weight: 600; }
-  .cxa-lista { display: flex; flex-direction: column; }
-  .cxa-linha { display: grid; grid-template-columns: 24px 24px 24px 200px minmax(0, 1fr) 64px; grid-template-areas: "sel star ico tag txt hora"; align-items: center; gap: 4px 10px;
-    padding: 8px 10px; cursor: pointer; user-select: none; background: var(--ds-color-surface-2); border-bottom: 1px solid var(--ds-color-border); }
-  .cxa-linha.nao-lida { background: var(--ds-color-surface); }
-  .cxa-linha.sel { background: var(--ds-sidebar-item-active); }
-  .cxa-linha:hover { box-shadow: inset 1px 0 0 var(--ds-color-border), inset -1px 0 0 var(--ds-color-border), 0 1px 2px rgba(16, 38, 73, .12); }
-  .cxa-linha .c-sel { grid-area: sel; } .cxa-linha .c-star { grid-area: star; } .cxa-linha .c-ico { grid-area: ico; }
-  .cxa-linha .c-tag { grid-area: tag; display: flex; gap: 6px; align-items: center; min-width: 0; }
-  .cxa-linha .c-txt { grid-area: txt; min-width: 0; display: flex; gap: 6px; align-items: baseline; overflow: hidden; }
-  .cxa-linha .c-res { grid-area: res; display: none; font-size: 13px; color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cxa-linha .c-hora { grid-area: hora; font-size: 12px; color: var(--ds-color-text-muted); white-space: nowrap; justify-self: end; }
-  .cxa-linha .c-ico { font-size: 20px; color: var(--ds-color-text-muted); }
-  .cxa-linha.nao-lida .c-ico { color: var(--ds-color-action); }
-  .cxa-linha.nao-lida .c-titulo, .cxa-linha.nao-lida .c-hora { font-weight: 600; }
-  .cxa-linha .c-titulo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; max-width: 70%; }
-  .cxa-linha .c-inline { color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1 100 0; min-width: 0; }
-  .cxa-rotulo { font-size: 12px; color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cxa-estrela { border: none; background: none; cursor: pointer; padding: 0; display: flex; color: var(--ds-color-text-muted); }
-  .cxa-estrela.on { color: var(--ds-color-warning-fg); }
-  .cxa-estrela.on .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
-  .cxa-estrela .material-symbols-outlined { font-size: 20px; }
-  .cxa-pilula { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); font-size: 12px; font-weight: 500; white-space: nowrap; }
-  .cxa-pilula .material-symbols-outlined { font-size: 14px; }
-  .cxa-qtd { font-size: 12px; font-weight: 600; padding: 0 6px; border-radius: 999px; background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); color: var(--ds-color-text-muted); flex-shrink: 0; }
-  @media (max-width: 1100px) { .cxa-linha { grid-template-columns: 24px 24px 24px 130px minmax(0, 1fr) 64px; } }
-  @media (max-width: 768px) {
-    #page-mensagens h1.cxa-titulo { font-size: 24px; }
-    .cxa-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
-    .cxa-linha { grid-template-columns: 24px 24px minmax(0, 1fr) auto; grid-template-areas: "sel ico tag star" "txt txt txt txt" "res res res hora"; padding: 12px; border: 1px solid var(--ds-color-border);
-      border-radius: 10px; background: var(--ds-color-surface); }
-    .cxa-linha.sel { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); }
-    .cxa-linha .c-star { grid-area: star; justify-self: end; }
-    .cxa-linha .c-titulo { max-width: 100%; }
-    .cxa-linha .c-inline { display: none; }
-    .cxa-linha .c-res { display: block; }
-    .cxa-linha:hover { box-shadow: none; }
-  }
+  /* título e botão: mesmo padrão da lista de planos */
+  #page-mensagens .cxa-hero { display: flex; align-items: center; gap: 12px; min-height: 44px; margin-bottom: 20px; }
+  #page-mensagens .cxa-hero h1 { flex: 1; min-width: 0; margin: 0; font-size: 30px; line-height: 1.15; letter-spacing: -0.8px; font-weight: var(--ds-weight-bold); color: var(--ds-color-text); text-wrap: pretty; }
+  #page-mensagens .cxa-hero .ds-btn { white-space: nowrap; }
+
+  /* abas: sublinhado de 3px, igual à lista e ao detalhe do plano */
+  #page-mensagens .cxa-tabs { display: flex; align-items: center; border-bottom: 1px solid var(--ds-color-border); overflow-x: auto; scrollbar-width: none; }
+  #page-mensagens .cxa-tabs::-webkit-scrollbar { display: none; }
+  #page-mensagens .cxa-tab { display: inline-flex; align-items: center; gap: 6px; padding: 12px 16px; margin-bottom: -1px; background: none; border: none; border-bottom: 3px solid transparent;
+    color: var(--ds-color-text-muted); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); cursor: pointer; white-space: nowrap; }
+  #page-mensagens .cxa-tab:hover { color: var(--ds-color-text); background: var(--ds-sidebar-item-hover); }
+  #page-mensagens .cxa-tab.active { color: var(--ds-color-action); font-weight: var(--ds-weight-semibold); border-bottom-color: var(--ds-color-action); }
+  #page-mensagens .cxa-tab .material-symbols-outlined { font-size: 18px; }
+  #page-mensagens .cxa-tab.active .ds-tab-count { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
+
+  /* barra: selecionar tudo / busca / ações em lote / contador e paginação */
+  #page-mensagens .cxa-barra { position: sticky; top: -20px; z-index: 41; display: flex; align-items: center; gap: 8px; padding: 10px 0; background: var(--ds-color-surface); border-bottom: 2px solid var(--ds-color-border); }
+  #page-mensagens .cxa-barra-sel { width: 24px; padding-left: 16px; display: flex; align-items: center; }
+  #page-mensagens .cxa-barra-meio { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding-left: 2px; }
+  #page-mensagens input[type=checkbox] { display: block; margin: 0; width: 16px; height: 16px; accent-color: var(--ds-color-action); }
+  #page-mensagens .cxa-search { position: relative; display: inline-flex; align-items: center; }
+  #page-mensagens .cxa-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--ds-color-text-muted); pointer-events: none; }
+  #page-mensagens .cxa-search-input { width: 220px; max-width: 60vw; padding-left: 42px; padding-right: 38px; }
+  #page-mensagens .cxa-search-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); }
+  #page-mensagens .cxa-search-clear:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text); }
+  #page-mensagens .cxa-search-clear .material-symbols-outlined { font-size: 18px; }
+  #page-mensagens .cxa-sel-txt { font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-sm); }
+  #page-mensagens .cxa-sep { width: 1px; align-self: stretch; margin: 2px 4px; background: var(--ds-color-border); }
+  #page-mensagens .cxa-pag-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-right: 16px; }
+  #page-mensagens .cxa-pag-counter { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; }
+  #page-mensagens .cxa-pag-nav { display: inline-flex; align-items: center; gap: 2px; }
+  #page-mensagens .cxa-pag-atual { min-width: 20px; text-align: center; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+  #page-mensagens .ds-icon-action--sm:disabled { opacity: 0.4; cursor: not-allowed; }
+  #page-mensagens .cxa-ico-btn { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid transparent;
+    border-radius: var(--ds-r-lg); color: var(--ds-color-text-muted); cursor: pointer; }
+  #page-mensagens .cxa-ico-btn:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
+  #page-mensagens .cxa-ico-btn.on { color: var(--ds-color-warning-fg); }
+  #page-mensagens .cxa-ico-btn.on .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+  #page-mensagens .cxa-ico-btn .material-symbols-outlined { font-size: 20px; }
+
+  /* linhas: colunas fixas (checkbox, favorita, ícone), remetente/categoria, assunto — resumo, data ou ações */
+  #page-mensagens .cxa-linha { display: grid; grid-template-columns: 24px 24px 24px 180px minmax(0, 1fr) 112px; align-items: center; gap: 10px; padding: 14px 16px;
+    border-bottom: 1px solid var(--ds-glass-border); cursor: pointer; user-select: none; background: var(--ds-color-surface); font-size: var(--ds-text-sm); }
+  #page-mensagens .cxa-linha:hover { background: var(--ds-sidebar-item-hover); }
+  #page-mensagens .cxa-linha.sel { background: var(--ds-sidebar-item-active); }
+  #page-mensagens .cxa-linha .c-ico { font-size: 20px; color: var(--ds-color-text-muted); }
+  #page-mensagens .cxa-linha.nao-lida .c-ico { color: var(--ds-color-action); }
+  #page-mensagens .cxa-linha .c-quem { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #page-mensagens .cxa-linha.nao-lida .c-quem { font-weight: var(--ds-weight-semibold); }
+  #page-mensagens .cxa-linha .c-txt { min-width: 0; display: flex; gap: 6px; align-items: baseline; overflow: hidden; white-space: nowrap; }
+  #page-mensagens .cxa-linha .c-titulo { flex: 0 1 auto; min-width: 0; max-width: 70%; overflow: hidden; text-overflow: ellipsis; font-weight: var(--ds-weight-medium); color: var(--ds-color-text); }
+  #page-mensagens .cxa-linha.nao-lida .c-titulo { font-weight: var(--ds-weight-bold); }
+  #page-mensagens .cxa-linha .c-res { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--ds-color-text-muted); }
+  #page-mensagens .cxa-linha .c-dir { display: flex; justify-content: flex-end; align-items: center; height: 32px; }
+  #page-mensagens .cxa-linha .c-hora { white-space: nowrap; color: var(--ds-color-text-muted); }
+  #page-mensagens .cxa-linha.nao-lida .c-hora { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+  #page-mensagens .cxa-linha .c-acoes { display: none; align-items: center; gap: 2px; }
+  #page-mensagens .cxa-linha:hover .c-acoes, #page-mensagens .cxa-linha:focus-within .c-acoes { display: inline-flex; }
+  #page-mensagens .cxa-linha:hover .c-hora, #page-mensagens .cxa-linha:focus-within .c-hora { display: none; }
+  #page-mensagens .cxa-qtd { font-size: 12px; font-weight: 600; padding: 0 6px; border-radius: 999px; background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); color: var(--ds-color-text-muted); }
+  #page-mensagens .cxa-vazio { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 16px; color: var(--ds-color-text-muted); }
+  #page-mensagens .cxa-vazio .material-symbols-outlined { font-size: 54px; opacity: .35; }
+  #page-mensagens .cxa-vazio p { margin: 0; font-size: var(--ds-text-sm); }
 
   /* leitura */
-  .cxa-artigo { max-width: 760px; margin: 0 auto; }
-  .cxa-artigo-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; font-size: 13px; color: var(--ds-color-text-muted); }
-  .cxa-cat { padding: 3px 12px; border-radius: 999px; background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); font-size: 12px; font-weight: 500; }
-  .cxa-cat.urgente { background: var(--ds-color-danger-bg); color: var(--ds-color-danger-fg); }
-  .cxa-artigo h1 { margin: 0 0 8px; font-size: 30px; font-weight: 600; color: var(--ds-color-heading); text-wrap: pretty; }
-  .cxa-artigo .cxa-resumo { margin: 0 0 24px; font-size: 16px; color: var(--ds-color-text-muted); text-wrap: pretty; }
-  .nt-corpo { font-size: 15px; line-height: 1.6; }
-  .nt-corpo img { max-width: 100%; height: auto; }
-  .nt-corpo blockquote { border-left: 3px solid var(--ds-color-border); margin: 0; padding-left: 12px; color: var(--ds-color-text-muted); }
+  #page-mensagens .cxa-leitura-barra { position: sticky; top: -20px; z-index: 41; display: flex; align-items: center; gap: 8px; padding: 10px 0; background: var(--ds-color-surface); border-bottom: 1px solid var(--ds-color-border); margin-bottom: 20px; }
+  #page-mensagens .cxa-leitura-barra .cxa-esp { flex: 1; }
+  #page-mensagens .cxa-artigo h1 { margin: 0 0 12px; font-size: 30px; line-height: 1.15; letter-spacing: -0.8px; font-weight: var(--ds-weight-bold); color: var(--ds-color-text); text-wrap: pretty; }
+  #page-mensagens .cxa-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); padding-bottom: 20px; border-bottom: 1px solid var(--ds-glass-border); margin-bottom: 20px; }
+  #page-mensagens .cxa-meta strong { font-weight: 600; color: var(--ds-color-text); }
+  #page-mensagens .cxa-cat { display: inline-flex; align-items: center; padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
+  #page-mensagens .cxa-cat.urgente { background: var(--ds-color-danger-bg); color: var(--ds-color-danger-fg); }
+  #page-mensagens .nt-corpo { font-size: 15px; line-height: 1.6; color: var(--ds-color-text); }
+  #page-mensagens .nt-corpo p { margin: 0 0 14px; }
+  #page-mensagens .nt-corpo img { max-width: 100%; height: auto; }
+  #page-mensagens .nt-corpo blockquote { border-left: 3px solid var(--ds-color-border); margin: 0 0 14px; padding-left: 12px; color: var(--ds-color-text-muted); }
 
+  @media (max-width: 1100px) { #page-mensagens .cxa-linha { grid-template-columns: 24px 24px 24px 130px minmax(0, 1fr) 112px; } }
+  @media (max-width: 768px) {
+    #page-mensagens .cxa-hero h1, #page-mensagens .cxa-artigo h1 { font-size: 24px; }
+    #page-mensagens .cxa-barra, #page-mensagens .cxa-leitura-barra { position: static; flex-wrap: wrap; }
+    #page-mensagens .cxa-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 12px; }
+    #page-mensagens .cxa-linha { grid-template-columns: 24px 24px minmax(0, 1fr) auto; grid-template-areas: "sel ico quem star" "txt txt txt txt" "res res res dir"; padding: 12px; border: 1px solid var(--ds-color-border); border-radius: 10px; }
+    #page-mensagens .cxa-linha > :nth-child(1) { grid-area: sel; } #page-mensagens .cxa-linha > :nth-child(2) { grid-area: star; justify-self: end; }
+    #page-mensagens .cxa-linha > :nth-child(3) { grid-area: ico; } #page-mensagens .cxa-linha > :nth-child(4) { grid-area: quem; }
+    #page-mensagens .cxa-linha .c-txt { grid-area: txt; } #page-mensagens .cxa-linha .c-dir { grid-area: dir; }
+    #page-mensagens .cxa-linha .c-res { display: none; }
+    #page-mensagens .cxa-linha .c-acoes { display: inline-flex; } #page-mensagens .cxa-linha .c-hora { display: none; }
+  }
+  @media print {
+    body * { visibility: hidden !important; }
+    #cxa-artigo, #cxa-artigo * { visibility: visible !important; }
+    #cxa-artigo { position: absolute; left: 0; top: 0; width: 100%; }
+  }
 </style>
 
 <script>
 var CXA_LIM = 20;
-var _cxa = { naoLidas: 0, view: 'caixa', aba: 'todas', grupo: '', busca: '', offset: 0, res: null, sel: {}, carregando: false, grupos: null, menuGrupo: false, prefs: null, leitura: null, reqSeq: 0, tBusca: null };
+var CXA_PASTAS = { entrada: ['Caixa de entrada', 'inbox'], enviadas: ['Enviadas', 'send'], rascunhos: ['Rascunhos', 'draft'], programadas: ['Programadas', 'schedule_send'], excluidas: ['Excluídas', 'delete'] };
+var CXA_ABAS = [['todas', 'Todas', 'inbox'], ['naoLidas', 'Não lidas', 'mark_email_unread'], ['estreladas', 'Favoritas', 'star'], ['arquivadas', 'Arquivadas', 'archive']];
+var _cxa = { view: 'caixa', pasta: 'entrada', aba: 'todas', busca: '', buscaAberta: false, offset: 0, res: null, sel: {}, carregando: false, naoLidas: 0, idx: 0, leitura: null, reqSeq: 0, tBusca: null };
 
 function cxaRaiz() { return document.getElementById('cxa-raiz'); }
+function cxaEnviadas() { return _cxa.pasta === 'enviadas' || _cxa.pasta === 'rascunhos' || _cxa.pasta === 'programadas'; }
 
 function initMensagens(extra) {
-  var view = extra.view || 'caixa';
-  _cxa.view = view;
-  _cxa.menuGrupo = false;
-  var crumbs = { caixa: [{ label: 'Mensagens' }], leitura: [{ label: 'Mensagens', page: 'mensagens' }, { label: 'Leitura' }] };
-  setBreadcrumb(crumbs[view] || crumbs.caixa);
-  if (view === 'leitura') return cxaCarregarLeitura(extra.id);
-  cxaCarregar({ offset: 0 });
+  var pasta = extra.pasta && CXA_PASTAS[extra.pasta] ? extra.pasta : (extra.view === 'leitura' ? _cxa.pasta : 'entrada');
+  if (pasta !== _cxa.pasta) { _cxa.aba = 'todas'; _cxa.busca = ''; _cxa.buscaAberta = false; _cxa.offset = 0; _cxa.res = null; }
+  _cxa.pasta = pasta; _cxa.view = extra.view || 'caixa'; _cxa.sel = {};
+  if (_cxa.view === 'leitura') return cxaCarregarLeitura(extra.id);
+  setBreadcrumb(pasta === 'entrada' ? [{ label: 'Mensagens' }] : [{ label: 'Mensagens', page: 'mensagens' }, { label: CXA_PASTAS[pasta][0] }]);
+  cxaCarregar({});
 }
 
-// ============ CAIXA ============
+// ============ LISTA ============
 function cxaRecarregar() { if (_cxa.view === 'caixa' && !document.getElementById('page-mensagens').classList.contains('hidden')) cxaCarregar({}); }
 function cxaCarregar(patch) {
   Object.assign(_cxa, patch || {});
   var seq = ++_cxa.reqSeq;
   _cxa.carregando = !_cxa.res;
   cxaRenderCaixa();
-  ntfChamar('apiGetNotificacoes', [{ origem: 'MENSAGEM', aba: _cxa.aba, busca: _cxa.busca, limite: CXA_LIM, offset: _cxa.offset }], function (r) {
+  if (cxaEnviadas()) {
+    ntfChamar('apiGetMensagensSistema', [], function (r) {
+      if (seq !== _cxa.reqSeq) return;
+      var st = { enviadas: ['PUBLICADA', 'EXPIRADA', 'CANCELADA'], rascunhos: ['RASCUNHO'], programadas: ['AGENDADA'] }[_cxa.pasta], b = _cxa.busca.trim().toLowerCase();
+      var itens = (r.itens || []).filter(function (m) { return st.indexOf(m.status) !== -1 && (!b || (m.titulo + ' ' + m.resumo).toLowerCase().indexOf(b) !== -1); });
+      itens.sort(function (a, c) { return ntfMs(c.agendadaPara || c.publicadaEm || c.criadoEm) - ntfMs(a.agendadaPara || a.publicadaEm || a.criadoEm); });
+      _cxa.res = { itens: itens.slice(_cxa.offset, _cxa.offset + CXA_LIM), total: itens.length }; _cxa.carregando = false;
+      cxaRenderCaixa();
+    }, function (e) { _cxa.carregando = false; cxaRenderCaixa(); ntfErro(e); });
+    return;
+  }
+  var aba = _cxa.pasta === 'excluidas' ? 'excluidas' : _cxa.aba;
+  ntfChamar('apiGetNotificacoes', [{ origem: 'MENSAGEM', aba: aba, busca: _cxa.busca, limite: CXA_LIM, offset: _cxa.offset }], function (r) {
     if (seq !== _cxa.reqSeq) return;
-    _cxa.res = r; _cxa.carregando = false;
-    _cxa.sel = {};
-    _cxa.naoLidas = r.naoLidas;
+    _cxa.res = r; _cxa.carregando = false; _cxa.sel = {}; _cxa.naoLidas = r.naoLidas;
     ntfContar();
     cxaRenderCaixa();
   }, function (e) { _cxa.carregando = false; cxaRenderCaixa(); ntfErro(e); });
 }
-function cxaAtualizarContagemAbas() { if (_cxa.view === 'caixa' && _cxa.res) cxaRenderAbas(); }
 function cxaItem(id) { return ((_cxa.res && _cxa.res.itens) || []).find(function (n) { return String(n.id) === String(id); }); }
 function cxaSelIds() { return Object.keys(_cxa.sel).filter(function (k) { return _cxa.sel[k]; }); }
-
-function cxaRenderAbas() {
-  var def = [['todas', 'Todas', 'inbox'], ['naoLidas', 'Não lidas', 'mark_email_unread'], ['estreladas', 'Estreladas', 'star'], ['arquivadas', 'Arquivadas', 'archive']];
-  var el = document.getElementById('cxa-abas');
-  if (!el) return;
-  el.innerHTML = def.map(function (a) {
-    return '<button type="button" class="cxa-aba' + (_cxa.aba === a[0] ? ' ativa' : '') + '" onclick="cxaMudarAba(\'' + a[0] + '\')"><span class="material-symbols-outlined">' + a[2] + '</span>' + a[1]
-      + (a[0] === 'naoLidas' && _cxa.naoLidas ? '<span class="cxa-aba-n">' + _cxa.naoLidas + '</span>' : '') + '</button>';
-  }).join('');
+function cxaBtn(icone, rot, js, extra) {
+  return '<button type="button" class="cxa-ico-btn' + (extra || '') + '" data-title="' + rot + '" aria-label="' + rot + '" onclick="' + js + '"><span class="material-symbols-outlined">' + icone + '</span></button>';
 }
 
 function cxaRenderCaixa() {
-  var raiz = cxaRaiz();
   if (_cxa.view !== 'caixa') return;
   var foco = document.activeElement && document.activeElement.id === 'cxa-busca' ? document.activeElement.selectionStart : null;
-  var res = _cxa.res || { itens: [], total: 0 };
-  var sels = cxaSelIds(), selItens = res.itens.filter(function (n) { return _cxa.sel[n.id]; });
+  var env = cxaEnviadas(), res = _cxa.res || { itens: [], total: 0 };
+  var selItens = res.itens.filter(function (n) { return _cxa.sel[n.id]; });
   var ini = res.total ? _cxa.offset + 1 : 0, fim = Math.min(_cxa.offset + CXA_LIM, res.total);
+  var pagina = Math.floor(_cxa.offset / CXA_LIM) + 1;
 
-  var barra = '<input type="checkbox" aria-label="Selecionar todos"' + (res.itens.length && selItens.length === res.itens.length ? ' checked' : '') + ' onchange="cxaToggleTodos()">';
+  var h = '<section class="cxa-hero"><h1>' + escapeHtml(_cxa.pasta === 'entrada' ? 'Mensagens' : CXA_PASTAS[_cxa.pasta][0]) + '</h1>'
+    + (_ntf.perfil !== 'USUARIO' ? '<button type="button" class="ds-btn ds-btn--primary" onclick="cxaEscrever()"><span class="material-symbols-outlined">edit</span> Escrever</button>' : '') + '</section>';
+  if (_cxa.pasta === 'entrada') {
+    h += '<div class="cxa-tabs" role="tablist" aria-label="Filtro das mensagens">' + CXA_ABAS.map(function (a) {
+      return '<button type="button" role="tab" class="cxa-tab' + (_cxa.aba === a[0] ? ' active' : '') + '" onclick="cxaMudarAba(\'' + a[0] + '\')"><span class="material-symbols-outlined">' + a[2] + '</span>' + a[1]
+        + (a[0] === 'naoLidas' && _cxa.naoLidas ? '<span class="ds-tab-count">' + _cxa.naoLidas + '</span>' : '') + '</button>';
+    }).join('') + '</div>';
+  }
+
+  // barra
+  var barra = '<div class="cxa-barra-sel">' + (env ? '' : '<input type="checkbox" aria-label="Selecionar todos"' + (res.itens.length && selItens.length === res.itens.length ? ' checked' : '') + ' onchange="cxaToggleTodos()">') + '</div><div class="cxa-barra-meio">';
   if (!selItens.length) {
-    barra += '<div class="cxa-busca"><span class="material-symbols-outlined">search</span><input id="cxa-busca" value="' + escapeHtml(_cxa.busca) + '" placeholder="Buscar" aria-label="Buscar" oninput="cxaBuscar(this.value)">'
-      + (_cxa.busca ? '<button type="button" aria-label="Limpar busca" onclick="cxaBuscar(\'\', true)"><span class="material-symbols-outlined">close</span></button>' : '') + '</div>';
+    barra += '<div class="cxa-search">'
+      + (_cxa.buscaAberta
+        ? '<span class="material-symbols-outlined cxa-search-icon" aria-hidden="true">search</span><input type="text" id="cxa-busca" class="ds-input cxa-search-input" placeholder="Buscar mensagem…" aria-label="Buscar mensagem" value="' + escapeHtml(_cxa.busca) + '" oninput="cxaBuscar(this.value)">'
+          + '<button type="button" class="cxa-search-clear" aria-label="Limpar busca" onclick="cxaFecharBusca()"><span class="material-symbols-outlined">close</span></button>'
+        : '<button type="button" class="ds-icon-action" onclick="cxaAbrirBusca()" data-title="Buscar mensagem" aria-label="Buscar mensagem"><span class="material-symbols-outlined">search</span></button>')
+      + '</div>';
   } else {
-    var todasLidas = selItens.every(function (n) { return n.lida; }), todasArq = selItens.every(function (n) { return n.arquivada; }), todasEst = selItens.every(function (n) { return n.estrelada; });
-    var A = function (icone, rot, acao) { return '<button type="button" class="cxa-btn-icone pq" data-title="' + rot + '" aria-label="' + rot + '" onclick="cxaLote(\'' + acao + '\')"><span class="material-symbols-outlined" style="font-size:20px">' + icone + '</span></button>'; };
-    barra += '<span style="font-size:13px;font-weight:500;margin-right:4px">' + selItens.length + (selItens.length > 1 ? ' selecionadas' : ' selecionada') + '</span>'
-      + (todasLidas ? A('mark_email_unread', 'Marcar como não lida', 'NAO_LIDA') : A('drafts', 'Marcar como lida', 'LIDA'))
-      + (todasArq ? A('unarchive', 'Desarquivar', 'DESARQUIVAR') : A('archive', 'Arquivar', 'ARQUIVAR'))
-      + (todasEst ? A('star', 'Desestrelar', 'DESESTRELAR') : A('star', 'Estrelar', 'ESTRELAR'));
+    var todasLidas = selItens.every(function (n) { return n.lida; }), todasArq = selItens.every(function (n) { return n.arquivada; }), todasFav = selItens.every(function (n) { return n.estrelada; });
+    barra += '<span class="cxa-sel-txt">' + selItens.length + (selItens.length > 1 ? ' selecionadas' : ' selecionada') + '</span><div class="cxa-sep"></div>';
+    if (_cxa.pasta === 'excluidas') barra += cxaBtn('restore_from_trash', 'Restaurar', "cxaLote('RESTAURAR')");
+    else barra += (todasLidas ? cxaBtn('mark_email_unread', 'Marcar como não lida', "cxaLote('NAO_LIDA')") : cxaBtn('drafts', 'Marcar como lida', "cxaLote('LIDA')"))
+      + (todasArq ? cxaBtn('unarchive', 'Desarquivar', "cxaLote('DESARQUIVAR')") : cxaBtn('archive', 'Arquivar', "cxaLote('ARQUIVAR')"))
+      + (todasFav ? cxaBtn('star', 'Remover dos favoritos', "cxaLote('DESESTRELAR')", ' on') : cxaBtn('star', 'Favoritar', "cxaLote('ESTRELAR')"))
+      + cxaBtn('delete', 'Excluir', "cxaLote('EXCLUIR')");
   }
-  barra += '<div class="cxa-pag"><span>' + (res.total ? ini + '–' + fim + ' de ' + res.total : '') + '</span>'
-    + '<button type="button" aria-label="Anterior"' + (_cxa.offset === 0 ? ' disabled' : '') + ' onclick="cxaPagina(-1)"><span class="material-symbols-outlined" style="font-size:20px">chevron_left</span></button>'
-    + '<button type="button" aria-label="Próxima"' + (fim >= res.total ? ' disabled' : '') + ' onclick="cxaPagina(1)"><span class="material-symbols-outlined" style="font-size:20px">chevron_right</span></button></div>';
+  barra += '</div><div class="cxa-pag-wrap"><span class="cxa-pag-counter">' + (res.total ? ini + '–' + fim + ' de ' + res.total : '0 de 0') + '</span><div class="cxa-pag-nav">'
+    + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Página anterior" aria-label="Página anterior"' + (_cxa.offset === 0 ? ' disabled' : '') + ' onclick="cxaPagina(-1)"><span class="material-symbols-outlined">chevron_left</span></button>'
+    + '<span class="cxa-pag-atual">' + pagina + '</span>'
+    + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Próxima página" aria-label="Próxima página"' + (fim >= res.total ? ' disabled' : '') + ' onclick="cxaPagina(1)"><span class="material-symbols-outlined">chevron_right</span></button></div></div>';
+  h += '<div class="cxa-barra">' + barra + '</div>';
 
-  var lista = '';
-  if (_cxa.carregando) lista = '<div class="cxa-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
-  else if (!res.itens.length) lista = '<div class="cxa-vazio"><span class="material-symbols-outlined" style="font-size:40px;opacity:.6">mail</span><strong>Nada por aqui</strong><span style="font-size:13px">'
-    + (_cxa.busca ? 'Nenhum resultado para o filtro.' : 'Sem mensagens nesta aba.') + '</span></div>';
-  else {
-    var dias = [];
-    res.itens.forEach(function (n) { var r = ntfRotuloDia(n.atualizadoEm), d = dias.find(function (x) { return x.rotulo === r; }); if (!d) dias.push(d = { rotulo: r, itens: [] }); d.itens.push(n); });
-    lista = dias.map(function (d) { return '<div class="cxa-dia">' + escapeHtml(d.rotulo) + '</div><div class="cxa-lista">' + d.itens.map(cxaLinhaHtml).join('') + '</div>'; }).join('');
-  }
+  if (_cxa.carregando) h += '<div class="cxa-vazio"><div class="lista-spinner-wrap"><div class="lista-spinner"></div></div></div>';
+  else if (!res.itens.length) h += '<div class="cxa-vazio"><span class="material-symbols-outlined">mail</span><p>' + (_cxa.busca ? 'Nenhuma mensagem encontrada.' : 'Sem mensagens nesta pasta.') + '</p></div>';
+  else h += '<div class="cxa-lista">' + res.itens.map(env ? cxaLinhaEnviadaHtml : cxaLinhaHtml).join('') + '</div>';
 
-  raiz.innerHTML = '<div class="cxa-cabecalho"><h1 class="cxa-titulo cxa-esp">Mensagens</h1>'
-    + (_ntf.perfil !== 'USUARIO' ? '<button type="button" class="btn btn-outline" onclick="navigate(\'mensagens-enviadas\')"><span class="material-symbols-outlined" style="font-size:18px">campaign</span> Mensagens enviadas</button>' : '')
-    + '</div><div class="cxa-abas" id="cxa-abas"></div><div class="cxa-barra">' + barra + '</div>' + lista;
-  cxaRenderAbas();
+  cxaRaiz().innerHTML = h;
   if (foco !== null) { var b = document.getElementById('cxa-busca'); if (b) { b.focus(); b.setSelectionRange(foco, foco); } }
 }
 
 function cxaLinhaHtml(n) {
-  var id = escapeHtml(n.id), sel = !!_cxa.sel[n.id];
+  var id = escapeHtml(n.id), sel = !!_cxa.sel[n.id], exc = _cxa.pasta === 'excluidas';
+  var acoes = exc ? cxaBtn('restore_from_trash', 'Restaurar', "event.stopPropagation(); cxaMarcar(['" + id + "'], 'RESTAURAR')")
+    : cxaBtn(n.lida ? 'mark_email_unread' : 'drafts', n.lida ? 'Marcar como não lida' : 'Marcar como lida', "event.stopPropagation(); cxaMarcar(['" + id + "'], '" + (n.lida ? 'NAO_LIDA' : 'LIDA') + "')")
+      + cxaBtn(n.arquivada ? 'unarchive' : 'archive', n.arquivada ? 'Desarquivar' : 'Arquivar', "event.stopPropagation(); cxaMarcar(['" + id + "'], '" + (n.arquivada ? 'DESARQUIVAR' : 'ARQUIVAR') + "')")
+      + cxaBtn('delete', 'Excluir', "event.stopPropagation(); cxaMarcar(['" + id + "'], 'EXCLUIR')");
   return '<div class="cxa-linha' + (n.lida ? '' : ' nao-lida') + (sel ? ' sel' : '') + '" onclick="cxaClique(event, \'' + id + '\')">'
-    + '<input class="c-sel" type="checkbox"' + (sel ? ' checked' : '') + ' aria-label="Selecionar" onclick="event.stopPropagation(); cxaSelecionar(\'' + id + '\')">'
-    + '<button type="button" class="cxa-estrela c-star' + (n.estrelada ? ' on' : '') + '" data-title="' + (n.estrelada ? 'Desestrelar' : 'Estrelar') + '" aria-label="' + (n.estrelada ? 'Desestrelar' : 'Estrelar') + '" onclick="event.stopPropagation(); cxaEstrela(\'' + id + '\')"><span class="material-symbols-outlined">star</span></button>'
-    + '<span class="material-symbols-outlined c-ico">' + 'mail' + '</span>'
-    + '<div class="c-tag">' + ''
-    + '<span class="cxa-rotulo" data-title="' + escapeHtml(n.rotulo) + '">' + escapeHtml(n.rotulo) + '</span></div>'
+    + '<input type="checkbox"' + (sel ? ' checked' : '') + ' aria-label="Selecionar" onclick="event.stopPropagation(); cxaSelecionar(\'' + id + '\')">'
+    + '<button type="button" class="cxa-ico-btn' + (n.estrelada ? ' on' : '') + '" style="width:24px;height:24px;border:none" data-title="' + (n.estrelada ? 'Remover dos favoritos' : 'Favoritar') + '" aria-label="' + (n.estrelada ? 'Remover dos favoritos' : 'Favoritar')
+    + '" onclick="event.stopPropagation(); cxaMarcar([\'' + id + '\'], \'' + (n.estrelada ? 'DESESTRELAR' : 'ESTRELAR') + '\')"><span class="material-symbols-outlined">star</span></button>'
+    + '<span class="material-symbols-outlined c-ico">' + (n.lida ? 'drafts' : 'mail') + '</span>'
+    + '<span class="c-quem" data-title="' + escapeHtml(n.rotulo) + '">' + escapeHtml(n.rotulo) + '</span>'
     + '<div class="c-txt"><span class="c-titulo" data-title="' + escapeHtml(n.titulo) + '">' + escapeHtml(n.titulo) + '</span>'
-    + (n.qtd > 1 ? '<span class="cxa-qtd" data-title="Ocorrências agrupadas">' + n.qtd + '</span>' : '')
-    + (n.resumo ? '<span class="c-inline">— ' + escapeHtml(n.resumo) + '</span>' : '') + '</div>'
-    + (n.resumo ? '<span class="c-res">' + escapeHtml(n.resumo) + '</span>' : '')
-    + '<span class="c-hora">' + ntfHora(n.atualizadoEm) + '</span></div>';
+    + (n.qtd > 1 ? '<span class="cxa-qtd">' + n.qtd + '</span>' : '') + (n.resumo ? '<span class="c-res">— ' + escapeHtml(n.resumo) + '</span>' : '') + '</div>'
+    + '<div class="c-dir"><span class="c-hora">' + ntfHora(n.atualizadoEm) + '</span><div class="c-acoes">' + acoes + '</div></div></div>';
+}
+
+// pastas Enviadas/Rascunhos/Programadas: lista de gestão (editar, cancelar, excluir rascunho)
+function cxaLinhaEnviadaHtml(m) {
+  var id = escapeHtml(m.id), ST = { RASCUNHO: 'Rascunho', AGENDADA: 'Agendada', PUBLICADA: '', EXPIRADA: 'Expirada', CANCELADA: 'Cancelada' };
+  var x = m.metricas || {}, data = m.status === 'AGENDADA' ? m.agendadaPara : (m.publicadaEm || m.criadoEm);
+  var res = (ST[m.status] ? '[' + ST[m.status] + '] ' : '') + (m.status === 'PUBLICADA' || m.status === 'EXPIRADA' || m.status === 'CANCELADA' ? (x.entregues || 0) + ' entregues · ' + (x.lidas || 0) + ' lidas — ' : '') + m.resumo;
+  var acoes = '';
+  if (m.modoEdicao !== 'NENHUMA') acoes += cxaBtn('edit', m.status === 'PUBLICADA' ? 'Corrigir' : 'Editar', "event.stopPropagation(); cxaEditar('" + id + "')");
+  if (m.status === 'PUBLICADA' || m.status === 'AGENDADA') acoes += cxaBtn('cancel', 'Cancelar mensagem', "event.stopPropagation(); cxaCancelarEnviada('" + id + "')");
+  if (m.status === 'RASCUNHO') acoes += cxaBtn('delete', 'Excluir rascunho', "event.stopPropagation(); cxaExcluirRascunho('" + id + "')");
+  return '<div class="cxa-linha" onclick="cxaEditar(\'' + id + '\')"><span></span><span></span><span class="material-symbols-outlined c-ico">' + (m.status === 'RASCUNHO' ? 'draft' : m.status === 'AGENDADA' ? 'schedule_send' : 'send') + '</span>'
+    + '<span class="c-quem" data-title="' + escapeHtml(m.categoriaRotulo) + '">' + escapeHtml(m.categoriaRotulo) + '</span>'
+    + '<div class="c-txt"><span class="c-titulo" data-title="' + escapeHtml(m.titulo) + '">' + escapeHtml(m.titulo) + '</span><span class="c-res">— ' + escapeHtml(res) + '</span></div>'
+    + '<div class="c-dir"><span class="c-hora">' + (m.status === 'AGENDADA' ? new Date(ntfMs(data)).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ntfHora(data)) + '</span><div class="c-acoes">' + acoes + '</div></div></div>';
+}
+function cxaEscrever() { navigate('mensagens-enviadas', { novo: true }); }
+function cxaEditar(id) { navigate('mensagens-enviadas', { editar: id }); }
+function cxaCancelarEnviada(id) {
+  showConfirm('Cancelar mensagem?', 'Ela sai das caixas de entrada de quem ainda não leu.', function () { ntfChamar('apiCancelarMensagemSistema', [id], function () { cxaCarregar({}); }); });
+}
+function cxaExcluirRascunho(id) {
+  showConfirm('Excluir rascunho?', 'Esta ação não pode ser desfeita.', function () { ntfChamar('apiExcluirMensagemSistema', [id], function () { cxaCarregar({}); }); });
 }
 
 function cxaMudarAba(aba) { cxaCarregar({ aba: aba, offset: 0, sel: {} }); }
 function cxaPagina(d) { cxaCarregar({ offset: Math.max(0, _cxa.offset + d * CXA_LIM) }); }
-function cxaBuscar(v, agora) {
-  _cxa.busca = v;
-  clearTimeout(_cxa.tBusca);
-  if (agora) return cxaCarregar({ offset: 0 });
-  _cxa.tBusca = setTimeout(function () { cxaCarregar({ offset: 0 }); }, 250);
-}
+function cxaAbrirBusca() { _cxa.buscaAberta = true; cxaRenderCaixa(); var b = document.getElementById('cxa-busca'); if (b) b.focus(); }
+function cxaFecharBusca() { var tinha = !!_cxa.busca; _cxa.buscaAberta = false; _cxa.busca = ''; if (tinha) cxaCarregar({ offset: 0 }); else cxaRenderCaixa(); }
+function cxaBuscar(v) { _cxa.busca = v; clearTimeout(_cxa.tBusca); _cxa.tBusca = setTimeout(function () { cxaCarregar({ offset: 0 }); }, 250); }
 function cxaSelecionar(id) { _cxa.sel[id] = !_cxa.sel[id]; cxaRenderCaixa(); }
 function cxaToggleTodos() {
   var itens = (_cxa.res && _cxa.res.itens) || [], todos = itens.length && cxaSelIds().length === itens.length;
@@ -21556,28 +21625,75 @@ function cxaToggleTodos() {
 }
 function cxaClique(ev, id) {
   if (ev.ctrlKey || ev.metaKey) return cxaSelecionar(id);
-  var n = cxaItem(id); if (!n) return;
-  _cxa.sel = {};
-  navigate('mensagens', { view: 'leitura', id: n.idMensagem });
+  var i = ((_cxa.res && _cxa.res.itens) || []).findIndex(function (n) { return String(n.id) === String(id); });
+  if (i < 0) return;
+  _cxa.sel = {}; _cxa.idx = i;
+  navigate('mensagens', { view: 'leitura', id: _cxa.res.itens[i].idMensagem });
 }
-function cxaMarcar(ids, acao) { ntfChamar('apiMarcarNotificacoes', [ids, acao], function () { cxaCarregar({}); ntfContar(); }); }
-function cxaEstrela(id) { var n = cxaItem(id); if (n) cxaMarcar([n.id], n.estrelada ? 'DESESTRELAR' : 'ESTRELAR'); }
+function cxaMarcar(ids, acao, depois) { ntfChamar('apiMarcarNotificacoes', [ids, acao], function () { if (depois) depois(); else cxaCarregar({}); ntfContar(); }); }
 function cxaLote(acao) { var ids = cxaSelIds(); _cxa.sel = {}; if (ids.length) cxaMarcar(ids, acao); }
 
-// ============ LEITURA DE MENSAGEM ============
-function cxaCarregarLeitura(id) {
-  cxaRaiz().innerHTML = '<div class="cxa-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
-  ntfChamar('apiLerMensagemSistema', [id], function (m) {
-    _cxa.leitura = m;
-    ntfContar();
-    var d = new Date(ntfMs(m.publicadaEm)).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
-    cxaRaiz().innerHTML = '<div class="cxa-artigo" style="margin-bottom:12px"><button type="button" class="cxa-btn-icone" aria-label="Voltar" onclick="navigate(\'mensagens\', { view: \'caixa\' })"><span class="material-symbols-outlined" style="font-size:20px">arrow_back</span></button></div><article class="cxa-artigo"><div class="cxa-artigo-meta"><span class="cxa-cat' + (m.categoria === 'MSG_URGENTE' ? ' urgente' : '') + '">' + escapeHtml(m.categoriaRotulo) + '</span>'
-      + '<span>' + d + '</span>' + (m.editada ? '<span style="font-size:12px">· editada</span>' : '') + '</div>'
-      + '<h1>' + escapeHtml(m.titulo) + '</h1><p class="cxa-resumo">' + escapeHtml(m.resumo) + '</p><div class="nt-corpo" id="cxa-corpo"></div></article>';
-    document.getElementById('cxa-corpo').innerHTML = m.corpoHtml; // já sanitizado no servidor (ao salvar e ao servir)
-  }, function () { navigate('mensagens', { view: 'caixa' }); ntfNeutro(); });
+// ============ LEITURA ============
+function cxaCarregarLeitura(idMsg) {
+  cxaRaiz().innerHTML = '<div class="cxa-vazio"><div class="lista-spinner-wrap"><div class="lista-spinner"></div></div></div>';
+  var abrir = function () {
+    ntfChamar('apiLerMensagemSistema', [idMsg], function (m) {
+      _cxa.leitura = m; ntfContar();
+      var itens = (_cxa.res && _cxa.res.itens) || [];
+      var i = itens.findIndex(function (n) { return String(n.idMensagem) === String(idMsg); });
+      if (i > -1) { _cxa.idx = i; itens[i].lida = true; }
+      var t = m.titulo.length > 60 ? m.titulo.slice(0, 57) + '…' : m.titulo;
+      setBreadcrumb(_cxa.pasta === 'entrada' ? [{ label: 'Mensagens', page: 'mensagens' }, { label: t }] : [{ label: 'Mensagens', page: 'mensagens' }, { label: CXA_PASTAS[_cxa.pasta][0] }, { label: t }]);
+      cxaRenderLeitura();
+    }, function () { navigate('mensagens', { view: 'caixa' }); ntfNeutro(); });
+  };
+  // link direto (e-mail/sino): carrega a pasta para saber a posição, as ações e o anterior/próximo
+  var itens = (_cxa.res && _cxa.res.itens) || [];
+  if (itens.some(function (n) { return String(n.idMensagem) === String(idMsg); }) || cxaEnviadas()) return abrir();
+  ntfChamar('apiGetNotificacoes', [{ origem: 'MENSAGEM', aba: _cxa.pasta === 'excluidas' ? 'excluidas' : 'todas', limite: 200, offset: 0 }], function (r) { _cxa.res = r; _cxa.offset = 0; abrir(); }, function () { abrir(); });
 }
-
+function cxaRenderLeitura() {
+  var m = _cxa.leitura, itens = (_cxa.res && _cxa.res.itens) || [], n = itens[_cxa.idx];
+  if (n && String(n.idMensagem) !== String(m.id)) n = null;
+  var total = itens.length;
+  var d = new Date(ntfMs(m.publicadaEm)).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+  var barra = cxaBtn('arrow_back', 'Voltar', 'cxaVoltar()');
+  if (n) {
+    barra += '<div class="cxa-sep"></div>';
+    if (_cxa.pasta === 'excluidas') barra += cxaBtn('restore_from_trash', 'Restaurar', "cxaAcaoLeitura('RESTAURAR', true)");
+    else barra += cxaBtn(n.arquivada ? 'unarchive' : 'archive', n.arquivada ? 'Desarquivar' : 'Arquivar', "cxaAcaoLeitura('" + (n.arquivada ? 'DESARQUIVAR' : 'ARQUIVAR') + "', true)")
+      + cxaBtn(n.lida ? 'mark_email_unread' : 'drafts', n.lida ? 'Marcar como não lida' : 'Marcar como lida', "cxaAcaoLeitura('" + (n.lida ? 'NAO_LIDA' : 'LIDA') + "', false)")
+      + cxaBtn('star', n.estrelada ? 'Remover dos favoritos' : 'Favoritar', "cxaAcaoLeitura('" + (n.estrelada ? 'DESESTRELAR' : 'ESTRELAR') + "', false)", n.estrelada ? ' on' : '')
+      + cxaBtn('delete', 'Excluir', "cxaAcaoLeitura('EXCLUIR', true)");
+  }
+  barra += '<div class="cxa-esp"></div>';
+  if (n && total > 1) {
+    barra += '<span class="cxa-pag-counter">' + (_cxa.idx + 1) + ' de ' + total + '</span><div class="cxa-pag-nav">'
+      + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Mensagem anterior" aria-label="Mensagem anterior"' + (_cxa.idx <= 0 ? ' disabled' : '') + ' onclick="cxaVizinha(-1)"><span class="material-symbols-outlined">chevron_left</span></button>'
+      + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Próxima mensagem" aria-label="Próxima mensagem"' + (_cxa.idx >= total - 1 ? ' disabled' : '') + ' onclick="cxaVizinha(1)"><span class="material-symbols-outlined">chevron_right</span></button></div>';
+  }
+  barra += cxaBtn('print', 'Imprimir', 'window.print()');
+  cxaRaiz().innerHTML = '<div class="cxa-leitura-barra">' + barra + '</div>'
+    + '<article class="cxa-artigo" id="cxa-artigo"><h1>' + escapeHtml(m.titulo) + '</h1><div class="cxa-meta"><span class="cxa-cat' + (m.categoria === 'MSG_URGENTE' ? ' urgente' : '') + '">' + escapeHtml(m.categoriaRotulo) + '</span>'
+    + '<strong>' + escapeHtml(m.autor || '') + '</strong><span>·</span><span>' + d + '</span>' + (m.editada ? '<span>· editada</span>' : '') + '</div><div class="nt-corpo" id="cxa-corpo"></div></article>';
+  document.getElementById('cxa-corpo').innerHTML = m.corpoHtml; // já sanitizado no servidor (ao salvar e ao servir)
+}
+function cxaVoltar() { navigate('mensagens', { view: 'caixa', pasta: _cxa.pasta }); }
+function cxaVizinha(d) {
+  var itens = (_cxa.res && _cxa.res.itens) || [], i = _cxa.idx + d;
+  if (i < 0 || i >= itens.length) return;
+  _cxa.idx = i; navigate('mensagens', { view: 'leitura', id: itens[i].idMensagem });
+}
+// ações da barra de leitura; sai = volta para a lista (arquivar/excluir/restaurar); senão só atualiza a própria mensagem
+function cxaAcaoLeitura(acao, sai) {
+  var n = ((_cxa.res && _cxa.res.itens) || [])[_cxa.idx]; if (!n) return;
+  cxaMarcar([n.id], acao, function () {
+    if (sai) return cxaVoltar();
+    var campo = { LIDA: ['lida', true], NAO_LIDA: ['lida', false], ESTRELAR: ['estrelada', true], DESESTRELAR: ['estrelada', false] }[acao];
+    if (campo) n[campo[0]] = campo[1];
+    cxaRenderLeitura();
+  });
+}
 </script>
 
        <!-- ARQUIVO: pages_notificacoes.html
@@ -21854,7 +21970,7 @@ function ntpPref(gi, ii, qual) {
 </div>
 
 <style>
-  #page-mensagens-enviadas h1.mse-titulo { margin: 0; font-size: 30px; font-weight: 600; color: var(--ds-color-heading); }
+  #page-mensagens-enviadas h1.mse-titulo { margin: 0; font-size: 30px; line-height: 1.15; letter-spacing: -0.8px; font-weight: var(--ds-weight-bold); color: var(--ds-color-text); }
   .mse-cabecalho { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
   .mse-cabecalho .mse-esp { flex: 1; }
   .mse-vazio { padding: 56px 16px; text-align: center; color: var(--ds-color-text-muted); display: flex; flex-direction: column; align-items: center; gap: 8px; }
@@ -21928,53 +22044,10 @@ var MSE_AUD = { TODOS: 'Todos', PAPEIS: 'Papéis', UNIDADES: 'Unidades', USUARIO
 var MSE_TAGS = 'P BR STRONG B EM I U S DEL UL OL LI H2 H3 H4 BLOCKQUOTE A IMG HR CODE PRE'.split(' ');
 
 function mseRaiz() { return document.getElementById('mse-raiz'); }
-function initMensagensEnviadas() { mseCarregarLista(); }
+function initMensagensEnviadas(extra) { extra = extra || {}; _mse.volta = extra.editar ? 'enviadas' : 'rascunhos'; mseAbrirEditor(extra.editar || null); }
 
-// ============ LISTA ============
-function mseCarregarLista() {
-  _mse.view = 'lista';
-  mseRaiz().innerHTML = '<div class="mse-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
-  ntfChamar('apiGetMensagensSistema', [], function (r) { _mse.itens = r.itens || []; mseRenderLista(); }, function (e) {
-    navigate('mensagens', { view: 'caixa' }); ntfErro(e);
-  });
-}
-function mseFmtData(iso) { var t = ntfMs(iso); return t ? new Date(t).toLocaleDateString('pt-BR') : '—'; }
-function mseRenderLista() {
-  var ST = { RASCUNHO: 'Rascunho', AGENDADA: 'Agendada', PUBLICADA: 'Publicada', CANCELADA: 'Cancelada', EXPIRADA: 'Expirada' };
-  var itens = _mse.itens || [];
-  var html = '<div class="mse-cabecalho"><h1 class="mse-titulo mse-esp">Mensagens enviadas</h1>'
-    + '<button type="button" class="btn btn-primary" onclick="mseAbrirEditor(null)"><span class="material-symbols-outlined" style="font-size:18px">add</span> Nova mensagem</button></div>';
-  if (!itens.length) html += '<div class="mse-vazio"><span class="material-symbols-outlined" style="font-size:40px;opacity:.6">campaign</span><strong>Nenhuma mensagem</strong></div>';
-  else {
-    html += '<div class="mse-grade mse-cab"><span>Mensagem</span><span>Categoria</span><span>Status</span><span>Entregues</span><span>Lidas</span><span>E-mails</span><span></span></div><div class="mse-lista">';
-    html += itens.map(function (m, i) {
-      var pub = m.status === 'PUBLICADA' || m.status === 'EXPIRADA' || m.status === 'CANCELADA', x = m.metricas || {};
-      var sub = (m.status === 'AGENDADA' ? 'Agendada para ' + new Date(ntfMs(m.agendadaPara)).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : mseFmtData(m.publicadaEm)) + (m.editada ? ' · editada' : '');
-      var ac = '';
-      if (m.modoEdicao !== 'NENHUMA') ac += '<button type="button" class="mse-btn-ico" data-title="' + (m.status === 'PUBLICADA' ? 'Corrigir' : 'Editar') + '" aria-label="' + (m.status === 'PUBLICADA' ? 'Corrigir' : 'Editar') + '" onclick="mseAbrirEditor(' + i + ')"><span class="material-symbols-outlined">edit</span></button>';
-      if (m.status === 'PUBLICADA' || m.status === 'AGENDADA') ac += '<button type="button" class="mse-btn-ico perigo" data-title="Cancelar mensagem" aria-label="Cancelar mensagem" onclick="mseCancelar(' + i + ')"><span class="material-symbols-outlined">cancel</span></button>';
-      if (m.status === 'RASCUNHO') ac += '<button type="button" class="mse-btn-ico perigo" data-title="Excluir" aria-label="Excluir" onclick="mseExcluir(' + i + ')"><span class="material-symbols-outlined">delete</span></button>';
-      return '<div class="mse-grade mse-linha"><div class="mse-tit g-tit"><span data-title="' + escapeHtml(m.titulo) + '">' + escapeHtml(m.titulo) + '</span><span>' + escapeHtml(sub) + '</span></div>'
-        + '<span class="mse-cat g-cat">' + escapeHtml(m.categoriaRotulo) + '</span><span class="g-st"><span class="mse-st ' + m.status + '">' + ST[m.status] + '</span></span>'
-        + '<span class="g-ent">' + (pub ? (x.entregues || 0) + '<span class="lbl"> entregues</span>' : '—') + '</span>'
-        + '<span class="g-lid">' + (pub ? (x.lidas || 0) + '<span class="lbl"> lidas</span>' : '—') + '</span>'
-        + '<span class="g-em">' + (pub ? (x.emailsEnviados || 0) + ' / ' + (x.emailsPendentes || 0) + ' pend.' : '—') + '</span><span class="mse-acoes g-ac">' + ac + '</span></div>';
-    }).join('') + '</div>';
-  }
-  mseRaiz().innerHTML = html;
-}
-function mseCancelar(i) {
-  var m = _mse.itens[i];
-  showConfirm('Cancelar mensagem?', 'Ela sai das caixas de entrada de quem ainda não leu.', function () {
-    ntfChamar('apiCancelarMensagemSistema', [m.id], mseCarregarLista);
-  });
-}
-function mseExcluir(i) {
-  var m = _mse.itens[i];
-  showConfirm('Excluir rascunho?', 'Esta ação não pode ser desfeita.', function () {
-    ntfChamar('apiExcluirMensagemSistema', [m.id], mseCarregarLista);
-  });
-}
+// Escrever / editar (a lista de enviadas, rascunhos e programadas vive em pages_mensagens.html). extra = { novo: true } | { editar: id }
+function mseVoltar(pasta) { navigate('mensagens', { view: 'caixa', pasta: pasta || _mse.volta || 'rascunhos' }); }
 
 // ============ EDITOR ============
 function mseLocal(iso) {
@@ -21982,10 +22055,10 @@ function mseLocal(iso) {
   var d = new Date(t), p = function (n) { return ('0' + n).slice(-2); };
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
 }
-function mseAbrirEditor(i) {
-  var m = i === null ? null : _mse.itens[i];
+function mseAbrirEditor(id) {
+  var m = id ? { id: id } : null;
   _mse.view = 'editor'; _mse.nAud = null; _mse.audBusca = ''; _mse.imgErro = '';
-  setBreadcrumb([{ label: 'Mensagens', page: 'mensagens' }, { label: 'Mensagens enviadas', page: 'mensagens-enviadas' }, { label: m ? (m.status === 'PUBLICADA' ? 'Corrigir mensagem' : 'Editar mensagem') : 'Nova mensagem' }]);
+  setBreadcrumb([{ label: 'Mensagens', page: 'mensagens' }, { label: m ? 'Editar mensagem' : 'Nova mensagem' }]);
   mseRaiz().innerHTML = '<div class="mse-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
   ntfChamar('apiGetOpcoesMensagem', [], function (op) {
     _mse.opcoes = op;
@@ -21997,7 +22070,7 @@ function mseAbrirEditor(i) {
       f.audiencia = { tipo: c.audiencia.tipo, ids: (c.audiencia.ids || []).map(String) };
       f.unidadesModo = op.perfil === 'DIRIGENTE' && f.audiencia.tipo === 'UNIDADES' && f.audiencia.ids.length && f.audiencia.ids.length < (op.unidadesPermitidas || []).length ? 'algumas' : 'todas';
       _mse.form = f; mseRenderEditor();
-    }, function (e) { mseCarregarLista(); ntfErro(e); });
+    }, function (e) { mseVoltar(); ntfErro(e); });
   }, function (e) { navigate('mensagens', { view: 'caixa' }); ntfErro(e); });
 }
 function mseAudEfetiva() {
@@ -22014,7 +22087,7 @@ function mseAudVazia() {
 
 function mseRenderEditor() {
   var f = _mse.form, op = _mse.opcoes, L = op.limites, pub = f.status === 'PUBLICADA';
-  var h = '<div class="mse-cabecalho"><button type="button" class="mse-btn-ico" aria-label="Voltar" onclick="mseCarregarLista()"><span class="material-symbols-outlined">arrow_back</span></button>'
+  var h = '<div class="mse-cabecalho"><button type="button" class="mse-btn-ico" aria-label="Voltar" onclick="mseVoltar()"><span class="material-symbols-outlined">arrow_back</span></button>'
     + '<h1 class="mse-titulo mse-esp">' + (f.id ? (pub ? 'Corrigir mensagem' : 'Editar mensagem') : 'Nova mensagem') + '</h1></div><div class="mse-form">';
   h += '<label class="mse-campo"><span class="mse-rotulo">Título<span class="mse-cont" id="mse-c-tit"></span></span><input class="mse-input" id="mse-tit" maxlength="' + L.tituloMax + '" value="' + escapeHtml(f.titulo) + '" oninput="mseCampo(\'titulo\', this.value)"></label>';
   h += '<label class="mse-campo"><span class="mse-rotulo">Resumo ' + ntfInfoHtml('Aparece na caixa de entrada e no e-mail.') + '<span class="mse-cont" id="mse-c-res"></span></span><input class="mse-input" id="mse-res" maxlength="' + L.resumoMax + '" value="' + escapeHtml(f.resumo) + '" oninput="mseCampo(\'resumo\', this.value)"></label>';
@@ -22141,8 +22214,8 @@ function mseAtualizar() {
   var rod = document.getElementById('mse-rodape');
   var aud = !pub && _mse.nAud !== null && !mseAudVazia() ? 'Será enviada a ' + _mse.nAud.toLocaleString('pt-BR') + (_mse.nAud === 1 ? ' pessoa' : ' pessoas') : '';
   rod.innerHTML = '<span class="mse-aud-txt">' + aud + '</span>'
-    + (pub ? '' : '<button type="button" class="btn btn-outline" onclick="mseSalvarRascunho()">Salvar rascunho</button>')
-    + '<button type="button" class="btn btn-primary"' + (invalido ? ' disabled' : '') + ' onclick="msePublicar()">' + (pub ? 'Salvar correção' : fut ? 'Agendar' : 'Publicar') + '</button>';
+    + (pub ? '' : '<button type="button" class="ds-btn ds-btn--ghost" onclick="mseSalvarRascunho()">Salvar rascunho</button>')
+    + '<button type="button" class="ds-btn ds-btn--primary"' + (invalido ? ' disabled' : '') + ' onclick="msePublicar()">' + (pub ? 'Salvar correção' : fut ? 'Agendar' : 'Publicar') + '</button>';
 }
 function mseSw(k) { _mse.form[k] = !_mse.form[k]; mseAtualizar(); }
 
@@ -22174,15 +22247,15 @@ function msePayload() {
 function mseSalvar(depois) {
   ntfChamar('apiSalvarMensagemSistema', [msePayload()], function (r) { _mse.form.id = r.id; depois(r.id); });
 }
-function mseSalvarRascunho() { mseSalvar(function () { showMessage('success', 'Rascunho salvo', ''); mseCarregarLista(); }); }
+function mseSalvarRascunho() { mseSalvar(function () { showMessage('success', 'Rascunho salvo', ''); mseVoltar('rascunhos'); }); }
 function msePublicar() {
   var f = _mse.form;
-  if (f.status === 'PUBLICADA') return mseSalvar(function () { showMessage('success', 'Correção salva', 'Quem já recebeu vê o texto corrigido.'); mseCarregarLista(); });
+  if (f.status === 'PUBLICADA') return mseSalvar(function () { showMessage('success', 'Correção salva', 'Quem já recebeu vê o texto corrigido.'); mseVoltar('enviadas'); });
   var quando = f.agendadaPara && new Date(f.agendadaPara) > new Date() ? new Date(f.agendadaPara).getTime() : null;
   var txt = 'Será enviada a ' + (_mse.nAud || 0).toLocaleString('pt-BR') + ' pessoas' + (quando ? ' em ' + new Date(quando).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : ' agora') + '.';
   showConfirm(quando ? 'Agendar mensagem?' : 'Publicar mensagem?', txt, function () {
     mseSalvar(function (id) {
-      ntfChamar('apiPublicarMensagemSistema', quando ? [id, quando] : [id], function () { mseCarregarLista(); });
+      ntfChamar('apiPublicarMensagemSistema', quando ? [id, quando] : [id], function () { mseVoltar(quando ? 'programadas' : 'enviadas'); });
     });
   });
 }
@@ -24170,9 +24243,8 @@ function navigate(pageName, extra) {
     case 'mensagens-enviadas':
       // Só ADMIN/DEV e dirigentes de unidade (o servidor recusa os demais) — pages_mensagens_enviadas.html
       document.getElementById('page-mensagens-enviadas').classList.remove('hidden');
-      ativarMenu('Mensagens enviadas');
-      setBreadcrumb([{ label: 'Mensagens', page: 'mensagens' }, { label: 'Mensagens enviadas' }]);
-      if (typeof initMensagensEnviadas === 'function') initMensagensEnviadas();
+      ativarMenu('Mensagens');
+      if (typeof initMensagensEnviadas === 'function') initMensagensEnviadas(extra || {});
       break;
 
     case 'config-sistema':
