@@ -20590,6 +20590,14 @@ function confirmarEncerrarRevisao(idRevisao) {
         </div>
         <div id="carm-opcoes" aria-live="polite"></div>
       </section>
+      <section class="ds-card cfa-secao">
+        <div class="cfa-secao-cabecalho">
+          <h3 class="ds-section-title"><span class="material-symbols-outlined">straighten</span> Limites de arquivos
+            <span class="material-symbols-outlined carm-info" data-title="Valem por envio (evidência de uma aferição; anexos de uma mensagem). Reduzir um limite não apaga nem invalida o que já foi enviado.">info</span>
+          </h3>
+        </div>
+        <div id="carm-limites"></div>
+      </section>
       <div class="cfa-rodape">
         <span class="cfa-status" id="carm-status"></span>
         <button type="button" class="ds-btn ds-btn--ghost" id="carm-btn-descartar" onclick="carmCarregar()" disabled>Descartar alterações</button>
@@ -20647,6 +20655,10 @@ function confirmarEncerrarRevisao(idRevisao) {
 .carm-info { font-size: 16px; vertical-align: middle; color: var(--ds-color-text-muted); cursor: help; margin-left: 4px; }
 .carm-opcao { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--ds-color-border, #e5e7eb); flex-wrap: wrap; }
 .carm-opcao label { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 220px; cursor: pointer; font-weight: 600; }
+.carm-lim { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-top: 1px solid var(--ds-color-border, #e5e7eb); flex-wrap: wrap; }
+.carm-lim-nome { flex: 1; min-width: 160px; font-weight: 600; }
+.carm-lim label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--ds-color-text-muted); }
+.carm-lim input { width: 130px; }
 .carm-teste { font-size: 0.82rem; color: var(--ds-color-text-muted); min-width: 140px; }
 .carm-teste.ok { color: #1e7e34; }
 .carm-teste.erro { color: var(--danger, #c62828); }
@@ -20906,7 +20918,22 @@ function cntSalvar() {
 }
 
 // ---- Seção: Armazenamento ----
-let estadoCarm = { tipoSalvo: '', tipoEscolhido: '', tipos: [] };
+let estadoCarm = { tipoSalvo: '', tipoEscolhido: '', tipos: [], limites: null, limitesSalvos: '', teto: null };
+const CARM_USOS = [{ chave: 'evidencias', rotulo: 'Evidências' }, { chave: 'mensagens', rotulo: 'Anexos de mensagens' }];
+const CARM_MB = 1048576;
+
+/** Limites digitados na tela → { evidencias:{maxArquivos,maxBytesArquivo}, mensagens:{...} } (bytes); null se algum campo estiver vazio. */
+function carmLerLimites() {
+  const saida = {};
+  for (let i = 0; i < CARM_USOS.length; i++) {
+    const k = CARM_USOS[i].chave;
+    const qtd = parseInt(document.getElementById('carm-qtd-' + k).value, 10);
+    const mb = parseFloat(String(document.getElementById('carm-mb-' + k).value).replace(',', '.'));
+    if (!(qtd > 0) || !(mb > 0)) return null;
+    saida[k] = { maxArquivos: qtd, maxBytesArquivo: Math.round(mb * CARM_MB) };
+  }
+  return saida;
+}
 
 function carmCarregar() {
   document.getElementById('carm-status').textContent = 'Carregando…';
@@ -20914,7 +20941,7 @@ function carmCarregar() {
   document.getElementById('carm-btn-descartar').disabled = true;
   google.script.run
     .withSuccessHandler(function(c) {
-      estadoCarm = { tipoSalvo: c.tipo, tipoEscolhido: c.tipo, tipos: c.tipos || [] };
+      estadoCarm = { tipoSalvo: c.tipo, tipoEscolhido: c.tipo, tipos: c.tipos || [], limites: c.limites, limitesSalvos: JSON.stringify(c.limites), teto: c.teto };
       document.getElementById('carm-status').textContent = '';
       carmRender();
     })
@@ -20932,12 +20959,23 @@ function carmRender() {
       '<span class="carm-teste" id="carm-teste-' + escapeHtml(t.id) + '"></span>' +
       '<button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" data-tipo="' + escapeHtml(t.id) + '" onclick="carmTestar(this.dataset.tipo)">Testar conexão</button></div>';
   }).join('');
-  const sujo = estadoCarm.tipoEscolhido !== estadoCarm.tipoSalvo;
-  document.getElementById('carm-btn-salvar').disabled = !sujo;
+  document.getElementById('carm-limites').innerHTML = CARM_USOS.map(function(u) {
+    const l = estadoCarm.limites[u.chave], t = estadoCarm.teto;
+    return '<div class="carm-lim"><span class="carm-lim-nome">' + u.rotulo + '</span>' +
+      '<label>Arquivos por envio<input type="number" class="ds-input" id="carm-qtd-' + u.chave + '" min="1" max="' + t.maxArquivos + '" step="1" value="' + l.maxArquivos + '" oninput="carmMarcar()"></label>' +
+      '<label>Tamanho máximo (MB)<input type="number" class="ds-input" id="carm-mb-' + u.chave + '" min="0.1" max="' + (t.maxBytesArquivo / CARM_MB) + '" step="0.5" value="' + (Math.round(l.maxBytesArquivo / CARM_MB * 10) / 10) + '" oninput="carmMarcar()"></label></div>';
+  }).join('');
+  carmMarcar();
+}
+
+function carmMarcar() {
+  const lim = carmLerLimites();
+  const sujo = estadoCarm.tipoEscolhido !== estadoCarm.tipoSalvo || (lim !== null && JSON.stringify(lim) !== estadoCarm.limitesSalvos);
+  document.getElementById('carm-btn-salvar').disabled = !sujo || lim === null;
   document.getElementById('carm-btn-descartar').disabled = !sujo;
 }
 
-function carmEscolher(tipo) { estadoCarm.tipoEscolhido = tipo; carmRender(); }
+function carmEscolher(tipo) { estadoCarm.tipoEscolhido = tipo; carmMarcar(); }
 
 function carmTestar(tipo) {
   const el = document.getElementById('carm-teste-' + tipo);
@@ -20952,16 +20990,20 @@ function carmTestar(tipo) {
 }
 
 function carmSalvar() {
+  const lim = carmLerLimites();
+  if (lim === null) return;
+  const mudouTipo = estadoCarm.tipoEscolhido !== estadoCarm.tipoSalvo, mudouLim = JSON.stringify(lim) !== estadoCarm.limitesSalvos;
   mostrarLoader();
-  google.script.run
-    .withSuccessHandler(function(res) {
-      esconderLoader();
-      estadoCarm.tipoSalvo = estadoCarm.tipoEscolhido = res.tipo;
-      carmRender();
-      showMessage('success', 'Armazenamento atualizado', 'Os próximos arquivos serão guardados no destino escolhido. Os já enviados continuam acessíveis.');
-    })
-    .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
-    .apiSalvarConfigArmazenamento({ tipo: estadoCarm.tipoEscolhido });
+  const falha = function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); carmCarregar(); };
+  const salvarLimites = function() {
+    if (!mudouLim) { esconderLoader(); carmCarregar(); showMessage('success', 'Armazenamento atualizado', 'Os próximos arquivos serão guardados no destino escolhido. Os já enviados continuam acessíveis.'); return; }
+    google.script.run
+      .withSuccessHandler(function() { esconderLoader(); carmCarregar(); showMessage('success', 'Configurações salvas', 'Os novos limites valem para os próximos envios.'); })
+      .withFailureHandler(falha)
+      .apiSalvarLimitesArmazenamento(lim);
+  };
+  if (!mudouTipo) { salvarLimites(); return; }
+  google.script.run.withSuccessHandler(salvarLimites).withFailureHandler(falha).apiSalvarConfigArmazenamento({ tipo: estadoCarm.tipoEscolhido });
 }
 
 // ---- Seção: Avaliação ----
