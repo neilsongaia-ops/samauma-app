@@ -21395,7 +21395,8 @@ function csisAppSalvar(idApp) {
 
   /* barra: selecionar tudo / busca / ações em lote / contador e paginação */
   #page-mensagens .cxa-barra { position: sticky; top: -20px; z-index: 41; display: flex; align-items: center; gap: 8px; padding: 10px 0; background: var(--ds-color-surface); border-bottom: 1px solid var(--ds-color-border); }
-  #page-mensagens .cxa-barra-sel { width: 24px; padding-left: 16px; display: flex; align-items: center; }
+  #page-mensagens .cxa-barra-sel { flex: none; box-sizing: content-box; width: 16px; padding-left: 16px; display: flex; align-items: center; }
+  #page-mensagens input[type=checkbox] { flex: none; }
   #page-mensagens .cxa-barra-meio { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding-left: 14px; }
   #page-mensagens input[type=checkbox] { display: block; margin: 0; width: 16px; height: 16px; accent-color: var(--ds-color-action); }
   #page-mensagens .cxa-search { position: relative; display: inline-flex; align-items: center; }
@@ -21616,12 +21617,12 @@ function cxaLinhaHtml(n) {
 
 // pastas Enviadas/Rascunhos/Programadas: lista de gestão (editar, cancelar, excluir rascunho)
 function cxaLinhaEnviadaHtml(m) {
-  var id = escapeHtml(m.id), sel = !!_cxa.sel[m.id], ST = { RASCUNHO: '', AGENDADA: 'Agendada', PUBLICADA: '', EXPIRADA: 'Expirada', CANCELADA: 'Recolhida' };
+  var id = escapeHtml(m.id), sel = !!_cxa.sel[m.id], ST = { RASCUNHO: '', AGENDADA: 'Agendada', PUBLICADA: '', EXPIRADA: 'Expirada', CANCELADA: 'Cancelada' };
   var x = m.metricas || {}, data = m.status === 'AGENDADA' ? m.agendadaPara : (m.publicadaEm || m.criadoEm);
   var res = (ST[m.status] ? '[' + ST[m.status] + '] ' : '') + (m.status === 'PUBLICADA' || m.status === 'EXPIRADA' || m.status === 'CANCELADA' ? (x.entregues || 0) + ' entregues · ' + (x.lidas || 0) + ' lidas — ' : '') + m.resumo;
   var acoes = '';
   if (m.modoEdicao !== 'NENHUMA') acoes += cxaBtn('edit', m.status === 'PUBLICADA' ? 'Corrigir' : 'Editar', "event.stopPropagation(); cxaEditar('" + id + "')");
-  if (m.status === 'PUBLICADA' || m.status === 'AGENDADA') acoes += cxaBtn('cancel', m.status === 'AGENDADA' ? 'Cancelar envio' : 'Recolher mensagem', "event.stopPropagation(); cxaCancelarEnviada(['" + id + "'], '" + m.status + "')");
+  if (m.status === 'AGENDADA') acoes += cxaBtn('cancel', 'Cancelar envio', "event.stopPropagation(); cxaCancelarEnviada(['" + id + "'])");
   if (m.status === 'RASCUNHO') acoes += cxaBtn('delete', 'Descartar rascunho', "event.stopPropagation(); cxaExcluirRascunho(['" + id + "'])");
   var quem = m.status === 'RASCUNHO' ? '<span class="c-quem cxa-rasc">Rascunho</span>' : '<span class="c-quem" data-title="' + escapeHtml(m.categoriaRotulo) + '">' + escapeHtml(m.categoriaRotulo) + '</span>';
   var tit = m.titulo ? escapeHtml(m.titulo) : '<span class="cxa-semassunto">(sem assunto)</span>';
@@ -21634,7 +21635,7 @@ function cxaLinhaEnviadaHtml(m) {
 var CXA_FILTROS_DEF = {
   categoria: { label: 'Categoria', opcoes: [['MSG_AVISO', 'Avisos'], ['MSG_PROGRAMACAO', 'Programação e prazos'], ['MSG_URGENTE', 'Urgentes']] },
   periodo: { label: 'Período', opcoes: [['1', 'Hoje'], ['7', 'Últimos 7 dias'], ['30', 'Últimos 30 dias'], ['90', 'Últimos 90 dias']] },
-  status: { label: 'Situação', opcoes: [['PUBLICADA', 'Publicada'], ['EXPIRADA', 'Expirada'], ['CANCELADA', 'Recolhida']] }
+  status: { label: 'Situação', opcoes: [['PUBLICADA', 'Publicada'], ['EXPIRADA', 'Expirada'], ['CANCELADA', 'Cancelada']] }
 };
 function cxaCamposFiltro() { return { enviadas: ['categoria', 'periodo', 'status'], rascunhos: ['categoria', 'periodo'], programadas: ['categoria', 'periodo'], excluidas: ['categoria', 'periodo'] }[_cxa.pasta] || []; }
 function cxaFiltroDe() { var p = _cxa.filtros.periodo; if (!p) return 0; var d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime() - (Number(p) - 1) * 864e5; }
@@ -21658,9 +21659,8 @@ function cxaSelecionarFiltro(campo, valor) { _cxa.filtros[campo] = valor; if (ty
 function cxaSelIdsLimpa() { var ids = cxaSelIds(); _cxa.sel = {}; return ids; }
 function cxaAcoesLoteEnv(selItens) {
   if (_cxa.pasta === 'rascunhos') return cxaBtn('delete', 'Descartar rascunhos', 'cxaExcluirRascunho(cxaSelIdsLimpa())');
-  if (_cxa.pasta === 'programadas') return cxaBtn('cancel', 'Cancelar envio', "cxaCancelarEnviada(cxaSelIdsLimpa(), 'AGENDADA')");
-  var todasPub = selItens.every(function (m) { return m.status === 'PUBLICADA'; });
-  return todasPub ? cxaBtn('cancel', 'Recolher mensagem', "cxaCancelarEnviada(cxaSelIdsLimpa(), 'PUBLICADA')") : '';
+  if (_cxa.pasta === 'programadas') return cxaBtn('cancel', 'Cancelar envio', 'cxaCancelarEnviada(cxaSelIdsLimpa())');
+  return '';
 }
 // executa uma API por id, em sequência (o servidor serializa as escritas); recarrega no fim
 function cxaSequencia(api, ids, depois) {
@@ -21672,9 +21672,8 @@ function cxaSequencia(api, ids, depois) {
 }
 function cxaEscrever() { navigate('mensagens-enviadas', { novo: true }); }
 function cxaEditar(id) { navigate('mensagens-enviadas', { editar: id }); }
-function cxaCancelarEnviada(ids, status) {
-  var ag = status === 'AGENDADA';
-  showConfirm(ag ? 'Cancelar o envio?' : 'Recolher mensagem?', ag ? 'A mensagem agendada não será enviada.' : 'A mensagem sai da caixa de entrada de quem ainda não a leu. Quem já leu continua com ela.',
+function cxaCancelarEnviada(ids) {
+  showConfirm('Cancelar o envio?', 'A mensagem agendada não será enviada.',
     function () { cxaSequencia('apiCancelarMensagemSistema', ids, function () { cxaCarregar({ sel: {} }); }); });
 }
 function cxaExcluirRascunho(ids) {
