@@ -21561,6 +21561,9 @@ function csisAppSalvar(idApp) {
   #page-mensagens .cxa-limpar-link { background: none; border: none; padding: 6px 4px; color: var(--ds-color-action); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; white-space: nowrap; }
   #page-mensagens .cxa-limpar-link:hover { text-decoration: underline; }
   #page-mensagens .cxa-linha .c-quem.cxa-rasc, #page-mensagens .cxa-linha:not(.nao-lida) .c-quem.cxa-rasc { color: var(--ds-color-danger-fg); font-weight: var(--ds-weight-semibold); }
+  /* clipe de anexo: discreto (cor secundária), não compete com o destaque de não lida */
+  #page-mensagens .cxa-clip { flex: none; align-self: center; font-size: 16px; color: var(--ds-color-text-muted); font-weight: 400; }
+  #page-mensagens .cxa-linha .c-dir .cxa-clip { display: none; }
   #page-mensagens .cxa-semassunto { font-style: italic; color: var(--ds-color-text-muted); }
   #page-mensagens .cxa-qtd { font-size: 12px; font-weight: 600; padding: 0 6px; border-radius: 999px; background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); color: var(--ds-color-text-muted); }
   #page-mensagens .cxa-vazio { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 16px; color: var(--ds-color-text-muted); }
@@ -21578,6 +21581,20 @@ function csisAppSalvar(idApp) {
   #page-mensagens .nt-corpo { font-size: 15px; line-height: 1.6; color: var(--ds-color-text); }
   #page-mensagens .nt-corpo p { margin: 0 0 14px; }
   #page-mensagens .nt-corpo img { max-width: 100%; height: auto; }
+  #page-mensagens .cxa-anexos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--ds-glass-border); }
+  #page-mensagens .cxa-anexos a.ds-chip { text-decoration: none; cursor: pointer; max-width: 100%; }
+  #page-mensagens .cxa-anexos a.ds-chip:hover { background: var(--ds-color-surface-2); border-color: var(--ds-color-border-strong); }
+  #page-mensagens .cxa-anexos .ds-chip .material-symbols-outlined { font-size: 16px; color: var(--ds-color-text-muted); }
+  #page-mensagens .cxa-anexos .cxa-anexo-nome { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
+  #page-mensagens .cxa-anexos .cxa-anexo-tam { color: var(--ds-color-text-muted); }
+  #page-mensagens .cxa-anexos-print { display: none; }
+  /* cor da fonte no tema escuro / alto contraste: só a exibição clareia (o hex salvo é o da paleta do servidor) */
+  [data-ds-theme="dark"] #page-mensagens .nt-corpo span[style*="#c62828"], body.high-contrast #page-mensagens .nt-corpo span[style*="#c62828"] { color: #ef9a9a !important; }
+  [data-ds-theme="dark"] #page-mensagens .nt-corpo span[style*="#e65100"], body.high-contrast #page-mensagens .nt-corpo span[style*="#e65100"] { color: #ffb74d !important; }
+  [data-ds-theme="dark"] #page-mensagens .nt-corpo span[style*="#2e7d32"], body.high-contrast #page-mensagens .nt-corpo span[style*="#2e7d32"] { color: #81c784 !important; }
+  [data-ds-theme="dark"] #page-mensagens .nt-corpo span[style*="#1565c0"], body.high-contrast #page-mensagens .nt-corpo span[style*="#1565c0"] { color: #90caf9 !important; }
+  [data-ds-theme="dark"] #page-mensagens .nt-corpo span[style*="#6a1b9a"], body.high-contrast #page-mensagens .nt-corpo span[style*="#6a1b9a"] { color: #ce93d8 !important; }
+  [data-ds-theme="dark"] #page-mensagens .nt-corpo span[style*="#616161"], body.high-contrast #page-mensagens .nt-corpo span[style*="#616161"] { color: #bdbdbd !important; }
   #page-mensagens .nt-corpo blockquote { border-left: 3px solid var(--ds-color-border); margin: 0 0 14px; padding-left: 12px; color: var(--ds-color-text-muted); }
 
   @media (max-width: 1100px) { #page-mensagens .cxa-linha { grid-template-columns: 24px 24px 24px 130px minmax(0, 1fr) 112px; } }
@@ -21585,17 +21602,23 @@ function csisAppSalvar(idApp) {
     #page-mensagens .cxa-hero h1, #page-mensagens .cxa-artigo h1 { font-size: 24px; }
     #page-mensagens .cxa-barra, #page-mensagens .cxa-leitura-barra { position: static; flex-wrap: wrap; }
     #page-mensagens .cxa-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 12px; }
-    #page-mensagens .cxa-linha { grid-template-columns: 24px 24px minmax(0, 1fr) auto; grid-template-areas: "sel ico quem star" "txt txt txt txt" "res res res dir"; padding: 12px; border: 1px solid var(--ds-color-border); border-radius: 10px; }
+    #page-mensagens .cxa-linha { grid-template-columns: 24px 24px minmax(0, 1fr) auto; grid-template-areas: "sel ico quem star" "txt txt txt txt" "dir dir dir dir"; padding: 12px; border: 1px solid var(--ds-color-border); border-radius: 10px; }
     #page-mensagens .cxa-linha > :nth-child(1) { grid-area: sel; } #page-mensagens .cxa-linha > :nth-child(2) { grid-area: star; justify-self: end; }
     #page-mensagens .cxa-linha > :nth-child(3) { grid-area: ico; } #page-mensagens .cxa-linha > :nth-child(4) { grid-area: quem; }
     #page-mensagens .cxa-linha .c-txt { grid-area: txt; } #page-mensagens .cxa-linha .c-dir { grid-area: dir; }
     #page-mensagens .cxa-linha .c-res { display: none; }
+    #page-mensagens .cxa-linha .c-txt .cxa-clip { display: none; }
+    #page-mensagens .cxa-linha .c-dir { justify-content: space-between; }
+    #page-mensagens .cxa-linha .c-dir .cxa-clip { display: inline-block; }
     #page-mensagens .cxa-linha .c-acoes { display: inline-flex; } #page-mensagens .cxa-linha .c-hora { display: none; }
   }
   @media print {
     body * { visibility: hidden !important; }
     #cxa-artigo, #cxa-artigo * { visibility: visible !important; }
     #cxa-artigo { position: absolute; left: 0; top: 0; width: 100%; }
+    #page-mensagens .cxa-anexos { display: none !important; }
+    #page-mensagens .cxa-anexos-print { display: block; margin-top: 20px; padding-top: 12px; border-top: 1px solid #999; font-size: 13px; }
+    #page-mensagens .cxa-anexos-print ul { margin: 4px 0 0; padding-left: 18px; }
   }
 </style>
 
@@ -21650,6 +21673,12 @@ function cxaCarregar(patch) {
 }
 function cxaItem(id) { return ((_cxa.res && _cxa.res.itens) || []).find(function (n) { return String(n.id) === String(id); }); }
 function cxaSelIds() { return Object.keys(_cxa.sel).filter(function (k) { return _cxa.sel[k]; }); }
+// clipe de anexo (qtdAnexos vem do servidor): um no título (desktop) e um na linha de detalhes (card mobile)
+function cxaClipHtml(q) {
+  q = Number(q) || 0; if (q <= 0) return '';
+  var t = q === 1 ? '1 anexo' : q + ' anexos';
+  return '<span class="material-symbols-outlined cxa-clip" data-title="' + t + '" aria-label="' + t + '">attach_file</span>';
+}
 function cxaBtn(icone, rot, js, extra) {
   return '<button type="button" class="cxa-ico-btn' + (extra || '') + '" data-title="' + rot + '" aria-label="' + rot + '" onclick="' + js + '"><span class="material-symbols-outlined">' + icone + '</span></button>';
 }
@@ -21723,8 +21752,8 @@ function cxaLinhaHtml(n) {
     + '<span class="material-symbols-outlined c-ico">' + (n.lida ? 'drafts' : 'mail') + '</span>'
     + '<span class="c-quem" data-title="' + escapeHtml(n.rotulo) + '">' + escapeHtml(n.rotulo) + '</span>'
     + '<div class="c-txt"><span class="c-titulo" data-title="' + escapeHtml(n.titulo) + '">' + escapeHtml(n.titulo) + '</span>'
-    + (n.qtd > 1 ? '<span class="cxa-qtd">' + n.qtd + '</span>' : '') + (n.resumo ? '<span class="c-res">— ' + escapeHtml(n.resumo) + '</span>' : '') + '</div>'
-    + '<div class="c-dir"><span class="c-hora"' + (exc && n.diasRestantes !== null ? ' data-title="Será apagada definitivamente em ' + n.diasRestantes + ' dia(s)"' : '') + '>' + (exc && n.diasRestantes !== null ? n.diasRestantes + (n.diasRestantes === 1 ? ' dia' : ' dias') : ntfHora(n.atualizadoEm)) + '</span><div class="c-acoes">' + acoes + '</div></div></div>';
+    + cxaClipHtml(n.qtdAnexos) + (n.qtd > 1 ? '<span class="cxa-qtd">' + n.qtd + '</span>' : '') + (n.resumo ? '<span class="c-res">— ' + escapeHtml(n.resumo) + '</span>' : '') + '</div>'
+    + '<div class="c-dir">' + cxaClipHtml(n.qtdAnexos) + '<span class="c-hora"' + (exc && n.diasRestantes !== null ? ' data-title="Será apagada definitivamente em ' + n.diasRestantes + ' dia(s)"' : '') + '>' + (exc && n.diasRestantes !== null ? n.diasRestantes + (n.diasRestantes === 1 ? ' dia' : ' dias') : ntfHora(n.atualizadoEm)) + '</span><div class="c-acoes">' + acoes + '</div></div></div>';
 }
 
 // pastas Enviadas/Rascunhos/Programadas: lista de gestão (editar, cancelar, excluir rascunho)
@@ -21744,8 +21773,8 @@ function cxaLinhaEnviadaHtml(m) {
   var tit = m.titulo ? escapeHtml(m.titulo) : '<span class="cxa-semassunto">(sem assunto)</span>';
   return '<div class="cxa-linha' + (sel ? ' sel' : '') + '" onclick="cxaClique(event, \'' + id + '\')"><input type="checkbox"' + (sel ? ' checked' : '') + ' aria-label="Selecionar" onclick="event.stopPropagation(); cxaSelecionar(\'' + id + '\')"><span></span><span class="material-symbols-outlined c-ico">' + (m.status === 'RASCUNHO' ? 'draft' : m.status === 'AGENDADA' ? 'schedule_send' : 'send') + '</span>'
     + quem
-    + '<div class="c-txt"><span class="c-titulo">' + tit + '</span><span class="c-res">— ' + escapeHtml(res) + '</span></div>'
-    + '<div class="c-dir"><span class="c-hora"' + (lixo ? ' data-title="Some desta lista em ' + m.diasRestantes + ' dia(s); o registro é mantido"' : '') + '>' + (lixo ? m.diasRestantes + (m.diasRestantes === 1 ? ' dia' : ' dias') : m.status === 'AGENDADA' ? new Date(ntfMs(data)).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ntfHora(data)) + '</span><div class="c-acoes">' + acoes + '</div></div></div>';
+    + '<div class="c-txt"><span class="c-titulo">' + tit + '</span>' + cxaClipHtml(m.qtdAnexos) + '<span class="c-res">— ' + escapeHtml(res) + '</span></div>'
+    + '<div class="c-dir">' + cxaClipHtml(m.qtdAnexos) + '<span class="c-hora"' + (lixo ? ' data-title="Some desta lista em ' + m.diasRestantes + ' dia(s); o registro é mantido"' : '') + '>' + (lixo ? m.diasRestantes + (m.diasRestantes === 1 ? ' dia' : ' dias') : m.status === 'AGENDADA' ? new Date(ntfMs(data)).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ntfHora(data)) + '</span><div class="c-acoes">' + acoes + '</div></div></div>';
 }
 // ---- filtros (Categoria / Período / Situação), com o mesmo menu de seleção da lista de planos ----
 var CXA_FILTROS_DEF = {
@@ -21912,8 +21941,29 @@ function cxaRenderLeitura() {
   barra += cxaBtn('print', 'Imprimir', 'window.print()');
   cxaRaiz().innerHTML = '<div class="cxa-leitura-barra">' + barra + '</div>'
     + '<article class="cxa-artigo" id="cxa-artigo"><h1>' + escapeHtml(m.titulo) + '</h1><div class="cxa-meta"><span class="cxa-cat' + (m.categoria === 'MSG_URGENTE' ? ' urgente' : '') + '">' + escapeHtml(m.categoriaRotulo) + '</span>'
-    + '<strong>' + escapeHtml(m.autor || '') + '</strong><span>·</span><span>' + d + '</span>' + (m.editada ? '<span>· editada</span>' : '') + '</div><div class="nt-corpo" id="cxa-corpo"></div></article>';
+    + '<strong>' + escapeHtml(m.autor || '') + '</strong><span>·</span><span>' + d + '</span>' + (m.editada ? '<span>· editada</span>' : '') + '</div><div class="nt-corpo" id="cxa-corpo"></div>' + cxaAnexosLeituraHtml(m.anexos) + '</article>';
   document.getElementById('cxa-corpo').innerHTML = m.corpoHtml; // já sanitizado no servidor (ao salvar e ao servir)
+}
+// anexos da leitura: chips que abrem/baixam pelo link assinado (12 h); na impressão, só os nomes
+function cxaIconeArquivo(nome, mime) {
+  var e = String(nome).split('.').length > 1 ? String(nome).split('.').pop().toLowerCase() : ''; mime = mime || '';
+  if (e === 'pdf') return 'picture_as_pdf';
+  if (/^image\//.test(mime) || /^(png|jpe?g|gif|webp|svg|bmp)$/.test(e)) return 'image';
+  if (/^(xlsx?|ods|csv)$/.test(e)) return 'table_chart';
+  if (/^(pptx?|odp)$/.test(e)) return 'slideshow';
+  if (/^(docx?|odt|rtf|txt)$/.test(e)) return 'description';
+  if (/^(zip|rar|7z)$/.test(e)) return 'folder_zip';
+  if (/^(mp4|mov|webm)$/.test(e)) return 'movie';
+  if (/^(mp3|wav|ogg)$/.test(e)) return 'audio_file';
+  return 'draft';
+}
+function cxaTamanho(b) { b = Number(b) || 0; return b >= 1048576 ? (b / 1048576).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+function cxaAnexosLeituraHtml(anexos) {
+  if (!anexos || !anexos.length) return '';
+  return '<div class="cxa-anexos">' + anexos.map(function (x) {
+    return '<a class="ds-chip" href="' + escapeHtml(x.url) + '" target="_blank" rel="noopener" data-title="' + escapeHtml(x.nome) + '"><span class="material-symbols-outlined" aria-hidden="true">' + cxaIconeArquivo(x.nome, x.mime) + '</span>'
+      + '<span class="cxa-anexo-nome">' + escapeHtml(x.nome) + '</span><span class="cxa-anexo-tam">' + cxaTamanho(x.tamanho) + '</span></a>';
+  }).join('') + '</div><div class="cxa-anexos-print"><strong>Anexos</strong><ul>' + anexos.map(function (x) { return '<li>' + escapeHtml(x.nome) + '</li>'; }).join('') + '</ul></div>';
 }
 function cxaVoltar() { navigate('mensagens', { view: 'caixa', pasta: _cxa.pasta }); }
 function cxaVizinha(d) {
@@ -22200,6 +22250,7 @@ function ntpPref(gi, ii, qual) {
 
        <!-- ARQUIVO: pages_mensagens_enviadas.html
      Mensagens da administração: editor (nova / editar rascunho ou agendada) com autosave de rascunho. A lista vive em pages_mensagens.html. ADMIN/DEV e dirigentes de unidade; o servidor recusa os demais.
+     Anexos: chips .ds-chip abaixo do corpo (apiEnviarAnexoMensagem, um arquivo por chamada); limites de apiGetOpcoesMensagem().limites.
      Prefixo de globais: mse. Helpers compartilhados (chamadas, switch, erros) em components_notificacoes.html (ntf). -->
 
 <div id="page-mensagens-enviadas" class="page-content hidden">
@@ -22219,19 +22270,18 @@ function ntpPref(gi, ii, qual) {
   }
 
   /* editor */
-  .mse-form { max-width: 820px; display: flex; flex-direction: column; gap: 18px; }
+  .mse-form { display: flex; flex-direction: column; gap: 18px; }
+  .mse-form > label.mse-campo, .mse-form > .mse-campo-cat, .mse-form > .mse-campo-aud { max-width: 820px; }
   .mse-campo { display: flex; flex-direction: column; gap: 6px; }
   .mse-rotulo { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; }
   .mse-rotulo .mse-cont { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--ds-color-text-muted); }
-  .mse-input, .mse-select { height: 40px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--ds-color-border); border-radius: 4px; font-size: 14px; font-family: inherit;
+  .mse-input { height: 40px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--ds-color-border); border-radius: 4px; font-size: 14px; font-family: inherit;
     background: var(--ds-color-surface); color: var(--ds-color-text); width: 100%; }
-  .mse-select { max-width: 360px; }
   .mse-input.data { max-width: 240px; }
   .mse-linha-sw { display: flex; align-items: center; gap: 10px; }
   .mse-linha-sw strong { font-weight: 500; font-size: 14px; }
   .mse-chips { display: flex; gap: 8px; flex-wrap: wrap; }
-  .mse-chip { height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--ds-color-border); background: var(--ds-color-surface); color: var(--ds-color-text); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; }
-  .mse-chip.ativo { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); color: var(--ds-color-action); }
+  .mse-chips .ds-chip { cursor: pointer; font-family: inherit; }
   .mse-lista-aud { border: 1px solid var(--ds-color-border); border-radius: 8px; max-height: 260px; overflow-y: auto; }
   .mse-opcao { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--ds-color-border); }
   .mse-opcao:last-child { border-bottom: none; }
@@ -22242,10 +22292,64 @@ function ntpPref(gi, ii, qual) {
   .mse-ferramentas button { width: 34px; height: 34px; border: none; background: none; border-radius: 6px; cursor: pointer; color: var(--ds-color-text-muted); display: inline-flex; align-items: center; justify-content: center; }
   .mse-ferramentas button:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
   .mse-ferramentas .material-symbols-outlined { font-size: 20px; }
-  .mse-editor { min-height: 240px; max-height: 520px; overflow-y: auto; padding: 12px; border: 1px solid var(--ds-color-border); border-radius: 0 0 8px 8px; background: var(--ds-color-surface); color: var(--ds-color-text);
+  .mse-editor { min-height: max(240px, calc(100vh - 360px)); padding: 12px; border: 1px solid var(--ds-color-border); border-radius: 0 0 8px 8px; background: var(--ds-color-surface); color: var(--ds-color-text);
     font-size: 15px; line-height: 1.6; outline: none; }
   .mse-editor:focus { border-color: var(--ds-color-action); }
-  .mse-editor img { max-width: 100%; height: auto; }
+  .mse-editor img { max-width: 100%; height: auto; cursor: pointer; }
+  .mse-ferramentas .mse-sep { width: 1px; height: 20px; align-self: center; margin: 0 4px; background: var(--ds-color-border); }
+  .mse-ferramentas button:disabled { opacity: .4; cursor: not-allowed; background: none; color: var(--ds-color-text-muted); }
+  .mse-corpo-wrap { position: relative; }
+  /* categoria: mesmo gatilho dos filtros de pages_mensagens.html (.cxa-filtro-btn) */
+  .mse-filtro-btn { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px; background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
+    color: var(--ds-color-text); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); cursor: pointer; white-space: nowrap; align-self: flex-start; }
+  .mse-filtro-btn:hover { background: var(--ds-sidebar-item-hover); }
+  .mse-filtro-btn .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
+  /* imagem selecionada: moldura + alças de canto */
+  .mse-img-sel { position: absolute; outline: 2px solid var(--ds-color-action); pointer-events: none; }
+  .mse-alca { position: absolute; width: 10px; height: 10px; box-sizing: border-box; background: var(--ds-color-surface); border: 2px solid var(--ds-color-action); border-radius: 2px; pointer-events: auto; }
+  .mse-alca.nw { left: -6px; top: -6px; cursor: nwse-resize; } .mse-alca.se { right: -6px; bottom: -6px; cursor: nwse-resize; }
+  .mse-alca.ne { right: -6px; top: -6px; cursor: nesw-resize; } .mse-alca.sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
+  .mse-img-px { position: absolute; right: 6px; bottom: 6px; padding: 2px 8px; border-radius: 999px; background: rgba(27,36,48,.85); color: #fff; font-size: 12px; font-weight: 600; }
+  /* popover de link */
+  .mse-pop { position: absolute; z-index: var(--ds-z-dropdown); width: 340px; max-width: calc(100% - 16px); box-sizing: border-box; padding: 12px; background: var(--ds-glass-bg-strong); border: 1px solid var(--ds-glass-border);
+    border-radius: var(--ds-r-xl); box-shadow: var(--ds-glass-shadow-strong); -webkit-backdrop-filter: blur(var(--ds-glass-blur)); backdrop-filter: blur(var(--ds-glass-blur)); }
+  .mse-pop-ver { display: flex; align-items: center; gap: 4px; }
+  .mse-pop-ver a.mse-pop-url { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ds-color-action); }
+  .mse-pop-form { display: flex; flex-direction: column; gap: 12px; }
+  .mse-pop-acoes { display: flex; justify-content: flex-end; gap: 8px; }
+  .mse-obrig { color: var(--ds-color-danger-fg); }
+  /* cor da fonte: barrinha com a cor atual sob o ícone + círculos da paleta no popover */
+  .mse-ferramentas button.mse-f-cor { flex-direction: column; gap: 0; }
+  .mse-ferramentas button.mse-f-cor .material-symbols-outlined { font-size: 18px; line-height: 18px; }
+  .mse-cor-barra { width: 16px; height: 3px; border-radius: 1px; margin-top: 1px; background: var(--ds-color-text); }
+  .mse-pop.mse-pop-cor { width: auto; padding: 8px; }
+  .mse-cores { display: flex; gap: 6px; }
+  .mse-cor { width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 2px solid transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; background-clip: padding-box; }
+  .mse-cor:hover { box-shadow: 0 0 0 2px var(--ds-color-surface), 0 0 0 4px var(--ds-color-border-strong); }
+  .mse-cor[aria-checked="true"] { box-shadow: 0 0 0 2px var(--ds-color-surface), 0 0 0 4px var(--ds-color-action); }
+  .mse-cor-nenhuma { background: var(--ds-color-surface); border-color: var(--ds-color-border); color: var(--ds-color-text-muted); }
+  .mse-cor-nenhuma .material-symbols-outlined { font-size: 16px; }
+  /* tema escuro / alto contraste: só a EXIBIÇÃO clareia; o hex salvo continua o da paleta */
+  [data-ds-theme="dark"] .mse-editor span[style*="#c62828"], body.high-contrast .mse-editor span[style*="#c62828"] { color: #ef9a9a !important; }
+  [data-ds-theme="dark"] .mse-editor span[style*="#e65100"], body.high-contrast .mse-editor span[style*="#e65100"] { color: #ffb74d !important; }
+  [data-ds-theme="dark"] .mse-editor span[style*="#2e7d32"], body.high-contrast .mse-editor span[style*="#2e7d32"] { color: #81c784 !important; }
+  [data-ds-theme="dark"] .mse-editor span[style*="#1565c0"], body.high-contrast .mse-editor span[style*="#1565c0"] { color: #90caf9 !important; }
+  [data-ds-theme="dark"] .mse-editor span[style*="#6a1b9a"], body.high-contrast .mse-editor span[style*="#6a1b9a"] { color: #ce93d8 !important; }
+  [data-ds-theme="dark"] .mse-editor span[style*="#616161"], body.high-contrast .mse-editor span[style*="#616161"] { color: #bdbdbd !important; }
+  /* anexos */
+  .mse-campo-corpo { border-radius: 10px; }
+  .mse-campo-corpo.arrastando { outline: 2px dashed var(--ds-color-action); outline-offset: 6px; background: color-mix(in srgb, var(--ds-color-action) 6%, transparent); }
+  .mse-anexos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 4px; }
+  .mse-anexo { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: 100%; }
+  .mse-anexos .ds-chip { padding-right: 4px; max-width: 100%; }
+  .mse-anexos .ds-chip .material-symbols-outlined { font-size: 16px; }
+  .mse-anexo-nome { max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+  .mse-anexo-tam { color: var(--ds-color-text-muted); }
+  .mse-anexo-x { width: 20px; height: 20px; padding: 0; border: none; background: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--ds-color-text-muted); cursor: pointer; }
+  .mse-anexo-x:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text); }
+  .mse-gira { animation: mseGira 1s linear infinite; color: var(--ds-color-action); }
+  @keyframes mseGira { to { transform: rotate(360deg); } }
+  .mse-anexos .mse-cont-anexos { margin-left: auto; font-size: 12px; color: var(--ds-color-text-muted); }
   .mse-editor blockquote { border-left: 3px solid var(--ds-color-border); margin: 0; padding-left: 12px; color: var(--ds-color-text-muted); }
   .mse-erro { font-size: 12px; color: var(--ds-color-danger-fg); }
   .mse-rodape { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 4px; }
@@ -22257,6 +22361,10 @@ function ntpPref(gi, ii, qual) {
 var _mse = { view: 'editor', opcoes: null, form: null, nAud: null, audBusca: '', imgErro: '', tAud: null };
 var MSE_AUD = { TODOS: 'Todos', PAPEIS: 'Papéis', UNIDADES: 'Unidades', USUARIOS: 'Usuários', PLANOS: 'Responsáveis de planos' };
 var MSE_TAGS = 'P BR STRONG B EM I U S DEL UL OL LI H2 H3 H4 BLOCKQUOTE A IMG HR CODE PRE'.split(' ');
+var MSE_ALINHAVEL = 'P H2 H3 H4 BLOCKQUOTE LI'.split(' ');
+var MSE_IMG = { wMin: 16, wMax: 1600, hMin: 16, hMax: 4000 };
+// paleta fechada de cor da fonte (igual à do servidor; fora dela a cor é descartada)
+var MSE_CORES = [['#c62828', 'Vermelho'], ['#e65100', 'Laranja'], ['#2e7d32', 'Verde'], ['#1565c0', 'Azul'], ['#6a1b9a', 'Roxo'], ['#616161', 'Cinza']];
 
 function mseRaiz() { return document.getElementById('mse-raiz'); }
 function initMensagensEnviadas(extra) { extra = extra || {}; _mse.volta = extra.editar ? 'enviadas' : 'rascunhos'; mseAbrirEditor(extra.editar || null); }
@@ -22274,7 +22382,7 @@ function mseLocal(iso) {
 }
 function mseAbrirEditor(id) {
   var m = id ? { id: id } : null;
-  _mse.view = 'editor'; _mse.descartado = false; _mse.sujo = false; _mse.salvando = false; _mse.fila = null; _mse.salvoEm = 0; _mse.autoErro = false; _mse.ultimo = ''; clearTimeout(_mse.tAuto); _mse.nAud = null; _mse.audBusca = ''; _mse.imgErro = '';
+  _mse.view = 'editor'; _mse.descartado = false; _mse.sujo = false; _mse.salvando = false; _mse.fila = null; _mse.salvoEm = 0; _mse.autoErro = false; _mse.ultimo = ''; clearTimeout(_mse.tAuto); _mse.nAud = null; _mse.audBusca = ''; _mse.imgErro = ''; _mse.anexos = []; _mse.img = null; _mse.link = null;
   setBreadcrumb([{ label: 'Mensagens', page: 'mensagens' }, { label: m ? 'Editar mensagem' : 'Nova mensagem' }]);
   mseRaiz().innerHTML = '<div class="mse-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
   ntfChamar('apiGetOpcoesMensagem', [], function (op) {
@@ -22282,6 +22390,8 @@ function mseAbrirEditor(id) {
     var base = { id: null, titulo: '', resumo: '', corpoHtml: '', categoria: op.categorias[0].chave, audiencia: { tipo: op.tiposAudiencia[0], ids: [] }, unidadesModo: 'todas', obrigatoria: false, enviarEmail: false, agendadaPara: '', expiraEm: '', status: 'RASCUNHO' };
     if (!m) { _mse.form = base; return mseRenderEditor(); }
     ntfChamar('apiGetMensagemSistemaParaEditar', [m.id], function (c) {
+      if (c.status !== 'RASCUNHO' && c.status !== 'AGENDADA') { _mse.sujo = false; return navigate('mensagens', { view: 'leitura', id: m.id, pasta: 'enviadas' }); }
+      _mse.anexos = (c.anexos || []).map(function (x) { return mseAnexoNovo(x, 'ok'); }); delete c.anexos;
       var f = Object.assign(base, c);
       f.agendadaPara = mseLocal(c.agendadaPara); f.expiraEm = mseLocal(c.expiraEm);
       f.audiencia = { tipo: c.audiencia.tipo, ids: (c.audiencia.ids || []).map(String) };
@@ -22308,35 +22418,197 @@ function mseRenderEditor() {
     + '<h1 class="mse-titulo mse-esp">' + (f.id ? 'Editar mensagem' : 'Nova mensagem') + '</h1></div><div class="mse-form">';
   h += '<label class="mse-campo"><span class="mse-rotulo">Título<span class="mse-cont" id="mse-c-tit"></span></span><input class="mse-input" id="mse-tit" maxlength="' + L.tituloMax + '" value="' + escapeHtml(f.titulo) + '" oninput="mseCampo(\'titulo\', this.value)"></label>';
   h += '<label class="mse-campo"><span class="mse-rotulo">Resumo ' + ntfInfoHtml('Aparece na caixa de entrada e no e-mail.') + '<span class="mse-cont" id="mse-c-res"></span></span><input class="mse-input" id="mse-res" maxlength="' + L.resumoMax + '" value="' + escapeHtml(f.resumo) + '" oninput="mseCampo(\'resumo\', this.value)"></label>';
-  h += '<label class="mse-campo"><span class="mse-rotulo">Categoria</span><select class="mse-select" id="mse-cat" onchange="mseCampo(\'categoria\', this.value)">'
-    + op.categorias.map(function (c) { return '<option value="' + escapeHtml(c.chave) + '"' + (c.chave === f.categoria ? ' selected' : '') + ' title="' + escapeHtml(c.descricao) + '">' + escapeHtml(c.rotulo) + '</option>'; }).join('') + '</select></label>';
-  h += '<div class="mse-campo"><span class="mse-rotulo">Destinatários</span><div class="mse-chips" id="mse-aud-tipos"></div><div id="mse-aud-modo"></div><div id="mse-aud-lista"></div></div>';
+  h += '<div class="mse-campo mse-campo-cat"><span class="mse-rotulo">Categoria</span><button type="button" class="mse-filtro-btn" id="mse-cat" onclick="mseAbrirCategoria(event)" aria-haspopup="menu" aria-expanded="false"><span id="mse-cat-rot">' + escapeHtml(mseCatRotulo()) + '</span><span class="material-symbols-outlined">expand_more</span></button></div>';
+  h += '<div class="mse-campo mse-campo-aud"><span class="mse-rotulo">Destinatários</span><div class="mse-chips" id="mse-aud-tipos"></div><div id="mse-aud-modo"></div><div id="mse-aud-lista"></div></div>';
   if (op.permiteObrigatoria) h += '<div class="mse-linha-sw" id="mse-sw-obrig"></div>';
   h += '<div class="mse-linha-sw" id="mse-sw-email"></div>';
   h += '<div style="display:flex;gap:16px;flex-wrap:wrap"><label class="mse-campo"><span class="mse-rotulo">Agendar para</span><input type="datetime-local" class="mse-input data" id="mse-agenda" value="' + escapeHtml(f.agendadaPara) + '" oninput="mseCampo(\'agendadaPara\', this.value)"></label>'
     + '<label class="mse-campo"><span class="mse-rotulo">Expira em</span><input type="datetime-local" class="mse-input data" id="mse-expira" value="' + escapeHtml(f.expiraEm) + '" oninput="mseCampo(\'expiraEm\', this.value)"></label></div>';
-  h += '<div class="mse-campo"><span class="mse-rotulo">Mensagem<span class="mse-cont" id="mse-c-corpo"></span></span>' + mseFerramentasHtml()
-    + '<div class="mse-editor" id="mse-corpo" contenteditable="true" oninput="mseAtualizar()"></div><div class="mse-erro" id="mse-img-erro"></div>'
-    + '<input type="file" id="mse-arquivo" accept="' + escapeHtml(L.mimesImagem.join(',')) + '" class="hidden" onchange="mseArquivo(this)"></div>';
+  h += '<div class="mse-campo mse-campo-corpo" id="mse-campo-corpo" ondragover="mseDragOver(event)" ondragleave="mseDragLeave(event)" ondrop="mseDrop(event)"><span class="mse-rotulo">Mensagem<span class="mse-cont" id="mse-c-corpo"></span></span>' + mseFerramentasHtml()
+    + '<div class="mse-corpo-wrap" id="mse-corpo-wrap"><div class="mse-editor" id="mse-corpo" contenteditable="true" oninput="mseEditou()" onclick="mseCliqueCorpo(event)" onkeydown="mseTeclaCorpo(event)" onscroll="mseMedirImg()"></div><div id="mse-sobre"></div></div><div class="mse-erro" id="mse-img-erro"></div>'
+    + '<input type="file" id="mse-arquivo" accept="' + escapeHtml(L.mimesImagem.join(',')) + '" class="hidden" onchange="mseArquivo(this)">'
+    + '<div class="mse-anexos" id="mse-anexos"></div>'
+    + '<input type="file" id="mse-arq-anexo" multiple accept="' + escapeHtml(mseAccept()) + '" class="hidden" onchange="mseEscolherAnexos(this)"></div>';
   h += '<div class="mse-rodape" id="mse-rodape"></div></div>';
   mseRaiz().innerHTML = h;
+  try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
   document.getElementById('mse-corpo').innerHTML = f.corpoHtml || '';
-  mseRenderAud(); _mse.ultimo = mseAssinatura(); mseAtualizar(); mseContarAud();
+  mseRenderAnexos(); mseRenderAud(); _mse.ultimo = mseAssinatura(); mseAtualizar(); mseContarAud();
 }
 function mseFerramentasHtml() {
-  var F = [['format_bold', 'Negrito', "cmd('bold')"], ['format_italic', 'Itálico', "cmd('italic')"], ['format_underlined', 'Sublinhado', "cmd('underline')"], ['strikethrough_s', 'Tachado', "cmd('strikeThrough')"],
-    ['format_h2', 'Título', "cmd('formatBlock','h2')"], ['format_h3', 'Subtítulo', "cmd('formatBlock','h3')"], ['format_list_bulleted', 'Lista', "cmd('insertUnorderedList')"], ['format_list_numbered', 'Lista numerada', "cmd('insertOrderedList')"],
+  var F = [['undo', 'Desfazer (Ctrl+Z)', "cmd('undo')"], ['redo', 'Refazer (Ctrl+Y)', "cmd('redo')"], '|', ['format_bold', 'Negrito', "cmd('bold')"], ['format_italic', 'Itálico', "cmd('italic')"], ['format_underlined', 'Sublinhado', "cmd('underline')"], ['strikethrough_s', 'Tachado', "cmd('strikeThrough')"], ['format_color_text', 'Cor da fonte', 'cor'],
+    '|', ['format_h2', 'Título', "cmd('formatBlock','h2')"], ['format_h3', 'Subtítulo', "cmd('formatBlock','h3')"],
+    '|', ['format_align_left', 'Alinhar à esquerda', "cmd('justifyLeft')"], ['format_align_center', 'Centralizar', "cmd('justifyCenter')"], ['format_align_right', 'Alinhar à direita', "cmd('justifyRight')"], ['format_align_justify', 'Justificar', "cmd('justifyFull')"],
+    '|', ['format_list_bulleted', 'Lista', "cmd('insertUnorderedList')"], ['format_list_numbered', 'Lista numerada', "cmd('insertOrderedList')"],
     ['format_quote', 'Citação', "cmd('formatBlock','blockquote')"], ['code', 'Código', "cmd('formatBlock','pre')"], ['horizontal_rule', 'Linha', "cmd('insertHorizontalRule')"],
-    ['link', 'Link', 'link'], ['image', 'Imagem', 'imagem'], ['format_clear', 'Limpar formatação', "cmd('removeFormat')"]];
+    '|', ['link', 'Link', 'link'], ['image', 'Imagem', 'imagem'], ['format_clear', 'Limpar formatação', "cmd('removeFormat')"]];
   return '<div class="mse-ferramentas">' + F.map(function (x) {
-    var oc = x[2] === 'link' ? 'mseLink()' : x[2] === 'imagem' ? "document.getElementById('mse-arquivo').click()" : 'mse' + x[2].replace('cmd(', 'Cmd(');
-    return '<button type="button" data-title="' + x[1] + '" aria-label="' + x[1] + '" onmousedown="event.preventDefault()" onclick="' + oc + '"><span class="material-symbols-outlined">' + x[0] + '</span></button>';
+    if (x === '|') return '<span class="mse-sep" aria-hidden="true"></span>';
+    var oc = x[2] === 'cor' ? 'mseAbrirCor(this)' : x[2] === 'link' ? 'mseLink()' : x[2] === 'imagem' ? "document.getElementById('mse-arquivo').click()" : 'mse' + x[2].replace('cmd(', 'Cmd(');
+    return '<button type="button"' + (x[0] === 'undo' || x[0] === 'redo' ? ' id="mse-f-' + x[0] + '"' : x[2] === 'cor' ? ' id="mse-f-cor" class="mse-f-cor" aria-haspopup="dialog" aria-expanded="false"' : '') + ' data-title="' + x[1] + '" aria-label="' + x[1] + '" onmousedown="event.preventDefault()" onclick="' + oc + '"><span class="material-symbols-outlined">' + x[0] + '</span>' + (x[2] === 'cor' ? '<span class="mse-cor-barra" id="mse-cor-barra"></span>' : '') + '</button>';
   }).join('') + '</div>';
 }
-function mseCmd(c, v) { document.getElementById('mse-corpo').focus(); document.execCommand(c, false, v); mseAtualizar(); }
+function mseCmd(c, v) { document.getElementById('mse-corpo').focus(); document.execCommand(c, false, v); mseFecharSobre(); mseAtualizar(); }
+function mseEditou() { mseFecharSobre(); mseAtualizar(); }
+// Ctrl+Z desfaz; Ctrl+Y e Ctrl+Shift+Z refazem (mesmo histórico dos botões)
+function mseTeclaCorpo(e) {
+  if (e.key === 'Escape') return mseFecharSobre();
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  var k = String(e.key).toLowerCase();
+  if (k === 'z' && !e.shiftKey) { e.preventDefault(); mseCmd('undo'); }
+  else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); mseCmd('redo'); }
+  else if (k === 'k') { e.preventDefault(); mseLink(); }
+}
+// ---- cor da fonte (paleta fechada) ----
+function mseHex(v) {
+  v = String(v || '').trim().toLowerCase();
+  var m = v.match(/^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+  if (m) return '#' + [m[1], m[2], m[3]].map(function (n) { return ('0' + (+n).toString(16)).slice(-2); }).join('');
+  if (/^#[0-9a-f]{3}$/.test(v)) return '#' + v[1] + v[1] + v[2] + v[2] + v[3] + v[3];
+  return v;
+}
+function mseCorDaPaleta(v) { var h = mseHex(v); return MSE_CORES.some(function (c) { return c[0] === h; }) ? h : ''; }
+function mseCorAtual() {
+  var corpo = document.getElementById('mse-corpo'), sel = window.getSelection();
+  if (!corpo || !sel.rangeCount || !corpo.contains(sel.anchorNode)) return '';
+  try { return mseCorDaPaleta(document.queryCommandValue('foreColor')); } catch (e) { return ''; }
+}
+function mseAtualizarCor() { var b = document.getElementById('mse-cor-barra'); if (b) b.style.background = mseCorAtual() || ''; }
+document.addEventListener('selectionchange', function () { if (_mse.view === 'editor' && document.getElementById('mse-cor-barra')) mseAtualizarCor(); });
+function mseAbrirCor(btn) {
+  if (_mse.cor) return mseFecharSobre();
+  var corpo = document.getElementById('mse-corpo'), sel = window.getSelection();
+  var range = sel.rangeCount && corpo.contains(sel.anchorNode) ? sel.getRangeAt(0).cloneRange() : null;
+  var atual = mseCorAtual();
+  mseFecharSobre(); _mse.cor = { range: range }; btn.setAttribute('aria-expanded', 'true');
+  var p = msePosRel(btn.getBoundingClientRect());
+  var itens = [['', 'Sem cor']].concat(MSE_CORES);
+  mseSobre().innerHTML = '<div class="mse-pop mse-pop-cor" role="dialog" aria-label="Cor da fonte" style="left:' + Math.max(0, p.l) + 'px;top:' + (p.t + p.h + 6) + 'px" onmousedown="event.preventDefault()">'
+    + '<div class="mse-cores" role="radiogroup" aria-label="Cor da fonte" onkeydown="mseTeclaCor(event)">' + itens.map(function (c) {
+      var on = c[0] === atual;
+      return '<button type="button" role="radio" class="mse-cor' + (c[0] ? '' : ' mse-cor-nenhuma') + '" aria-checked="' + on + '" tabindex="' + (on ? 0 : -1) + '" data-title="' + c[1] + '" aria-label="' + c[1] + '"'
+        + (c[0] ? ' style="background:' + c[0] + '"' : '') + ' onclick="mseAplicarCor(\'' + c[0] + '\')">' + (c[0] ? '' : '<span class="material-symbols-outlined" aria-hidden="true">format_color_reset</span>') + '</button>';
+    }).join('') + '</div></div>';
+  var bs = mseSobre().querySelectorAll('.mse-cor'), foco = mseSobre().querySelector('.mse-cor[tabindex="0"]') || bs[0];
+  foco.tabIndex = 0; foco.focus();
+}
+function mseTeclaCor(e) {
+  var bs = Array.prototype.slice.call(mseSobre().querySelectorAll('.mse-cor')), i = bs.indexOf(document.activeElement);
+  if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); mseFecharSobre(); document.getElementById('mse-f-cor').focus(); return; }
+  var d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (e.key === 'Home') d = -i; if (e.key === 'End') d = bs.length - 1 - i;
+  if (d === undefined) return;
+  e.preventDefault();
+  var j = (i + d + bs.length) % bs.length;
+  bs.forEach(function (b, k) { b.tabIndex = k === j ? 0 : -1; }); bs[j].focus();
+}
+// aplica pela pilha de comandos do navegador (entra no desfazer/refazer); sem seleção, vale para o que for digitado
+function mseAplicarCor(hex) {
+  var corpo = document.getElementById('mse-corpo'), r = _mse.cor && _mse.cor.range, sel = window.getSelection();
+  corpo.focus(); sel.removeAllRanges();
+  if (r) sel.addRange(r); else { var f = document.createRange(); f.selectNodeContents(corpo); f.collapse(false); sel.addRange(f); }
+  try { document.execCommand('styleWithCSS', false, true); } catch (e) {}
+  // "Sem cor": aplica a cor do próprio texto, que não é da paleta e por isso é descartada pelo mseSanitizar
+  document.execCommand('foreColor', false, hex || getComputedStyle(corpo).color);
+  try { document.execCommand('styleWithCSS', false, false); } catch (e) {}
+  mseFecharSobre(); mseAtualizarCor(); mseAtualizar();
+}
+function mseAtualizarDesfazer() {
+  var u = document.getElementById('mse-f-undo'), r = document.getElementById('mse-f-redo');
+  try { if (u) u.disabled = !document.queryCommandEnabled('undo'); if (r) r.disabled = !document.queryCommandEnabled('redo'); } catch (e) {}
+}
+
+// ---- categoria: menu suspenso padrão (abrirMenuSelecao, igual aos filtros de pages_mensagens.html) ----
+function mseCatRotulo() { var c = _mse.opcoes.categorias.find(function (x) { return x.chave === _mse.form.categoria; }); return c ? c.rotulo : ''; }
+function mseAbrirCategoria(ev) {
+  ev.stopPropagation();
+  abrirMenuSelecao(ev.currentTarget, [{ itens: _mse.opcoes.categorias.map(function (c) { return { label: c.rotulo, ativo: c.chave === _mse.form.categoria, onclick: "mseEscolherCategoria('" + escapeJsAttr(c.chave) + "')" }; }) }]);
+}
+function mseEscolherCategoria(k) { _mse.form.categoria = k; var r = document.getElementById('mse-cat-rot'); if (r) r.textContent = mseCatRotulo(); mseAtualizar(); }
+
+// ---- sobreposições do corpo (moldura da imagem e popover de link) ----
+function mseSobre() { return document.getElementById('mse-sobre'); }
+function mseFecharSobre() { _mse.img = null; _mse.link = null; _mse.cor = null; var s = mseSobre(); if (s) s.innerHTML = ''; var b = document.getElementById('mse-f-cor'); if (b) b.setAttribute('aria-expanded', 'false'); }
+function mseCliqueCorpo(e) {
+  if (e.target.tagName === 'IMG') { _mse.link = null; _mse.img = e.target; return mseMedirImg(); }
+  var a = e.target.closest && e.target.closest('a');
+  if (a && document.getElementById('mse-corpo').contains(a)) { e.preventDefault(); _mse.img = null; _mse.link = { a: a, modo: 'ver' }; return mseRenderLink(); }
+  mseFecharSobre();
+}
+function msePosRel(rect) { var w = document.getElementById('mse-corpo-wrap').getBoundingClientRect(); return { l: rect.left - w.left, t: rect.top - w.top, w: rect.width, h: rect.height, W: w.width }; }
+
+// ---- imagem: redimensionar pelas alças de canto (largura em px; limites do servidor) ----
+function mseMedirImg() {
+  var img = _mse.img, s = mseSobre(); if (!s) return;
+  if (!img || !img.isConnected) { if (!_mse.link) s.innerHTML = ''; _mse.img = null; return; }
+  var p = msePosRel(img.getBoundingClientRect());
+  s.innerHTML = '<div class="mse-img-sel" style="left:' + p.l + 'px;top:' + p.t + 'px;width:' + p.w + 'px;height:' + p.h + 'px">'
+    + ['nw', 'ne', 'sw', 'se'].map(function (k) { return '<span class="mse-alca ' + k + '" onmousedown="mseIniciarAlca(event,\'' + k + '\')" ontouchstart="mseIniciarAlca(event,\'' + k + '\')"></span>'; }).join('')
+    + '<span class="mse-img-px">' + Math.round(img.getAttribute('width') || p.w) + ' px</span></div>';
+}
+function mseIniciarAlca(ev, canto) {
+  ev.preventDefault(); ev.stopPropagation();
+  var img = _mse.img; if (!img) return;
+  var pt = ev.touches ? ev.touches[0] : ev, r = img.getBoundingClientRect();
+  var dir = canto === 'nw' || canto === 'sw' ? -1 : 1, x0 = pt.clientX, w0 = r.width, prop = (img.naturalHeight && img.naturalWidth) ? img.naturalHeight / img.naturalWidth : r.height / r.width;
+  var mover = function (e) {
+    var p = e.touches ? e.touches[0] : e;
+    var w = Math.round(Math.min(MSE_IMG.wMax, Math.max(MSE_IMG.wMin, w0 + (p.clientX - x0) * dir))), h = Math.round(w * prop);
+    if (h > MSE_IMG.hMax) { h = MSE_IMG.hMax; w = Math.round(h / prop); }
+    if (h < MSE_IMG.hMin) { h = MSE_IMG.hMin; w = Math.round(h / prop); }
+    img.setAttribute('width', w); img.setAttribute('height', h); mseMedirImg();
+  };
+  var soltar = function () { ['mousemove', 'touchmove'].forEach(function (t) { window.removeEventListener(t, mover); }); ['mouseup', 'touchend'].forEach(function (t) { window.removeEventListener(t, soltar); }); mseAtualizar(); };
+  window.addEventListener('mousemove', mover); window.addEventListener('touchmove', mover, { passive: false });
+  window.addEventListener('mouseup', soltar); window.addEventListener('touchend', soltar);
+}
+
+// ---- link: popover com URL e texto exibido; abrir, editar e remover ----
 function mseLink() {
-  var u = prompt('Endereço (http, https ou mailto)');
-  if (u && /^(https?:|mailto:)/i.test(u)) mseCmd('createLink', u);
+  var corpo = document.getElementById('mse-corpo'), sel = window.getSelection();
+  if (!sel.rangeCount || !corpo.contains(sel.anchorNode)) { corpo.focus(); sel = window.getSelection(); }
+  var range = sel.rangeCount ? sel.getRangeAt(0) : null, n = range && range.startContainer;
+  var a = n && (n.nodeType === 3 ? n.parentElement : n).closest('a');
+  _mse.img = null;
+  _mse.link = a && corpo.contains(a) ? { a: a, modo: 'editar' } : { a: null, range: range && range.cloneRange(), modo: 'editar', texto: range ? range.toString() : '' };
+  mseRenderLink();
+}
+function mseRenderLink() {
+  var L = _mse.link, s = mseSobre(); if (!L || !s) return;
+  var alvo = L.a ? L.a.getBoundingClientRect() : (L.range && L.range.getBoundingClientRect().width ? L.range.getBoundingClientRect() : document.getElementById('mse-corpo').getBoundingClientRect());
+  var p = msePosRel(alvo), x = Math.max(8, Math.min(p.l, p.W - 348)), y = L.a || (L.range && L.range.getBoundingClientRect().width) ? p.t + p.h + 6 : 8;
+  var url = L.a ? L.a.getAttribute('href') : '', txt = L.a ? L.a.textContent : (L.texto || '');
+  var h = '<div class="mse-pop" role="dialog" aria-label="Link" style="left:' + x + 'px;top:' + y + 'px" onmousedown="event.stopPropagation()">';
+  if (L.modo === 'ver') {
+    h += '<div class="mse-pop-ver"><span class="material-symbols-outlined" style="font-size:18px;color:var(--ds-color-text-muted)">link</span>'
+      + '<a class="mse-pop-url" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + escapeHtml(url) + '</a>'
+      + '<a class="acoes-btn" href="' + escapeHtml(url) + '" target="_blank" rel="noopener" data-title="Abrir" aria-label="Abrir"><span class="material-symbols-outlined">open_in_new</span></a>'
+      + '<button type="button" class="acoes-btn" data-title="Editar" aria-label="Editar" onclick="_mse.link.modo=\'editar\'; mseRenderLink()"><span class="material-symbols-outlined">edit</span></button>'
+      + '<button type="button" class="acoes-btn" data-title="Remover link" aria-label="Remover link" onclick="mseRemoverLink()"><span class="material-symbols-outlined">link_off</span></button></div>';
+  } else {
+    h += '<div class="mse-pop-form"><label class="mse-campo"><span class="mse-rotulo">URL <span class="mse-obrig" aria-hidden="true">*</span></span><input class="mse-input" id="mse-link-url" required placeholder="https://" value="' + escapeHtml(url) + '" onkeydown="mseTeclaLink(event)" oninput="document.getElementById(\'mse-link-erro\').textContent=\'\'"></label><div class="mse-erro" id="mse-link-erro"></div>'
+      + '<label class="mse-campo"><span class="mse-rotulo">Texto exibido</span><input class="mse-input" id="mse-link-txt" value="' + escapeHtml(txt) + '" onkeydown="mseTeclaLink(event)"></label>'
+      + '<div class="mse-pop-acoes"><button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="mseFecharSobre()">Cancelar</button><button type="button" class="ds-btn ds-btn--primary ds-btn--sm" onclick="mseAplicarLink()">Aplicar</button></div></div>';
+  }
+  s.innerHTML = h + '</div>';
+  var u = document.getElementById('mse-link-url'); if (u) u.focus();
+}
+function mseTeclaLink(e) { if (e.key === 'Enter') { e.preventDefault(); mseAplicarLink(); } else if (e.key === 'Escape') { e.preventDefault(); mseFecharSobre(); document.getElementById('mse-corpo').focus(); } }
+function mseAplicarLink() {
+  var L = _mse.link, url = document.getElementById('mse-link-url').value.trim(), txt = document.getElementById('mse-link-txt').value.trim() || url;
+  if (!/^(https?:|mailto:)/i.test(url)) { document.getElementById('mse-link-erro').textContent = 'Use um endereço http, https ou mailto.'; return; }
+  var corpo = document.getElementById('mse-corpo'), sel = window.getSelection(), r = document.createRange();
+  corpo.focus(); sel.removeAllRanges();
+  if (L.a) r.selectNode(L.a); else if (L.range) { r.setStart(L.range.startContainer, L.range.startOffset); r.setEnd(L.range.endContainer, L.range.endOffset); } else { r.selectNodeContents(corpo); r.collapse(false); }
+  sel.addRange(r);
+  document.execCommand('insertHTML', false, '<a href="' + escapeHtml(url) + '">' + escapeHtml(txt) + '</a>');
+  mseFecharSobre(); mseAtualizar();
+}
+function mseRemoverLink() {
+  var a = _mse.link && _mse.link.a; if (!a) return;
+  var sel = window.getSelection(), r = document.createRange();
+  document.getElementById('mse-corpo').focus(); r.selectNodeContents(a); sel.removeAllRanges(); sel.addRange(r);
+  document.execCommand('unlink'); mseFecharSobre(); mseAtualizar();
 }
 function mseCampo(k, v) { _mse.form[k] = v; mseAtualizar(); if (k === 'agendadaPara') mseAtualizar(); }
 
@@ -22347,9 +22619,25 @@ function mseSanitizar(html) {
       if (n.nodeType === 3) return;
       if (n.nodeType !== 1) { n.remove(); return; }
       limpa(n);
+      // cor da fonte: só <span style="color:HEX"> com hex da paleta; <font color> e rgb() viram esse span; fora da paleta, só o texto
+      if (n.tagName === 'SPAN' || n.tagName === 'FONT') {
+        var cor = mseCorDaPaleta(n.tagName === 'FONT' ? n.getAttribute('color') : n.style && n.style.color);
+        if (!cor) { n.replaceWith.apply(n, Array.prototype.slice.call(n.childNodes)); return; }
+        var sp = doc.createElement('span'); sp.setAttribute('style', 'color:' + cor);
+        while (n.firstChild) sp.appendChild(n.firstChild);
+        n.replaceWith(sp); return;
+      }
       if (MSE_TAGS.indexOf(n.tagName) === -1) { n.replaceWith.apply(n, Array.prototype.slice.call(n.childNodes)); return; }
-      var keep = n.tagName === 'A' ? ['href'] : n.tagName === 'IMG' ? ['src', 'alt'] : [];
+      var keep = n.tagName === 'A' ? ['href'] : n.tagName === 'IMG' ? ['src', 'alt', 'width', 'height'] : [];
+      var alinhar = MSE_ALINHAVEL.indexOf(n.tagName) !== -1 ? ((n.style && n.style.textAlign) || n.getAttribute('align') || '').toLowerCase() : '';
       Array.prototype.slice.call(n.attributes).forEach(function (a) { if (keep.indexOf(a.name) === -1) n.removeAttribute(a.name); });
+      if (alinhar === 'start') alinhar = 'left'; if (alinhar === 'end') alinhar = 'right';
+      if (/^(center|right|justify)$/.test(alinhar)) n.setAttribute('style', 'text-align:' + alinhar);
+      if (n.tagName === 'IMG') {
+        var w = parseInt(n.getAttribute('width'), 10), hh = parseInt(n.getAttribute('height'), 10);
+        if (w >= MSE_IMG.wMin && w <= MSE_IMG.wMax) n.setAttribute('width', w); else n.removeAttribute('width');
+        if (n.hasAttribute('width') && hh >= MSE_IMG.hMin && hh <= MSE_IMG.hMax) n.setAttribute('height', hh); else n.removeAttribute('height');
+      }
       if (n.tagName === 'A' && !/^(https?:|mailto:)/i.test(n.getAttribute('href') || '')) n.replaceWith.apply(n, Array.prototype.slice.call(n.childNodes));
     });
   };
@@ -22360,12 +22648,12 @@ function mseSanitizar(html) {
 function mseRenderAud() {
   var f = _mse.form, op = _mse.opcoes;
   document.getElementById('mse-aud-tipos').innerHTML = op.tiposAudiencia.map(function (t) {
-    return '<button type="button" class="mse-chip' + (f.audiencia.tipo === t ? ' ativo' : '') + '" onclick="mseTipoAud(\'' + t + '\')">' + MSE_AUD[t] + '</button>';
+    return '<button type="button" class="ds-chip' + (f.audiencia.tipo === t ? ' ds-badge--info' : '') + '" aria-pressed="' + (f.audiencia.tipo === t) + '" onclick="mseTipoAud(\'' + t + '\')">' + MSE_AUD[t] + '</button>';
   }).join('');
   var modo = document.getElementById('mse-aud-modo'), lista = document.getElementById('mse-aud-lista');
   var dirUnid = op.perfil === 'DIRIGENTE' && f.audiencia.tipo === 'UNIDADES';
-  modo.innerHTML = dirUnid ? '<div class="mse-chips" style="margin-top:4px"><button type="button" class="mse-chip' + (f.unidadesModo === 'todas' ? ' ativo' : '') + '" onclick="mseModoUnid(\'todas\')">Todas as minhas unidades</button>'
-    + '<button type="button" class="mse-chip' + (f.unidadesModo === 'algumas' ? ' ativo' : '') + '" onclick="mseModoUnid(\'algumas\')">Escolher algumas</button></div>' : '';
+  modo.innerHTML = dirUnid ? '<div class="mse-chips" style="margin-top:4px"><button type="button" class="ds-chip' + (f.unidadesModo === 'todas' ? ' ds-badge--info' : '') + '" aria-pressed="' + (f.unidadesModo === 'todas') + '" onclick="mseModoUnid(\'todas\')">Todas as minhas unidades</button>'
+    + '<button type="button" class="ds-chip' + (f.unidadesModo === 'algumas' ? ' ds-badge--info' : '') + '" aria-pressed="' + (f.unidadesModo === 'algumas') + '" onclick="mseModoUnid(\'algumas\')">Escolher algumas</button></div>' : '';
   if (f.audiencia.tipo === 'TODOS' || (dirUnid && f.unidadesModo === 'todas')) { lista.innerHTML = ''; return; }
   var ids = f.audiencia.ids, b = _mse.audBusca.toLowerCase(), t = f.audiencia.tipo, opcoes = [];
   var O = function (id, rotulo, sub, nivel) { return { id: String(id), rotulo: rotulo, sub: sub || '', nivel: nivel || 0 }; };
@@ -22417,13 +22705,13 @@ function mseAtualizar() {
   var len = corpo.innerHTML.length;
   var set = function (id, t) { var e = document.getElementById(id); if (e) e.textContent = t; };
   set('mse-c-tit', f.titulo.length + '/' + L.tituloMax); set('mse-c-res', f.resumo.length + '/' + L.resumoMax); set('mse-c-corpo', len + '/' + L.corpoMax);
-  set('mse-img-erro', _mse.imgErro);
+  set('mse-img-erro', _mse.imgErro); mseAtualizarDesfazer(); mseAtualizarCor();
   var so = document.getElementById('mse-sw-obrig');
   if (so) so.innerHTML = ntfSwitchHtml(f.obrigatoria, false, 'mseSw(\'obrigatoria\')', 'Obrigatória') + '<strong>Obrigatória</strong>' + ntfInfoHtml('Chega a todos os destinatários, mesmo a quem desligou este tipo nas preferências.');
   var se = document.getElementById('mse-sw-email');
   if (se) se.innerHTML = ntfSwitchHtml(f.enviarEmail, false, 'mseSw(\'enviarEmail\')', 'Enviar por e-mail') + '<strong>Enviar por e-mail</strong>';
   var fut = f.agendadaPara && new Date(f.agendadaPara) > new Date();
-  var invalido = !f.titulo.trim() || !f.resumo.trim() || !corpo.textContent.trim() || mseAudVazia() || len > L.corpoMax;
+  var invalido = !f.titulo.trim() || !f.resumo.trim() || !corpo.textContent.trim() || mseAudVazia() || len > L.corpoMax || mseAnexosEnviando();
   var rod = document.getElementById('mse-rodape');
   var aud = _mse.nAud !== null && !mseAudVazia() ? 'Será enviada a ' + _mse.nAud.toLocaleString('pt-BR') + (_mse.nAud === 1 ? ' pessoa' : ' pessoas') : '';
   rod.innerHTML = '<span class="mse-aud-txt">' + aud + '</span>'
@@ -22456,7 +22744,7 @@ function msePayload() {
   var f = _mse.form, corpo = document.getElementById('mse-corpo');
   var ms = function (v) { return v ? new Date(v).getTime() : ''; };
   return { id: f.id, titulo: f.titulo.trim(), resumo: f.resumo.trim(), corpoHtml: mseSanitizar(corpo.innerHTML), categoria: f.categoria, audiencia: mseAudEfetiva(),
-    obrigatoria: !!f.obrigatoria, enviarEmail: !!f.enviarEmail, agendadaPara: ms(f.agendadaPara), expiraEm: ms(f.expiraEm) };
+    obrigatoria: !!f.obrigatoria, enviarEmail: !!f.enviarEmail, agendadaPara: ms(f.agendadaPara), expiraEm: ms(f.expiraEm), anexos: mseAnexosPayload() };
 }
 function mseSalvar(depois) {
   // serializa: uma gravação por vez, para o autosave não criar rascunho duplicado
@@ -22478,7 +22766,7 @@ function mseAutoTexto() {
 function mseAutoMostrar() { var e = document.getElementById('mse-auto'); if (e) e.textContent = mseAutoTexto(); }
 function mseVazio() {
   var f = _mse.form, c = document.getElementById('mse-corpo');
-  return !f.titulo.trim() && !f.resumo.trim() && !(c && c.textContent.trim()) && !(c && c.querySelector('img'));
+  return !f.titulo.trim() && !f.resumo.trim() && !(c && c.textContent.trim()) && !(c && c.querySelector('img')) && !_mse.anexos.length;
 }
 function mseAgendarAuto() {
   var f = _mse.form; if (!f || f.status !== 'RASCUNHO' || _mse.carregando || _mse.descartado) return;
@@ -22488,7 +22776,7 @@ function mseAgendarAuto() {
   clearTimeout(_mse.tAuto);
   _mse.tAuto = setTimeout(function () { _mse.ultimo = mseAssinatura(); mseSalvar(function () { mseAutoMostrar(); }); }, 1500);
 }
-function mseAssinatura() { var c = document.getElementById('mse-corpo'), f = _mse.form; return c ? JSON.stringify([f.titulo, f.resumo, c.innerHTML, f.categoria, f.audiencia, f.unidadesModo, f.obrigatoria, f.enviarEmail, f.agendadaPara, f.expiraEm]) : ''; }
+function mseAssinatura() { var c = document.getElementById('mse-corpo'), f = _mse.form; return c ? JSON.stringify([f.titulo, f.resumo, c.innerHTML, f.categoria, f.audiencia, f.unidadesModo, f.obrigatoria, f.enviarEmail, f.agendadaPara, f.expiraEm, mseAnexosPayload()]) : ''; }
 // descarta o rascunho (inclusive o que o autosave já criou): apaga de vez e volta para Rascunhos
 function mseDescartar() {
   showConfirm('Descartar rascunho?', 'A mensagem será apagada e não poderá ser recuperada.', function () {
@@ -22499,6 +22787,84 @@ function mseDescartar() {
   });
 }
 function mseSalvarRascunho() { mseSalvar(function () { showMessage('success', 'Salvo', ''); mseVoltar(_mse.volta); }); }
+// ---- anexos ----
+// Limites sempre de apiGetOpcoesMensagem().limites (configuráveis pelo administrador): anexosMax, anexoMaxBytes, anexoExtensoes.
+var _mseSeqAnexo = 0;
+function mseAnexoNovo(x, st) { return { id: ++_mseSeqAnexo, ref: x.ref, nome: x.nome, mime: x.mime, tamanho: x.tamanho, sig: x.sig, url: x.url, st: st, erro: '' }; }
+function mseLimAnexos() { var L = _mse.opcoes.limites; return { max: L.anexosMax, bytes: L.anexoMaxBytes, ext: (L.anexoExtensoes || []).map(function (e) { return String(e).replace(/^\./, '').toLowerCase(); }) }; }
+function mseAccept() { return mseLimAnexos().ext.map(function (e) { return '.' + e; }).join(','); }
+function mseExt(nome) { var p = String(nome).split('.'); return p.length > 1 ? p.pop().toLowerCase() : ''; }
+function mseTamanho(b) { b = Number(b) || 0; return b >= 1048576 ? (b / 1048576).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+function mseIconeArquivo(nome, mime) {
+  var e = mseExt(nome); mime = mime || '';
+  if (e === 'pdf') return 'picture_as_pdf';
+  if (/^image\//.test(mime) || /^(png|jpe?g|gif|webp|svg|bmp)$/.test(e)) return 'image';
+  if (/^(xlsx?|ods|csv)$/.test(e)) return 'table_chart';
+  if (/^(pptx?|odp)$/.test(e)) return 'slideshow';
+  if (/^(docx?|odt|rtf|txt)$/.test(e)) return 'description';
+  if (/^(zip|rar|7z)$/.test(e)) return 'folder_zip';
+  if (/^(mp4|mov|webm)$/.test(e)) return 'movie';
+  if (/^(mp3|wav|ogg)$/.test(e)) return 'audio_file';
+  return 'draft';
+}
+function mseAnexosValidos() { return _mse.anexos.filter(function (x) { return x.st !== 'erro'; }); }
+function mseAnexosEnviando() { return _mse.anexos.some(function (x) { return x.st === 'enviando'; }); }
+function mseAnexosPayload() { return _mse.anexos.filter(function (x) { return x.st === 'ok'; }).map(function (x) { return { ref: x.ref, nome: x.nome, mime: x.mime, tamanho: x.tamanho, sig: x.sig }; }); }
+function mseRenderAnexos() {
+  var el = document.getElementById('mse-anexos'); if (!el) return;
+  var lim = mseLimAnexos(), n = mseAnexosValidos().length, cheio = n >= lim.max;
+  el.innerHTML = '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="document.getElementById(\'mse-arq-anexo\').click()"' + (cheio ? ' disabled' : '') + '><span class="material-symbols-outlined">attach_file</span>Anexar</button>'
+    + _mse.anexos.map(function (x) {
+      var ico = x.st === 'enviando' ? '<span class="material-symbols-outlined mse-gira" aria-label="Enviando">progress_activity</span>'
+        : x.st === 'erro' ? '<span class="material-symbols-outlined" style="color:var(--ds-color-danger-fg)" aria-hidden="true">error</span>'
+        : '<span class="material-symbols-outlined" aria-hidden="true">' + mseIconeArquivo(x.nome, x.mime) + '</span>';
+      return '<span class="mse-anexo"><span class="ds-chip" data-title="' + escapeHtml(x.nome) + '">' + ico + '<span class="mse-anexo-nome">' + escapeHtml(x.nome) + '</span><span class="mse-anexo-tam">' + mseTamanho(x.tamanho) + '</span>'
+        + '<button type="button" class="mse-anexo-x" aria-label="Remover ' + escapeHtml(x.nome) + '" data-title="Remover" onclick="mseRemoverAnexo(' + x.id + ')"><span class="material-symbols-outlined">close</span></button></span>'
+        + (x.st === 'erro' ? '<span class="mse-erro" role="alert">' + escapeHtml(x.erro) + '</span>' : '') + '</span>';
+    }).join('')
+    + (lim.max - n <= 2 ? '<span class="mse-cont-anexos">' + n + ' de ' + lim.max + '</span>' : '');
+}
+function mseRemoverAnexo(id) { _mse.anexos = _mse.anexos.filter(function (x) { return x.id !== id; }); mseRenderAnexos(); mseAtualizar(); }
+function mseEscolherAnexos(inp) { var fs = Array.prototype.slice.call(inp.files || []); inp.value = ''; mseAdicionarAnexos(fs); }
+function mseAdicionarAnexos(files) {
+  var lim = mseLimAnexos();
+  files.forEach(function (file) {
+    var x = mseAnexoNovo({ nome: file.name, mime: file.type, tamanho: file.size }, 'enviando');
+    if (mseAnexosValidos().length >= lim.max) { x.st = 'erro'; x.erro = 'Limite de ' + lim.max + ' anexos por mensagem.'; }
+    else if (lim.ext.indexOf(mseExt(file.name)) === -1) { x.st = 'erro'; x.erro = 'Tipo de arquivo não aceito.'; }
+    else if (file.size > lim.bytes) { x.st = 'erro'; x.erro = 'Arquivo acima de ' + mseTamanho(lim.bytes) + '.'; }
+    _mse.anexos.push(x);
+    if (x.st === 'enviando') mseEnviarAnexo(x, file);
+  });
+  mseRenderAnexos(); mseAtualizar();
+}
+// um arquivo por chamada; bytes em base64 sem o prefixo data:
+function mseEnviarAnexo(x, file) {
+  var rd = new FileReader();
+  rd.onload = function () {
+    var b64 = String(rd.result).replace(/^data:[^,]*,/, '');
+    ntfChamar('apiEnviarAnexoMensagem', [{ nome: file.name, mimeType: file.type || 'application/octet-stream', bytes: b64 }], function (r) {
+      var y = _mse.anexos.find(function (k) { return k.id === x.id; }); if (!y) return; // removido durante o envio
+      Object.assign(y, { ref: r.ref, nome: r.nome, mime: r.mime, tamanho: r.tamanho, url: r.url, sig: r.sig, st: 'ok' });
+      mseRenderAnexos(); mseAtualizar();
+    }, function (e) {
+      var y = _mse.anexos.find(function (k) { return k.id === x.id; }); if (!y) return;
+      y.st = 'erro'; y.erro = (e && e.message) || String(e || ''); mseRenderAnexos(); mseAtualizar();
+    });
+  };
+  rd.onerror = function () { x.st = 'erro'; x.erro = 'Não foi possível ler o arquivo.'; mseRenderAnexos(); mseAtualizar(); };
+  rd.readAsDataURL(file);
+}
+function mseTemArquivos(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1; }
+function mseDragOver(e) { if (!mseTemArquivos(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; document.getElementById('mse-campo-corpo').classList.add('arrastando'); }
+function mseDragLeave(e) { var c = document.getElementById('mse-campo-corpo'); if (!c.contains(e.relatedTarget)) c.classList.remove('arrastando'); }
+function mseDrop(e) {
+  document.getElementById('mse-campo-corpo').classList.remove('arrastando');
+  if (!mseTemArquivos(e) || !e.dataTransfer.files.length) return;
+  e.preventDefault(); mseAdicionarAnexos(Array.prototype.slice.call(e.dataTransfer.files));
+}
+window.addEventListener('resize', function () { if (_mse.img) mseMedirImg(); else if (_mse.link) mseRenderLink(); });
+
 function msePublicar() {
   var f = _mse.form;
   var quando = f.agendadaPara && new Date(f.agendadaPara) > new Date() ? new Date(f.agendadaPara).getTime() : null;
