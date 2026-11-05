@@ -1266,7 +1266,7 @@ body.high-contrast .ds-pasta { --pasta-line: #fff; --pasta-strip: #000; --pasta-
        • IDs: main-header (bloquearFundo/inert), nav-menu, navgroup-*, submenu-*,
          nav-item-config-sistema, header-unidade-name, header-user-avatar, user-menu*,
          breadcrumb-nav (movido p/ a topbar em runtime).
-       • Classes: .nav-item (+ data-menu) usado por navigate()/ativarMenu() em index.html.
+       • Item ativo: navigate() (index.html) chama hdrNavSincronizarAtivo(); cada item tem data-nav-rota.
        • Funções: initHeader, toggleUserMenu, fecharUserMenu, toggleNavSubmenu,
          fecharNavSubmenus, toggleMenu, fecharMenuMobile, toggleAltoContraste,
          abrirPerfil/fecharPerfil, sairDoSistema, _navPlaceholder.
@@ -1295,206 +1295,179 @@ body.high-contrast .ds-pasta { --pasta-line: #fff; --pasta-strip: #000; --pasta-
     </div>
 
     <!-- Navegação Principal -->
-    <nav id="nav-menu" class="nav-menu">
+    <!-- Mensagens: Enviadas/Rascunhos/Programadas só para quem pode enviar (ADMIN/DEV ou dirigente) — reveladas em ntfAposLogin() (components_notificacoes.html).
+         "Configurações do Sistema" só ADMIN/DEV — revelado em initHeader(), ver _headerRevelarItensAdmin().
+         data-nav-rota liga cada item à rota de navigate() (ver hdrNavSincronizarAtivo). -->
+    <nav id="nav-menu" class="nav-menu" aria-label="Menu">
       <div class="nav-links">
-        <button type="button" class="nav-item active" data-menu="Início" onclick="navigate('home'); fecharMenuMobile()">
+        <button type="button" class="nav-item" data-nav-rota="home" aria-label="Início" data-title="Início" onclick="navigate('home'); fecharMenuMobile()">
           <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">home</span>
           <span class="nav-item-label">Início</span>
         </button>
 
-        <!-- Mensagens: grupo com uma pasta por situação. Enviadas/Rascunhos/Programadas só para quem pode enviar (ADMIN/DEV ou dirigente) — reveladas em ntfAposLogin() (components_notificacoes.html) -->
         <div class="nav-item-group" id="navgroup-mensagens">
-          <button type="button" class="nav-item nav-item-parent" data-menu="Mensagens" aria-label="Mensagens"
-            onclick="toggleNavSubmenu('mensagens', event)" aria-haspopup="true" aria-expanded="false">
+          <button type="button" class="nav-item nav-item-parent" aria-label="Mensagens" data-title="Mensagens"
+            onclick="toggleNavSubmenu('mensagens', event)" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-mensagens">
             <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">mail</span>
             <span class="nav-item-label">Mensagens</span>
             <span class="ntf-nav-badge hidden" id="ntf-nav-badge" aria-hidden="true"></span>
             <span class="material-symbols-outlined nav-caret" aria-hidden="true">expand_more</span>
           </button>
-          <div class="nav-submenu" id="submenu-mensagens" data-label="Mensagens">
-            <button type="button" class="nav-submenu-item" onclick="navigate('mensagens', { view: 'caixa', pasta: 'entrada' }); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">inbox</span>
+          <div class="nav-submenu" id="submenu-mensagens" data-label="Mensagens" role="group" aria-label="Mensagens">
+            <div class="nav-submenu-inner">
+            <button type="button" class="nav-submenu-item" data-nav-rota="mensagens:entrada" onclick="navigate('mensagens', { view: 'caixa', pasta: 'entrada' }); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">inbox</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Caixa de entrada</span></span>
             </button>
-            <button type="button" class="nav-submenu-item ntf-so-remetente hidden" onclick="navigate('mensagens', { view: 'caixa', pasta: 'enviadas' }); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">send</span>
+            <button type="button" class="nav-submenu-item ntf-so-remetente hidden" data-nav-rota="mensagens:enviadas" onclick="navigate('mensagens', { view: 'caixa', pasta: 'enviadas' }); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">send</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Enviadas</span></span>
             </button>
-            <button type="button" class="nav-submenu-item ntf-so-remetente hidden" onclick="navigate('mensagens', { view: 'caixa', pasta: 'rascunhos' }); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">draft</span>
+            <button type="button" class="nav-submenu-item ntf-so-remetente hidden" data-nav-rota="mensagens:rascunhos" onclick="navigate('mensagens', { view: 'caixa', pasta: 'rascunhos' }); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">draft</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Rascunhos</span></span>
             </button>
-            <button type="button" class="nav-submenu-item ntf-so-remetente hidden" onclick="navigate('mensagens', { view: 'caixa', pasta: 'programadas' }); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">schedule_send</span>
+            <button type="button" class="nav-submenu-item ntf-so-remetente hidden" data-nav-rota="mensagens:programadas" onclick="navigate('mensagens', { view: 'caixa', pasta: 'programadas' }); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">schedule_send</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Programadas</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" onclick="navigate('mensagens', { view: 'caixa', pasta: 'excluidas' }); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">delete</span>
+            <button type="button" class="nav-submenu-item" data-nav-rota="mensagens:excluidas" onclick="navigate('mensagens', { view: 'caixa', pasta: 'excluidas' }); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">delete</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Excluídas</span></span>
             </button>
+            </div>
           </div>
         </div>
 
-        <!-- Planejamento (menu em cascata — ver docs/design_system.md "Menu principal em cascata") -->
         <div class="nav-item-group" id="navgroup-planejamento">
-          <button type="button" class="nav-item nav-item-parent" data-menu="Planejamento" aria-label="Planejamento"
-            onclick="toggleNavSubmenu('planejamento', event)" aria-haspopup="true" aria-expanded="false">
+          <button type="button" class="nav-item nav-item-parent" aria-label="Planejamento" data-title="Planejamento"
+            onclick="toggleNavSubmenu('planejamento', event)" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-planejamento">
             <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">corporate_fare</span>
             <span class="nav-item-label">Planejamento</span>
             <span class="material-symbols-outlined nav-caret" aria-hidden="true">expand_more</span>
           </button>
-          <div class="nav-submenu" id="submenu-planejamento" data-label="Planejamento">
-            <button type="button" class="nav-submenu-item" onclick="navigate('planos'); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">corporate_fare</span>
+          <div class="nav-submenu" id="submenu-planejamento" data-label="Planejamento" role="group" aria-label="Planejamento">
+            <div class="nav-submenu-inner">
+            <button type="button" class="nav-submenu-item" data-nav-rota="planos" onclick="navigate('planos'); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">corporate_fare</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Planejamento Institucional</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" aria-disabled="true">
-              <span class="material-symbols-outlined">account_balance</span>
-              <span class="nav-submenu-item-text">
-                <span class="nav-submenu-item-title">Plano de Gestão Orçamentária</span>
-                <span class="ds-badge">Em breve</span>
-              </span>
+            <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
+              <span class="material-symbols-outlined" aria-hidden="true">account_balance</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Plano de Gestão Orçamentária</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" aria-disabled="true">
-              <span class="material-symbols-outlined">contract</span>
-              <span class="nav-submenu-item-text">
-                <span class="nav-submenu-item-title">Plano de Contratações Anual</span>
-                <span class="ds-badge">Em breve</span>
-              </span>
+            <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
+              <span class="material-symbols-outlined" aria-hidden="true">contract</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Plano de Contratações Anual</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" aria-disabled="true">
-              <span class="material-symbols-outlined">receipt_long</span>
-              <span class="nav-submenu-item-text">
-                <span class="nav-submenu-item-title">Empenhos</span>
-                <span class="ds-badge">Em breve</span>
-              </span>
+            <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
+              <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Empenhos</span></span>
             </button>
+            </div>
           </div>
         </div>
 
-        <!-- Execução -->
         <div class="nav-item-group" id="navgroup-execucao">
-          <button type="button" class="nav-item nav-item-parent" data-menu="Execução" aria-label="Execução"
-            onclick="toggleNavSubmenu('execucao', event)" aria-haspopup="true" aria-expanded="false">
+          <button type="button" class="nav-item nav-item-parent" aria-label="Execução" data-title="Execução"
+            onclick="toggleNavSubmenu('execucao', event)" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-execucao">
             <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">checklist</span>
             <span class="nav-item-label">Execução</span>
             <span class="material-symbols-outlined nav-caret" aria-hidden="true">expand_more</span>
           </button>
-          <div class="nav-submenu" id="submenu-execucao" data-label="Execução">
-            <button type="button" class="nav-submenu-item" onclick="navigate('execucao-planos'); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">checklist</span>
+          <div class="nav-submenu" id="submenu-execucao" data-label="Execução" role="group" aria-label="Execução">
+            <div class="nav-submenu-inner">
+            <button type="button" class="nav-submenu-item" data-nav-rota="execucao-planos" onclick="navigate('execucao-planos'); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">checklist</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Execução de Planos</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" aria-disabled="true">
-              <span class="material-symbols-outlined">shield</span>
-              <span class="nav-submenu-item-text">
-                <span class="nav-submenu-item-title">Gestão de Riscos</span>
-                <span class="ds-badge">Em breve</span>
-              </span>
+            <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
+              <span class="material-symbols-outlined" aria-hidden="true">shield</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Gestão de Riscos</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" aria-disabled="true">
-              <span class="material-symbols-outlined">payments</span>
-              <span class="nav-submenu-item-text">
-                <span class="nav-submenu-item-title">Execução Orçamentária</span>
-                <span class="ds-badge">Em breve</span>
-              </span>
+            <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
+              <span class="material-symbols-outlined" aria-hidden="true">payments</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Execução Orçamentária</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" onclick="navigate('colaboracao'); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">diversity_3</span>
+            <button type="button" class="nav-submenu-item" data-nav-rota="colaboracao" onclick="navigate('colaboracao'); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">diversity_3</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Colaborar em Elementos</span></span>
             </button>
+            </div>
           </div>
         </div>
 
-        <!-- Avaliação -->
         <div class="nav-item-group" id="navgroup-avaliacao">
-          <button type="button" class="nav-item nav-item-parent" data-menu="Avaliação" aria-label="Avaliação"
-            onclick="toggleNavSubmenu('avaliacao', event)" aria-haspopup="true" aria-expanded="false">
+          <button type="button" class="nav-item nav-item-parent" aria-label="Avaliação" data-title="Avaliação"
+            onclick="toggleNavSubmenu('avaliacao', event)" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-avaliacao">
             <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">star_half</span>
             <span class="nav-item-label">Avaliação</span>
             <span class="material-symbols-outlined nav-caret" aria-hidden="true">expand_more</span>
           </button>
-          <div class="nav-submenu" id="submenu-avaliacao" data-label="Avaliação">
-            <button type="button" class="nav-submenu-item" onclick="navigate('avaliacao-planos'); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">star_half</span>
+          <div class="nav-submenu" id="submenu-avaliacao" data-label="Avaliação" role="group" aria-label="Avaliação">
+            <div class="nav-submenu-inner">
+            <button type="button" class="nav-submenu-item" data-nav-rota="avaliacao-planos" onclick="navigate('avaliacao-planos'); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">star_half</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Avaliação de Planos</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" aria-disabled="true">
-              <span class="material-symbols-outlined">event_repeat</span>
-              <span class="nav-submenu-item-text">
-                <span class="nav-submenu-item-title">Consolidações Periódicas</span>
-                <span class="ds-badge">Em breve</span>
-              </span>
+            <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
+              <span class="material-symbols-outlined" aria-hidden="true">event_repeat</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Consolidações Periódicas</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" aria-disabled="true">
-              <span class="material-symbols-outlined">assessment</span>
-              <span class="nav-submenu-item-text">
-                <span class="nav-submenu-item-title">Relatórios de Avaliação</span>
-                <span class="ds-badge">Em breve</span>
-              </span>
+            <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
+              <span class="material-symbols-outlined" aria-hidden="true">assessment</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Relatórios de Avaliação</span></span>
             </button>
+            </div>
           </div>
         </div>
 
-        <!-- Configurações -->
         <div class="nav-item-group" id="navgroup-config">
-          <button type="button" class="nav-item nav-item-parent" data-menu="Configurações" aria-label="Configurações"
-            onclick="toggleNavSubmenu('config', event)" aria-haspopup="true" aria-expanded="false">
+          <button type="button" class="nav-item nav-item-parent" aria-label="Configurações" data-title="Configurações"
+            onclick="toggleNavSubmenu('config', event)" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-config">
             <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">settings</span>
             <span class="nav-item-label">Configurações</span>
             <span class="material-symbols-outlined nav-caret" aria-hidden="true">expand_more</span>
           </button>
-          <div class="nav-submenu" id="submenu-config" data-label="Configurações">
-            <button type="button" class="nav-submenu-item" onclick="_navPlaceholder('Meu Perfil'); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">person</span>
+          <div class="nav-submenu" id="submenu-config" data-label="Configurações" role="group" aria-label="Configurações">
+            <div class="nav-submenu-inner">
+            <button type="button" class="nav-submenu-item" data-nav-rota="perfil" onclick="_navPlaceholder('Meu Perfil'); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">person</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Meu Perfil</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" onclick="navigate('usuarios'); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">group</span>
+            <button type="button" class="nav-submenu-item" data-nav-rota="usuarios" onclick="navigate('usuarios'); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">group</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Gerenciar Usuários</span></span>
             </button>
-            <!-- Visível a todos, como "Gerenciar Usuários" — CRUD de entidade
-                 central, não parametrização (por isso fora de "Configurações
-                 do Sistema"). Toda escrita é escondida no frontend/barrada no
-                 backend pra quem não é ADMIN/DEV — ver _unidadeAdminDev() em
-                 pages_unidades.html. -->
-            <button type="button" class="nav-submenu-item" onclick="navigate('unidades'); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">apartment</span>
+            <button type="button" class="nav-submenu-item" data-nav-rota="unidades" onclick="navigate('unidades'); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">apartment</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Gerenciar Unidades</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" onclick="abrirGestaoRevisoes(); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">rule_settings</span>
+            <button type="button" class="nav-submenu-item" onclick="abrirGestaoRevisoes(); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">rule_settings</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Gestão de Revisões</span></span>
             </button>
-            <!-- Só ADMIN/DEV — revelado em initHeader(), ver _headerRevelarItensAdmin().
-                 Primeiro item de menu do sistema restrito por papel (antes, restrição
-                 por papel só escondia sub-elementos DENTRO de páginas já acessíveis a
-                 todos — ver docs/design_system.md). Página-hub interna com abas
-                 (Avaliação, Catálogo de Opções, ...) — ver pages_config_sistema.html;
-                 substituiu os itens avulsos "Catálogo de Opções"/"Configurações
-                 Gerais"/"Avaliação", que viraram seções dentro dela. -->
-            <button type="button" class="nav-submenu-item hidden" id="nav-item-config-sistema" onclick="navigate('config-sistema'); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">tune</span>
+            <button type="button" class="nav-submenu-item hidden" id="nav-item-config-sistema" data-nav-rota="config-sistema" onclick="navigate('config-sistema'); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">tune</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Configurações do Sistema</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" onclick="navigate('logs'); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">security</span>
+            <button type="button" class="nav-submenu-item" data-nav-rota="logs" onclick="navigate('logs'); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">security</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Logs e Auditoria</span></span>
             </button>
-            <button type="button" class="nav-submenu-item" onclick="_navPlaceholder('Sobre o Sistema'); fecharNavSubmenus(); fecharMenuMobile()">
-              <span class="material-symbols-outlined">info</span>
+            <button type="button" class="nav-submenu-item" data-nav-rota="sobre" onclick="_navPlaceholder('Sobre o Sistema'); navAposEscolherSubmenu(); fecharMenuMobile()">
+              <span class="material-symbols-outlined" aria-hidden="true">info</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Sobre o Sistema</span></span>
             </button>
+            </div>
           </div>
         </div>
 
-        <button type="button" class="nav-item" data-menu="Teste" aria-label="Teste" onclick="carregarPaginaTeste(); fecharMenuMobile()">
+        <button type="button" class="nav-item" data-nav-rota="teste" aria-label="Teste" data-title="Teste" onclick="carregarPaginaTeste(); fecharMenuMobile()">
           <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">science</span>
           <span class="nav-item-label">Teste</span>
         </button>
-
-        <!-- Último item do menu (saiu da topbar) -->
-        <button type="button" class="nav-item" data-menu="Ajuda" aria-label="Ajuda" onclick="_navPlaceholder('Ajuda'); fecharMenuMobile()">
+        <button type="button" class="nav-item" data-nav-rota="ajuda" aria-label="Ajuda" data-title="Ajuda" onclick="_navPlaceholder('Ajuda'); fecharMenuMobile()">
           <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">help</span>
           <span class="nav-item-label">Ajuda</span>
         </button>
@@ -1671,113 +1644,128 @@ html.ds-sb-collapsed .ds-sidebar { width: var(--ds-sidebar-width-collapsed); }
 .brand-logo { height: 26px; width: auto; max-width: 100%; }
 .brand-mark { display: none; height: 26px; width: auto; }
 
-/* --- navegação --- */
-.nav-menu { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px; }
+/* --- navegação --- (v2: acordeão com vários grupos abertos, item ativo, flyout na sidebar recolhida) */
+.nav-menu { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 10px; scrollbar-width: thin; }
 .nav-links { display: flex; flex-direction: column; gap: 2px; }
 
-.nav-item {
-  width: 100%; min-height: 40px; display: flex; align-items: center; gap: 10px; min-width: 0;
+/* --- 1º nível e pai de grupo --- */
+.nav-item { position: relative; width: 100%; min-height: 40px; display: flex; align-items: center; gap: 10px; min-width: 0;
   background: none; border: none; cursor: pointer; text-align: left;
   font-family: var(--ds-font-sans); font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium);
-  padding: 10px; border-radius: var(--ds-r-lg);
-  color: var(--ds-color-text-muted);
-  transition: background var(--ds-duration-fast) var(--ds-ease-standard),
-              color var(--ds-duration-fast) var(--ds-ease-standard);
-}
+  padding: 10px; border-radius: var(--ds-r-lg); color: var(--ds-color-text-muted);
+  transition: background var(--ds-duration-fast) var(--ds-ease-standard), color var(--ds-duration-fast) var(--ds-ease-standard); }
 .nav-item:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text); }
-.nav-item.active { background: var(--ds-sidebar-item-active); color: var(--ds-primary-700); }
-[data-ds-theme="dark"] .nav-item.active { color: var(--ds-color-action); }
-.nav-item:focus-visible, .nav-submenu-item:focus-visible { outline-offset: -2px; }
+.nav-item[aria-current="page"] { background: var(--ds-sidebar-item-active); color: var(--ds-primary-700); }
+[data-ds-theme="dark"] .nav-item[aria-current="page"] { color: var(--ds-color-action); }
 .nav-item-icon { font-size: 21px; flex-shrink: 0; }
 .nav-item-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.nav-caret { font-size: 18px; flex-shrink: 0; transition: transform var(--ds-duration-fast) var(--ds-ease-standard); }
-.nav-item-group.open .nav-caret { transform: rotate(180deg); }
+.nav-caret { font-size: 18px; flex-shrink: 0; transition: transform var(--ds-duration-base) var(--ds-ease-standard); }
 .nav-item-group { position: relative; }
+.nav-item-group.open > .nav-item-parent .nav-caret { transform: rotate(180deg); }
+.nav-item-group.open > .nav-item-parent { color: var(--ds-color-text); }
 
-/* --- submenu (acordeão inline quando expandida) --- */
-.nav-submenu {
-  display: flex; flex-direction: column; gap: 1px; margin-left: 20px;
-  max-height: 0; overflow: hidden; visibility: hidden;
-  transition: max-height var(--ds-duration-slow) var(--ds-ease-standard),
-              visibility 0s linear var(--ds-duration-slow);
-}
-.nav-item-group.open .nav-submenu {
-  max-height: 600px; padding: 4px 0; visibility: visible;
-  transition: max-height var(--ds-duration-slow) var(--ds-ease-standard), visibility 0s;
-}
-.nav-submenu-item {
-  width: 100%; min-height: 36px; display: flex; align-items: center; gap: 10px; min-width: 0;
+/* pai que contém a página atual: nunca recebe o fundo "ativo" cheio (o filho é quem está ativo) */
+.nav-item-group.hdr-tem-ativo > .nav-item-parent { background: none; color: var(--ds-primary-700); }
+[data-ds-theme="dark"] .nav-item-group.hdr-tem-ativo > .nav-item-parent { color: var(--ds-color-action); }
+/* ...e fechado, ganha um fundo discreto para dizer "você está aqui dentro" */
+.nav-item-group.hdr-tem-ativo:not(.open) > .nav-item-parent { background: var(--ds-sidebar-item-hover); }
+.nav-item-group.hdr-tem-ativo > .nav-item-parent:hover { background: var(--ds-sidebar-item-hover); }
+
+/* contador de não lidas (Mensagens) */
+.ntf-nav-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--ds-radius-pill); flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--ds-color-action); color: var(--ds-color-on-action);
+  font-size: 11px; font-weight: var(--ds-weight-semibold); line-height: 1; font-variant-numeric: tabular-nums; }
+.ntf-nav-badge.hidden { display: none; }
+
+/* --- submenu (acordeão inline): grid 0fr→1fr anima a altura real, sem max-height mágico --- */
+.nav-submenu { display: grid; grid-template-rows: 0fr; visibility: hidden;
+  transition: grid-template-rows var(--ds-duration-base) var(--ds-ease-standard), visibility 0s linear var(--ds-duration-base); }
+.nav-item-group.open > .nav-submenu { grid-template-rows: 1fr; visibility: visible;
+  transition: grid-template-rows var(--ds-duration-base) var(--ds-ease-standard), visibility 0s; }
+.nav-submenu-inner { position: relative; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 1px;
+  margin-left: 20px; padding-left: 10px; }
+/* linha guia vertical, alinhada ao centro do ícone do pai */
+.nav-submenu-inner::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 6px; width: 1px; background: var(--ds-color-border); }
+[data-ds-theme="dark"] .nav-submenu-inner::before { background: var(--ds-color-border-strong); }
+.nav-submenu-inner > :first-child { margin-top: 2px; }
+.nav-submenu-inner > :last-child { margin-bottom: 6px; }
+
+.nav-submenu-item { position: relative; width: 100%; min-height: 34px; display: flex; align-items: center; gap: 10px; min-width: 0;
   font-family: var(--ds-font-sans); background: none; border: none; text-align: left; cursor: pointer;
-  padding: 8px 10px; border-radius: var(--ds-r-md);
-  font-size: var(--ds-text-sm); color: var(--ds-color-text-muted);
-  transition: background var(--ds-duration-fast) var(--ds-ease-standard),
-              color var(--ds-duration-fast) var(--ds-ease-standard);
-}
+  padding: 7px 10px; border-radius: var(--ds-r-md); font-size: var(--ds-text-sm); color: var(--ds-color-text-muted);
+  transition: background var(--ds-duration-fast) var(--ds-ease-standard), color var(--ds-duration-fast) var(--ds-ease-standard); }
 .nav-submenu-item .material-symbols-outlined { font-size: 18px; flex-shrink: 0; opacity: .8; }
 .nav-submenu-item:hover:not([aria-disabled="true"]) { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text); }
-.nav-submenu-item[aria-disabled="true"] { opacity: .6; cursor: not-allowed; pointer-events: none; }
-.nav-submenu-item-text { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
-.nav-submenu-item-title { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); }
+.nav-submenu-item[aria-current="page"] { background: var(--ds-sidebar-item-active); color: var(--ds-primary-700); }
+.nav-submenu-item[aria-current="page"] .material-symbols-outlined { opacity: 1; }
+[data-ds-theme="dark"] .nav-submenu-item[aria-current="page"] { color: var(--ds-color-action); }
+/* trecho da linha guia acende ao lado do item ativo */
+.nav-submenu-item[aria-current="page"]::before { content: ""; position: absolute; left: -11px; top: 7px; bottom: 7px; width: 3px;
+  border-radius: var(--ds-radius-pill); background: var(--ds-color-action); }
+.nav-submenu-item[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.nav-submenu-item-text { flex: 1; min-width: 0; display: flex; align-items: center; }
+.nav-submenu-item-title { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* --- rodapé da sidebar: usuário + recolher --- */
-.sidebar-footer {
-  position: relative; flex-shrink: 0; padding: 10px; border-top: 1px solid var(--ds-sidebar-border);
-  display: flex; align-items: center; gap: 6px;
-}
-.sb-user {
-  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left;
-  background: none; border: none; cursor: pointer; padding: 6px; border-radius: var(--ds-r-lg);
-  font-family: var(--ds-font-sans); transition: background var(--ds-duration-fast) var(--ds-ease-standard);
-}
+/* foco por teclado — mesmo anel nos dois temas */
+.nav-item:focus-visible, .nav-submenu-item:focus-visible, .sb-user:focus-visible, .sidebar-collapse-btn:focus-visible {
+  outline: 2px solid var(--ds-color-action); outline-offset: -2px; }
+
+/* --- rodapé --- */
+.sidebar-footer { position: relative; flex-shrink: 0; padding: 10px; border-top: 1px solid var(--ds-sidebar-border); display: flex; align-items: center; gap: 6px; }
+.sb-user { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; background: none; border: none; cursor: pointer;
+  padding: 6px; border-radius: var(--ds-r-lg); font-family: var(--ds-font-sans); transition: background var(--ds-duration-fast) var(--ds-ease-standard); }
 .sb-user:hover { background: var(--ds-sidebar-item-hover); }
-.sb-avatar {
-  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
-  background: var(--ds-color-action); color: #fff; display: flex; align-items: center; justify-content: center;
-}
+.sb-avatar { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; overflow: hidden; background: var(--ds-color-action); color: #fff; display: flex; align-items: center; justify-content: center; }
 .sb-avatar .material-symbols-outlined { font-size: 20px; }
 .sb-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .sb-user-text { display: flex; flex-direction: column; min-width: 0; }
 .sb-user-text strong { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sb-user-text span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sidebar-collapse-btn {
-  width: 30px; height: 30px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
-  background: none; border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-md); cursor: pointer;
-  color: var(--ds-color-text-muted);
-  transition: color var(--ds-duration-fast) var(--ds-ease-standard), border-color var(--ds-duration-fast) var(--ds-ease-standard);
-}
+.sidebar-collapse-btn { width: 30px; height: 30px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: none;
+  border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-md); cursor: pointer; color: var(--ds-color-text-muted);
+  transition: color var(--ds-duration-fast) var(--ds-ease-standard), border-color var(--ds-duration-fast) var(--ds-ease-standard); }
 .sidebar-collapse-btn:hover { color: var(--ds-color-action); border-color: var(--ds-color-action); }
 .sidebar-collapse-btn .material-symbols-outlined { font-size: 20px; }
 
-/* --- sidebar RECOLHIDA (só desktop): ícones + flyout nos grupos --- */
+/* --- RECOLHIDA (desktop): só ícones; grupo abre em flyout (.hdr-flyout-aberto), independente do acordeão --- */
 @media (min-width: 769px) {
   html.ds-sb-collapsed .brand { justify-content: center; padding: 0; }
   html.ds-sb-collapsed .brand-logo { display: none; }
   html.ds-sb-collapsed .brand-mark { display: block; }
-  /* overflow visível para o flyout não ser cortado (são só 6 itens) */
   html.ds-sb-collapsed .nav-menu { overflow: visible; }
   html.ds-sb-collapsed .nav-item { justify-content: center; padding: 10px 0; }
-  html.ds-sb-collapsed .nav-item-label, html.ds-sb-collapsed .nav-caret,
-  html.ds-sb-collapsed .sb-user-text { display: none; }
+  html.ds-sb-collapsed .nav-item-label, html.ds-sb-collapsed .nav-caret, html.ds-sb-collapsed .sb-user-text { display: none; }
   html.ds-sb-collapsed .sidebar-footer { flex-direction: column; gap: 8px; }
   html.ds-sb-collapsed .sb-user { flex: none; justify-content: center; }
+  /* contador vira selo sobre o ícone */
+  html.ds-sb-collapsed .ntf-nav-badge { position: absolute; top: 4px; left: calc(50% + 4px); height: 16px; min-width: 16px; padding: 0 4px; font-size: 10px;
+    box-shadow: 0 0 0 2px var(--ds-color-surface); }
+  /* pai com página atual: no modo ícone o filho não aparece, então o pai assume o destaque cheio */
+  html.ds-sb-collapsed .nav-item-group.hdr-tem-ativo > .nav-item-parent { background: var(--ds-sidebar-item-active); }
+  html.ds-sb-collapsed .nav-item-group.hdr-flyout-aberto > .nav-item-parent { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text); }
+  html.ds-sb-collapsed .nav-item-group.hdr-flyout-aberto.hdr-tem-ativo > .nav-item-parent { background: var(--ds-sidebar-item-active); color: var(--ds-primary-700); }
 
-  html.ds-sb-collapsed .nav-submenu {
-    display: none; position: absolute; left: calc(100% + 8px); top: 0; margin: 0;
-    max-height: none; overflow: visible; visibility: visible; padding: 6px; min-width: 240px;
+  html.ds-sb-collapsed .nav-submenu { display: none; position: absolute; left: calc(100% + 12px); top: -6px; min-width: 248px; padding: 6px;
+    visibility: visible; transition: none;
     background: var(--ds-glass-bg-strong);
-    -webkit-backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate));
-    backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate));
-    border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl);
-    box-shadow: var(--ds-glass-shadow-strong); z-index: var(--ds-z-dropdown);
-    transition: none;
-  }
-  html.ds-sb-collapsed .nav-item-group.open .nav-submenu { display: flex; padding: 6px; }
-  html.ds-sb-collapsed .nav-submenu::before {
-    content: attr(data-label); padding: 6px 10px 4px;
-    font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
-    text-transform: uppercase; letter-spacing: .4px; color: var(--ds-color-text-muted);
-  }
+    -webkit-backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate)); backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate));
+    border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-glass-shadow-strong); z-index: var(--ds-z-dropdown); }
+  html.ds-sb-collapsed .nav-item-group.hdr-flyout-aberto > .nav-submenu { display: block; animation: hdrNavFlyoutIn var(--ds-duration-fast) var(--ds-ease-standard); }
+  html.ds-sb-collapsed .nav-submenu::before { content: attr(data-label); display: block; padding: 6px 10px 6px;
+    font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); text-transform: uppercase; letter-spacing: .4px; color: var(--ds-color-text-muted); }
+  html.ds-sb-collapsed .nav-submenu-inner { margin: 0; padding: 0; overflow: visible; }
+  html.ds-sb-collapsed .nav-submenu-inner::before, html.ds-sb-collapsed .nav-submenu-item[aria-current="page"]::before { display: none; }
+  html.ds-sb-collapsed .nav-submenu-inner > :first-child, html.ds-sb-collapsed .nav-submenu-inner > :last-child { margin: 0; }
+  html.ds-sb-collapsed .nav-submenu-item { min-height: 36px; }
 }
+@keyframes hdrNavFlyoutIn { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-sidebar, .nav-submenu, .nav-item-group.open > .nav-submenu, .nav-caret, .nav-item, .nav-submenu-item, body { transition: none !important; }
+  html.ds-sb-collapsed .nav-item-group.hdr-flyout-aberto > .nav-submenu { animation: none !important; }
+}
+
 
 /* ============================================================================
    TOPBAR
@@ -2001,72 +1989,156 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') fecharUserMenu();
 });
 
-// --- Sidebar recolhida (desktop) ---
-function _sidebarRecolhida() {
-  return document.documentElement.classList.contains('ds-sb-collapsed');
+// --- Sidebar v2: estado, menu em cascata, item ativo e teclado (prefixo hdrNav/_hdrNav/HDRNAV_) ---
+var HDRNAV_CHAVE_ABERTOS = 'sgp_nav_grupos_abertos';
+
+function _sidebarRecolhida() { return document.documentElement.classList.contains('ds-sb-collapsed'); }
+function _navModoFlyout() { return _sidebarRecolhida() && window.innerWidth > 768; }
+
+function _hdrNavLerAbertos() {
+  try { var v = JSON.parse(localStorage.getItem(HDRNAV_CHAVE_ABERTOS) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+}
+function _hdrNavSalvarAbertos() {
+  var ks = [].map.call(document.querySelectorAll('.nav-item-group.open'), function(g) { return g.id.replace('navgroup-', ''); });
+  try { localStorage.setItem(HDRNAV_CHAVE_ABERTOS, JSON.stringify(ks)); } catch (e) {}
+}
+// aria-expanded reflete o que está VISÍVEL: acordeão (expandida/mobile) ou flyout (recolhida)
+function _hdrNavSyncAria() {
+  var fly = _navModoFlyout();
+  document.querySelectorAll('.nav-item-group').forEach(function(g) {
+    var b = g.querySelector('.nav-item-parent');
+    if (b) b.setAttribute('aria-expanded', String(fly ? g.classList.contains('hdr-flyout-aberto') : g.classList.contains('open')));
+  });
+}
+function _hdrNavDefinirAberto(g, abrir) { g.classList.toggle('open', abrir); _hdrNavSyncAria(); }
+
+// MESMA assinatura de antes. Expandida/mobile: alterna só o grupo clicado (não fecha os outros).
+// Recolhida: abre/fecha o flyout (um por vez), sem mexer no estado lembrado do acordeão.
+function toggleNavSubmenu(key, event) {
+  if (event) event.stopPropagation();
+  var g = document.getElementById('navgroup-' + key);
+  if (!g) return;
+  if (_navModoFlyout()) {
+    var jaAberto = g.classList.contains('hdr-flyout-aberto');
+    fecharNavSubmenus();
+    if (jaAberto) return;
+    g.classList.add('hdr-flyout-aberto');
+    _hdrNavSyncAria();
+    setTimeout(function() { document.addEventListener('click', _fecharNavSubmenusClickFora); }, 0);
+    return;
+  }
+  _hdrNavDefinirAberto(g, !g.classList.contains('open'));
+  _hdrNavSalvarAbertos();
 }
 
-// Modo "flyout": sidebar recolhida no desktop (submenu flutua ao lado do ícone).
-// Nesse modo o submenu fecha ao clicar fora; expandida (ou drawer mobile) ele é
-// um acordeão inline e fica aberto até o usuário fechar/navegar.
-function _navModoFlyout() {
-  return _sidebarRecolhida() && window.innerWidth > 768;
+// MESMO nome. Agora fecha apenas flyouts (camada flutuante); o acordeão inline só muda por ação do usuário.
+function fecharNavSubmenus() {
+  document.querySelectorAll('.nav-item-group.hdr-flyout-aberto').forEach(function(g) { g.classList.remove('hdr-flyout-aberto'); });
+  _hdrNavSyncAria();
+  document.removeEventListener('click', _fecharNavSubmenusClickFora);
 }
+function navAposEscolherSubmenu() { if (_navModoFlyout()) fecharNavSubmenus(); }
+function _fecharNavSubmenusClickFora(e) { if (!e.target.closest('.nav-item-group')) fecharNavSubmenus(); }
+
+// Marca o item da página atual (aria-current) e garante o grupo dele aberto.
+// chave = data-nav-rota: 'planos', 'mensagens:enviadas'... Chamado por navigate() (index.html) e carregarPaginaTeste().
+function hdrNavSincronizarAtivo(chave) {
+  var nav = document.getElementById('nav-menu');
+  if (!nav || !chave) return;
+  var base = String(chave).split(':')[0];
+  var alvo = nav.querySelector('[data-nav-rota="' + chave + '"]') || nav.querySelector('[data-nav-rota="' + base + '"]')
+          || nav.querySelector('[data-nav-rota^="' + base + ':"]');
+  if (!alvo) return; // rota sem item no menu (ex.: detalhe de plano): mantém o último ativo
+  nav.querySelectorAll('[aria-current="page"]').forEach(function(el) { el.removeAttribute('aria-current'); });
+  nav.querySelectorAll('.hdr-tem-ativo').forEach(function(el) { el.classList.remove('hdr-tem-ativo'); });
+  alvo.setAttribute('aria-current', 'page');
+  var g = alvo.closest('.nav-item-group');
+  if (g) {
+    g.classList.add('hdr-tem-ativo');
+    if (!g.classList.contains('open')) { _hdrNavDefinirAberto(g, true); _hdrNavSalvarAbertos(); }
+  }
+}
+// Chave de rota de navigate(): "mensagens:enviadas" etc. Na leitura/edição de mensagem (sem pasta) vale a pasta atual.
+function hdrNavChaveDe(page, extra) {
+  var pasta = extra && extra.pasta;
+  if (!pasta && page === 'mensagens' && typeof _cxa !== 'undefined') pasta = _cxa.pasta;
+  return page + (pasta ? ':' + pasta : '');
+}
+
+
+// --- Teclado: ↑/↓ entre itens visíveis, Home/End, → abre/entra no grupo, ← volta ao pai/fecha, Esc fecha flyout ---
+function _hdrNavItemVisivel(el) {
+  if (el.closest('.hidden')) return false;
+  var g = el.closest('.nav-submenu') ? el.closest('.nav-item-group') : null;
+  if (!g) return true;
+  return _navModoFlyout() ? g.classList.contains('hdr-flyout-aberto') : g.classList.contains('open');
+}
+function _hdrNavTeclado(e) {
+  var el = e.target.closest('.nav-item, .nav-submenu-item');
+  if (!el) return;
+  var nav = document.getElementById('nav-menu');
+  var lista = [].filter.call(nav.querySelectorAll('.nav-item, .nav-submenu-item'), _hdrNavItemVisivel);
+  var i = lista.indexOf(el), g = el.closest('.nav-item-group'), ehPai = el.classList.contains('nav-item-parent');
+  var aberto = g && (_navModoFlyout() ? g.classList.contains('hdr-flyout-aberto') : g.classList.contains('open'));
+  var foco = null;
+  switch (e.key) {
+    case 'ArrowDown': foco = lista[Math.min(i + 1, lista.length - 1)]; break;
+    case 'ArrowUp': foco = lista[Math.max(i - 1, 0)]; break;
+    case 'Home': foco = lista[0]; break;
+    case 'End': foco = lista[lista.length - 1]; break;
+    case 'ArrowRight':
+      if (!ehPai) return;
+      if (!aberto) toggleNavSubmenu(g.id.replace('navgroup-', ''));
+      else foco = g.querySelector('.nav-submenu-item:not(.hidden)');
+      break;
+    case 'ArrowLeft':
+      if (!g) return;
+      if (!ehPai) foco = g.querySelector('.nav-item-parent');
+      else if (aberto) toggleNavSubmenu(g.id.replace('navgroup-', ''));
+      if (!ehPai && _navModoFlyout()) fecharNavSubmenus();
+      break;
+    case 'Escape':
+      if (g && _navModoFlyout() && aberto) { fecharNavSubmenus(); foco = g.querySelector('.nav-item-parent'); }
+      break;
+    case 'Enter': case ' ':
+      if (el.getAttribute('aria-disabled') === 'true') { e.preventDefault(); }
+      return;
+    default: return;
+  }
+  e.preventDefault();
+  if (foco) foco.focus();
+}
+
+// Clique em item "em breve" não faz nada (aria-disabled mantém foco/tooltip acessíveis)
+function _hdrNavBloquearDesabilitado(e) {
+  var el = e.target.closest('.nav-submenu-item[aria-disabled="true"]');
+  if (el) { e.preventDefault(); e.stopImmediatePropagation(); }
+}
+
+function _hdrNavIniciar() {
+  var abertos = _hdrNavLerAbertos();
+  abertos.forEach(function(k) { var g = document.getElementById('navgroup-' + k); if (g) g.classList.add('open'); });
+  _hdrNavSyncAria();
+  var nav = document.getElementById('nav-menu');
+  nav.addEventListener('keydown', _hdrNavTeclado);
+  nav.addEventListener('click', _hdrNavBloquearDesabilitado, true);
+}
+document.addEventListener('DOMContentLoaded', _hdrNavIniciar);
+window.addEventListener('resize', _hdrNavSyncAria);
 
 function _atualizarBotaoSidebar() {
-  const rec = _sidebarRecolhida();
-  const btn = document.getElementById('btn-sidebar-toggle');
-  const ico = document.getElementById('ico-sidebar-toggle');
-  if (btn) {
-    btn.setAttribute('aria-expanded', String(!rec));
-    btn.setAttribute('aria-label', rec ? 'Expandir menu lateral' : 'Recolher menu lateral');
-  }
+  var rec = _sidebarRecolhida();
+  var btn = document.getElementById('btn-sidebar-toggle'), ico = document.getElementById('ico-sidebar-toggle');
+  if (btn) { btn.setAttribute('aria-expanded', String(!rec)); btn.setAttribute('aria-label', rec ? 'Expandir menu lateral' : 'Recolher menu lateral'); }
   if (ico) ico.textContent = rec ? 'chevron_right' : 'chevron_left';
 }
-
 function toggleSidebarRecolhida() {
-  // Fecha qualquer submenu aberto: um submenu inline aberto numa sidebar que
-  // encolhe é o que causava scroll horizontal.
   fecharNavSubmenus();
   document.documentElement.classList.toggle('ds-sb-collapsed');
   try { localStorage.setItem('sgp_sidebar_recolhida', _sidebarRecolhida() ? 'true' : 'false'); } catch (e) {}
   _atualizarBotaoSidebar();
+  _hdrNavSyncAria();
 }
-
-// --- Menu em cascata (Planejamento/Execução/Avaliação/Configurações) ---
-// Fecha qualquer outro submenu aberto antes de abrir o clicado (só 1 por vez).
-// Fecha ao clicar fora (só no modo flyout) e com Esc.
-function toggleNavSubmenu(key, event) {
-  if (event) event.stopPropagation();
-  var group = document.getElementById('navgroup-' + key);
-  if (!group) return;
-  var jaAberto = group.classList.contains('open');
-  fecharNavSubmenus();
-  if (jaAberto) return;
-  group.classList.add('open');
-  var btn = group.querySelector('.nav-item-parent');
-  if (btn) btn.setAttribute('aria-expanded', 'true');
-  if (_navModoFlyout()) {
-    setTimeout(function() { document.addEventListener('click', _fecharNavSubmenusClickFora); }, 0);
-  }
-}
-
-function fecharNavSubmenus() {
-  document.querySelectorAll('.nav-item-group.open').forEach(function(g) {
-    g.classList.remove('open');
-    var btn = g.querySelector('.nav-item-parent');
-    if (btn) btn.setAttribute('aria-expanded', 'false');
-  });
-  document.removeEventListener('click', _fecharNavSubmenusClickFora);
-}
-
-function _fecharNavSubmenusClickFora(e) {
-  if (!e.target.closest('.nav-item-group')) fecharNavSubmenus();
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') { fecharNavSubmenus(); fecharMenuMobile(); }
-});
 
 // Placeholder para itens do menu ainda não implementados (Meu Perfil, Sobre o
 // Sistema, Ajuda).
@@ -2137,30 +2209,22 @@ function sairDoSistema() {
   window.top.location.href = url;
 }
 
-// --- Drawer mobile (sidebar sobreposta) ---
-function _drawerAberto() {
-  const sb = document.getElementById('sidebar');
-  return !!sb && sb.classList.contains('open');
-}
-
+// --- Drawer mobile ---
+function _drawerAberto() { var sb = document.getElementById('sidebar'); return !!sb && sb.classList.contains('open'); }
 function toggleMenu() {
-  const sb = document.getElementById('sidebar');
-  const overlay = document.querySelector('.menu-overlay');
-  const abrir = !sb.classList.contains('open');
-  sb.classList.toggle('open', abrir);
-  overlay.classList.toggle('open', abrir);
-  const burger = document.getElementById('btn-menu-mobile');
-  if (burger) {
-    burger.setAttribute('aria-expanded', String(abrir));
-    burger.setAttribute('aria-label', abrir ? 'Fechar menu' : 'Abrir menu');
-  }
+  var sb = document.getElementById('sidebar'), overlay = document.querySelector('.menu-overlay');
+  var abrir = !sb.classList.contains('open');
+  sb.classList.toggle('open', abrir); overlay.classList.toggle('open', abrir);
+  var burger = document.getElementById('btn-menu-mobile');
+  if (burger) { burger.setAttribute('aria-expanded', String(abrir)); burger.setAttribute('aria-label', abrir ? 'Fechar menu' : 'Abrir menu'); }
   if (!abrir) fecharNavSubmenus();
 }
-
+// MESMO nome. Corrige o bug: antes chamava fecharNavSubmenus() sempre, recolhendo o grupo na sidebar expandida.
 function fecharMenuMobile() {
   if (_drawerAberto()) toggleMenu();
-  fecharNavSubmenus();
+  else if (_navModoFlyout()) fecharNavSubmenus();
 }
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') { fecharNavSubmenus(); if (_drawerAberto()) toggleMenu(); } });
 
 // Ao voltar para desktop com o drawer aberto, fecha-o (evita scrim "preso")
 window.addEventListener('resize', function() {
@@ -7953,9 +8017,6 @@ function applySysStyle(tipo) {
   /* ---- sino ---- */
   .ntf-badge { position: absolute; top: 3px; right: 2px; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; border-radius: 999px;
     background: var(--ds-color-danger-fg); color: #fff; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
-  .ntf-nav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: var(--ds-color-action); color: #fff;
-    font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; }
-  .ds-sb-collapsed .ntf-nav-badge { display: none; }
   #ntf-sino-btn { position: relative; }
   .ntf-sino-painel { position: fixed; top: 52px; right: 12px; width: 380px; max-width: calc(100vw - 16px); background: var(--ds-glass-bg-strong); backdrop-filter: blur(16px) saturate(1.3);
     border: 1px solid var(--ds-glass-border); border-radius: 10px; box-shadow: var(--ds-glass-shadow-strong); overflow: hidden; z-index: 1000; }
@@ -24031,6 +24092,7 @@ function carregarPaginaTeste() {
   // Esconde outras páginas e mostra a de teste
   document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
   document.getElementById('page-teste').classList.remove('hidden');
+  hdrNavSincronizarAtivo('teste');
   document.getElementById('teste-conteudo').classList.add('hidden');
 
   mostrarLoader();
@@ -24245,6 +24307,7 @@ function _salvarUltimaTela(pageName, extra) {
 
 function navigate(pageName, extra) {
   _salvarUltimaTela(pageName, extra);
+  hdrNavSincronizarAtivo(hdrNavChaveDe(pageName, extra)); // item ativo do menu lateral
   // #main-content é quem rola agora (não mais a janela) — sem isso, trocar de
   // página manteria o scroll da página anterior, abrindo a nova já rolada.
   const mainEl = document.getElementById('main-content');
@@ -24253,16 +24316,11 @@ function navigate(pageName, extra) {
   const pages = document.querySelectorAll('.page-content');
   pages.forEach(p => p.classList.add('hidden'));
 
-  // 2. Limpa a seleção visual do menu
-  const navItems = document.querySelectorAll('.nav-item');
-  navItems.forEach(n => n.classList.remove('active'));
-
   // 3. Lógica específica para cada rota
   switch (pageName) {
     
     case 'home':
       document.getElementById('page-home').classList.remove('hidden');
-      ativarMenu('Início');
       setBreadcrumb([{ label: 'Início' }]);
       if (typeof initHome === 'function') initHome();
       break;
@@ -24274,7 +24332,6 @@ function navigate(pageName, extra) {
 
     case 'planos':
       document.getElementById('page-planos').classList.remove('hidden');
-      ativarMenu('Planejamento');
       setBreadcrumb([
         { label: 'Planejamento' },
         { label: 'Planejamento Institucional' }
@@ -24284,7 +24341,6 @@ function navigate(pageName, extra) {
 
     case 'detalhe':
       document.getElementById('page-plano-detalhe').classList.remove('hidden');
-      ativarMenu('Planejamento');
       setBreadcrumb([
         { label: 'Planejamento' },
         { label: 'Planejamento Institucional', page: 'planos' },
@@ -24294,7 +24350,6 @@ function navigate(pageName, extra) {
 
     case 'execucao-planos':
       document.getElementById('page-execucao-planos').classList.remove('hidden');
-      ativarMenu('Execução');
       setBreadcrumb([
         { label: 'Execução' },
         { label: 'Execução de Planos' }
@@ -24305,7 +24360,6 @@ function navigate(pageName, extra) {
     case 'execucao-tarefas':
       // Página carregada por abrirExecucaoPlano(idPlano)
       document.getElementById('page-execucao-tarefas').classList.remove('hidden');
-      ativarMenu('Execução');
       setBreadcrumb([
         { label: 'Execução' },
         { label: 'Execução de Planos', page: 'execucao-planos' },
@@ -24315,7 +24369,6 @@ function navigate(pageName, extra) {
 
     case 'colaboracao':
       document.getElementById('page-colaboracao').classList.remove('hidden');
-      ativarMenu('Execução');
       setBreadcrumb([
         { label: 'Execução' },
         { label: 'Colaborar em Elementos' }
@@ -24325,7 +24378,6 @@ function navigate(pageName, extra) {
 
     case 'avaliacao-planos':
       document.getElementById('page-avaliacao-planos').classList.remove('hidden');
-      ativarMenu('Avaliação');
       setBreadcrumb([
         { label: 'Avaliação' },
         { label: 'Avaliação de Planos' }
@@ -24336,7 +24388,6 @@ function navigate(pageName, extra) {
     case 'avaliacao-executar':
       // Página carregada por abrirPaginaAvaliacao(idPlano, contexto)
       document.getElementById('page-avaliacao-executar').classList.remove('hidden');
-      ativarMenu('Avaliação');
       setBreadcrumb([
         { label: 'Avaliação' },
         { label: 'Avaliação de Planos', page: 'avaliacao-planos' },
@@ -24346,7 +24397,6 @@ function navigate(pageName, extra) {
 
     case 'usuarios':
       document.getElementById('page-usuarios').classList.remove('hidden');
-      ativarMenu('Configurações');
       setBreadcrumb([
         { label: 'Configurações' },
         { label: 'Gerenciar Usuários' }
@@ -24356,7 +24406,6 @@ function navigate(pageName, extra) {
 
     case 'unidades':
       document.getElementById('page-unidades').classList.remove('hidden');
-      ativarMenu('Configurações');
       setBreadcrumb([
         { label: 'Configurações' },
         { label: 'Gerenciar Unidades' }
@@ -24366,7 +24415,6 @@ function navigate(pageName, extra) {
 
     case 'logs':
       document.getElementById('page-logs').classList.remove('hidden');
-      ativarMenu('Configurações');
       setBreadcrumb([
         { label: 'Configurações' },
         { label: 'Logs e Auditoria' }
@@ -24377,20 +24425,17 @@ function navigate(pageName, extra) {
     case 'mensagens':
       // Caixa de entrada, leitura de mensagem e preferências (pages_mensagens.html). extra = { view: 'caixa'|'leitura', id? }
       document.getElementById('page-mensagens').classList.remove('hidden');
-      ativarMenu('Mensagens');
       if (typeof initMensagens === 'function') initMensagens(extra || {});
       break;
 
     case 'notificacoes':
       // Todas as notificações (sino → "Ver todas") e preferências — pages_notificacoes.html. extra = { view: 'caixa'|'prefs' }
       document.getElementById('page-notificacoes').classList.remove('hidden');
-      ativarMenu('');
       if (typeof initNotificacoes === 'function') initNotificacoes(extra || {});
       break;
     case 'mensagens-enviadas':
       // Só ADMIN/DEV e dirigentes de unidade (o servidor recusa os demais) — pages_mensagens_enviadas.html
       document.getElementById('page-mensagens-enviadas').classList.remove('hidden');
-      ativarMenu('Mensagens');
       if (typeof initMensagensEnviadas === 'function') initMensagensEnviadas(extra || {});
       break;
 
@@ -24401,7 +24446,6 @@ function navigate(pageName, extra) {
       // O backend protege a escrita de cada seção individualmente (ex.:
       // apiSalvarConfigAvaliacao exige _exigirAdminOuDev()); leitura fica aberta.
       document.getElementById('page-config-sistema').classList.remove('hidden');
-      ativarMenu('Configurações');
       setBreadcrumb([
         { label: 'Configurações' },
         { label: 'Configurações do Sistema' }
@@ -24412,7 +24456,6 @@ function navigate(pageName, extra) {
     default:
       console.warn('Rota desconhecida:', pageName);
       document.getElementById('page-home').classList.remove('hidden');
-      ativarMenu('Início');
       setBreadcrumb([{ label: 'Início' }]);
       if (typeof initHome === 'function') initHome();
   }
@@ -24576,22 +24619,6 @@ function _appNotificarTecla(evt) {
     }
   }
   return false;
-}
-
-/**
- * Função Auxiliar: Busca o link do menu pelo texto e adiciona a classe 'active'
- */
-function ativarMenu(textoLink) {
-  const navItems = document.querySelectorAll('.nav-item');
-  navItems.forEach(item => {
-    // Itens pai do menu em cascata têm data-menu (evita comparar contra o
-    // textContent, que inclui a ligadura de texto do ícone da setinha —
-    // ver components_header.html); os demais seguem comparando pelo texto.
-    const label = item.dataset.menu || item.textContent.trim();
-    if (label === textoLink) {
-      item.classList.add('active');
-    }
-  });
 }
 
       // Loader Utils
