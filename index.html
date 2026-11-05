@@ -4722,6 +4722,12 @@ function handleSalvarPlano(e) {
 <script>
 // Variável global para armazenar arquivos selecionados
 let arquivosSelecionados = [];
+// Limites das evidências (config do administrador); o servidor confere de novo — aqui só avisamos antes de ler os arquivos.
+let limitesEvidenciaRes = null;
+function carregarLimitesEvidenciaRes() {
+  if (limitesEvidenciaRes) return;
+  google.script.run.withSuccessHandler(function (l) { limitesEvidenciaRes = l; }).withFailureHandler(function () {}).apiGetLimitesEvidencia();
+}
 
 /**
  * Função principal para abrir o modal.
@@ -4732,6 +4738,7 @@ function abrirModalResultado(dados) {
   document.getElementById('form-lancar-resultado').reset();
   arquivosSelecionados = [];
   atualizarListaArquivos();
+  carregarLimitesEvidenciaRes();
   toggleEvidenceMode('upload'); // Reset para upload
 
   // 2. Preencher Dados do Elemento (Progresso)
@@ -4829,10 +4836,16 @@ dropZone.addEventListener('drop', (e) => {
 });
 
 function adicionarArquivos(files) {
+  const lim = limitesEvidenciaRes, recusados = [];
   for (let i = 0; i < files.length; i++) {
-    arquivosSelecionados.push(files[i]);
+    const f = files[i], ext = (String(f.name).toLowerCase().match(/\.([a-z0-9]{1,8})$/) || [])[1] || '';
+    if (lim && lim.extensoes.indexOf(ext) === -1) { recusados.push(f.name + ' (tipo não permitido)'); continue; }
+    if (lim && f.size > lim.maxBytesArquivo) { recusados.push(f.name + ' (acima de ' + (lim.maxBytesArquivo / 1048576).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' MB)'); continue; }
+    if (lim && arquivosSelecionados.length >= lim.maxArquivos) { recusados.push(f.name + ' (máximo de ' + lim.maxArquivos + ' arquivos)'); continue; }
+    arquivosSelecionados.push(f);
   }
   atualizarListaArquivos();
+  if (recusados.length) showMessage('warning', 'Alguns arquivos não foram adicionados', recusados.map(escapeHtml).join('<br>'));
 }
 
 function atualizarListaArquivos() {
@@ -20377,1095 +20390,403 @@ function confirmarEncerrarRevisao(idRevisao) {
 }
 </script>
 
-       <!-- ARQUIVO: pages_config_sistema.html -->
-<!-- Configurações → Configurações do Sistema (ADMIN/DEV) — hub interno de
-     parametrizações do sistema, estilo Gmail: abas coladas ao cabeçalho (uma por
-     área de configuração), cada uma com seções empilhadas de opções (ver
-     docs/design_system.md "Configurações estilo Gmail"). Substituiu os itens
-     avulsos "Avaliação"/"Catálogo de Opções"/"Configurações Gerais" do submenu
-     Configurações — agora são abas AQUI dentro, não páginas/itens de menu
-     próprios. Acesso ao ITEM DE MENU é restrito a ADMIN/DEV
-     (components_header.html); cada seção decide por si sua própria trava de
-     leitura/escrita no backend (ex.: apiGetConfigAvaliacao aberta,
-     apiSalvarConfigAvaliacao com _exigirAdminOuDev()) — espelha a trava do
-     frontend, princípio §2. "Avaliação" e "Catálogo de Opções" estão
-     implementadas; "Desempenho"/"Prazos"/"Fórum" são sugestões de
-     parametrizações futuras (`.ds-badge` "Em breve", `aria-disabled`, sem
-     onclick — mesmo padrão do menu em cascata). -->
+       <!-- ARQUIVO: pages_config_sistema.html
+     Configurações → Configurações do sistema (ADMIN/DEV).
+     A tela NÃO tem lista própria de abas: desenha o que vier de apiGetConfigSistemaEstrutura()
+     — { modulos: [ { id, rotulo, icone, secoes: [ { id, rotulo, icone, painel, apis, salvaEmLote, parametros, descricao?, listas? } ] } ] }.
+     Módulos = abas principais (padrão de pages_notificacoes.html); seções = lista lateral (desktop) / chips (≤768px).
+     Última aba e seção ficam em sessionStorage['sgp_csis_nav']. Princípios §6: sem subtítulo, sem "Opcional", explicações em (i).
+     Prefixo de globais: csis. Depende de: abrirMenuSelecao (components_acoes_linha.html), ntfSwitchHtml (components_notificacoes.html),
+     escapeHtml, escapeJsAttr, showMessage, setBreadcrumb. Contrato completo no LEIAME. -->
+
 <div id="page-config-sistema" class="page-content hidden">
-
-  <div class="csis-header">
-    <div class="csis-header-top">
-      <div class="csis-header-icone"><span class="material-symbols-outlined">tune</span></div>
-      <div>
-        <h2>Configurações do Sistema</h2>
-        <p>Parametrizações administrativas do sistema — cada aba abaixo é uma área de configuração independente.</p>
-      </div>
-    </div>
-
-    <div class="csis-tabs-container">
-      <div class="csis-view-tabs">
-        <button type="button" class="csis-tab-btn active" id="csis-tab-avaliacao" onclick="csisMudarSecao('avaliacao')">
-          <span class="material-symbols-outlined icon-sm">grading</span> Avaliação
-        </button>
-        <span class="csis-tab-btn csis-tab-em-breve" data-title="Faixas de conceito do IEG (Excelente/Bom/Regular/Insuficiente) — hoje fixas em DESEMPENHO_CONFIG" aria-disabled="true">
-          <span class="material-symbols-outlined icon-sm">speed</span> Desempenho <span class="ds-badge">Em breve</span>
-        </span>
-        <span class="csis-tab-btn csis-tab-em-breve" data-title="Prazos administrativos (recurso de avaliação, tempo p/ avaliar, etc.) — hoje fixos no código" aria-disabled="true">
-          <span class="material-symbols-outlined icon-sm">event_upcoming</span> Prazos <span class="ds-badge">Em breve</span>
-        </span>
-        <button type="button" class="csis-tab-btn" id="csis-tab-catalogo" onclick="csisMudarSecao('catalogo')">
-          <span class="material-symbols-outlined icon-sm">list_alt</span> Catálogo de Opções
-        </button>
-        <button type="button" class="csis-tab-btn" id="csis-tab-padroes" onclick="csisMudarSecao('padroes')">
-          <span class="material-symbols-outlined icon-sm">rule_settings</span> Padrões dos planos
-        </button>
-        <button type="button" class="csis-tab-btn" id="csis-tab-armazenamento" onclick="csisMudarSecao('armazenamento')">
-          <span class="material-symbols-outlined icon-sm">cloud_upload</span> Armazenamento
-        </button>
-        <button type="button" class="csis-tab-btn" id="csis-tab-apps" onclick="csisMudarSecao('apps')">
-          <span class="material-symbols-outlined icon-sm">extension</span> Apps / Extensões
-        </button>
-        <button type="button" class="csis-tab-btn" id="csis-tab-notificacoes" onclick="csisMudarSecao('notificacoes')">
-          <span class="material-symbols-outlined icon-sm">notifications</span> Notificações
-        </button>
-        <span class="csis-tab-btn csis-tab-em-breve" data-title="Limite de tópicos fixados por usuário e outras regras do Fórum" aria-disabled="true">
-          <span class="material-symbols-outlined icon-sm">forum</span> Fórum <span class="ds-badge">Em breve</span>
-        </span>
-      </div>
-    </div>
-  </div>
-
-  <div class="csis-body">
-
-    <!-- ===== Seção: Avaliação ===== -->
-    <div id="csis-painel-avaliacao" class="csis-painel">
-
-      <section class="ds-card cfa-secao">
-        <div class="cfa-secao-cabecalho">
-          <h3 class="ds-section-title"><span class="material-symbols-outlined">stacks</span> Instâncias de avaliação</h3>
-          <p>Cada instância pode ser ligada/desligada e tem um peso na nota final ponderada do plano (calculada ao vivo, combinando só as instâncias habilitadas que já têm nota lançada).</p>
-        </div>
-
-        <div class="cfa-row">
-          <div class="cfa-row-info">
-            <div class="cfa-row-titulo">Autoavaliação</div>
-            <div class="cfa-row-desc">O próprio lado do plano se autoavalia — criador, co-responsáveis e dirigentes/agentes de qualquer unidade responsável. Admite vários autores (a nota é a média entre eles).</div>
-          </div>
-          <div class="cfa-row-controles">
-            <label class="cfa-peso-wrap" for="cfa-peso-AUTOAVALIACAO">Peso
-              <input type="number" id="cfa-peso-AUTOAVALIACAO" class="ds-input" min="1" max="10" step="1" disabled onchange="cfaMarcarAlterado()">
-            </label>
-            <label class="el-switch-toggle" data-title="Habilitar/desabilitar esta instância">
-              <input type="checkbox" id="cfa-hab-AUTOAVALIACAO" disabled onchange="cfaAtualizarEstadoPeso('AUTOAVALIACAO'); cfaMarcarAlterado()">
-              <span class="el-switch-track"><span class="el-switch-thumb"></span></span>
-            </label>
-          </div>
-        </div>
-        <div class="cfa-divisor"></div>
-
-        <div class="cfa-row">
-          <div class="cfa-row-info">
-            <div class="cfa-row-titulo">Avaliação por Pares</div>
-            <div class="cfa-row-desc">Usuários indicados especificamente para o plano (não são responsáveis por nada nele) avaliam de forma independente. Nunca é pré-requisito da Avaliação Gerencial — corre em paralelo.</div>
-          </div>
-          <div class="cfa-row-controles">
-            <label class="cfa-peso-wrap" for="cfa-peso-PARES">Peso
-              <input type="number" id="cfa-peso-PARES" class="ds-input" min="1" max="10" step="1" disabled onchange="cfaMarcarAlterado()">
-            </label>
-            <label class="el-switch-toggle" data-title="Habilitar/desabilitar esta instância">
-              <input type="checkbox" id="cfa-hab-PARES" disabled onchange="cfaAtualizarEstadoPeso('PARES'); cfaMarcarAlterado()">
-              <span class="el-switch-track"><span class="el-switch-thumb"></span></span>
-            </label>
-          </div>
-        </div>
-        <div class="cfa-divisor"></div>
-
-        <div class="cfa-row">
-          <div class="cfa-row-info">
-            <div class="cfa-row-titulo">Avaliação Gerencial</div>
-            <div class="cfa-row-desc">A instância superior de sempre (dirigente da unidade superior, chefia da lotação ou a outra parte, conforme a categoria do plano) — a única nota que finaliza o plano. Sempre habilitada.</div>
-          </div>
-          <div class="cfa-row-controles">
-            <label class="cfa-peso-wrap" for="cfa-peso-SUPERIOR">Peso
-              <input type="number" id="cfa-peso-SUPERIOR" class="ds-input" min="1" max="10" step="1" disabled onchange="cfaMarcarAlterado()">
-            </label>
-            <label class="el-switch-toggle" data-title="Sempre habilitada — é a única instância que finaliza o plano">
-              <input type="checkbox" id="cfa-hab-SUPERIOR" checked disabled>
-              <span class="el-switch-track"><span class="el-switch-thumb"></span></span>
-            </label>
-          </div>
-        </div>
-      </section>
-
-      <section class="ds-card cfa-secao">
-        <div class="cfa-secao-cabecalho">
-          <h3 class="ds-section-title"><span class="material-symbols-outlined">group_add</span> Indicação de pares</h3>
-          <p>Quem pode indicar usuários como pares avaliadores de um plano, dentro do escopo das unidades relacionadas a ele.</p>
-        </div>
-
-        <div class="cfa-row">
-          <div class="cfa-row-info">
-            <div class="cfa-row-titulo">Restringir indicação ao responsável principal</div>
-            <div class="cfa-row-desc">
-              <strong>Desligado (padrão):</strong> todo o grupo que já pode se autoavaliar — criador, co-responsáveis e dirigentes/agentes de qualquer unidade responsável, principal ou adicional — também pode indicar pares.<br>
-              <strong>Ligado:</strong> só o dirigente/agente da unidade <em>principal</em> (ou o criador, em planos pessoais sem unidade) pode indicar.
-            </div>
-          </div>
-          <div class="cfa-row-controles">
-            <label class="el-switch-toggle" data-title="Restringir a indicação de pares ao responsável principal">
-              <input type="checkbox" id="cfa-restringir-principal" disabled onchange="cfaMarcarAlterado()">
-              <span class="el-switch-track"><span class="el-switch-thumb"></span></span>
-            </label>
-          </div>
-        </div>
-      </section>
-
-      <div class="cfa-rodape">
-        <span class="cfa-status" id="cfa-status"></span>
-        <button type="button" class="ds-btn ds-btn--ghost" id="cfa-btn-descartar" onclick="cfaCarregar()" disabled>Descartar alterações</button>
-        <button type="button" class="ds-btn ds-btn--primary" id="cfa-btn-salvar" onclick="cfaSalvar()" disabled>Salvar alterações</button>
-      </div>
-
-    </div>
-
-    <!-- ===== Seção: Catálogo de Opções ===== -->
-    <!-- Diferente da aba Avaliação (toggle+peso, salva tudo de uma vez no
-         rodapé): aqui é uma LISTA de registros (uma linha por opção do
-         catálogo) — cada ação (adicionar/renomear/ativar-desativar/mover)
-         salva na hora, sem rodapé de "Salvar alterações" (ver
-         docs/design_system.md). Só a categoria NATUREZA_RISCO por enquanto —
-         esta seção é o template a copiar quando entrar a próxima categoria. -->
-    <div id="csis-painel-catalogo" class="csis-painel hidden">
-
-      <section class="ds-card cfa-secao">
-        <div class="cfa-secao-cabecalho">
-          <h3 class="ds-section-title"><span class="material-symbols-outlined">warning</span> Naturezas do Risco</h3>
-          <p>Valores disponíveis no campo "Natureza do Risco" da Gestão de Riscos. Só o ADMIN/DEV edita esta lista — os usuários apenas escolhem entre os valores ativos (evita que a mesma natureza vire texto diferente em planos diferentes, o que quebraria estatísticas).</p>
-        </div>
-        <div id="catopc-lista-NATUREZA_RISCO" class="catopc-lista"></div>
-        <div class="catopc-add-row">
-          <input type="text" id="catopc-novo-NATUREZA_RISCO" class="ds-input" placeholder="Novo valor…" maxlength="60" onkeydown="if(event.key==='Enter'){catopcAdicionar('NATUREZA_RISCO');}">
-          <button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" onclick="catopcAdicionar('NATUREZA_RISCO')">
-            <span class="material-symbols-outlined" style="font-size:18px">add</span> Adicionar
-          </button>
-        </div>
-      </section>
-
-    </div>
-
-    <!-- ===== Seção: Padrões dos planos (espelho global do motor de configurações) =====
-         Cada item do catálogo de config_plano.js: padrão para TODOS os planos + "Travar" (impor).
-         Interruptor travado = imposto; número travado = TETO; sem travar = só o padrão sugerido.
-         Spec: docs/configuracoes_plano.md §2. Protótipo: docs/prototipos/elementos-config/03-painel-config. -->
-    <div id="csis-painel-padroes" class="csis-painel hidden">
-      <section class="ds-card cfa-secao">
-        <div class="cfa-secao-cabecalho">
-          <h3 class="ds-section-title"><span class="material-symbols-outlined">rule_settings</span> Como funcionam os padrões</h3>
-          <p>Aqui você define, para <strong>todos os planos</strong>, o valor padrão de cada configuração. Os responsáveis de cada plano podem personalizar — a menos que você <strong>trave</strong>.</p>
-        </div>
-        <ul class="cpd-regras">
-          <li><span class="material-symbols-outlined">tune</span><span><strong>Sem travar:</strong> é só o padrão sugerido; cada plano pode mudar.</span></li>
-          <li><span class="material-symbols-outlined">lock</span><span><strong>Interruptor travado:</strong> o valor é imposto a todos os planos.</span></li>
-          <li><span class="material-symbols-outlined">vertical_align_top</span><span><strong>Número travado:</strong> vira um teto — cada plano escolhe qualquer valor até ele.</span></li>
-        </ul>
-      </section>
-
-      <div id="cpd-grupos" aria-live="polite"></div>
-
-      <div class="cfa-rodape">
-        <span class="cfa-status" id="cpd-status"></span>
-        <button type="button" class="ds-btn ds-btn--ghost" id="cpd-btn-descartar" onclick="cpdCarregar()" disabled>Descartar alterações</button>
-        <button type="button" class="ds-btn ds-btn--primary" id="cpd-btn-salvar" onclick="cpdSalvar()" disabled>Salvar alterações</button>
-      </div>
-    </div>
-
-    <!-- ===== Seção: Armazenamento de arquivos (evidências e fotos) ===== -->
-    <div id="csis-painel-armazenamento" class="csis-painel hidden">
-      <section class="ds-card cfa-secao">
-        <div class="cfa-secao-cabecalho">
-          <h3 class="ds-section-title"><span class="material-symbols-outlined">cloud_upload</span> Onde guardar os arquivos novos
-            <span class="material-symbols-outlined carm-info" data-title="Vale para evidências de indicadores e fotos de perfil. Trocar o destino afeta só os arquivos enviados daqui em diante; os já guardados continuam acessíveis onde estão.">info</span>
-          </h3>
-        </div>
-        <div id="carm-opcoes" aria-live="polite"></div>
-      </section>
-      <section class="ds-card cfa-secao">
-        <div class="cfa-secao-cabecalho">
-          <h3 class="ds-section-title"><span class="material-symbols-outlined">straighten</span> Limites de arquivos
-            <span class="material-symbols-outlined carm-info" data-title="Valem por envio (evidência de uma aferição; anexos de uma mensagem). Reduzir um limite não apaga nem invalida o que já foi enviado.">info</span>
-          </h3>
-        </div>
-        <div id="carm-limites"></div>
-      </section>
-      <div class="cfa-rodape">
-        <span class="cfa-status" id="carm-status"></span>
-        <button type="button" class="ds-btn ds-btn--ghost" id="carm-btn-descartar" onclick="carmCarregar()" disabled>Descartar alterações</button>
-        <button type="button" class="ds-btn ds-btn--primary" id="carm-btn-salvar" onclick="carmSalvar()" disabled>Salvar alterações</button>
-      </div>
-    </div>
-
-    <!-- ===== Seção: Apps e Extensões ===== -->
-    <div id="csis-painel-apps" class="csis-painel hidden">
-      <section class="ds-card cfa-secao">
-        <div class="cfa-secao-cabecalho">
-          <h3 class="ds-section-title"><span class="material-symbols-outlined">extension</span> Catálogo de Apps e Extensões</h3>
-          <p>Gerencie o ciclo de vida dos apps modulares do sistema. Apps descontinuados exibem um aviso no plano e podem sugerir um substituto.</p>
-        </div>
-
-        <div id="csis-apps-tabela-container" style="padding: 16px 20px;">
-          <div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando apps...</span></div>
-        </div>
-      </section>
-    </div>
-    <!-- ===== Seção: Notificações (tipos, e-mail, alertas) ===== -->
-    <div id="csis-painel-notificacoes" class="csis-painel hidden">
-      <div class="cnt-sub">
-        <button type="button" class="cnt-sub-btn active" id="cnt-sub-tipos" onclick="cntSub('tipos')">Tipos</button>
-        <button type="button" class="cnt-sub-btn" id="cnt-sub-email" onclick="cntSub('email')">E-mail</button>
-        <button type="button" class="cnt-sub-btn" id="cnt-sub-alertas" onclick="cntSub('alertas')">Alertas</button>
-      </div>
-      <section class="ds-card cfa-secao"><div id="cnt-corpo" style="padding:8px 20px 16px"></div></section>
-    </div>
-    <!-- Próximas seções (Desempenho/Prazos/Fórum) entram aqui como novos
-         <div id="csis-painel-<chave>" class="csis-painel hidden">, mais uma
-         aba clicável equivalente acima e uma entrada em CSIS_SECOES. -->
-
-  </div>
-
+  <div id="csis-raiz"></div>
 </div>
 
 <style>
-.cnt-sub { display: flex; gap: 8px; margin-bottom: 12px; }
-.cnt-sub-btn { height: 34px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--ds-color-border); background: var(--ds-color-surface); color: var(--ds-color-text); cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; }
-.cnt-sub-btn.active { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); color: var(--ds-color-action); }
-.cnt-grupo { margin-top: 14px; padding: 6px 0; font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--ds-color-text-muted); border-bottom: 1px solid var(--ds-color-border); }
-.cnt-tipo { display: grid; grid-template-columns: minmax(0, 1fr) repeat(4, 110px); gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--ds-color-border); font-size: 13px; }
-.cnt-tipo small { display: block; color: var(--ds-color-text-muted); margin-top: 2px; }
-.cnt-tipo-cab { font-size: 12px; font-weight: 600; color: var(--ds-color-text-muted); }
-.cnt-campo { display: flex; flex-direction: column; gap: 6px; padding: 10px 0; max-width: 520px; font-size: 13px; font-weight: 500; }
-.cnt-in { height: 38px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--ds-color-border); border-radius: 4px; background: var(--ds-color-surface); color: var(--ds-color-text); font-family: inherit; font-size: 14px; max-width: 240px; }
-.cnt-in-larga { max-width: 100%; }
-.cnt-nota { font-size: 13px; color: var(--ds-color-text-muted); }
-@media (max-width: 768px) {
-  .cnt-tipo { grid-template-columns: repeat(4, 1fr); }
-  .cnt-tipo > span:first-child { grid-column: 1 / -1; }
-  .cnt-tipo-cab { display: none; }
-}
-.carm-info { font-size: 16px; vertical-align: middle; color: var(--ds-color-text-muted); cursor: help; margin-left: 4px; }
-.carm-opcao { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--ds-color-border, #e5e7eb); flex-wrap: wrap; }
-.carm-opcao label { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 220px; cursor: pointer; font-weight: 600; }
-.carm-lim { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-top: 1px solid var(--ds-color-border, #e5e7eb); flex-wrap: wrap; }
-.carm-lim-nome { flex: 1; min-width: 160px; font-weight: 600; }
-.carm-lim label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; color: var(--ds-color-text-muted); }
-.carm-lim input { width: 130px; }
-.carm-teste { font-size: 0.82rem; color: var(--ds-color-text-muted); min-width: 140px; }
-.carm-teste.ok { color: #1e7e34; }
-.carm-teste.erro { color: var(--danger, #c62828); }
-.csis-header {
-  background: var(--ds-color-surface); border: 3px solid var(--ds-color-surface);
-  border-radius: var(--ds-radius-md) var(--ds-radius-md) 0 0;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 20px 20px 0 20px; position: relative;
-  margin-bottom: 20px;
-}
-.csis-header-top { display: flex; align-items: flex-start; gap: 16px; padding-bottom: 20px; }
-.csis-header-icone {
-  flex-shrink: 0; width: 46px; height: 46px; border-radius: 10px;
-  background: var(--ds-primary-50, #e8f0fe); color: var(--ds-primary-700);
-  display: flex; align-items: center; justify-content: center;
-}
-.csis-header-icone .material-symbols-outlined { font-size: 26px; }
-.csis-header h2 { margin: 0 0 4px; color: var(--ds-primary-700); font-size: 1.3rem; }
-.csis-header p { margin: 0; color: var(--ds-color-text-muted); font-size: 0.88rem; max-width: 640px; }
+  #page-config-sistema h1.csis-titulo { margin: 0; font-size: 30px; font-weight: 600; color: var(--ds-color-text); }
+  .csis-cabecalho { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .csis-abas { position: sticky; top: -20px; z-index: 5; background: var(--ds-color-surface); display: flex; gap: 4px; border-bottom: 1px solid var(--ds-color-border); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+  .csis-abas::-webkit-scrollbar { display: none; }
+  .csis-aba { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit;
+    color: var(--ds-color-text-muted); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+  .csis-aba:hover { color: var(--ds-color-text); }
+  .csis-aba.ativa { color: var(--ds-color-action); border-bottom-color: var(--ds-color-action); }
+  .csis-aba .material-symbols-outlined { font-size: 18px; }
 
-/* Abas coladas ao cabeçalho — mesma receita de .ax-tabs-container/.view-tabs-container
-   (filha do próprio cabeçalho, margem negativa cancela o padding do PAI, garante
-   alinhamento pixel-a-pixel; ver docs/design_system.md). */
-.csis-tabs-container {
-  /* top:0, não var(--header-height): o <main> agora rola por si só e já começa
-     abaixo da topbar fixa (ver docs/design_system.md). */
-  position: sticky; top: 0; background: var(--ds-color-surface); z-index: 40;
-  border-bottom: 1px solid var(--ds-color-border); box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-  margin: 0 -20px; padding: 0 20px;
-}
-.csis-view-tabs { display: flex; gap: 20px; overflow-x: auto; scrollbar-width: none; }
-.csis-view-tabs::-webkit-scrollbar { display: none; }
-.csis-tab-btn {
-  background: none; border: none; padding: 15px 5px; cursor: pointer; color: var(--ds-color-text-muted);
-  border-bottom: 3px solid transparent; font-weight: 500; display: flex; align-items: center; gap: 6px;
-  white-space: nowrap; font-size: 0.95rem; font-family: inherit;
-}
-.csis-tab-btn.active { color: var(--ds-primary-700); border-bottom-color: var(--ds-primary-700); }
-button.csis-tab-btn:hover { color: var(--ds-primary-700); }
-.csis-tab-em-breve { cursor: default; color: var(--ds-color-text-muted); opacity: 0.7; }
-body.high-contrast .csis-tabs-container { background: #000; }
+  .csis-corpo { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; padding-top: 16px; align-items: start; }
+  .csis-nav { position: sticky; top: 36px; display: flex; flex-direction: column; gap: 2px; }
+  .csis-nav-item { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 12px; border: none; border-radius: 999px; background: none; color: var(--ds-color-text);
+    cursor: pointer; font-size: 14px; font-family: inherit; text-align: left; }
+  .csis-nav-item:hover { background: var(--ds-sidebar-item-hover); }
+  .csis-nav-item.ativa { background: var(--ds-sidebar-item-active); color: var(--ds-color-action); font-weight: 600; }
+  .csis-nav-item .material-symbols-outlined { font-size: 20px; }
 
-.csis-body { display: flex; flex-direction: column; gap: 20px; }
-.csis-painel { display: flex; flex-direction: column; gap: 20px; }
-.csis-painel.hidden { display: none; }
+  .csis-conteudo { min-width: 0; max-width: 760px; display: flex; flex-direction: column; }
+  .csis-sec-topo { display: flex; align-items: center; gap: 4px; padding: 0 4px 8px; border-bottom: 1px solid var(--ds-color-border); font-size: 16px; font-weight: 600; }
+  .csis-info { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; }
+  .csis-linha { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--ds-color-border); flex-wrap: wrap; }
+  .csis-rotulo { flex: 1 1 220px; min-width: 0; display: flex; align-items: center; gap: 4px; }
+  .csis-linha.inativa .csis-rotulo { color: var(--ds-color-text-muted); }
+  .csis-ctl { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+  .csis-in { height: 38px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--ds-color-border); border-radius: 4px; background: var(--ds-color-surface); color: var(--ds-color-text); font-family: inherit; font-size: 14px; }
+  .csis-in:focus { outline: 2px solid var(--ds-color-action); outline-offset: -1px; border-color: transparent; }
+  .csis-in:disabled { opacity: .5; }
+  .csis-in-num { width: 88px; text-align: right; padding: 0 10px; }
+  .csis-in-txt { width: 160px; }
+  .csis-in-larga { width: 280px; }
+  .csis-unid { font-size: 13px; color: var(--ds-color-text-muted); min-width: 28px; }
+  .csis-sel { min-width: 180px; height: 38px; padding: 0 6px 0 12px; box-sizing: border-box; border: 1px solid var(--ds-color-border); border-radius: 4px; background: var(--ds-color-surface);
+    color: var(--ds-color-text); font-family: inherit; font-size: 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; text-align: left; }
+  .csis-sel span:first-child { flex: 1; }
+  .csis-sel .material-symbols-outlined { font-size: 20px; color: var(--ds-color-text-muted); }
+  .csis-trava { width: 32px; height: 32px; border: none; border-radius: 8px; background: none; color: var(--ds-color-text-muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+  .csis-trava:hover { background: var(--ds-sidebar-item-hover); }
+  .csis-trava.on { background: var(--ds-status-elaboracao-bg, #fff8e1); color: var(--ds-status-elaboracao-fg, #b06000); }
+  .csis-trava .material-symbols-outlined { font-size: 18px; }
+  .csis-btn-sec { height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--ds-color-border); background: var(--ds-color-surface); color: var(--ds-color-action);
+    font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .csis-btn-sec .material-symbols-outlined { font-size: 18px; }
+  .csis-teste-ok { color: var(--ds-color-success-fg); } .csis-teste-erro { color: var(--ds-color-danger-fg); }
 
-/* Conteúdo interno das seções (cards) — compartilhado por qualquer aba futura,
-   não só Avaliação (por isso o prefixo genérico "cfa" virou o nome de fato do
-   padrão visual, mesmo hospedado agora dentro de pages_config_sistema.html). */
-.cfa-secao { padding: 20px; }
-.cfa-secao-cabecalho { margin-bottom: 14px; }
-.cfa-secao-cabecalho .ds-section-title { margin-bottom: 4px; }
-.cfa-secao-cabecalho p { margin: 0; color: var(--ds-color-text-muted); font-size: 0.85rem; }
+  .csis-grupo { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--ds-color-text-muted); padding: 16px 4px 6px; border-bottom: 1px solid var(--ds-color-border);
+    display: flex; align-items: center; gap: 4px; }
+  .csis-item { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--ds-color-border); }
+  .csis-item.inativo { opacity: .55; }
+  .csis-item-txt { flex: 1; min-width: 0; }
+  .csis-ord { display: flex; flex-direction: column; }
+  .csis-ord button { background: none; border: none; cursor: pointer; color: var(--ds-color-text-muted); padding: 0; display: flex; }
+  .csis-ord button:disabled { opacity: .25; cursor: default; }
+  .csis-ord .material-symbols-outlined { font-size: 16px; }
+  .csis-add { display: flex; gap: 8px; padding-top: 12px; }
+  .csis-add .csis-in { flex: 1; min-width: 0; }
 
-.cfa-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 14px 0; flex-wrap: wrap; }
-.cfa-row-info { flex: 1 1 320px; min-width: 240px; }
-.cfa-row-titulo { font-weight: 600; color: var(--ds-color-text); font-size: 0.95rem; }
-.cfa-row-desc { font-size: 0.82rem; color: var(--ds-color-text-muted); margin-top: 3px; line-height: 1.4; }
-.cfa-row-controles { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
-.cfa-divisor { border-top: 1px solid var(--ds-color-border); }
+  .csis-tipo { display: grid; grid-template-columns: minmax(0, 1fr) repeat(4, 96px); gap: 10px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--ds-color-border); }
+  .csis-tipo-cab { font-size: 12px; font-weight: 600; color: var(--ds-color-text-muted); }
+  .csis-tipo > span:first-child { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .csis-tipo-sw { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .csis-tipo-sw small { display: none; font-size: 11px; color: var(--ds-color-text-muted); }
 
-.cfa-peso-wrap { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--ds-color-text-muted); }
-.cfa-peso-wrap .ds-input { width: 60px; text-align: center; padding: 0 6px; }
-.cfa-peso-wrap .ds-input:disabled { opacity: 0.5; }
+  .csis-app-ico { font-size: 20px; color: var(--ds-color-text-muted); }
+  .csis-app-nome { flex: 1 1 160px; min-width: 0; display: flex; align-items: center; gap: 8px; font-weight: 500; }
+  .csis-app-nome small { font-weight: 400; font-size: 12px; color: var(--ds-color-text-muted); }
 
-.cfa-rodape { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-.cfa-status { flex: 1; font-size: 0.82rem; color: var(--ds-color-text-muted); }
+  .csis-rodape { position: sticky; bottom: -20px; background: var(--ds-color-surface); display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding: 12px 4px; border-top: 1px solid var(--ds-color-border); margin-top: 16px; }
+  .csis-rodape .csis-status { flex: 1; font-size: 13px; color: var(--ds-color-text-muted); }
+  .csis-vazio { padding: 56px 16px; text-align: center; color: var(--ds-color-text-muted); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .csis-resumo { padding: 8px 4px 0; font-size: 13px; color: var(--ds-color-text-muted); }
+  .csis-erro { display: flex; gap: 6px; align-items: flex-start; padding: 10px 4px; font-size: 13px; color: var(--ds-color-danger-fg); }
+  .csis-erro .material-symbols-outlined { font-size: 18px; }
 
-/* Catálogo de Opções — lista de registros, cada linha salva na hora (ver
-   comentário no HTML). Namespace "catopc" (CATálogo de OPÇões). */
-.catopc-lista { display: flex; flex-direction: column; gap: 6px; }
-.catopc-row { display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--ds-color-border); }
-.catopc-row:last-child { border-bottom: none; }
-.catopc-row.catopc-inativo { opacity: 0.55; }
-.catopc-ordem-btns { display: flex; flex-direction: column; gap: 0; flex-shrink: 0; }
-.catopc-ord-btn { background: none; border: none; cursor: pointer; color: var(--ds-color-text-muted); padding: 0; display: flex; }
-.catopc-ord-btn:hover:not(:disabled) { color: var(--ds-primary-700); }
-.catopc-ord-btn:disabled { opacity: 0.25; cursor: not-allowed; }
-.catopc-ord-btn .material-symbols-outlined { font-size: 16px; }
-.catopc-valor { flex: 1; font-size: 0.9rem; color: var(--ds-color-text); }
-.catopc-valor-input { flex: 1; font-size: 0.9rem; padding: 4px 8px; border: 1px solid var(--ds-color-border); border-radius: 6px; }
-.catopc-icon-btn { background: none; border: none; cursor: pointer; color: var(--ds-color-text-muted); padding: 4px; border-radius: 6px; display: flex; }
-.catopc-icon-btn:hover { color: var(--ds-primary-700); background: var(--ds-color-surface-2); }
-.catopc-icon-btn .material-symbols-outlined { font-size: 18px; }
-.catopc-add-row { display: flex; gap: 8px; margin-top: 14px; }
-.catopc-add-row .ds-input { flex: 1; }
-body.high-contrast .catopc-row { border-color: #fff; }
-
-/* Padrões dos planos (espelho global) — namespace "cpd"/"cfgg". Os interruptores reaproveitam .cfgp-switch
-   (components_config_plano.html, incluído globalmente pelo index.html). */
-.cpd-regras { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.cpd-regras li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.85rem; color: var(--ds-color-text); }
-.cpd-regras .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
-#cpd-grupos .cfa-secao { margin-bottom: 20px; }
-.cfgg-nota { margin: 4px 0 0; font-size: 0.82rem; color: var(--ds-color-text-muted); }
-.cfgg-cab-colunas, .cfgg-linha { display: grid; grid-template-columns: minmax(0, 1fr) 150px 70px 200px; gap: 16px; align-items: start; }
-.cfgg-cab-colunas { padding: 8px 0; border-bottom: 1px solid var(--ds-color-border); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ds-color-text-muted); }
-.cfgg-linha { padding: 14px 0; border-top: 1px solid var(--ds-color-border); }
-.cfgg-linha:first-of-type { border-top: none; }
-.cfgg-linha--filho { padding-left: 28px; }
-.cfgg-linha--filho .cfgg-seta { position: absolute; margin-left: -26px; }
-.cfgg-info { position: relative; min-width: 0; }
-.cfgg-seta { font-size: 18px; color: var(--ds-color-text-muted); }
-.cfgg-origem { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.cfgg-link { border: none; background: none; padding: 0; color: var(--ds-color-action); font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; }
-.cfgg-valor { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
-.cfgg-trava { display: flex; align-items: center; gap: 6px; }
-.cfgg-trava .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
-.cfgp-switch--trava[aria-checked="true"] { background: var(--ds-color-warning); }
-.cfgg-efeito { display: flex; gap: 6px; align-items: flex-start; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); line-height: 1.4; }
-.cfgg-efeito--forte { color: var(--ds-color-text); }
-.cfgg-efeito .material-symbols-outlined { font-size: 16px; }
-.cfgg-num { width: 70px; text-align: center; padding: 0 6px; }
-.cfgg-erro { margin-top: 8px; font-size: 0.85rem; color: var(--ds-color-danger-fg); display: flex; gap: 6px; }
-@media (max-width: 900px) {
-  .cfgg-cab-colunas { display: none; }
-  .cfgg-linha { grid-template-columns: 1fr 1fr; gap: 12px 16px; }
-  .cfgg-info, .cfgg-efeito { grid-column: 1 / -1; }
-}
-body.high-contrast .csis-header, body.high-contrast .cfa-secao { background: #000; border-color: #fff; }
-body.high-contrast .csis-header-icone { background: #111; color: #0ff; }
+  @media (max-width: 768px) {
+    #page-config-sistema h1.csis-titulo { font-size: 24px; }
+    .csis-corpo { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .csis-nav { position: static; flex-direction: row; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+    .csis-nav::-webkit-scrollbar { display: none; }
+    .csis-nav-item { flex-shrink: 0; height: 36px; min-height: 36px; padding: 0 14px; border: 1px solid var(--ds-color-border); font-size: 13px; font-weight: 500; white-space: nowrap; }
+    .csis-nav-item.ativa { border-color: var(--ds-color-action); font-weight: 500; }
+    .csis-nav-item .material-symbols-outlined { font-size: 18px; }
+    .csis-in-txt, .csis-in-larga { width: 100%; }
+    .csis-ctl { width: 100%; justify-content: flex-end; }
+    .csis-linha:has(.csis-in-larga) .csis-ctl, .csis-linha:has(.csis-in-txt) .csis-ctl { justify-content: stretch; }
+    .csis-tipo { grid-template-columns: repeat(4, 1fr); }
+    .csis-tipo > span:first-child { grid-column: 1 / -1; }
+    .csis-tipo-cab { display: none; }
+    .csis-tipo-sw small { display: block; }
+    .csis-trava, .csis-ord button { min-width: 44px; min-height: 44px; justify-content: center; }
+  }
+  body.high-contrast .csis-abas, body.high-contrast .csis-rodape { background: #000; }
 </style>
 
 <script>
 // ===================== CONFIGURAÇÕES DO SISTEMA (ADMIN/DEV) =====================
-// Hub interno por abas — CSIS_SECOES lista as chaves com painel implementado;
-// as demais abas no HTML são placeholders "Em breve" (<span aria-disabled>,
-// sem onclick — nunca chamam csisMudarSecao).
-const CSIS_SECOES = ['avaliacao', 'catalogo', 'padroes', 'armazenamento', 'apps', 'notificacoes'];
-let estadoCsis = { secaoAtual: 'avaliacao' };
+var CSIS_NAV_KEY = 'sgp_csis_nav';
+var _csis = { estrutura: null, mod: '', secPor: {}, dados: {}, salvos: {}, carregando: {}, erro: {}, teste: {}, novo: {} };
+
+function csisRaiz() { return document.getElementById('csis-raiz'); }
+function csisChamar(api, args, ok, falha) {
+  var r = google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) {
+    if (falha) falha(e); else showMessage('error', 'Erro', escapeHtml((e && e.message) || String(e)));
+  });
+  r[api].apply(r, args || []);
+}
+// Chama a rota de uma operação da seção. As rotas genéricas (apiGetConfigSistemaSecao / apiSalvarConfigSistemaSecao) recebem
+// módulo, seção e operação à frente; as demais (rotas próprias de um motor) recebem só os argumentos da operação.
+function csisApi(mod, sec, op, args, ok, falha) {
+  var api = (sec.apis || {})[op];
+  var a = api === 'apiGetConfigSistemaSecao' ? [mod.id, sec.id] : api === 'apiSalvarConfigSistemaSecao' ? [mod.id, sec.id, op].concat(args || []) : (args || []);
+  csisChamar(api, a, ok, falha);
+}
+function csisInfo(t) { return t ? ' <span class="material-symbols-outlined csis-info" data-title="' + escapeHtml(t) + '">info</span>' : ''; }
+function csisSw(on, desab, onclick, rotulo) { return ntfSwitchHtml(!!on, !!desab, onclick, rotulo); }
 
 function initConfigSistema() {
-  // Sem o 2º argumento: também dispara o carregamento dos dados da seção ativa
-  // (csisMudarSecao só troca a aba visível quando semRecarregar=true — usado ao
-  // trocar de aba manualmente depois que a página já carregou uma vez; na
-  // entrada da página os controles precisam ser habilitados/preenchidos, senão
-  // ficam com o `disabled` do HTML estático pra sempre — bug real, 2026-08).
-  csisMudarSecao(estadoCsis.secaoAtual);
+  setBreadcrumb([{ label: 'Configurações' }, { label: 'Configurações do sistema' }]);
+  try { var n = JSON.parse(sessionStorage.getItem(CSIS_NAV_KEY) || '{}'); _csis.mod = n.mod || ''; _csis.secPor = n.secPor || {}; } catch (e) {}
+  if (_csis.estrutura) return csisRender(true);
+  csisRaiz().innerHTML = '<div class="csis-cabecalho"><h1 class="csis-titulo">Configurações do sistema</h1></div><div class="csis-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
+  csisChamar('apiGetConfigSistemaEstrutura', [], function (r) { _csis.estrutura = r || { modulos: [] }; csisRender(true); });
 }
 
-function csisMudarSecao(chave, semRecarregar) {
-  if (CSIS_SECOES.indexOf(chave) === -1) return;
-  estadoCsis.secaoAtual = chave;
-  CSIS_SECOES.forEach(function(k) {
-    const tab = document.getElementById('csis-tab-' + k);
-    const painel = document.getElementById('csis-painel-' + k);
-    if (tab) tab.classList.toggle('active', k === chave);
-    if (painel) painel.classList.toggle('hidden', k !== chave);
+function csisModulo() {
+  var ms = _csis.estrutura.modulos || [];
+  return ms.find(function (m) { return m.id === _csis.mod; }) || ms[0];
+}
+function csisSecao(mod) {
+  mod = mod || csisModulo(); if (!mod) return null;
+  return mod.secoes.find(function (s) { return s.id === _csis.secPor[mod.id]; }) || mod.secoes[0];
+}
+function csisChave(mod, sec) { return mod.id + '/' + sec.id; }
+function csisPersistir() { try { sessionStorage.setItem(CSIS_NAV_KEY, JSON.stringify({ mod: _csis.mod, secPor: _csis.secPor })); } catch (e) {} }
+
+function csisMudarModulo(id) {
+  if (!csisConfirmarSaida()) return;
+  _csis.mod = id; csisPersistir(); csisRender(true);
+}
+function csisMudarSecao(id) {
+  if (!csisConfirmarSaida()) return;
+  var mod = csisModulo(); _csis.secPor[mod.id] = id; csisPersistir(); csisRender(true);
+}
+function csisConfirmarSaida() {
+  var mod = csisModulo(), sec = csisSecao(mod);
+  if (!sec || !csisSujo(mod, sec)) return true;
+  if (!confirm('Há alterações não salvas nesta seção. Descartar?')) return false;
+  csisDescartar(true);
+  return true;
+}
+
+// ---------- render ----------
+function csisRender(carregar) {
+  var mod = csisModulo();
+  if (!mod) { csisRaiz().innerHTML = '<div class="csis-vazio">Nada para configurar.</div>'; return; }
+  _csis.mod = mod.id;
+  var sec = csisSecao(mod), k = csisChave(mod, sec);
+  if (carregar && !_csis.dados[k] && !_csis.carregando[k]) csisCarregar(mod, sec);
+
+  var abas = mod && _csis.estrutura.modulos.map(function (m) {
+    return '<button type="button" class="csis-aba' + (m.id === mod.id ? ' ativa' : '') + '" onclick="csisMudarModulo(\'' + escapeJsAttr(m.id) + '\')"><span class="material-symbols-outlined">' + escapeHtml(m.icone || 'settings') + '</span>' + escapeHtml(m.rotulo) + '</button>';
+  }).join('');
+  var nav = mod.secoes.map(function (s) {
+    return '<button type="button" class="csis-nav-item' + (s.id === sec.id ? ' ativa' : '') + '" onclick="csisMudarSecao(\'' + escapeJsAttr(s.id) + '\')"' + (s.id === sec.id ? ' aria-current="page"' : '') + '><span class="material-symbols-outlined">' + escapeHtml(s.icone || 'tune') + '</span><span>' + escapeHtml(s.rotulo) + '</span></button>';
+  }).join('');
+
+  csisRaiz().innerHTML = '<div class="csis-cabecalho"><h1 class="csis-titulo">Configurações do sistema</h1></div>'
+    + '<div class="csis-abas" role="tablist">' + abas + '</div>'
+    + '<div class="csis-corpo"><nav class="csis-nav" aria-label="Seções">' + nav + '</nav><div class="csis-conteudo" id="csis-conteudo">' + csisHtmlConteudo(mod, sec) + '</div></div>';
+}
+function csisRenderConteudo() {
+  var el = document.getElementById('csis-conteudo'); if (!el) return;
+  var mod = csisModulo(), sec = csisSecao(mod);
+  el.innerHTML = csisHtmlConteudo(mod, sec);
+}
+function csisHtmlConteudo(mod, sec) {
+  var k = csisChave(mod, sec), d = _csis.dados[k];
+  var topo = sec.descricao ? '<div class="csis-sec-topo">' + escapeHtml(sec.rotulo) + csisInfo(sec.descricao) + '</div>' : '';
+  if (_csis.carregando[k] && !d) return topo + '<div class="csis-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
+  if (!d) return topo;
+  var erro = _csis.erro[k] ? '<div class="csis-erro" role="alert"><span class="material-symbols-outlined">error</span><span>' + escapeHtml(_csis.erro[k]) + '</span></div>' : '';
+  var corpo = d.resumo ? '<div class="csis-resumo">' + escapeHtml(d.resumo) + '</div>' : '';
+  if (sec.painel === 'parametros') corpo += csisHtmlParametros(sec, d);
+  else if (sec.painel === 'lista') corpo = csisHtmlListas(sec, d);
+  else if (sec.painel === 'tiposNotificacao') corpo = csisHtmlTipos(d);
+  else if (sec.painel === 'apps') corpo = csisHtmlApps(d);
+  var rod = sec.salvaEmLote && csisSujo(mod, sec) ? '<div class="csis-rodape"><span class="csis-status">Alterações não salvas</span>'
+    + '<button type="button" class="ds-btn ds-btn--ghost" onclick="csisDescartar()">Descartar</button>'
+    + '<button type="button" class="ds-btn ds-btn--primary" onclick="csisSalvar()">Salvar</button></div>' : '';
+  return topo + erro + corpo + rod;
+}
+
+// ---------- carregar / salvar ----------
+function csisCarregar(mod, sec) {
+  var k = csisChave(mod, sec), apis = sec.apis || {};
+  if (!apis.get) { _csis.dados[k] = { valores: {}, travas: {} }; _csis.salvos[k] = JSON.stringify(_csis.dados[k]); return; }
+  _csis.carregando[k] = true;
+  csisApi(mod, sec, 'get', [], function (r) {
+    _csis.carregando[k] = false;
+    _csis.dados[k] = r || {}; _csis.salvos[k] = JSON.stringify(_csis.dados[k]); _csis.erro[k] = '';
+    csisRenderConteudo();
+  }, function (e) { _csis.carregando[k] = false; _csis.erro[k] = (e && e.message) || String(e); _csis.dados[k] = { valores: {}, travas: {} }; csisRenderConteudo(); });
+}
+function csisDados() { var mod = csisModulo(), sec = csisSecao(mod); return _csis.dados[csisChave(mod, sec)]; }
+function csisSujo(mod, sec) { var k = csisChave(mod, sec); return !!_csis.dados[k] && JSON.stringify(_csis.dados[k]) !== _csis.salvos[k]; }
+function csisDescartar(semRender) {
+  var mod = csisModulo(), sec = csisSecao(mod), k = csisChave(mod, sec);
+  _csis.dados[k] = JSON.parse(_csis.salvos[k]); _csis.erro[k] = '';
+  if (!semRender) csisRenderConteudo();
+}
+function csisSalvar() {
+  var mod = csisModulo(), sec = csisSecao(mod), k = csisChave(mod, sec), d = _csis.dados[k];
+  var payload = { valores: d.valores || {}, travas: d.travas || {} };
+  var invalido = (sec.parametros || []).find(function (p) {
+    var v = d.valores[p.chave], vazio = v === '' || v === null || v === undefined;
+    return p.tipo === 'NUMERO' && csisAtivo(p, d) && (vazio ? p.obrigatorio : !csisNumValido(p, v));
   });
-  if (semRecarregar) return;
-  // Recarrega os dados da seção ao entrar nela (troca de aba) — cada seção tem
-  // sua própria função de carregamento, chamada aqui por chave.
-  if (chave === 'avaliacao' && typeof cfaCarregar === 'function') cfaCarregar();
-  if (chave === 'catalogo' && typeof catopcCarregar === 'function') catopcCarregar();
-  if (chave === 'padroes' && typeof cpdCarregar === 'function') cpdCarregar();
-  if (chave === 'armazenamento' && typeof carmCarregar === 'function') carmCarregar();
-  if (chave === 'apps' && typeof csisAppsCarregar === 'function') csisAppsCarregar();
-  if (chave === 'notificacoes' && typeof cntSub === 'function') cntSub(estadoCnt.sub);
+  if (invalido) { _csis.erro[k] = '“' + invalido.rotulo + '” precisa de um número' + (invalido.min != null ? ' a partir de ' + invalido.min : '') + (invalido.max != null ? ' até ' + invalido.max : '') + '.'; return csisRenderConteudo(); }
+  mostrarLoader();
+  csisApi(mod, sec, 'salvar', [payload], function (r) {
+    esconderLoader();
+    _csis.dados[k] = r && r.valores ? r : d; _csis.salvos[k] = JSON.stringify(_csis.dados[k]); _csis.erro[k] = '';
+    csisRenderConteudo(); showMessage('success', 'Configuração salva', '');
+  }, function (e) { esconderLoader(); _csis.erro[k] = (e && e.message) || String(e); csisRenderConteudo(); });
+}
+// Salvamento imediato (seções sem salvaEmLote): reverte em caso de erro.
+function csisSalvarJa(op, args, antes) {
+  var mod = csisModulo(), sec = csisSecao(mod), k = csisChave(mod, sec);
+  csisRenderConteudo();
+  csisApi(mod, sec, op, args, function (r) { if (r && typeof r === 'object' && !Array.isArray(r) && Object.keys(r).length) _csis.dados[k] = r; _csis.salvos[k] = JSON.stringify(_csis.dados[k]); csisRenderConteudo(); },
+    function (e) { _csis.dados[k] = JSON.parse(antes); csisRenderConteudo(); showMessage('error', 'Erro', escapeHtml((e && e.message) || String(e))); });
 }
 
-// ---- Seção: Notificações (prefixo cnt) ----
-// Tipos: catálogo com 4 interruptores por tipo; E-mail: limites e URL; Alertas: dias e lembretes.
-let estadoCnt = { sub: 'tipos', tipos: null, email: null, alertas: null };
+// ---------- painel: parametros ----------
+function csisParam(chave) { return (csisSecao().parametros || []).find(function (p) { return p.chave === chave; }); }
+function csisAtivo(p, d) { return !p.dependeDe || !!d.valores[p.dependeDe]; }
+function csisNumValido(p, v) { return v !== '' && v !== null && v !== undefined && !isNaN(v) && (p.min == null || v >= p.min) && (p.max == null || v <= p.max); }
+function csisHtmlParametros(sec, d) {
+  d.valores = d.valores || {}; d.travas = d.travas || {};
+  return (sec.parametros || []).map(function (p) {
+    var v = d.valores[p.chave], ch = escapeJsAttr(p.chave), ativo = csisAtivo(p, d), ctl = '';
+    if (p.tipo === 'BOOLEANO') ctl = csisSw(v, p.fixo, "csisAlternar('" + ch + "')", p.rotulo);
+    else if (p.tipo === 'NUMERO') ctl = '<input class="csis-in csis-in-num" type="number" aria-label="' + escapeHtml(p.rotulo) + '"' + (p.min != null ? ' min="' + p.min + '"' : '') + (p.max != null ? ' max="' + p.max + '"' : '')
+      + (p.passo ? ' step="' + p.passo + '"' : '') + ' value="' + (v === null || v === undefined ? '' : escapeHtml(String(v))) + '"' + (ativo ? '' : ' disabled') + ' oninput="csisDigitar(\'' + ch + '\', this.value, true)">'
+      + (p.unidade ? '<span class="csis-unid">' + escapeHtml(p.unidade) + '</span>' : '');
+    else if (p.tipo === 'TEXTO' || p.tipo === 'LISTA_NUMEROS') ctl = '<input class="csis-in ' + (p.largo ? 'csis-in-larga' : 'csis-in-txt') + '" aria-label="' + escapeHtml(p.rotulo) + '" value="' + escapeHtml(p.tipo === 'LISTA_NUMEROS' ? (v || []).join(', ') : (v || '')) + '"'
+      + (ativo ? '' : ' disabled') + ' oninput="csisDigitar(\'' + ch + '\', this.value)">' + (p.unidade ? '<span class="csis-unid">' + escapeHtml(p.unidade) + '</span>' : '');
+    else if (p.tipo === 'SELECAO') {
+      var o = (p.opcoes || []).find(function (x) { return x.valor === v; });
+      ctl = '<button type="button" class="csis-sel" aria-haspopup="menu" aria-expanded="false" onclick="csisAbrirSelecao(this, \'' + ch + '\')"' + (ativo ? '' : ' disabled') + '><span>' + escapeHtml(o ? o.rotulo : '—') + '</span><span class="material-symbols-outlined">arrow_drop_down</span></button>';
+    }
+    if (p.testar) {
+      var t = _csis.teste[p.chave] || {};
+      ctl += '<button type="button" class="csis-btn-sec" onclick="csisTestar(\'' + ch + '\')"><span class="material-symbols-outlined' + (t.ok === true ? ' csis-teste-ok' : t.ok === false ? ' csis-teste-erro' : '') + '"'
+        + (t.msg ? ' data-title="' + escapeHtml(t.msg) + '"' : '') + '>' + (t.testando ? 'progress_activity' : t.ok === true ? 'check_circle' : t.ok === false ? 'error' : 'wifi_tethering') + '</span>Testar conexão</button>';
+    }
+    if (p.travavel) {
+      var tr = !!d.travas[p.chave], tip = tr ? (p.tipo === 'NUMERO' ? 'Travado: vira teto para todos os planos' : 'Travado: imposto a todos os planos') : 'Cada plano pode mudar. Clique para travar.';
+      ctl += '<button type="button" class="csis-trava' + (tr ? ' on' : '') + '" aria-pressed="' + tr + '" data-title="' + tip + '" aria-label="' + tip + '" onclick="csisTravar(\'' + ch + '\')"><span class="material-symbols-outlined">' + (tr ? 'lock' : 'lock_open') + '</span></button>';
+    }
+    return '<div class="csis-linha' + (ativo ? '' : ' inativa') + '"><span class="csis-rotulo">' + escapeHtml(p.rotulo) + (p.obrigatorio ? ' *' : '') + csisInfo(p.descricao) + '</span><div class="csis-ctl">' + ctl + '</div></div>';
+  }).join('');
+}
+function csisAlternar(chave) { var d = csisDados(), p = csisParam(chave); if (p.fixo) return; d.valores[chave] = !d.valores[chave]; csisAposMudar(p); }
+function csisTravar(chave) { var d = csisDados(); d.travas[chave] = !d.travas[chave]; csisAposMudar(csisParam(chave)); }
+function csisDigitar(chave, v, num) {
+  var d = csisDados(), p = csisParam(chave);
+  d.valores[chave] = p.tipo === 'LISTA_NUMEROS' ? v.split(/[,\s;]+/).filter(Boolean).map(Number) : num ? (v === '' ? '' : Number(v)) : v;
+  csisAtualizarRodape();
+}
+function csisAbrirSelecao(btn, chave) {
+  var d = csisDados(), p = csisParam(chave);
+  abrirMenuSelecao(btn, [{ itens: (p.opcoes || []).map(function (o) {
+    return { label: o.rotulo, ativo: o.valor === d.valores[chave], dot: o.cor, onclick: "csisEscolher('" + escapeJsAttr(chave) + "', '" + escapeJsAttr(String(o.valor)) + "')" };
+  }) }]);
+}
+function csisEscolher(chave, v) {
+  var d = csisDados(), p = csisParam(chave), o = (p.opcoes || []).find(function (x) { return String(x.valor) === v; });
+  d.valores[chave] = o ? o.valor : v; delete _csis.teste[chave]; csisAposMudar(p);
+}
+function csisAposMudar(p) {
+  var sec = csisSecao();
+  if (sec.salvaEmLote) return csisRenderConteudo();
+  var mod = csisModulo(), k = csisChave(mod, sec), d = _csis.dados[k];
+  csisSalvarJa('salvar', [{ valores: d.valores, travas: d.travas }], _csis.salvos[k]);
+}
+// Mantém o foco do campo digitado: só o rodapé é redesenhado.
+function csisAtualizarRodape() {
+  var el = document.getElementById('csis-conteudo'); if (!el) return;
+  var mod = csisModulo(), sec = csisSecao(mod), rod = el.querySelector('.csis-rodape'), sujo = sec.salvaEmLote && csisSujo(mod, sec);
+  if (sujo && !rod) el.insertAdjacentHTML('beforeend', '<div class="csis-rodape"><span class="csis-status">Alterações não salvas</span><button type="button" class="ds-btn ds-btn--ghost" onclick="csisDescartar()">Descartar</button><button type="button" class="ds-btn ds-btn--primary" onclick="csisSalvar()">Salvar</button></div>');
+  else if (!sujo && rod) rod.remove();
+}
+function csisTestar(chave) {
+  var sec = csisSecao(), d = csisDados();
+  _csis.teste[chave] = { testando: true }; csisRenderConteudo();
+  csisApi(csisModulo(), sec, 'testar', [d.valores[chave]], function (r) {
+    _csis.teste[chave] = { ok: !!(r && r.ok), msg: r && r.ok ? 'Conexão ok' : ((r && r.mensagem) || 'Falhou') }; csisRenderConteudo();
+  }, function (e) { _csis.teste[chave] = { ok: false, msg: (e && e.message) || 'Falhou' }; csisRenderConteudo(); });
+}
 
-function cntSub(s) {
-  estadoCnt.sub = s;
-  ['tipos', 'email', 'alertas'].forEach(function(k) { document.getElementById('cnt-sub-' + k).classList.toggle('active', k === s); });
-  const corpo = document.getElementById('cnt-corpo');
-  corpo.innerHTML = '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>';
-  const api = { tipos: 'apiGetConfigNotificacoes', email: 'apiGetConfigEmailNotificacoes', alertas: 'apiGetConfigAlertasNotificacoes' }[s];
-  ntfChamar(api, [], function(r) { estadoCnt[s] = r; cntRender(); }, function(e) { corpo.innerHTML = ''; ntfErro(e); });
+// ---------- painel: lista (catálogo de opções; salva na hora) ----------
+// d = { listas: { <idLista>: [ { id, valor, ativo } ] } }
+function csisHtmlListas(sec, d) {
+  d.listas = d.listas || {};
+  return (sec.listas || []).map(function (l) {
+    var itens = d.listas[l.id] || [], id = escapeJsAttr(l.id);
+    return '<div class="csis-grupo">' + escapeHtml(l.rotulo) + csisInfo(l.descricao) + '</div>'
+      + itens.map(function (it, i) {
+        return '<div class="csis-item' + (it.ativo ? '' : ' inativo') + '"><div class="csis-ord">'
+          + '<button type="button" aria-label="Subir"' + (i === 0 ? ' disabled' : '') + ' onclick="csisMover(\'' + id + '\', ' + i + ', -1)"><span class="material-symbols-outlined">keyboard_arrow_up</span></button>'
+          + '<button type="button" aria-label="Descer"' + (i === itens.length - 1 ? ' disabled' : '') + ' onclick="csisMover(\'' + id + '\', ' + i + ', 1)"><span class="material-symbols-outlined">keyboard_arrow_down</span></button></div>'
+          + '<span class="csis-item-txt">' + escapeHtml(it.valor) + '</span>' + csisSw(it.ativo, false, "csisAtivarItem('" + id + "', " + i + ")", it.ativo ? 'Ativo' : 'Inativo') + '</div>';
+      }).join('')
+      + '<div class="csis-add"><input class="csis-in" id="csis-novo-' + escapeHtml(l.id) + '" placeholder="Novo valor" maxlength="60" value="' + escapeHtml(_csis.novo[l.id] || '') + '" oninput="_csis.novo[\'' + id + '\'] = this.value"'
+      + ' onkeydown="if(event.key===\'Enter\'){csisAdicionar(\'' + id + '\')}"><button type="button" class="csis-btn-sec" onclick="csisAdicionar(\'' + id + '\')"><span class="material-symbols-outlined">add</span>Adicionar</button></div>';
+  }).join('');
 }
-function cntRender() {
-  const s = estadoCnt.sub, r = estadoCnt[s], corpo = document.getElementById('cnt-corpo');
-  if (!r) return;
-  if (s === 'tipos') corpo.innerHTML = cntHtmlTipos(r);
-  else corpo.innerHTML = cntHtmlCampos(s, r);
+function csisAdicionar(idLista) {
+  var v = (_csis.novo[idLista] || '').trim(); if (!v) return;
+  var d = csisDados(), antes = JSON.stringify(d);
+  if ((d.listas[idLista] || []).some(function (x) { return x.valor.toLowerCase() === v.toLowerCase(); })) return showMessage('warning', 'Atenção', 'Esse valor já existe.');
+  (d.listas[idLista] = d.listas[idLista] || []).push({ valor: v, ativo: true }); _csis.novo[idLista] = '';
+  csisSalvarJa('adicionar', [idLista, v], antes);
 }
-function cntHtmlTipos(r) {
-  const grupos = {}, ordem = [];
-  (r.grupos || []).forEach(function(g) { grupos[g.grupo] = g.itens; ordem.push(g.grupo); });
-  const sw = function(on, dis, ch, c, rot) { return ntfSwitchHtml(on, dis, "cntTipo('" + ch + "','" + c + "')", rot); };
-  return '<div class="cnt-tipo cnt-tipo-cab"><span>Tipo</span><span>Ativa</span><span>Padrão no app</span><span>Padrão por e-mail</span><span>Travada ' + ntfInfoHtml('Trava a escolha: o usuário não pode mudar nas preferências.') + '</span></div>'
-    + ordem.map(function(g) {
-      return '<div class="cnt-grupo">' + escapeHtml(g) + '</div>' + grupos[g].map(function(t) {
-        const obrig = !!t.obrigatoria;
-        return '<div class="cnt-tipo"><span><strong>' + escapeHtml(t.rotulo) + '</strong>' + (t.descricao ? '<small>' + escapeHtml(t.descricao) + '</small>' : '') + '</span>'
-          + sw(t.ativa, obrig, t.chave, 'ativa', 'Ativa') + sw(t.padraoApp, !t.ativa, t.chave, 'padraoApp', 'Padrão no app')
-          + sw(t.padraoEmail, !t.ativa || !t.padraoApp, t.chave, 'padraoEmail', 'Padrão por e-mail') + sw(t.forcada, !t.ativa, t.chave, 'forcada', 'Travada') + '</div>';
-      }).join('');
+function csisAtivarItem(idLista, i) {
+  var d = csisDados(), antes = JSON.stringify(d), it = d.listas[idLista][i];
+  it.ativo = !it.ativo; csisSalvarJa('atualizar', [idLista, it.id, { ativo: it.ativo }], antes);
+}
+function csisMover(idLista, i, dir) {
+  var d = csisDados(), antes = JSON.stringify(d), l = d.listas[idLista], j = i + dir;
+  if (j < 0 || j >= l.length) return;
+  var t = l[i]; l[i] = l[j]; l[j] = t;
+  csisSalvarJa('reordenar', [idLista, l.map(function (x) { return x.id; })], antes);
+}
+
+// ---------- painel: tiposNotificacao (salva na hora; contrato de apiGetConfigNotificacoes) ----------
+function csisHtmlTipos(d) {
+  var info = csisInfo('O usuário não pode mudar nas preferências.');
+  var h = '<div class="csis-tipo csis-tipo-cab"><span>Tipo</span><span style="text-align:center">Ativa</span><span style="text-align:center">No app</span><span style="text-align:center">Por e-mail</span><span style="text-align:center">Travada' + info + '</span></div>';
+  return h + (d.grupos || []).map(function (g) {
+    return '<div class="csis-grupo">' + escapeHtml(g.grupo) + '</div>' + g.itens.map(function (t) {
+      var ch = escapeJsAttr(t.chave), sw = function (campo, rot, des) { return '<span class="csis-tipo-sw"><small>' + rot + '</small>' + csisSw(t[campo], des, "csisTipo('" + ch + "','" + campo + "')", rot) + '</span>'; };
+      return '<div class="csis-tipo"><span>' + escapeHtml(t.rotulo) + csisInfo(t.descricao) + '</span>' + sw('ativa', 'Ativa', !!t.obrigatoria) + sw('padraoApp', 'No app', !t.ativa)
+        + sw('padraoEmail', 'Por e-mail', !t.ativa || !t.padraoApp) + sw('forcada', 'Travada', !t.ativa) + '</div>';
     }).join('');
+  }).join('');
 }
-function cntTipo(chave, campo) {
-  let t = null;
-  estadoCnt.tipos.grupos.forEach(function(g) { g.itens.forEach(function(x) { if (x.chave === chave) t = x; }); });
+function csisTipo(chave, campo) {
+  var d = csisDados(), antes = JSON.stringify(d), t = null;
+  (d.grupos || []).forEach(function (g) { g.itens.forEach(function (x) { if (x.chave === chave) t = x; }); });
   if (!t) return;
-  const antes = { ativa: t.ativa, padraoApp: t.padraoApp, padraoEmail: t.padraoEmail, forcada: t.forcada };
   t[campo] = !t[campo];
   if (campo === 'padraoApp' && !t.padraoApp) t.padraoEmail = false;
   if (campo === 'padraoEmail' && t.padraoEmail) t.padraoApp = true;
-  cntRender();
-  ntfChamar('apiSalvarConfigNotificacoes', [chave, { ativa: t.ativa, padraoApp: t.padraoApp, padraoEmail: t.padraoEmail, forcada: t.forcada }], function() {}, function(e) {
-    Object.assign(t, antes); cntRender(); ntfErro(e);
-  });
-}
-const CNT_CAMPOS = {
-  email: [
-    { k: 'ativo', t: 'sw', r: 'Enviar notificações por e-mail' },
-    { k: 'tetoUsuarioDia', t: 'n', r: 'Teto de e-mails por usuário por dia' },
-    { k: 'tetoGlobalDia', t: 'n', r: 'Teto global de e-mails por dia' },
-    { k: 'validadeHoras', t: 'n', r: 'Validade do envio (horas)', i: 'Depois disso, um e-mail pendente não é mais enviado.' },
-    { k: 'lotePorExecucao', t: 'n', r: 'E-mails por rodada (a cada 5 min)' },
-    { k: 'urlBase', t: 'txt', r: 'Endereço do sistema nos links' }
-  ],
-  alertas: [
-    { k: 'ativo', t: 'sw', r: 'Gerar alertas programados' },
-    { k: 'diasPrazo', t: 'lista', r: 'Avisar de prazos com antecedência (dias)', i: 'Até 5 valores entre 1 e 365, separados por vírgula.' },
-    { k: 'diasVigencia', t: 'lista', r: 'Avisar do fim da vigência do plano (dias)' },
-    { k: 'diasLixeira', t: 'lista', r: 'Avisar da exclusão definitiva na lixeira (dias)' },
-    { k: 'lembreteAtrasoDias', t: 'n', r: 'Repetir lembrete de atraso a cada (dias)' },
-    { k: 'maxLembretesAtraso', t: 'n', r: 'Máximo de lembretes de atraso' },
-    { k: 'janelaMetaAtrasoDias', t: 'n', r: 'Janela para considerar meta atrasada (dias)' }
-  ]
-};
-function cntHtmlCampos(s, r) {
-  const cfg = r.config || {};
-  let h = '';
-  if (s === 'email') h += '<p class="cnt-nota">Enviados hoje: <strong>' + (r.enviadosHoje || 0) + '</strong></p>';
-  h += CNT_CAMPOS[s].map(function(c) {
-    const v = cfg[c.k], inf = c.i ? ' ' + ntfInfoHtml(c.i) : '';
-    let ctl;
-    if (c.t === 'sw') ctl = ntfSwitchHtml(!!v, false, "cntCampoSw('" + c.k + "')", c.r);
-    else if (c.t === 'n') ctl = '<input class="cnt-in" type="number" id="cnt-f-' + c.k + '" value="' + (v === undefined || v === null ? '' : escapeHtml(String(v))) + '">';
-    else if (c.t === 'lista') ctl = '<input class="cnt-in" id="cnt-f-' + c.k + '" value="' + escapeHtml((v || []).join(', ')) + '">';
-    else ctl = '<input class="cnt-in cnt-in-larga" id="cnt-f-' + c.k + '" value="' + escapeHtml(v || '') + '">';
-    return '<div class="cnt-campo"><label for="cnt-f-' + c.k + '">' + escapeHtml(c.r) + inf + '</label>' + ctl + '</div>';
-  }).join('');
-  return h + '<div class="cfa-rodape" style="justify-content:flex-end"><button type="button" class="ds-btn ds-btn--primary" onclick="cntSalvar()">Salvar alterações</button></div>';
-}
-function cntCampoSw(k) { estadoCnt[estadoCnt.sub].config[k] = !estadoCnt[estadoCnt.sub].config[k]; cntColher(); cntRender(); }
-function cntColher() {
-  const s = estadoCnt.sub, cfg = estadoCnt[s].config;
-  CNT_CAMPOS[s].forEach(function(c) {
-    const el = document.getElementById('cnt-f-' + c.k);
-    if (!el) return;
-    if (c.t === 'n') cfg[c.k] = el.value === '' ? '' : Number(el.value);
-    else if (c.t === 'lista') cfg[c.k] = el.value.split(/[,\s;]+/).filter(Boolean).map(Number);
-    else cfg[c.k] = el.value.trim();
-  });
-  return cfg;
-}
-function cntSalvar() {
-  const s = estadoCnt.sub, cfg = cntColher();
-  ntfChamar(s === 'email' ? 'apiSalvarConfigEmailNotificacoes' : 'apiSalvarConfigAlertasNotificacoes', [cfg], function() {
-    showMessage('success', 'Configuração salva', '');
-    cntSub(s);
-  });
+  csisSalvarJa('salvar', [chave, { ativa: t.ativa, padraoApp: t.padraoApp, padraoEmail: t.padraoEmail, forcada: t.forcada }], antes);
 }
 
-// ---- Seção: Armazenamento ----
-let estadoCarm = { tipoSalvo: '', tipoEscolhido: '', tipos: [], limites: null, limitesSalvos: '', teto: null };
-const CARM_USOS = [{ chave: 'evidencias', rotulo: 'Evidências' }, { chave: 'mensagens', rotulo: 'Anexos de mensagens' }];
-const CARM_MB = 1048576;
-
-/** Limites digitados na tela → { evidencias:{maxArquivos,maxBytesArquivo}, mensagens:{...} } (bytes); null se algum campo estiver vazio. */
-function carmLerLimites() {
-  const saida = {};
-  for (let i = 0; i < CARM_USOS.length; i++) {
-    const k = CARM_USOS[i].chave;
-    const qtd = parseInt(document.getElementById('carm-qtd-' + k).value, 10);
-    const mb = parseFloat(String(document.getElementById('carm-mb-' + k).value).replace(',', '.'));
-    if (!(qtd > 0) || !(mb > 0)) return null;
-    saida[k] = { maxArquivos: qtd, maxBytesArquivo: Math.round(mb * CARM_MB) };
-  }
-  return saida;
-}
-
-function carmCarregar() {
-  document.getElementById('carm-status').textContent = 'Carregando…';
-  document.getElementById('carm-btn-salvar').disabled = true;
-  document.getElementById('carm-btn-descartar').disabled = true;
-  google.script.run
-    .withSuccessHandler(function(c) {
-      estadoCarm = { tipoSalvo: c.tipo, tipoEscolhido: c.tipo, tipos: c.tipos || [], limites: c.limites, limitesSalvos: JSON.stringify(c.limites), teto: c.teto };
-      document.getElementById('carm-status').textContent = '';
-      carmRender();
-    })
-    .withFailureHandler(function(err) {
-      document.getElementById('carm-status').textContent = '';
-      showMessage('error', 'Erro', 'Não foi possível carregar o armazenamento: ' + escapeHtml(err.message));
-    })
-    .apiGetConfigArmazenamento();
-}
-
-function carmRender() {
-  document.getElementById('carm-opcoes').innerHTML = estadoCarm.tipos.map(function(t) {
-    return '<div class="carm-opcao"><label><input type="radio" name="carm-tipo" value="' + escapeHtml(t.id) + '"' +
-      (t.id === estadoCarm.tipoEscolhido ? ' checked' : '') + ' onchange="carmEscolher(this.value)"> ' + escapeHtml(t.rotulo) + '</label>' +
-      '<span class="carm-teste" id="carm-teste-' + escapeHtml(t.id) + '"></span>' +
-      '<button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" data-tipo="' + escapeHtml(t.id) + '" onclick="carmTestar(this.dataset.tipo)">Testar conexão</button></div>';
-  }).join('');
-  document.getElementById('carm-limites').innerHTML = CARM_USOS.map(function(u) {
-    const l = estadoCarm.limites[u.chave], t = estadoCarm.teto;
-    return '<div class="carm-lim"><span class="carm-lim-nome">' + u.rotulo + '</span>' +
-      '<label>Arquivos por envio<input type="number" class="ds-input" id="carm-qtd-' + u.chave + '" min="1" max="' + t.maxArquivos + '" step="1" value="' + l.maxArquivos + '" oninput="carmMarcar()"></label>' +
-      '<label>Tamanho máximo (MB)<input type="number" class="ds-input" id="carm-mb-' + u.chave + '" min="0.1" max="' + (t.maxBytesArquivo / CARM_MB) + '" step="0.5" value="' + (Math.round(l.maxBytesArquivo / CARM_MB * 10) / 10) + '" oninput="carmMarcar()"></label></div>';
-  }).join('');
-  carmMarcar();
-}
-
-function carmMarcar() {
-  const lim = carmLerLimites();
-  const sujo = estadoCarm.tipoEscolhido !== estadoCarm.tipoSalvo || (lim !== null && JSON.stringify(lim) !== estadoCarm.limitesSalvos);
-  document.getElementById('carm-btn-salvar').disabled = !sujo || lim === null;
-  document.getElementById('carm-btn-descartar').disabled = !sujo;
-}
-
-function carmEscolher(tipo) { estadoCarm.tipoEscolhido = tipo; carmMarcar(); }
-
-function carmTestar(tipo) {
-  const el = document.getElementById('carm-teste-' + tipo);
-  el.className = 'carm-teste'; el.textContent = 'Testando…';
-  google.script.run
-    .withSuccessHandler(function(r) {
-      el.className = 'carm-teste ' + (r.ok ? 'ok' : 'erro');
-      el.textContent = r.ok ? 'Conexão ok' : (r.mensagem || 'Falhou');
-    })
-    .withFailureHandler(function(err) { el.className = 'carm-teste erro'; el.textContent = err.message; })
-    .apiTestarArmazenamento(tipo);
-}
-
-function carmSalvar() {
-  const lim = carmLerLimites();
-  if (lim === null) return;
-  const mudouTipo = estadoCarm.tipoEscolhido !== estadoCarm.tipoSalvo, mudouLim = JSON.stringify(lim) !== estadoCarm.limitesSalvos;
-  mostrarLoader();
-  const falha = function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); carmCarregar(); };
-  const salvarLimites = function() {
-    if (!mudouLim) { esconderLoader(); carmCarregar(); showMessage('success', 'Armazenamento atualizado', 'Os próximos arquivos serão guardados no destino escolhido. Os já enviados continuam acessíveis.'); return; }
-    google.script.run
-      .withSuccessHandler(function() { esconderLoader(); carmCarregar(); showMessage('success', 'Configurações salvas', 'Os novos limites valem para os próximos envios.'); })
-      .withFailureHandler(falha)
-      .apiSalvarLimitesArmazenamento(lim);
-  };
-  if (!mudouTipo) { salvarLimites(); return; }
-  google.script.run.withSuccessHandler(salvarLimites).withFailureHandler(falha).apiSalvarConfigArmazenamento({ tipo: estadoCarm.tipoEscolhido });
-}
-
-// ---- Seção: Avaliação ----
-const CFA_INSTANCIAS = ['AUTOAVALIACAO', 'PARES', 'SUPERIOR'];
-let estadoCfa = { alterado: false };
-
-function cfaCarregar() {
-  estadoCfa.alterado = false;
-  document.getElementById('cfa-status').textContent = 'Carregando…';
-  document.getElementById('cfa-btn-salvar').disabled = true;
-  document.getElementById('cfa-btn-descartar').disabled = true;
-  CFA_INSTANCIAS.forEach(function(k) {
-    document.getElementById('cfa-hab-' + k).disabled = true;
-    document.getElementById('cfa-peso-' + k).disabled = true;
-  });
-  document.getElementById('cfa-restringir-principal').disabled = true;
-
-  google.script.run
-    .withSuccessHandler(cfaPreencher)
-    .withFailureHandler(function(err) {
-      document.getElementById('cfa-status').textContent = '';
-      showMessage('error', 'Erro', 'Não foi possível carregar as configurações: ' + escapeHtml(err.message));
-    })
-    .apiGetConfigAvaliacao();
-}
-
-function cfaPreencher(config) {
-  CFA_INSTANCIAS.forEach(function(k) {
-    const inst = (config.instancias && config.instancias[k]) || { habilitada: true, peso: 1 };
-    const chkHab = document.getElementById('cfa-hab-' + k);
-    const inpPeso = document.getElementById('cfa-peso-' + k);
-    chkHab.checked = !!inst.habilitada;
-    chkHab.disabled = (k === 'SUPERIOR'); // Gerencial sempre ligada — nunca editável
-    inpPeso.value = inst.peso;
-    inpPeso.disabled = false;
-    cfaAtualizarEstadoPeso(k);
-  });
-  document.getElementById('cfa-restringir-principal').checked = !!config.paresIndicacaoRestritaPrincipal;
-  document.getElementById('cfa-restringir-principal').disabled = false;
-  document.getElementById('cfa-status').textContent = '';
-  estadoCfa.alterado = false;
-  document.getElementById('cfa-btn-salvar').disabled = false;
-  document.getElementById('cfa-btn-descartar').disabled = false;
-}
-
-// Desabilita visualmente o campo de peso quando a instância está desligada (não
-// faz sentido definir peso de algo que não entra na ponderação).
-function cfaAtualizarEstadoPeso(tipo) {
-  const chk = document.getElementById('cfa-hab-' + tipo);
-  const peso = document.getElementById('cfa-peso-' + tipo);
-  peso.disabled = tipo !== 'SUPERIOR' ? !chk.checked : false;
-}
-
-function cfaMarcarAlterado() {
-  estadoCfa.alterado = true;
-  document.getElementById('cfa-status').textContent = 'Alterações não salvas';
-}
-
-function cfaColetarPayload() {
-  const instancias = {};
-  CFA_INSTANCIAS.forEach(function(k) {
-    instancias[k] = {
-      habilitada: document.getElementById('cfa-hab-' + k).checked,
-      peso: Number(document.getElementById('cfa-peso-' + k).value)
-    };
-  });
-  return {
-    instancias: instancias,
-    paresIndicacaoRestritaPrincipal: document.getElementById('cfa-restringir-principal').checked
-  };
-}
-
-function cfaSalvar() {
-  const payload = cfaColetarPayload();
-  for (let i = 0; i < CFA_INSTANCIAS.length; i++) {
-    const k = CFA_INSTANCIAS[i];
-    if (!(payload.instancias[k].peso > 0)) {
-      showMessage('warning', 'Atenção', 'O peso de cada instância precisa ser um número maior que zero.');
-      return;
-    }
-  }
-  mostrarLoader();
-  google.script.run
-    .withSuccessHandler(function(res) {
-      esconderLoader();
-      cfaPreencher(res.config);
-      showMessage('success', 'Configurações salvas', 'As novas regras já valem para os próximos cálculos de nota e para a tela de Avaliação.');
-    })
-    .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
-    .apiSalvarConfigAvaliacao(payload);
-}
-
-// ---- Seção: Padrões dos planos (espelho global do motor de configurações) ----
-// apiGetConfigGlobal() / apiSalvarConfigGlobal([{chave, valor, travado}]) — config_plano.js.
-// Salvamento em LOTE (Salvar/Descartar, padrão desta página): a mudança vale para todos os
-// planos e merece revisão antes. valor null + travado false = remove o padrão global
-// (volta ao padrão do catálogo). O servidor valida tudo antes de gravar (lote atômico).
-let estadoCpd = { dados: null, original: '', erro: '' };
-
-function cpdAssinatura(d) { return JSON.stringify(d.itens.map(function (i) { return [i.chave, i.valor, i.travado]; })); }
-function cpdSujo() { return !!estadoCpd.dados && cpdAssinatura(estadoCpd.dados) !== estadoCpd.original; }
-function cpdItem(chave) { return estadoCpd.dados.itens.find(function (i) { return i.chave === chave; }); }
-function cpdEfetivo(i) { return (i.valor === null || i.valor === undefined) ? i.padraoCatalogo : i.valor; }
-function cpdTexto(tipo, v) { return tipo === 'BOOLEANO' ? (v ? 'ligado' : 'desligado') : ((v === null || v === undefined) ? 'sem limite' : String(v)); }
-
-function cpdCarregar() {
-  estadoCpd.erro = '';
-  document.getElementById('cpd-status').textContent = 'Carregando…';
-  document.getElementById('cpd-btn-salvar').disabled = true;
-  document.getElementById('cpd-btn-descartar').disabled = true;
-  google.script.run
-    .withSuccessHandler(cpdPreencher)
-    .withFailureHandler(function(err) {
-      document.getElementById('cpd-status').textContent = '';
-      showMessage('error', 'Erro', 'Não foi possível carregar os padrões: ' + escapeHtml(err.message));
-    })
-    .apiGetConfigGlobal();
-}
-
-function cpdPreencher(dados) {
-  estadoCpd.dados = dados; estadoCpd.original = cpdAssinatura(dados); estadoCpd.erro = '';
-  cpdRender();
-}
-
-function cpdAlterar(chave, campos) {
-  const i = cpdItem(chave);
-  Object.keys(campos).forEach(function(k) { i[k] = campos[k]; });
-  estadoCpd.erro = '';
-  cpdRender();
-}
-
-function cpdRender() {
-  const d = estadoCpd.dados; if (!d) return;
-  const grupos = d.grupos.slice().sort(function(a, b) { return a.ordem - b.ordem; });
-  let h = '';
-  grupos.forEach(function(g) {
-    const lista = d.itens.filter(function(i) { return i.grupo === g.chave; }).sort(function(a, b) { return a.ordem - b.ordem; });
-    if (!lista.length) return;
-    h += '<section class="ds-card cfa-secao" aria-label="' + escapeHtml(g.rotulo) + '">' +
-      '<div class="cfa-secao-cabecalho"><h3 class="ds-section-title"><span class="material-symbols-outlined">' + escapeHtml(g.icone || 'settings') + '</span> ' + escapeHtml(g.rotulo) + '</h3>' +
-      '<p>' + (g.chave === 'ACESSO' ? '“Plano público” é decidido em cada plano e não tem padrão global.' : 'Vale para os planos que não personalizaram o valor — exceto quando travado.') + '</p></div>' +
-      '<div class="cfgg-cab-colunas"><span>Configuração</span><span>Padrão para todos</span><span>Travar</span><span>Efeito nos planos</span></div>' +
-      lista.map(function(i) { return cpdLinhaHTML(i, lista); }).join('') + '</section>';
-  });
-  if (estadoCpd.erro) h = '<div class="cfgg-erro" role="alert"><span class="material-symbols-outlined">error</span><span>' + escapeHtml(estadoCpd.erro) + '</span></div>' + h;
-  document.getElementById('cpd-grupos').innerHTML = h;
-  const sujo = cpdSujo();
-  document.getElementById('cpd-status').textContent = sujo ? 'Alterações não salvas' : '';
-  document.getElementById('cpd-btn-salvar').disabled = !sujo;
-  document.getElementById('cpd-btn-descartar').disabled = !sujo;
-}
-
-function cpdLinhaHTML(i, lista) {
-  const filho = !!i.dependeDe && lista.some(function(p) { return p.chave === i.dependeDe; });
-  const num = i.tipo === 'NUMERO', efetivo = cpdEfetivo(i), ch = escapeHtml(i.chave);
-  let efIcone = 'tune', efTxt = 'Sugerido — cada plano pode mudar.', efForte = false;
-  if (i.travado && !num) { efIcone = 'lock'; efTxt = 'Imposto a todos os planos: ' + (efetivo ? 'ligado' : 'desligado') + '.'; efForte = true; }
-  if (i.travado && num) { efIcone = 'vertical_align_top'; efTxt = 'Teto: cada plano escolhe até ' + i.valor + '.'; efForte = true; }
-  const travarDesab = num && (i.valor === null || i.valor === undefined);
-  const origem = (i.valor === null || i.valor === undefined) ? 'Padrão do catálogo: ' + cpdTexto(i.tipo, i.padraoCatalogo) : 'Definido pela administração';
-  const valor = num
-    ? '<input type="number" class="ds-input cfgg-num" data-cpd-num="' + ch + '" min="' + i.min + '" max="' + i.max + '" placeholder="∞" value="' + (i.valor === null || i.valor === undefined ? '' : i.valor) + '" aria-label="Valor padrão de ' + escapeHtml(i.rotulo) + '">'
-    : '<button type="button" class="cfgp-switch" role="switch" aria-checked="' + (efetivo === true) + '" data-cpd-toggle="' + ch + '" aria-label="Padrão de ' + escapeHtml(i.rotulo) + '"></button><span>' + (efetivo ? 'Ligado' : 'Desligado') + '</span>';
-  return '<div class="cfgg-linha' + (filho ? ' cfgg-linha--filho' : '') + '">' +
-    '<div class="cfgg-info">' + (filho ? '<span class="material-symbols-outlined cfgg-seta" aria-hidden="true">subdirectory_arrow_right</span>' : '') +
-      '<div class="cfa-row-titulo">' + escapeHtml(i.rotulo) + '</div><div class="cfa-row-desc">' + escapeHtml(i.descricao) + '</div>' +
-      '<div class="cfgg-origem"><span>' + escapeHtml(origem) + '</span>' +
-        ((i.valor !== null && i.valor !== undefined && !i.travado) ? '<button type="button" class="cfgg-link" data-cpd-catalogo="' + ch + '">Usar padrão do catálogo</button>' : '') + '</div></div>' +
-    '<div class="cfgg-valor">' + valor + '</div>' +
-    '<div class="cfgg-trava"><button type="button" class="cfgp-switch cfgp-switch--trava" role="switch" aria-checked="' + !!i.travado + '" data-cpd-trava="' + ch + '"' + (travarDesab ? ' disabled' : '') +
-      ' aria-label="Travar “' + escapeHtml(i.rotulo) + '” para todos os planos" data-title="' + escapeHtml(travarDesab ? 'Defina um número para poder travar (vira teto).' : (num ? 'Travar transforma o número em teto para todos os planos.' : 'Travar impõe este valor a todos os planos.')) + '"></button>' +
-      '<span class="material-symbols-outlined" aria-hidden="true">' + (i.travado ? 'lock' : 'lock_open') + '</span></div>' +
-    '<div class="cfgg-efeito' + (efForte ? ' cfgg-efeito--forte' : '') + '"><span class="material-symbols-outlined" aria-hidden="true">' + efIcone + '</span><span>' + escapeHtml(efTxt) + '</span></div></div>';
-}
-
-(function() {
-  const raiz = document.getElementById('cpd-grupos');
-  if (!raiz) return;
-  raiz.addEventListener('click', function(e) {
-    let t;
-    if ((t = e.target.closest('[data-cpd-toggle]'))) { const i = cpdItem(t.getAttribute('data-cpd-toggle')); cpdAlterar(i.chave, { valor: !cpdEfetivo(i) }); return; }
-    if ((t = e.target.closest('[data-cpd-trava]'))) {
-      const i = cpdItem(t.getAttribute('data-cpd-trava'));
-      if (t.disabled) return;
-      // interruptor sem valor definido: ao travar, fixa o valor efetivo (o padrão do catálogo) antes
-      cpdAlterar(i.chave, (i.valor === null || i.valor === undefined) && i.tipo === 'BOOLEANO' ? { travado: !i.travado, valor: cpdEfetivo(i) } : { travado: !i.travado });
-      return;
-    }
-    if ((t = e.target.closest('[data-cpd-catalogo]'))) { cpdAlterar(t.getAttribute('data-cpd-catalogo'), { valor: null, travado: false }); }
-  });
-  raiz.addEventListener('change', function(e) {
-    const t = e.target.closest('[data-cpd-num]'); if (!t) return;
-    const n = t.value.trim() === '' ? null : parseInt(t.value, 10);
-    const i = cpdItem(t.getAttribute('data-cpd-num'));
-    // vazio = remove o padrão global (e a trava, que vira teto e precisa de um número)
-    cpdAlterar(i.chave, (n === null || isNaN(n)) ? { valor: null, travado: false } : { valor: n });
-  });
-})();
-
-function cpdSalvar() {
-  const d = estadoCpd.dados; if (!d || !cpdSujo()) return;
-  const orig = JSON.parse(estadoCpd.original);
-  const mapaOrig = {}; orig.forEach(function(o) { mapaOrig[o[0]] = o; });
-  const alteracoes = d.itens.filter(function(i) { const o = mapaOrig[i.chave]; return o[1] !== i.valor || o[2] !== i.travado; })
-    .map(function(i) { return { chave: i.chave, valor: i.valor, travado: !!i.travado }; });
-  mostrarLoader();
-  google.script.run
-    .withSuccessHandler(function(res) {
-      esconderLoader();
-      cpdPreencher(res);
-      showMessage('success', 'Padrões salvos', 'Os novos padrões já valem para os planos que não personalizaram o valor — e as travas valem para todos.');
-    })
-    .withFailureHandler(function(err) {
-      esconderLoader();
-      // lote atômico: nada foi gravado; mantém o que o admin editou e mostra o motivo
-      estadoCpd.erro = err.message; cpdRender();
-    })
-    .apiSalvarConfigGlobal(alteracoes);
-}
-
-// ---- Seção: Catálogo de Opções ----
-// Lista de registros por categoria (diferente da seção Avaliação): cada ação
-// (adicionar/renomear/ativar-desativar/mover) salva na hora via
-// google.script.run, sem rodapé de "Salvar alterações" — ver comentário no
-// HTML. Só a categoria NATUREZA_RISCO por enquanto; esta seção é o template
-// a copiar quando entrar a próxima (categorias futuras entram aqui na lista).
-const CATOPC_CATEGORIAS = ['NATUREZA_RISCO'];
-let _catopcCache = {};
-
-function catopcCarregar() {
-  CATOPC_CATEGORIAS.forEach(catopcCarregarCategoria);
-}
-
-function catopcCarregarCategoria(categoria) {
-  const cont = document.getElementById('catopc-lista-' + categoria);
-  if (!cont) return;
-  cont.innerHTML = spinnerListaHTML('Carregando…');
-  google.script.run
-    .withSuccessHandler(function(lista) {
-      _catopcCache[categoria] = lista || [];
-      catopcRenderLista(categoria);
-    })
-    .withFailureHandler(function(err) {
-      cont.innerHTML = '<p style="color:var(--ds-color-danger);font-size:0.85rem">' + escapeHtml(err.message) + '</p>';
-    })
-    .apiGetCatalogoOpcoesAdmin(categoria);
-}
-
-function catopcRenderLista(categoria) {
-  const cont = document.getElementById('catopc-lista-' + categoria);
-  if (!cont) return;
-  const lista = _catopcCache[categoria] || [];
-  if (!lista.length) {
-    cont.innerHTML = '<p style="color:var(--ds-color-text-muted);font-size:0.85rem;margin:6px 0">Nenhum valor cadastrado ainda — adicione o primeiro abaixo.</p>';
-    return;
-  }
-  cont.innerHTML = lista.map(function(o, idx) {
-    return '<div class="catopc-row' + (o.ativo ? '' : ' catopc-inativo') + '">' +
-      '<div class="catopc-ordem-btns">' +
-        '<button type="button" class="catopc-ord-btn" data-title="Mover para cima" ' + (idx === 0 ? 'disabled' : '') +
-          ' onclick="catopcMover(\'' + categoria + '\',\'' + o.id + '\',-1)"><span class="material-symbols-outlined">arrow_drop_up</span></button>' +
-        '<button type="button" class="catopc-ord-btn" data-title="Mover para baixo" ' + (idx === lista.length - 1 ? 'disabled' : '') +
-          ' onclick="catopcMover(\'' + categoria + '\',\'' + o.id + '\',1)"><span class="material-symbols-outlined">arrow_drop_down</span></button>' +
-      '</div>' +
-      '<span class="catopc-valor" id="catopc-valor-' + o.id + '">' + escapeHtml(o.valor) + '</span>' +
-      '<button type="button" class="catopc-icon-btn" data-title="Renomear" onclick="catopcRenomear(\'' + categoria + '\',\'' + o.id + '\')">' +
-        '<span class="material-symbols-outlined">edit</span></button>' +
-      '<label class="el-switch-toggle" data-title="' + (o.ativo ? 'Desativar' : 'Ativar') + '">' +
-        '<input type="checkbox" ' + (o.ativo ? 'checked' : '') + ' onchange="catopcToggleAtivo(\'' + categoria + '\',\'' + o.id + '\',this.checked)">' +
-        '<span class="el-switch-track"><span class="el-switch-thumb"></span></span>' +
-      '</label>' +
-    '</div>';
+// ---------- painel: apps (salva na hora) ----------
+// d = { apps: [ { id, nome, icone, versao, status } ], status: [ { valor, rotulo, badge, descricao } ] }
+var CSIS_APP_STATUS = [{ valor: 'ATIVO', rotulo: 'Ativo', badge: 'success' }, { valor: 'OCULTO', rotulo: 'Oculto', badge: 'neutral', descricao: 'Some para novos planos.' }, { valor: 'DESCONTINUADO', rotulo: 'Descontinuado', badge: 'danger', descricao: 'Os planos mostram um aviso.' }];
+function csisStatusApps(d) { return d.status && d.status.length ? d.status : CSIS_APP_STATUS; }
+function csisHtmlApps(d) {
+  var sts = csisStatusApps(d);
+  if (!(d.apps || []).length) return '<div class="csis-vazio"><span class="material-symbols-outlined" style="font-size:40px;opacity:.6">extension</span><strong>Nenhum app instalado</strong></div>';
+  return d.apps.map(function (a) {
+    var s = sts.find(function (x) { return x.valor === a.status; }) || { rotulo: a.status, badge: 'neutral' };
+    return '<div class="csis-linha"><span class="material-symbols-outlined csis-app-ico">' + escapeHtml(a.icone || 'extension') + '</span>'
+      + '<span class="csis-app-nome">' + escapeHtml(a.nome) + (a.versao ? '<small>v' + escapeHtml(a.versao) + '</small>' : '') + csisInfo(a.descricao) + '</span>'
+      + '<span class="ds-badge ds-badge--' + s.badge + '">' + escapeHtml(s.rotulo) + '</span>'
+      + '<button type="button" class="acoes-btn" data-title="Alterar situação" aria-label="Alterar situação" aria-haspopup="menu" onclick="csisMenuApp(this, \'' + escapeJsAttr(a.id) + '\')"><span class="material-symbols-outlined">more_vert</span></button></div>';
   }).join('');
 }
-
-function catopcAdicionar(categoria) {
-  const input = document.getElementById('catopc-novo-' + categoria);
-  const valor = (input.value || '').trim();
-  if (!valor) { showMessage('warning', 'Atenção', 'Informe um valor.'); return; }
-  mostrarLoader();
-  google.script.run
-    .withSuccessHandler(function() { esconderLoader(); input.value = ''; catopcCarregarCategoria(categoria); })
-    .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
-    .apiSalvarOpcaoCatalogo({ categoria: categoria, valor: valor });
+function csisMenuApp(btn, id) {
+  var d = csisDados(), a = d.apps.find(function (x) { return x.id === id; });
+  abrirMenuSelecao(btn, [{ itens: csisStatusApps(d).map(function (s) {
+    return { label: s.rotulo, ativo: s.valor === a.status, dot: 'var(--ds-color-' + (s.badge === 'neutral' ? 'text-muted' : s.badge + '-fg') + ')', onclick: "csisStatusApp('" + escapeJsAttr(id) + "', '" + escapeJsAttr(s.valor) + "')" };
+  }) }]);
 }
-
-function catopcRenomear(categoria, id) {
-  const span = document.getElementById('catopc-valor-' + id);
-  if (!span) return;
-  const atual = span.textContent;
-  const input = document.createElement('input');
-  input.type = 'text'; input.id = 'catopc-valor-' + id; input.className = 'catopc-valor-input';
-  input.maxLength = 60; input.value = atual;
-  input.onkeydown = function(e) {
-    if (e.key === 'Enter') catopcSalvarRenome(categoria, id);
-    if (e.key === 'Escape') catopcRenderLista(categoria);
-  };
-  span.replaceWith(input);
-  input.focus();
-  input.select();
-}
-
-function catopcSalvarRenome(categoria, id) {
-  const input = document.getElementById('catopc-valor-' + id);
-  if (!input) return;
-  const novo = input.value.trim();
-  if (!novo) { showMessage('warning', 'Atenção', 'Informe um valor.'); return; }
-  const item = (_catopcCache[categoria] || []).find(function(o) { return o.id === id; });
-  mostrarLoader();
-  google.script.run
-    .withSuccessHandler(function() { esconderLoader(); catopcCarregarCategoria(categoria); })
-    .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); catopcCarregarCategoria(categoria); })
-    .apiSalvarOpcaoCatalogo({ id: id, categoria: categoria, valor: novo, ativo: item ? item.ativo : true });
-}
-
-function catopcToggleAtivo(categoria, id, novoAtivo) {
-  const item = (_catopcCache[categoria] || []).find(function(o) { return o.id === id; });
-  if (!item) return;
-  google.script.run
-    .withSuccessHandler(function() { item.ativo = novoAtivo; catopcRenderLista(categoria); })
-    .withFailureHandler(function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); catopcCarregarCategoria(categoria); })
-    .apiSalvarOpcaoCatalogo({ id: id, categoria: categoria, valor: item.valor, ativo: novoAtivo });
-}
-
-function catopcMover(categoria, id, direcao) {
-  const lista = (_catopcCache[categoria] || []).slice();
-  const idx = lista.findIndex(function(o) { return o.id === id; });
-  const novoIdx = idx + direcao;
-  if (idx === -1 || novoIdx < 0 || novoIdx >= lista.length) return;
-  const tmp = lista[idx]; lista[idx] = lista[novoIdx]; lista[novoIdx] = tmp;
-  _catopcCache[categoria] = lista;
-  catopcRenderLista(categoria); // otimista — reordena na tela antes da resposta do servidor
-  google.script.run
-    .withFailureHandler(function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); catopcCarregarCategoria(categoria); })
-    .apiReordenarCatalogoOpcoes(categoria, lista.map(function(o) { return o.id; }));
-}
-
-// ---- Seção: Apps e Extensões (ADMIN/DEV) ----
-let _csisAppsCatalogo = [];
-
-function csisAppsCarregar() {
-  const container = document.getElementById('csis-apps-tabela-container');
-  if (!container) return;
-  container.innerHTML = '<div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando apps...</span></div>';
-
-  google.script.run
-    .withSuccessHandler(function(catalogo) {
-      _csisAppsCatalogo = catalogo || [];
-      csisAppsRenderizarTabela();
-    })
-    .withFailureHandler(function(err) {
-      container.innerHTML = '<div style="color:var(--danger); padding:16px 0;">Erro ao carregar catálogo: ' + escapeHtml(err.message) + '</div>';
-    })
-    .apiGetCatalogoApps();
-}
-
-function csisAppsRenderizarTabela() {
-  const container = document.getElementById('csis-apps-tabela-container');
-  if (!container) return;
-
-  if (!_csisAppsCatalogo.length) {
-    container.innerHTML = '<p style="color:var(--text-light); padding:12px 0;">Nenhum app cadastrado no registro.</p>';
-    return;
-  }
-
-  let html =
-    '<table class="ds-table" style="width:100%; border-collapse:collapse;">' +
-      '<thead>' +
-        '<tr style="border-bottom:1px solid var(--border); text-align:left; font-size:0.85rem; color:var(--text-light);">' +
-          '<th style="padding:10px 8px;">App</th>' +
-          '<th style="padding:10px 8px;">Tipo</th>' +
-          '<th style="padding:10px 8px;">Status</th>' +
-          '<th style="padding:10px 8px;">Substituto</th>' +
-          '<th style="padding:10px 8px; text-align:right;">Ações</th>' +
-        '</tr>' +
-      '</thead>' +
-      '<tbody>';
-
-  _csisAppsCatalogo.forEach(function(app) {
-    const icone = app.icone || 'extension';
-    const isAtivo = app.status === 'Ativo';
-
-    let opcoesSubstituto = '<option value="">(Nenhum)</option>';
-    _csisAppsCatalogo.forEach(function(outro) {
-      if (String(outro.id) === String(app.id)) return;
-      const sel = String(outro.id) === String(app.idAppSubstituto) ? 'selected' : '';
-      opcoesSubstituto += '<option value="' + escapeHtml(outro.id) + '" ' + sel + '>' + escapeHtml(outro.nome) + '</option>';
-    });
-
-    html +=
-      '<tr style="border-bottom:1px solid var(--border); font-size:0.9rem;">' +
-        '<td style="padding:12px 8px;">' +
-          '<div style="display:flex; align-items:center; gap:8px;">' +
-            '<span class="material-symbols-outlined icon-sm" style="color:var(--primary-color);">' + escapeHtml(icone) + '</span>' +
-            '<strong>' + escapeHtml(app.nome) + '</strong>' +
-            '<span style="font-size:0.75rem; color:var(--text-light);">(' + escapeHtml(app.pageParam) + ')</span>' +
-          '</div>' +
-        '</td>' +
-        '<td style="padding:12px 8px;">' +
-          '<span class="ds-badge" style="font-size:0.75rem;">' + escapeHtml(app.tipo) + '</span>' +
-        '</td>' +
-        '<td style="padding:12px 8px;">' +
-          '<select id="csis-app-status-' + escapeHtml(app.id) + '" class="ds-input" style="padding:4px 8px; font-size:0.85rem;" onchange="csisAppToggleSubstituto(\'' + escapeHtml(app.id) + '\')">' +
-            '<option value="Ativo" ' + (isAtivo ? 'selected' : '') + '>Ativo</option>' +
-            '<option value="Descontinuado" ' + (!isAtivo ? 'selected' : '') + '>Descontinuado</option>' +
-          '</select>' +
-        '</td>' +
-        '<td style="padding:12px 8px;">' +
-          '<select id="csis-app-sub-' + escapeHtml(app.id) + '" class="ds-input" style="padding:4px 8px; font-size:0.85rem;" ' + (isAtivo ? 'disabled' : '') + '>' +
-            opcoesSubstituto +
-          '</select>' +
-        '</td>' +
-        '<td style="padding:12px 8px; text-align:right;">' +
-          '<button type="button" class="btn btn-primary btn-sm" id="csis-app-salvar-' + escapeHtml(app.id) + '" onclick="csisAppSalvar(\'' + escapeHtml(app.id) + '\')">' +
-            'Salvar' +
-          '</button>' +
-        '</td>' +
-      '</tr>';
-  });
-
-  html += '</tbody></table>';
-  container.innerHTML = html;
-}
-
-function csisAppToggleSubstituto(idApp) {
-  const selStatus = document.getElementById('csis-app-status-' + idApp);
-  const selSub = document.getElementById('csis-app-sub-' + idApp);
-  if (!selStatus || !selSub) return;
-  selSub.disabled = (selStatus.value !== 'Descontinuado');
-}
-
-function csisAppSalvar(idApp) {
-  const selStatus = document.getElementById('csis-app-status-' + idApp);
-  const selSub = document.getElementById('csis-app-sub-' + idApp);
-  const btn = document.getElementById('csis-app-salvar-' + idApp);
-  if (!selStatus) return;
-
-  const novoStatus = selStatus.value;
-  const novoSub = (novoStatus === 'Descontinuado' && selSub) ? selSub.value : '';
-
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Salvando...';
-  }
-
-  google.script.run
-    .withSuccessHandler(function() {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Salvar';
-      }
-      showMessage('success', 'Status atualizado', 'As alterações do app foram gravadas com sucesso.');
-      csisAppsCarregar();
-    })
-    .withFailureHandler(function(err) {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = 'Salvar';
-      }
-      showMessage('error', 'Erro ao salvar status', escapeHtml(err.message));
-    })
-    .apiAtualizarStatusApp(idApp, novoStatus, novoSub);
+function csisStatusApp(id, st) {
+  var d = csisDados(), antes = JSON.stringify(d), a = d.apps.find(function (x) { return x.id === id; });
+  if (!a || a.status === st) return;
+  a.status = st; csisSalvarJa('salvar', [id, st], antes);
 }
 </script>
 

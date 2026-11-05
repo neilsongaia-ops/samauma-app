@@ -1186,7 +1186,7 @@ function _renderChipsNaturezaRisco(selecionadas) {
   const cont = document.getElementById('risco-nat-chips');
   if (!cont) return;
   if (!_cacheNaturezasRisco || !_cacheNaturezasRisco.length) {
-    cont.innerHTML = '<span style="font-size:0.82rem;color:var(--text-light)">Nenhuma natureza cadastrada — configure em Configurações do Sistema → Catálogo de Opções.</span>';
+    cont.innerHTML = '<span style="font-size:0.82rem;color:var(--text-light)">Nenhuma natureza cadastrada — configure em Configurações do Sistema → Planejamento → Riscos.</span>';
     return;
   }
   cont.innerHTML = _cacheNaturezasRisco.map(function(n) {
