@@ -21382,8 +21382,10 @@ function csisAppSalvar(idApp) {
   #page-mensagens .cxa-hero .ds-btn { white-space: nowrap; }
 
   /* abas: sublinhado de 3px, igual à lista e ao detalhe do plano */
-  #page-mensagens .cxa-tabs { display: flex; align-items: center; border-bottom: 1px solid var(--ds-color-border); overflow-x: auto; scrollbar-width: none; }
-  #page-mensagens .cxa-tabs::-webkit-scrollbar { display: none; }
+  #page-mensagens .cxa-tabs-row { border-bottom: 1px solid var(--ds-color-border); margin-bottom: 20px; }
+  #page-mensagens .cxa-tabs-scroll { overflow-x: auto; scrollbar-width: none; }
+  #page-mensagens .cxa-tabs-scroll::-webkit-scrollbar { display: none; }
+  #page-mensagens .cxa-tabs { display: flex; align-items: center; }
   #page-mensagens .cxa-tab { display: inline-flex; align-items: center; gap: 6px; padding: 12px 16px; margin-bottom: -1px; background: none; border: none; border-bottom: 3px solid transparent;
     color: var(--ds-color-text-muted); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); cursor: pointer; white-space: nowrap; }
   #page-mensagens .cxa-tab:hover { color: var(--ds-color-text); background: var(--ds-sidebar-item-hover); }
@@ -21392,7 +21394,7 @@ function csisAppSalvar(idApp) {
   #page-mensagens .cxa-tab.active .ds-tab-count { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
 
   /* barra: selecionar tudo / busca / ações em lote / contador e paginação */
-  #page-mensagens .cxa-barra { position: sticky; top: -20px; z-index: 41; display: flex; align-items: center; gap: 8px; padding: 10px 0; background: var(--ds-color-surface); border-bottom: 2px solid var(--ds-color-border); }
+  #page-mensagens .cxa-barra { position: sticky; top: -20px; z-index: 41; display: flex; align-items: center; gap: 8px; padding: 10px 0; background: var(--ds-color-surface); border-bottom: 1px solid var(--ds-color-border); }
   #page-mensagens .cxa-barra-sel { width: 24px; padding-left: 16px; display: flex; align-items: center; }
   #page-mensagens .cxa-barra-meio { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding-left: 2px; }
   #page-mensagens input[type=checkbox] { display: block; margin: 0; width: 16px; height: 16px; accent-color: var(--ds-color-action); }
@@ -21405,7 +21407,7 @@ function csisAppSalvar(idApp) {
   #page-mensagens .cxa-search-clear .material-symbols-outlined { font-size: 18px; }
   #page-mensagens .cxa-sel-txt { font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-sm); }
   #page-mensagens .cxa-sep { width: 1px; align-self: stretch; margin: 2px 4px; background: var(--ds-color-border); }
-  #page-mensagens .cxa-pag-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-right: 16px; }
+  #page-mensagens .cxa-pag-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   #page-mensagens .cxa-pag-counter { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; }
   #page-mensagens .cxa-pag-nav { display: inline-flex; align-items: center; gap: 2px; }
   #page-mensagens .cxa-pag-atual { min-width: 20px; text-align: center; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
@@ -21421,8 +21423,11 @@ function csisAppSalvar(idApp) {
   #page-mensagens .cxa-linha { display: grid; grid-template-columns: 24px 24px 24px 180px minmax(0, 1fr) 112px; align-items: center; gap: 10px; padding: 14px 16px;
     border-bottom: 1px solid var(--ds-glass-border); cursor: pointer; user-select: none; background: var(--ds-color-surface); font-size: var(--ds-text-sm); }
   #page-mensagens .cxa-linha:hover { background: var(--ds-sidebar-item-hover); }
-  #page-mensagens .cxa-linha.sel { background: var(--ds-sidebar-item-active); }
+  #page-mensagens .cxa-linha.sel, #page-mensagens .cxa-linha.nao-lida.sel { background: var(--ds-sidebar-item-active); }
   #page-mensagens .cxa-linha .c-ico { font-size: 20px; color: var(--ds-color-text-muted); }
+  #page-mensagens .cxa-linha.nao-lida { background: color-mix(in srgb, var(--ds-color-action) 8%, var(--ds-color-surface)); box-shadow: inset 3px 0 0 var(--ds-color-action); }
+  #page-mensagens .cxa-linha.nao-lida:hover { background: color-mix(in srgb, var(--ds-color-action) 14%, var(--ds-color-surface)); }
+  #page-mensagens .cxa-linha:not(.nao-lida) .c-quem, #page-mensagens .cxa-linha:not(.nao-lida) .c-titulo { color: var(--ds-color-text-muted); }
   #page-mensagens .cxa-linha.nao-lida .c-ico { color: var(--ds-color-action); }
   #page-mensagens .cxa-linha .c-quem { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #page-mensagens .cxa-linha.nao-lida .c-quem { font-weight: var(--ds-weight-semibold); }
@@ -21534,19 +21539,19 @@ function cxaRenderCaixa() {
   var h = '<section class="cxa-hero"><h1>' + escapeHtml(_cxa.pasta === 'entrada' ? 'Mensagens' : CXA_PASTAS[_cxa.pasta][0]) + '</h1>'
     + (_ntf.perfil !== 'USUARIO' ? '<button type="button" class="ds-btn ds-btn--primary" onclick="cxaEscrever()"><span class="material-symbols-outlined">edit</span> Escrever</button>' : '') + '</section>';
   if (_cxa.pasta === 'entrada') {
-    h += '<div class="cxa-tabs" role="tablist" aria-label="Filtro das mensagens">' + CXA_ABAS.map(function (a) {
+    h += '<div class="cxa-tabs-row"><div class="cxa-tabs-scroll"><div class="cxa-tabs" role="tablist" aria-label="Filtro das mensagens">' + CXA_ABAS.map(function (a) {
       return '<button type="button" role="tab" class="cxa-tab' + (_cxa.aba === a[0] ? ' active' : '') + '" onclick="cxaMudarAba(\'' + a[0] + '\')"><span class="material-symbols-outlined">' + a[2] + '</span>' + a[1]
         + (a[0] === 'naoLidas' && _cxa.naoLidas ? '<span class="ds-tab-count">' + _cxa.naoLidas + '</span>' : '') + '</button>';
-    }).join('') + '</div>';
-  }
+    }).join('') + '</div></div></div>';
+  } else h += '<div style="height:20px"></div>';
 
   // barra
   var barra = '<div class="cxa-barra-sel">' + (env ? '' : '<input type="checkbox" aria-label="Selecionar todos"' + (res.itens.length && selItens.length === res.itens.length ? ' checked' : '') + ' onchange="cxaToggleTodos()">') + '</div><div class="cxa-barra-meio">';
   if (!selItens.length) {
     barra += '<div class="cxa-search">'
       + (_cxa.buscaAberta
-        ? '<span class="material-symbols-outlined cxa-search-icon" aria-hidden="true">search</span><input type="text" id="cxa-busca" class="ds-input cxa-search-input" placeholder="Buscar mensagem…" aria-label="Buscar mensagem" value="' + escapeHtml(_cxa.busca) + '" oninput="cxaBuscar(this.value)">'
-          + '<button type="button" class="cxa-search-clear" aria-label="Limpar busca" onclick="cxaFecharBusca()"><span class="material-symbols-outlined">close</span></button>'
+        ? '<span class="material-symbols-outlined cxa-search-icon" aria-hidden="true">search</span><input type="text" id="cxa-busca" class="ds-input cxa-search-input" placeholder="Buscar mensagem…" aria-label="Buscar mensagem" value="' + escapeHtml(_cxa.busca) + '" oninput="cxaBuscar(this.value)" onblur="cxaBlurBusca()">'
+          + '<button type="button" id="cxa-busca-x" class="cxa-search-clear' + (_cxa.busca ? '' : ' hidden') + '" aria-label="Limpar busca" onclick="cxaLimparBusca()"><span class="material-symbols-outlined">close</span></button>'
         : '<button type="button" class="ds-icon-action" onclick="cxaAbrirBusca()" data-title="Buscar mensagem" aria-label="Buscar mensagem"><span class="material-symbols-outlined">search</span></button>')
       + '</div>';
   } else {
@@ -21568,7 +21573,7 @@ function cxaRenderCaixa() {
   else if (!res.itens.length) h += '<div class="cxa-vazio"><span class="material-symbols-outlined">mail</span><p>' + (_cxa.busca ? 'Nenhuma mensagem encontrada.' : 'Sem mensagens nesta pasta.') + '</p></div>';
   else h += '<div class="cxa-lista">' + res.itens.map(env ? cxaLinhaEnviadaHtml : cxaLinhaHtml).join('') + '</div>';
 
-  cxaRaiz().innerHTML = h;
+  _cxa.renderizando = true; cxaRaiz().innerHTML = h; _cxa.renderizando = false;
   if (foco !== null) { var b = document.getElementById('cxa-busca'); if (b) { b.focus(); b.setSelectionRange(foco, foco); } }
 }
 
@@ -21615,8 +21620,10 @@ function cxaExcluirRascunho(id) {
 function cxaMudarAba(aba) { cxaCarregar({ aba: aba, offset: 0, sel: {} }); }
 function cxaPagina(d) { cxaCarregar({ offset: Math.max(0, _cxa.offset + d * CXA_LIM) }); }
 function cxaAbrirBusca() { _cxa.buscaAberta = true; cxaRenderCaixa(); var b = document.getElementById('cxa-busca'); if (b) b.focus(); }
-function cxaFecharBusca() { var tinha = !!_cxa.busca; _cxa.buscaAberta = false; _cxa.busca = ''; if (tinha) cxaCarregar({ offset: 0 }); else cxaRenderCaixa(); }
-function cxaBuscar(v) { _cxa.busca = v; clearTimeout(_cxa.tBusca); _cxa.tBusca = setTimeout(function () { cxaCarregar({ offset: 0 }); }, 250); }
+// o X só existe com texto digitado; limpar mantém a caixa aberta (como na lista de planos); fechar sem texto volta para a lupa
+function cxaLimparBusca() { _cxa.busca = ''; var b = document.getElementById('cxa-busca'); if (b) { b.value = ''; b.focus(); } var x = document.getElementById('cxa-busca-x'); if (x) x.classList.add('hidden'); cxaCarregar({ offset: 0 }); }
+function cxaBlurBusca() { if (!_cxa.busca && !_cxa.renderizando) { _cxa.buscaAberta = false; cxaRenderCaixa(); } }
+function cxaBuscar(v) { _cxa.busca = v; var x = document.getElementById('cxa-busca-x'); if (x) x.classList.toggle('hidden', !v); clearTimeout(_cxa.tBusca); _cxa.tBusca = setTimeout(function () { cxaCarregar({ offset: 0 }); }, 250); }
 function cxaSelecionar(id) { _cxa.sel[id] = !_cxa.sel[id]; cxaRenderCaixa(); }
 function cxaToggleTodos() {
   var itens = (_cxa.res && _cxa.res.itens) || [], todos = itens.length && cxaSelIds().length === itens.length;
