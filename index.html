@@ -21455,6 +21455,8 @@ function csisAppSalvar(idApp) {
     border: 1px solid var(--ds-color-info-bg); border-left-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent); border-top-right-radius: var(--ds-r-lg); border-bottom-right-radius: var(--ds-r-lg); }
   #page-mensagens .cxa-filtro-x:hover { filter: brightness(0.94); }
   #page-mensagens .cxa-filtro-x .material-symbols-outlined { font-size: 15px; }
+  #page-mensagens .cxa-limpar-link { background: none; border: none; padding: 6px 4px; color: var(--ds-color-action); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; white-space: nowrap; }
+  #page-mensagens .cxa-limpar-link:hover { text-decoration: underline; }
   #page-mensagens .cxa-linha .c-quem.cxa-rasc, #page-mensagens .cxa-linha:not(.nao-lida) .c-quem.cxa-rasc { color: var(--ds-color-danger-fg); font-weight: var(--ds-weight-semibold); }
   #page-mensagens .cxa-semassunto { font-style: italic; color: var(--ds-color-text-muted); }
   #page-mensagens .cxa-qtd { font-size: 12px; font-weight: 600; padding: 0 6px; border-radius: 999px; background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); color: var(--ds-color-text-muted); }
@@ -21578,8 +21580,10 @@ function cxaRenderCaixa() {
         ? '<span class="material-symbols-outlined cxa-search-icon" aria-hidden="true">search</span><input type="text" id="cxa-busca" class="ds-input cxa-search-input" placeholder="Buscar mensagem…" aria-label="Buscar mensagem" value="' + escapeHtml(_cxa.busca) + '" oninput="cxaBuscar(this.value)" onblur="cxaBlurBusca()">'
           + '<button type="button" id="cxa-busca-x" class="cxa-search-clear' + (_cxa.busca ? '' : ' hidden') + '" aria-label="Limpar busca" onclick="cxaLimparBusca()"><span class="material-symbols-outlined">close</span></button>'
         : '<button type="button" class="ds-icon-action" onclick="cxaAbrirBusca()" data-title="Buscar mensagem" aria-label="Buscar mensagem"><span class="material-symbols-outlined">search</span></button>')
-      + '</div>' + cxaFiltrosHtml();
+      + '</div>' + cxaFiltrosHtml()
+      + ((_cxa.busca || cxaCamposFiltro().some(function (c) { return _cxa.filtros[c]; })) ? '<button type="button" class="cxa-limpar-link" onclick="cxaLimparFiltros()">Limpar filtros</button>' : '');
   } else {
+    barra += '<button type="button" class="ds-icon-action" onclick="cxaCancelarSelecao()" data-title="Cancelar seleção" aria-label="Cancelar seleção"><span class="material-symbols-outlined">close</span></button>';
     var todasLidas = selItens.every(function (n) { return n.lida; }), todasArq = selItens.every(function (n) { return n.arquivada; }), todasFav = selItens.every(function (n) { return n.estrelada; });
     barra += '<span class="cxa-sel-txt">' + selItens.length + (selItens.length > 1 ? ' selecionadas' : ' selecionada') + '</span><div class="cxa-sep"></div>';
     if (env) barra += cxaAcoesLoteEnv(selItens);
@@ -21662,6 +21666,8 @@ function cxaAbrirFiltro(campo, ev) {
   var itens = [{ label: 'Todos', ativo: !atual, onclick: "cxaSelecionarFiltro('" + campo + "', '')" }].concat(CXA_FILTROS_DEF[campo].opcoes.map(function (o) { return { label: o[1], ativo: o[0] === atual, onclick: "cxaSelecionarFiltro('" + campo + "', '" + o[0] + "')" }; }));
   abrirMenuSelecao(ev.currentTarget, [{ itens: itens }]);
 }
+function cxaLimparFiltros() { _cxa.busca = ''; _cxa.buscaAberta = false; cxaCamposFiltro().forEach(function (c) { _cxa.filtros[c] = ''; }); cxaCarregar({ offset: 0, sel: {} }); }
+function cxaCancelarSelecao() { _cxa.sel = {}; cxaRenderCaixa(); }
 function cxaSelecionarFiltro(campo, valor) { _cxa.filtros[campo] = valor; if (typeof fecharMenuSelecao === 'function') fecharMenuSelecao(); cxaCarregar({ offset: 0, sel: {} }); }
 
 // ---- ações em lote das pastas de gestão (Enviadas / Rascunhos / Programadas) ----
@@ -21710,7 +21716,32 @@ function cxaAbrirBusca() { _cxa.buscaAberta = true; cxaRenderCaixa(); var b = do
 function cxaLimparBusca() { _cxa.busca = ''; var b = document.getElementById('cxa-busca'); if (b) { b.value = ''; b.focus(); } var x = document.getElementById('cxa-busca-x'); if (x) x.classList.add('hidden'); cxaCarregar({ offset: 0 }); }
 function cxaBlurBusca() { if (!_cxa.busca && !_cxa.renderizando) { _cxa.buscaAberta = false; cxaRenderCaixa(); } }
 function cxaBuscar(v) { _cxa.busca = v; var x = document.getElementById('cxa-busca-x'); if (x) x.classList.toggle('hidden', !v); clearTimeout(_cxa.tBusca); _cxa.tBusca = setTimeout(function () { cxaCarregar({ offset: 0 }); }, 250); }
-function cxaSelecionar(id) { _cxa.sel[id] = !_cxa.sel[id]; cxaRenderCaixa(); }
+function cxaSelecionar(id) { _cxa.sel[id] = !_cxa.sel[id]; _cxa.ancora = id; cxaRenderCaixa(); }
+// Shift+clique: seleciona o intervalo entre a última linha marcada (âncora) e esta, na ordem exibida
+function cxaSelecionarIntervalo(id) {
+  var ids = ((_cxa.res && _cxa.res.itens) || []).map(function (n) { return String(n.id); }), i1 = ids.indexOf(String(_cxa.ancora)), i2 = ids.indexOf(String(id));
+  if (i1 < 0 || i2 < 0) return cxaSelecionar(id);
+  _cxa.sel = {}; for (var i = Math.min(i1, i2); i <= Math.max(i1, i2); i++) _cxa.sel[ids[i]] = true;
+  cxaRenderCaixa();
+}
+// Atalhos (mesmos da lista de planos): Ctrl/Cmd+A seleciona todas as linhas exibidas, Esc cancela a seleção.
+// Só valem com a lista visível, sem modal aberto e, no Ctrl+A, fora de campos de texto.
+document.addEventListener('keydown', function (evt) {
+  var pagina = document.getElementById('page-mensagens');
+  if (!pagina || pagina.classList.contains('hidden') || _cxa.view !== 'caixa' || !document.querySelector('#cxa-raiz .cxa-linha')) return;
+  if (evt.key === 'Escape' || evt.key === 'Esc') {
+    if (document.querySelector('.modal-overlay:not(.hidden), .sys-overlay:not(.hidden), .ext-mini-overlay:not(.hidden), .modal-container:not(.hidden), .ds-modal:not(.hidden)')) return;
+    if (cxaSelIds().length) { _cxa.sel = {}; cxaRenderCaixa(); evt.preventDefault(); evt.stopPropagation(); }
+    return;
+  }
+  if (!(evt.ctrlKey || evt.metaKey) || evt.altKey || evt.shiftKey || String(evt.key).toLowerCase() !== 'a') return;
+  var main = document.getElementById('main-content'), alvo = evt.target;
+  if (main && main.inert) return;
+  if (alvo && (alvo.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName))) return;
+  evt.preventDefault();
+  ((_cxa.res && _cxa.res.itens) || []).forEach(function (n) { _cxa.sel[n.id] = true; });
+  cxaRenderCaixa();
+});
 function cxaToggleTodos() {
   var itens = (_cxa.res && _cxa.res.itens) || [], todos = itens.length && cxaSelIds().length === itens.length;
   _cxa.sel = {}; if (!todos) itens.forEach(function (n) { _cxa.sel[n.id] = true; });
@@ -21718,6 +21749,7 @@ function cxaToggleTodos() {
 }
 function cxaClique(ev, id) {
   if (ev.ctrlKey || ev.metaKey) return cxaSelecionar(id);
+  if (ev.shiftKey) { var sv = window.getSelection && window.getSelection(); if (sv) sv.removeAllRanges(); return cxaSelecionarIntervalo(id); }
   if (cxaEnviadas()) {
     var mi = cxaItem(id); if (!mi) return;
     if (mi.modoEdicao !== 'NENHUMA') return cxaEditar(id);
