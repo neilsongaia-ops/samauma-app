@@ -21396,7 +21396,7 @@ function csisAppSalvar(idApp) {
   /* barra: selecionar tudo / busca / ações em lote / contador e paginação */
   #page-mensagens .cxa-barra { position: sticky; top: -20px; z-index: 41; display: flex; align-items: center; gap: 8px; padding: 10px 0; background: var(--ds-color-surface); border-bottom: 1px solid var(--ds-color-border); }
   #page-mensagens .cxa-barra-sel { width: 24px; padding-left: 16px; display: flex; align-items: center; }
-  #page-mensagens .cxa-barra-meio { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding-left: 2px; }
+  #page-mensagens .cxa-barra-meio { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding-left: 14px; }
   #page-mensagens input[type=checkbox] { display: block; margin: 0; width: 16px; height: 16px; accent-color: var(--ds-color-action); }
   #page-mensagens .cxa-search { position: relative; display: inline-flex; align-items: center; }
   #page-mensagens .cxa-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--ds-color-text-muted); pointer-events: none; }
@@ -21425,7 +21425,7 @@ function csisAppSalvar(idApp) {
   #page-mensagens .cxa-linha:hover { background: var(--ds-sidebar-item-hover); }
   #page-mensagens .cxa-linha.sel, #page-mensagens .cxa-linha.nao-lida.sel { background: var(--ds-sidebar-item-active); }
   #page-mensagens .cxa-linha .c-ico { font-size: 20px; color: var(--ds-color-text-muted); }
-  #page-mensagens .cxa-linha.nao-lida { background: color-mix(in srgb, var(--ds-color-action) 8%, var(--ds-color-surface)); box-shadow: inset 3px 0 0 var(--ds-color-action); }
+  #page-mensagens .cxa-linha.nao-lida { background: color-mix(in srgb, var(--ds-color-action) 8%, var(--ds-color-surface)); }
   #page-mensagens .cxa-linha.nao-lida:hover { background: color-mix(in srgb, var(--ds-color-action) 14%, var(--ds-color-surface)); }
   #page-mensagens .cxa-linha:not(.nao-lida) .c-quem, #page-mensagens .cxa-linha:not(.nao-lida) .c-titulo { color: var(--ds-color-text-muted); }
   #page-mensagens .cxa-linha.nao-lida .c-ico { color: var(--ds-color-action); }
@@ -21441,6 +21441,21 @@ function csisAppSalvar(idApp) {
   #page-mensagens .cxa-linha .c-acoes { display: none; align-items: center; gap: 2px; }
   #page-mensagens .cxa-linha:hover .c-acoes, #page-mensagens .cxa-linha:focus-within .c-acoes { display: inline-flex; }
   #page-mensagens .cxa-linha:hover .c-hora, #page-mensagens .cxa-linha:focus-within .c-hora { display: none; }
+  /* filtros: mesmo componente visual da lista de planos (botão + x que se fundem quando ativo) */
+  #page-mensagens .cxa-filtro { display: inline-flex; align-items: stretch; }
+  #page-mensagens .cxa-filtro-btn { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px; background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
+    color: var(--ds-color-text); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); cursor: pointer; white-space: nowrap; }
+  #page-mensagens .cxa-filtro-btn:hover { background: var(--ds-sidebar-item-hover); }
+  #page-mensagens .cxa-filtro-btn .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
+  #page-mensagens .cxa-filtro-btn--ativo { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); border-color: var(--ds-color-info-bg); font-weight: var(--ds-weight-semibold); }
+  #page-mensagens .cxa-filtro-btn--ativo .material-symbols-outlined { color: var(--ds-color-info-fg); }
+  #page-mensagens .cxa-filtro-btn:has(+ .cxa-filtro-x:not(.hidden)) { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent); }
+  #page-mensagens .cxa-filtro-x { display: inline-flex; align-items: center; justify-content: center; width: 26px; padding: 0; background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); cursor: pointer;
+    border: 1px solid var(--ds-color-info-bg); border-left-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent); border-top-right-radius: var(--ds-r-lg); border-bottom-right-radius: var(--ds-r-lg); }
+  #page-mensagens .cxa-filtro-x:hover { filter: brightness(0.94); }
+  #page-mensagens .cxa-filtro-x .material-symbols-outlined { font-size: 15px; }
+  #page-mensagens .cxa-rasc { color: var(--ds-color-danger-fg); font-weight: var(--ds-weight-semibold); }
+  #page-mensagens .cxa-semassunto { font-style: italic; color: var(--ds-color-text-muted); }
   #page-mensagens .cxa-qtd { font-size: 12px; font-weight: 600; padding: 0 6px; border-radius: 999px; background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); color: var(--ds-color-text-muted); }
   #page-mensagens .cxa-vazio { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 16px; color: var(--ds-color-text-muted); }
   #page-mensagens .cxa-vazio .material-symbols-outlined { font-size: 54px; opacity: .35; }
@@ -21482,14 +21497,14 @@ function csisAppSalvar(idApp) {
 var CXA_LIM = 20;
 var CXA_PASTAS = { entrada: ['Caixa de entrada', 'inbox'], enviadas: ['Enviadas', 'send'], rascunhos: ['Rascunhos', 'draft'], programadas: ['Programadas', 'schedule_send'], excluidas: ['Excluídas', 'delete'] };
 var CXA_ABAS = [['todas', 'Todas', 'inbox'], ['naoLidas', 'Não lidas', 'mark_email_unread'], ['estreladas', 'Favoritas', 'star'], ['arquivadas', 'Arquivadas', 'archive']];
-var _cxa = { view: 'caixa', pasta: 'entrada', aba: 'todas', busca: '', buscaAberta: false, offset: 0, res: null, sel: {}, carregando: false, naoLidas: 0, idx: 0, leitura: null, reqSeq: 0, tBusca: null };
+var _cxa = { view: 'caixa', pasta: 'entrada', aba: 'todas', busca: '', buscaAberta: false, filtros: { categoria: '', periodo: '', status: '' }, offset: 0, res: null, sel: {}, carregando: false, naoLidas: 0, idx: 0, leitura: null, reqSeq: 0, tBusca: null };
 
 function cxaRaiz() { return document.getElementById('cxa-raiz'); }
 function cxaEnviadas() { return _cxa.pasta === 'enviadas' || _cxa.pasta === 'rascunhos' || _cxa.pasta === 'programadas'; }
 
 function initMensagens(extra) {
   var pasta = extra.pasta && CXA_PASTAS[extra.pasta] ? extra.pasta : (extra.view === 'leitura' ? _cxa.pasta : 'entrada');
-  if (pasta !== _cxa.pasta) { _cxa.aba = 'todas'; _cxa.busca = ''; _cxa.buscaAberta = false; _cxa.offset = 0; _cxa.res = null; }
+  if (pasta !== _cxa.pasta) { _cxa.aba = 'todas'; _cxa.busca = ''; _cxa.buscaAberta = false; _cxa.filtros = { categoria: '', periodo: '', status: '' }; _cxa.offset = 0; _cxa.res = null; }
   _cxa.pasta = pasta; _cxa.view = extra.view || 'caixa'; _cxa.sel = {};
   if (_cxa.view === 'leitura') return cxaCarregarLeitura(extra.id);
   setBreadcrumb(pasta === 'entrada' ? [{ label: 'Mensagens' }] : [{ label: 'Mensagens', page: 'mensagens' }, { label: CXA_PASTAS[pasta][0] }]);
@@ -21506,8 +21521,12 @@ function cxaCarregar(patch) {
   if (cxaEnviadas()) {
     ntfChamar('apiGetMensagensSistema', [], function (r) {
       if (seq !== _cxa.reqSeq) return;
-      var st = { enviadas: ['PUBLICADA', 'EXPIRADA', 'CANCELADA'], rascunhos: ['RASCUNHO'], programadas: ['AGENDADA'] }[_cxa.pasta], b = _cxa.busca.trim().toLowerCase();
-      var itens = (r.itens || []).filter(function (m) { return st.indexOf(m.status) !== -1 && (!b || (m.titulo + ' ' + m.resumo).toLowerCase().indexOf(b) !== -1); });
+      var st = { enviadas: ['PUBLICADA', 'EXPIRADA', 'CANCELADA'], rascunhos: ['RASCUNHO'], programadas: ['AGENDADA'] }[_cxa.pasta], b = _cxa.busca.trim().toLowerCase(), f = _cxa.filtros, de = cxaFiltroDe();
+      var itens = (r.itens || []).filter(function (m) {
+        if (st.indexOf(m.status) === -1 || (f.status && m.status !== f.status) || (f.categoria && m.categoria !== f.categoria)) return false;
+        if (de && ntfMs(m.agendadaPara || m.publicadaEm || m.criadoEm) < de) return false;
+        return !b || (m.titulo + ' ' + m.resumo).toLowerCase().indexOf(b) !== -1;
+      });
       itens.sort(function (a, c) { return ntfMs(c.agendadaPara || c.publicadaEm || c.criadoEm) - ntfMs(a.agendadaPara || a.publicadaEm || a.criadoEm); });
       _cxa.res = { itens: itens.slice(_cxa.offset, _cxa.offset + CXA_LIM), total: itens.length }; _cxa.carregando = false;
       cxaRenderCaixa();
@@ -21515,7 +21534,7 @@ function cxaCarregar(patch) {
     return;
   }
   var aba = _cxa.pasta === 'excluidas' ? 'excluidas' : _cxa.aba;
-  ntfChamar('apiGetNotificacoes', [{ origem: 'MENSAGEM', aba: aba, busca: _cxa.busca, limite: CXA_LIM, offset: _cxa.offset }], function (r) {
+  ntfChamar('apiGetNotificacoes', [{ origem: 'MENSAGEM', aba: aba, busca: _cxa.busca, chave: _cxa.filtros.categoria, de: cxaFiltroDe(), limite: CXA_LIM, offset: _cxa.offset }], function (r) {
     if (seq !== _cxa.reqSeq) return;
     _cxa.res = r; _cxa.carregando = false; _cxa.sel = {}; _cxa.naoLidas = r.naoLidas;
     ntfContar();
@@ -21546,18 +21565,19 @@ function cxaRenderCaixa() {
   } else h += '<div style="height:20px"></div>';
 
   // barra
-  var barra = '<div class="cxa-barra-sel">' + (env ? '' : '<input type="checkbox" aria-label="Selecionar todos"' + (res.itens.length && selItens.length === res.itens.length ? ' checked' : '') + ' onchange="cxaToggleTodos()">') + '</div><div class="cxa-barra-meio">';
+  var barra = '<div class="cxa-barra-sel">' + '<input type="checkbox" aria-label="Selecionar todos"' + (res.itens.length && selItens.length === res.itens.length ? ' checked' : '') + ' onchange="cxaToggleTodos()">' + '</div><div class="cxa-barra-meio">';
   if (!selItens.length) {
     barra += '<div class="cxa-search">'
       + (_cxa.buscaAberta
         ? '<span class="material-symbols-outlined cxa-search-icon" aria-hidden="true">search</span><input type="text" id="cxa-busca" class="ds-input cxa-search-input" placeholder="Buscar mensagem…" aria-label="Buscar mensagem" value="' + escapeHtml(_cxa.busca) + '" oninput="cxaBuscar(this.value)" onblur="cxaBlurBusca()">'
           + '<button type="button" id="cxa-busca-x" class="cxa-search-clear' + (_cxa.busca ? '' : ' hidden') + '" aria-label="Limpar busca" onclick="cxaLimparBusca()"><span class="material-symbols-outlined">close</span></button>'
         : '<button type="button" class="ds-icon-action" onclick="cxaAbrirBusca()" data-title="Buscar mensagem" aria-label="Buscar mensagem"><span class="material-symbols-outlined">search</span></button>')
-      + '</div>';
+      + '</div>' + cxaFiltrosHtml();
   } else {
     var todasLidas = selItens.every(function (n) { return n.lida; }), todasArq = selItens.every(function (n) { return n.arquivada; }), todasFav = selItens.every(function (n) { return n.estrelada; });
     barra += '<span class="cxa-sel-txt">' + selItens.length + (selItens.length > 1 ? ' selecionadas' : ' selecionada') + '</span><div class="cxa-sep"></div>';
-    if (_cxa.pasta === 'excluidas') barra += cxaBtn('restore_from_trash', 'Restaurar', "cxaLote('RESTAURAR')");
+    if (_cxa.pasta === 'excluidas') barra += cxaBtn('restore_from_trash', 'Restaurar', "cxaLote('RESTAURAR')") + cxaBtn('delete_forever', 'Excluir definitivamente', "cxaDefinitivo(cxaSelIdsLimpa())");
+    else if (env) barra += cxaAcoesLoteEnv(selItens);
     else barra += (todasLidas ? cxaBtn('mark_email_unread', 'Marcar como não lida', "cxaLote('NAO_LIDA')") : cxaBtn('drafts', 'Marcar como lida', "cxaLote('LIDA')"))
       + (todasArq ? cxaBtn('unarchive', 'Desarquivar', "cxaLote('DESARQUIVAR')") : cxaBtn('archive', 'Arquivar', "cxaLote('ARQUIVAR')"))
       + (todasFav ? cxaBtn('star', 'Remover dos favoritos', "cxaLote('DESESTRELAR')", ' on') : cxaBtn('star', 'Favoritar', "cxaLote('ESTRELAR')"))
@@ -21579,7 +21599,7 @@ function cxaRenderCaixa() {
 
 function cxaLinhaHtml(n) {
   var id = escapeHtml(n.id), sel = !!_cxa.sel[n.id], exc = _cxa.pasta === 'excluidas';
-  var acoes = exc ? cxaBtn('restore_from_trash', 'Restaurar', "event.stopPropagation(); cxaMarcar(['" + id + "'], 'RESTAURAR')")
+  var acoes = exc ? cxaBtn('restore_from_trash', 'Restaurar', "event.stopPropagation(); cxaMarcar(['" + id + "'], 'RESTAURAR')") + cxaBtn('delete_forever', 'Excluir definitivamente', "event.stopPropagation(); cxaDefinitivo(['" + id + "'])")
     : cxaBtn(n.lida ? 'mark_email_unread' : 'drafts', n.lida ? 'Marcar como não lida' : 'Marcar como lida', "event.stopPropagation(); cxaMarcar(['" + id + "'], '" + (n.lida ? 'NAO_LIDA' : 'LIDA') + "')")
       + cxaBtn(n.arquivada ? 'unarchive' : 'archive', n.arquivada ? 'Desarquivar' : 'Arquivar', "event.stopPropagation(); cxaMarcar(['" + id + "'], '" + (n.arquivada ? 'DESARQUIVAR' : 'ARQUIVAR') + "')")
       + cxaBtn('delete', 'Excluir', "event.stopPropagation(); cxaMarcar(['" + id + "'], 'EXCLUIR')");
@@ -21591,30 +21611,80 @@ function cxaLinhaHtml(n) {
     + '<span class="c-quem" data-title="' + escapeHtml(n.rotulo) + '">' + escapeHtml(n.rotulo) + '</span>'
     + '<div class="c-txt"><span class="c-titulo" data-title="' + escapeHtml(n.titulo) + '">' + escapeHtml(n.titulo) + '</span>'
     + (n.qtd > 1 ? '<span class="cxa-qtd">' + n.qtd + '</span>' : '') + (n.resumo ? '<span class="c-res">— ' + escapeHtml(n.resumo) + '</span>' : '') + '</div>'
-    + '<div class="c-dir"><span class="c-hora">' + ntfHora(n.atualizadoEm) + '</span><div class="c-acoes">' + acoes + '</div></div></div>';
+    + '<div class="c-dir"><span class="c-hora"' + (exc && n.diasRestantes !== null ? ' data-title="Será apagada definitivamente em ' + n.diasRestantes + ' dia(s)"' : '') + '>' + (exc && n.diasRestantes !== null ? n.diasRestantes + (n.diasRestantes === 1 ? ' dia' : ' dias') : ntfHora(n.atualizadoEm)) + '</span><div class="c-acoes">' + acoes + '</div></div></div>';
 }
 
 // pastas Enviadas/Rascunhos/Programadas: lista de gestão (editar, cancelar, excluir rascunho)
 function cxaLinhaEnviadaHtml(m) {
-  var id = escapeHtml(m.id), ST = { RASCUNHO: 'Rascunho', AGENDADA: 'Agendada', PUBLICADA: '', EXPIRADA: 'Expirada', CANCELADA: 'Cancelada' };
+  var id = escapeHtml(m.id), sel = !!_cxa.sel[m.id], ST = { RASCUNHO: '', AGENDADA: 'Agendada', PUBLICADA: '', EXPIRADA: 'Expirada', CANCELADA: 'Recolhida' };
   var x = m.metricas || {}, data = m.status === 'AGENDADA' ? m.agendadaPara : (m.publicadaEm || m.criadoEm);
   var res = (ST[m.status] ? '[' + ST[m.status] + '] ' : '') + (m.status === 'PUBLICADA' || m.status === 'EXPIRADA' || m.status === 'CANCELADA' ? (x.entregues || 0) + ' entregues · ' + (x.lidas || 0) + ' lidas — ' : '') + m.resumo;
   var acoes = '';
   if (m.modoEdicao !== 'NENHUMA') acoes += cxaBtn('edit', m.status === 'PUBLICADA' ? 'Corrigir' : 'Editar', "event.stopPropagation(); cxaEditar('" + id + "')");
-  if (m.status === 'PUBLICADA' || m.status === 'AGENDADA') acoes += cxaBtn('cancel', 'Cancelar mensagem', "event.stopPropagation(); cxaCancelarEnviada('" + id + "')");
-  if (m.status === 'RASCUNHO') acoes += cxaBtn('delete', 'Excluir rascunho', "event.stopPropagation(); cxaExcluirRascunho('" + id + "')");
-  return '<div class="cxa-linha" onclick="cxaEditar(\'' + id + '\')"><span></span><span></span><span class="material-symbols-outlined c-ico">' + (m.status === 'RASCUNHO' ? 'draft' : m.status === 'AGENDADA' ? 'schedule_send' : 'send') + '</span>'
-    + '<span class="c-quem" data-title="' + escapeHtml(m.categoriaRotulo) + '">' + escapeHtml(m.categoriaRotulo) + '</span>'
-    + '<div class="c-txt"><span class="c-titulo" data-title="' + escapeHtml(m.titulo) + '">' + escapeHtml(m.titulo) + '</span><span class="c-res">— ' + escapeHtml(res) + '</span></div>'
+  if (m.status === 'PUBLICADA' || m.status === 'AGENDADA') acoes += cxaBtn('cancel', m.status === 'AGENDADA' ? 'Cancelar envio' : 'Recolher mensagem', "event.stopPropagation(); cxaCancelarEnviada(['" + id + "'], '" + m.status + "')");
+  if (m.status === 'RASCUNHO') acoes += cxaBtn('delete', 'Descartar rascunho', "event.stopPropagation(); cxaExcluirRascunho(['" + id + "'])");
+  var quem = m.status === 'RASCUNHO' ? '<span class="c-quem cxa-rasc">Rascunho</span>' : '<span class="c-quem" data-title="' + escapeHtml(m.categoriaRotulo) + '">' + escapeHtml(m.categoriaRotulo) + '</span>';
+  var tit = m.titulo ? escapeHtml(m.titulo) : '<span class="cxa-semassunto">(sem assunto)</span>';
+  return '<div class="cxa-linha' + (sel ? ' sel' : '') + '" onclick="cxaClique(event, \'' + id + '\')"><input type="checkbox"' + (sel ? ' checked' : '') + ' aria-label="Selecionar" onclick="event.stopPropagation(); cxaSelecionar(\'' + id + '\')"><span></span><span class="material-symbols-outlined c-ico">' + (m.status === 'RASCUNHO' ? 'draft' : m.status === 'AGENDADA' ? 'schedule_send' : 'send') + '</span>'
+    + quem
+    + '<div class="c-txt"><span class="c-titulo">' + tit + '</span><span class="c-res">— ' + escapeHtml(res) + '</span></div>'
     + '<div class="c-dir"><span class="c-hora">' + (m.status === 'AGENDADA' ? new Date(ntfMs(data)).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ntfHora(data)) + '</span><div class="c-acoes">' + acoes + '</div></div></div>';
+}
+// ---- filtros (Categoria / Período / Situação), com o mesmo menu de seleção da lista de planos ----
+var CXA_FILTROS_DEF = {
+  categoria: { label: 'Categoria', opcoes: [['MSG_AVISO', 'Avisos'], ['MSG_PROGRAMACAO', 'Programação e prazos'], ['MSG_URGENTE', 'Urgentes']] },
+  periodo: { label: 'Período', opcoes: [['1', 'Hoje'], ['7', 'Últimos 7 dias'], ['30', 'Últimos 30 dias'], ['90', 'Últimos 90 dias']] },
+  status: { label: 'Situação', opcoes: [['PUBLICADA', 'Publicada'], ['EXPIRADA', 'Expirada'], ['CANCELADA', 'Recolhida']] }
+};
+function cxaCamposFiltro() { return { enviadas: ['categoria', 'periodo', 'status'], rascunhos: ['categoria', 'periodo'], programadas: ['categoria', 'periodo'], excluidas: ['categoria', 'periodo'] }[_cxa.pasta] || []; }
+function cxaFiltroDe() { var p = _cxa.filtros.periodo; if (!p) return 0; var d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime() - (Number(p) - 1) * 864e5; }
+function cxaRotuloFiltro(campo) { var v = _cxa.filtros[campo], o = CXA_FILTROS_DEF[campo].opcoes.find(function (x) { return x[0] === v; }); return o ? o[1] : CXA_FILTROS_DEF[campo].label; }
+function cxaFiltrosHtml() {
+  return cxaCamposFiltro().map(function (c) {
+    var ativo = !!_cxa.filtros[c];
+    return '<div class="cxa-filtro"><button type="button" class="cxa-filtro-btn' + (ativo ? ' cxa-filtro-btn--ativo' : '') + '" onclick="cxaAbrirFiltro(\'' + c + '\', event)" aria-haspopup="menu" aria-expanded="false"><span>' + escapeHtml(cxaRotuloFiltro(c)) + '</span><span class="material-symbols-outlined">expand_more</span></button>'
+      + '<button type="button" class="cxa-filtro-x' + (ativo ? '' : ' hidden') + '" onclick="cxaSelecionarFiltro(\'' + c + '\', \'\')" data-title="Remover filtro" aria-label="Remover filtro"><span class="material-symbols-outlined">close</span></button></div>';
+  }).join('');
+}
+function cxaAbrirFiltro(campo, ev) {
+  ev.stopPropagation();
+  var atual = _cxa.filtros[campo];
+  var itens = [{ label: 'Todos', ativo: !atual, onclick: "cxaSelecionarFiltro('" + campo + "', '')" }].concat(CXA_FILTROS_DEF[campo].opcoes.map(function (o) { return { label: o[1], ativo: o[0] === atual, onclick: "cxaSelecionarFiltro('" + campo + "', '" + o[0] + "')" }; }));
+  abrirMenuSelecao(ev.currentTarget, [{ itens: itens }]);
+}
+function cxaSelecionarFiltro(campo, valor) { _cxa.filtros[campo] = valor; if (typeof fecharMenuSelecao === 'function') fecharMenuSelecao(); cxaCarregar({ offset: 0, sel: {} }); }
+
+// ---- ações em lote das pastas de gestão (Enviadas / Rascunhos / Programadas) ----
+function cxaSelIdsLimpa() { var ids = cxaSelIds(); _cxa.sel = {}; return ids; }
+function cxaAcoesLoteEnv(selItens) {
+  if (_cxa.pasta === 'rascunhos') return cxaBtn('delete', 'Descartar rascunhos', 'cxaExcluirRascunho(cxaSelIdsLimpa())');
+  if (_cxa.pasta === 'programadas') return cxaBtn('cancel', 'Cancelar envio', "cxaCancelarEnviada(cxaSelIdsLimpa(), 'AGENDADA')");
+  var todasPub = selItens.every(function (m) { return m.status === 'PUBLICADA'; });
+  return todasPub ? cxaBtn('cancel', 'Recolher mensagem', "cxaCancelarEnviada(cxaSelIdsLimpa(), 'PUBLICADA')") : '';
+}
+// executa uma API por id, em sequência (o servidor serializa as escritas); recarrega no fim
+function cxaSequencia(api, ids, depois) {
+  var i = 0, falhas = 0;
+  (function prox() {
+    if (i >= ids.length) { if (falhas) ntfErro({ message: falhas + ' item(ns) não puderam ser processados.' }); return depois(); }
+    ntfChamar(api, [ids[i++]], prox, function () { falhas++; prox(); });
+  })();
 }
 function cxaEscrever() { navigate('mensagens-enviadas', { novo: true }); }
 function cxaEditar(id) { navigate('mensagens-enviadas', { editar: id }); }
-function cxaCancelarEnviada(id) {
-  showConfirm('Cancelar mensagem?', 'Ela sai das caixas de entrada de quem ainda não leu.', function () { ntfChamar('apiCancelarMensagemSistema', [id], function () { cxaCarregar({}); }); });
+function cxaCancelarEnviada(ids, status) {
+  var ag = status === 'AGENDADA';
+  showConfirm(ag ? 'Cancelar o envio?' : 'Recolher mensagem?', ag ? 'A mensagem agendada não será enviada.' : 'A mensagem sai da caixa de entrada de quem ainda não a leu. Quem já leu continua com ela.',
+    function () { cxaSequencia('apiCancelarMensagemSistema', ids, function () { cxaCarregar({ sel: {} }); }); });
 }
-function cxaExcluirRascunho(id) {
-  showConfirm('Excluir rascunho?', 'Esta ação não pode ser desfeita.', function () { ntfChamar('apiExcluirMensagemSistema', [id], function () { cxaCarregar({}); }); });
+function cxaExcluirRascunho(ids) {
+  showConfirm(ids.length > 1 ? 'Descartar rascunhos?' : 'Descartar rascunho?', 'Esta ação não pode ser desfeita.', function () { cxaSequencia('apiExcluirMensagemSistema', ids, function () { cxaCarregar({ sel: {} }); }); });
+}
+// só para itens que já estão em Excluídas; irreversível
+function cxaDefinitivo(ids, voltar) {
+  showConfirm('Excluir definitivamente?', 'A mensagem será apagada de vez e não poderá ser recuperada.', function () {
+    cxaMarcar(ids, 'EXCLUIR_DEFINITIVO', function () { if (voltar) cxaVoltar(); else cxaCarregar({ sel: {} }); ntfContar(); });
+  });
 }
 
 function cxaMudarAba(aba) { cxaCarregar({ aba: aba, offset: 0, sel: {} }); }
@@ -21632,6 +21702,7 @@ function cxaToggleTodos() {
 }
 function cxaClique(ev, id) {
   if (ev.ctrlKey || ev.metaKey) return cxaSelecionar(id);
+  if (cxaEnviadas()) return cxaEditar(id);
   var i = ((_cxa.res && _cxa.res.itens) || []).findIndex(function (n) { return String(n.id) === String(id); });
   if (i < 0) return;
   _cxa.sel = {}; _cxa.idx = i;
@@ -21667,7 +21738,7 @@ function cxaRenderLeitura() {
   var barra = cxaBtn('arrow_back', 'Voltar', 'cxaVoltar()');
   if (n) {
     barra += '<div class="cxa-sep"></div>';
-    if (_cxa.pasta === 'excluidas') barra += cxaBtn('restore_from_trash', 'Restaurar', "cxaAcaoLeitura('RESTAURAR', true)");
+    if (_cxa.pasta === 'excluidas') barra += cxaBtn('restore_from_trash', 'Restaurar', "cxaAcaoLeitura('RESTAURAR', true)") + cxaBtn('delete_forever', 'Excluir definitivamente', "cxaDefinitivo(['" + n.id + "'], true)");
     else barra += cxaBtn(n.arquivada ? 'unarchive' : 'archive', n.arquivada ? 'Desarquivar' : 'Arquivar', "cxaAcaoLeitura('" + (n.arquivada ? 'DESARQUIVAR' : 'ARQUIVAR') + "', true)")
       + cxaBtn(n.lida ? 'mark_email_unread' : 'drafts', n.lida ? 'Marcar como não lida' : 'Marcar como lida', "cxaAcaoLeitura('" + (n.lida ? 'NAO_LIDA' : 'LIDA') + "', false)")
       + cxaBtn('star', n.estrelada ? 'Remover dos favoritos' : 'Favoritar', "cxaAcaoLeitura('" + (n.estrelada ? 'DESESTRELAR' : 'ESTRELAR') + "', false)", n.estrelada ? ' on' : '')
@@ -22054,7 +22125,9 @@ function mseRaiz() { return document.getElementById('mse-raiz'); }
 function initMensagensEnviadas(extra) { extra = extra || {}; _mse.volta = extra.editar ? 'enviadas' : 'rascunhos'; mseAbrirEditor(extra.editar || null); }
 
 // Escrever / editar (a lista de enviadas, rascunhos e programadas vive em pages_mensagens.html). extra = { novo: true } | { editar: id }
-function mseVoltar(pasta) { navigate('mensagens', { view: 'caixa', pasta: pasta || _mse.volta || 'rascunhos' }); }
+function mseVoltar(pasta) {
+  if (_mse.form && _mse.form.status === 'RASCUNHO' && (_mse.sujo || _mse.salvando)) { return mseSalvar(function () { mseVoltar(pasta); }); }
+  _mse.sujo = false; clearTimeout(_mse.tAuto); navigate('mensagens', { view: 'caixa', pasta: pasta || _mse.volta || 'rascunhos' }); }
 
 // ============ EDITOR ============
 function mseLocal(iso) {
@@ -22064,7 +22137,7 @@ function mseLocal(iso) {
 }
 function mseAbrirEditor(id) {
   var m = id ? { id: id } : null;
-  _mse.view = 'editor'; _mse.nAud = null; _mse.audBusca = ''; _mse.imgErro = '';
+  _mse.view = 'editor'; _mse.sujo = false; _mse.salvando = false; _mse.fila = null; _mse.salvoEm = 0; _mse.autoErro = false; _mse.ultimo = ''; clearTimeout(_mse.tAuto); _mse.nAud = null; _mse.audBusca = ''; _mse.imgErro = '';
   setBreadcrumb([{ label: 'Mensagens', page: 'mensagens' }, { label: m ? 'Editar mensagem' : 'Nova mensagem' }]);
   mseRaiz().innerHTML = '<div class="mse-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
   ntfChamar('apiGetOpcoesMensagem', [], function (op) {
@@ -22113,7 +22186,7 @@ function mseRenderEditor() {
   h += '<div class="mse-rodape" id="mse-rodape"></div></div>';
   mseRaiz().innerHTML = h;
   document.getElementById('mse-corpo').innerHTML = f.corpoHtml || '';
-  mseRenderAud(); mseAtualizar(); if (!pub) mseContarAud();
+  mseRenderAud(); _mse.ultimo = mseAssinatura(); mseAtualizar(); if (!pub) mseContarAud();
 }
 function mseFerramentasHtml() {
   var F = [['format_bold', 'Negrito', "cmd('bold')"], ['format_italic', 'Itálico', "cmd('italic')"], ['format_underlined', 'Sublinhado', "cmd('underline')"], ['strikethrough_s', 'Tachado', "cmd('strikeThrough')"],
@@ -22204,6 +22277,7 @@ function mseContarAud() {
 // ---- contadores, interruptores e rodapé ----
 function mseAtualizar() {
   var f = _mse.form; if (!f || _mse.view !== 'editor') return;
+  mseAgendarAuto();
   var L = _mse.opcoes.limites, pub = f.status === 'PUBLICADA';
   var corpo = document.getElementById('mse-corpo'); if (!corpo) return;
   var len = corpo.innerHTML.length;
@@ -22221,7 +22295,7 @@ function mseAtualizar() {
   var rod = document.getElementById('mse-rodape');
   var aud = !pub && _mse.nAud !== null && !mseAudVazia() ? 'Será enviada a ' + _mse.nAud.toLocaleString('pt-BR') + (_mse.nAud === 1 ? ' pessoa' : ' pessoas') : '';
   rod.innerHTML = '<span class="mse-aud-txt">' + aud + '</span>'
-    + (pub ? '' : '<button type="button" class="ds-btn ds-btn--ghost" onclick="mseSalvarRascunho()">Salvar rascunho</button>')
+    + (pub ? '' : f.status === 'RASCUNHO' ? '<span class="mse-aud-txt" id="mse-auto" style="margin-right:0" aria-live="polite">' + mseAutoTexto() + '</span>' : '<button type="button" class="ds-btn ds-btn--ghost" onclick="mseSalvarRascunho()">Salvar</button>')
     + '<button type="button" class="ds-btn ds-btn--primary"' + (invalido ? ' disabled' : '') + ' onclick="msePublicar()">' + (pub ? 'Salvar correção' : fut ? 'Agendar' : 'Publicar') + '</button>';
 }
 function mseSw(k) { _mse.form[k] = !_mse.form[k]; mseAtualizar(); }
@@ -22252,9 +22326,37 @@ function msePayload() {
     obrigatoria: !!f.obrigatoria, enviarEmail: !!f.enviarEmail, agendadaPara: ms(f.agendadaPara), expiraEm: ms(f.expiraEm) };
 }
 function mseSalvar(depois) {
-  ntfChamar('apiSalvarMensagemSistema', [msePayload()], function (r) { _mse.form.id = r.id; depois(r.id); });
+  // serializa: uma gravação por vez, para o autosave não criar rascunho duplicado
+  if (_mse.salvando) { _mse.fila = depois; return; }
+  _mse.salvando = true; clearTimeout(_mse.tAuto); _mse.sujo = false;
+  ntfChamar('apiSalvarMensagemSistema', [msePayload()], function (r) {
+    _mse.salvando = false; _mse.form.id = r.id; _mse.salvoEm = Date.now();
+    var f = _mse.fila; _mse.fila = null;
+    if (f) return mseSalvar(f);
+    if (depois) depois(r.id);
+  }, function (e) { _mse.salvando = false; _mse.autoErro = true; mseAutoMostrar(); ntfErro(e); });
 }
-function mseSalvarRascunho() { mseSalvar(function () { showMessage('success', 'Rascunho salvo', ''); mseVoltar('rascunhos'); }); }
+// ---- autosave do rascunho (como no Gmail) ----
+function mseAutoTexto() {
+  if (_mse.autoErro) return 'Não foi possível salvar';
+  if (_mse.salvando || _mse.sujo) return 'Salvando…';
+  return _mse.salvoEm ? 'Rascunho salvo' : '';
+}
+function mseAutoMostrar() { var e = document.getElementById('mse-auto'); if (e) e.textContent = mseAutoTexto(); }
+function mseVazio() {
+  var f = _mse.form, c = document.getElementById('mse-corpo');
+  return !f.titulo.trim() && !f.resumo.trim() && !(c && c.textContent.trim()) && !(c && c.querySelector('img'));
+}
+function mseAgendarAuto() {
+  var f = _mse.form; if (!f || f.status !== 'RASCUNHO' || _mse.carregando) return;
+  if (!f.id && mseVazio()) return;
+  if (_mse.ultimo === mseAssinatura()) return;
+  _mse.sujo = true; _mse.autoErro = false; mseAutoMostrar();
+  clearTimeout(_mse.tAuto);
+  _mse.tAuto = setTimeout(function () { _mse.ultimo = mseAssinatura(); mseSalvar(function () { mseAutoMostrar(); }); }, 1500);
+}
+function mseAssinatura() { var c = document.getElementById('mse-corpo'), f = _mse.form; return c ? JSON.stringify([f.titulo, f.resumo, c.innerHTML, f.categoria, f.audiencia, f.unidadesModo, f.obrigatoria, f.enviarEmail, f.agendadaPara, f.expiraEm]) : ''; }
+function mseSalvarRascunho() { mseSalvar(function () { showMessage('success', 'Salvo', ''); mseVoltar(_mse.volta); }); }
 function msePublicar() {
   var f = _mse.form;
   if (f.status === 'PUBLICADA') return mseSalvar(function () { showMessage('success', 'Correção salva', 'Quem já recebeu vê o texto corrigido.'); mseVoltar('enviadas'); });
