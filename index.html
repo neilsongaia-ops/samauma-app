@@ -76,7 +76,11 @@
     if (nome === 'apiObterHtmlApp') { obterHtmlApp(args[0], ok, falha, objeto); return; }
     if (!ROTAS_PUBLICAS[nome] && !lerToken()) { mostrarLogin(); return; }
     enviar(nome, args, function (res) {
-      if (res && res.ok) { if (ok) ok(res.dados === undefined ? null : res.dados, objeto); return; }
+      if (res && res.ok) {
+        // gravação concluída: a faixa "o que mudou na revisão" do detalhe do plano se atualiza sozinha
+        if (/^api(Salvar|Atualizar|Excluir|Restaurar|Reanexar|Mover|Duplicar|Importar|Vincular|Desvincular)/.test(nome) && typeof mrvAposGravacao === 'function') mrvAposGravacao();
+        if (ok) ok(res.dados === undefined ? null : res.dados, objeto); return;
+      }
       if (res && res.codigo === 'SESSAO_INVALIDA') { gravarToken(''); mostrarLogin('Sua sessão expirou. Entre novamente.'); return; }
       if (falha) falha(new Error((res && res.erro) || 'Erro desconhecido.'), objeto);
     }, function (err) { if (falha) falha(err, objeto); });
@@ -7752,6 +7756,25 @@ function mrvCarregar(id) {
       _mrvPintarBanner();
     })
     .apiGetMudancasRevisao(id);
+}
+// Releitura silenciosa (mantém o resumo atual na tela até o novo chegar); chamada pelo shim depois de qualquer gravação
+var _mrvTimer = null;
+function mrvAposGravacao() {
+  var b = document.getElementById('mrv-banner');
+  if (!b || b.classList.contains('hidden') || !_mrv.idPlano) return;
+  clearTimeout(_mrvTimer);
+  _mrvTimer = setTimeout(function() {
+    var id = _mrv.idPlano;
+    if (!id) return;
+    google.script.run
+      .withSuccessHandler(function(d) {
+        if (_mrv.idPlano !== id) return;
+        _mrv.dados = d || {}; _mrv.erro = '';
+        _mrvPintarBanner();
+        if (!document.getElementById('modal-mrv').classList.contains('hidden')) _mrvRenderModal();
+      })
+      .apiGetMudancasRevisao(id);
+  }, 400);
 }
 function mrvInvalidar() { _mrv = { idPlano: null, dados: null, carregando: false, erro: '' }; }
 
