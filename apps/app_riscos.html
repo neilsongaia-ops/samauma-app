@@ -860,23 +860,6 @@ function _rscObterIdPlano() {
   return (_rscCtx && _rscCtx.idPlano) || null;
 }
 
-// Fallback de download para binários em base64
-function _rscDownloadBase64(base64, nomeArquivo, mimeType) {
-  if (typeof _downloadBase64Arquivo === 'function') {
-    _downloadBase64Arquivo(base64, nomeArquivo, mimeType);
-    return;
-  }
-  var bytes = atob(base64);
-  var array = new Uint8Array(bytes.length);
-  for (var i = 0; i < bytes.length; i++) array[i] = bytes.charCodeAt(i);
-  var blob = new Blob([array], { type: mimeType });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url; a.download = nomeArquivo;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  setTimeout(function() { URL.revokeObjectURL(url); }, 100);
-}
 
 // ================================================================
 // WIZARD MODAL DE RISCO (_rwiz*)
@@ -1996,22 +1979,6 @@ function riscosSelecionarNivel(cod) {
   _riscosRenderCorpo();
 }
 
-function exportarRiscos() {
-  var idPlano = _rscObterIdPlano();
-  if (!idPlano) {
-    if (typeof showMessage === 'function') showMessage('error', 'Erro', 'Nenhum plano carregado.');
-    return;
-  }
-  if (typeof mostrarLoader === 'function') mostrarLoader();
-  _riscosSDK.chamar('apiExportarRiscosXLSX', idPlano).then(function(res) {
-    if (typeof esconderLoader === 'function') esconderLoader();
-    _rscDownloadBase64(res.base64, res.nomeArquivo, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    if (typeof showMessage === 'function') showMessage('success', 'Exportado', 'Planilha de riscos gerada com sucesso.');
-  }, function(err) {
-    if (typeof esconderLoader === 'function') esconderLoader();
-    if (typeof showMessage === 'function') showMessage('error', 'Erro ao exportar', escapeHtml(err.message || String(err)));
-  });
-}
 function importarRiscos() {
   if (typeof showMessage === 'function') showMessage('info', 'Em Desenvolvimento', 'A importação de riscos será liberada em breve.');
 }
@@ -2027,7 +1994,7 @@ function renderizarSecaoRiscos() {
 
   var itensNovo = [
     { icone: 'upload', rotulo: 'Importar riscos', descricao: 'Carregar riscos a partir de uma planilha', onclick: 'importarRiscos()' },
-    { icone: 'download', rotulo: 'Exportar riscos', descricao: 'Baixar a lista de riscos em Excel (.xlsx)', onclick: 'exportarRiscos()' },
+    { icone: 'download', rotulo: 'Exportar riscos', desabilitado: true },
     { icone: 'description', rotulo: 'Baixar modelo', descricao: 'Planilha em branco para preencher e importar', onclick: 'baixarModeloRiscos()' }
   ];
   if (typeof _acoesLinhaNormalizar === 'function') {
@@ -2096,7 +2063,7 @@ function renderizarSecaoRiscos() {
     +   '<span class="el-selecao-texto" id="riscos-selecao-texto">0 selecionados</span>'
     +   '<div class="el-selecao-divisor"></div>'
     +   '<div class="el-selecao-acoes" id="riscos-selecao-acoes">'
-    +     '<button type="button" class="ds-icon-action" onclick="exportarRiscos()" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
+    +     '<button type="button" class="ds-icon-action" aria-disabled="true" data-title="Em breve" aria-label="Exportar (em breve)"><span class="material-symbols-outlined">download</span></button>'
     +     (podeEditar
             ? '<button type="button" class="ds-icon-action" onclick="riscosExcluirSelecionados()" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>'
             : '')
@@ -2117,7 +2084,7 @@ function renderizarSecaoRiscos() {
     +         '<button type="button" class="el-th-btn" onclick="atualizarRiscos()" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
     +         '<button type="button" class="el-th-btn" id="riscos-btn-expandir" onclick="riscosToggleExpandirTodos()" data-title="Expandir todos" aria-label="Expandir todos"><span class="material-symbols-outlined">unfold_more</span></button>'
     +         '<button type="button" class="el-th-btn" id="riscos-btn-imprimir" onclick="imprimirRiscos()" data-title="Imprimir" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>'
-    +         '<button type="button" class="el-th-btn" onclick="exportarRiscos()" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
+    +         '<button type="button" class="el-th-btn" aria-disabled="true" data-title="Em breve" aria-label="Exportar (em breve)"><span class="material-symbols-outlined">download</span></button>'
     +         '<button type="button" class="el-th-btn" onclick="riscosAbrirMenuOrdenar(event)" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
     +       '</div></th>'
     +     '</tr></thead>'
@@ -2479,7 +2446,7 @@ function _riscosAtualizarSelecao(listaCompleta) {
   var acoesCont = document.getElementById('riscos-selecao-acoes');
   if (acoesCont) {
     var podeEditar = _rscPodeEditar();
-    var htmlAcoes = '<button type="button" class="ds-icon-action" onclick="exportarRiscos()" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>';
+    var htmlAcoes = '<button type="button" class="ds-icon-action" aria-disabled="true" data-title="Em breve" aria-label="Exportar (em breve)"><span class="material-symbols-outlined">download</span></button>';
     if (n === 1) {
       var rId = Object.keys(estadoRiscos.selecionados)[0];
       if (typeof acoesLinhaHTML === 'function') {
@@ -2488,7 +2455,7 @@ function _riscosAtualizarSelecao(listaCompleta) {
           { icone: 'edit', rotulo: 'Editar risco', onclick: "editarRisco('" + rId + "')", principal: true, oculto: !podeEditar },
           { icone: 'add_link', rotulo: 'Adicionar causa', onclick: "abrirModalCausaRapida('" + rId + "')", principal: true, oculto: !podeEditar },
           { icone: 'build', rotulo: 'Adicionar ação', onclick: "riscosNovaAcaoTratamento('" + rId + "')", principal: true, oculto: !podeEditar },
-          { icone: 'download', rotulo: 'Exportar', onclick: 'exportarRiscos()', principal: true },
+          { icone: 'download', rotulo: 'Exportar', desabilitado: true, principal: true },
           { icone: 'delete', rotulo: 'Excluir risco', onclick: 'riscosExcluirSelecionados()', perigo: true, oculto: !podeEditar }
         ], { maxDireto: 4 });
       }
