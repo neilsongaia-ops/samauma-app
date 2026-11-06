@@ -7553,6 +7553,13 @@ function lxpRender() {
   cont.innerHTML = html || '<div class="lxp-vazio"><span class="material-symbols-outlined" aria-hidden="true">delete_sweep</span>A lixeira está vazia</div>';
 }
 
+// Os apps (Elementos, Indicadores, Riscos, Monitoramento) guardam a própria lista: depois de restaurar/reanexar, cada um relê a sua
+function _lxpAtualizarApps() {
+  ['atualizarConteudoPlano', 'atualizarAbaIndicadores', '_riscosRecarregarLista', 'atualizarMonitoramento'].forEach(function(fn) {
+    try { if (typeof window[fn] === 'function') window[fn](); } catch (e) { console.warn(fn, e); }
+  });
+}
+
 function lxpRestaurar(tipo, id) {
   var idPlano = _lxp.idPlano;
   mostrarLoader();
@@ -7563,6 +7570,7 @@ function lxpRestaurar(tipo, id) {
       if (qtd > 1) showMessage('success', 'Restaurado', 'Voltaram ' + qtd + ' itens que tinham saído juntos.');
       lxpCarregar(true);
       if (typeof carregarDetalhesPlano === 'function') carregarDetalhesPlano(idPlano, _metaOtimistaDoAtual());
+      _lxpAtualizarApps();
     })
     .withFailureHandler(function(err) {
       esconderLoader();
@@ -7624,6 +7632,7 @@ function lxpConfirmarReanexar() {
       if (n > 0) showMessage('warning', 'Indicador reanexado', (n === 1 ? '1 responsável saiu' : n + ' responsáveis saíram') + ' por não caber no escopo do elemento.');
       lxpCarregar(true);
       if (typeof carregarDetalhesPlano === 'function') carregarDetalhesPlano(idPlano, _metaOtimistaDoAtual());
+      _lxpAtualizarApps();
     })
     .withFailureHandler(function(err) {
       esconderLoader();
