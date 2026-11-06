@@ -953,6 +953,46 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
      organograma, 5W2H, Gantt), que o host roteia para #elementos-conteudo via
      _appCarregarHtml('elementos', callback, 'elementos-conteudo'). -->
 
+<!-- MODAL: impacto da exclusão de elemento (docs/regras_negocio_planos.md §11.1). Tudo vai para a lixeira do plano. -->
+<div id="modal-el-impacto" class="modal-overlay hidden" data-app-portal data-fechar="elImpFechar" onclick="if(event.target===this) window[this.dataset.fechar]()">
+  <div class="modal-card" style="max-width: 520px;" role="dialog" aria-modal="true" aria-labelledby="elimp-titulo">
+    <div class="modal-header">
+      <div style="min-width:0">
+        <h3 id="elimp-titulo">Excluir elemento?<span class="material-symbols-outlined elwiz-info" data-title="Vai para a lixeira do plano e pode ser restaurado, junto com o que sair com ele.">info</span></h3>
+        <p id="elimp-nome" class="elimp-nome"></p>
+      </div>
+      <button class="btn-icon-close" onclick="elImpFechar()" data-title="Fechar" aria-label="Fechar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body" id="elimp-corpo"></div>
+    <div class="modal-footer">
+      <button type="button" class="ds-btn ds-btn--ghost" onclick="elImpFechar()">Cancelar</button>
+      <button type="button" class="ds-btn ds-btn--danger" id="elimp-confirmar" onclick="elImpConfirmar()" disabled>
+        <span class="material-symbols-outlined">delete</span>Excluir
+      </button>
+    </div>
+  </div>
+</div>
+<style>
+.elimp-nome { margin: 2px 0 0; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.elimp-lista { display: flex; flex-direction: column; gap: 2px; margin: 0 0 16px; padding: 0; list-style: none; }
+.elimp-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
+.elimp-item .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); flex-shrink: 0; }
+.elimp-item strong { font-weight: var(--ds-weight-semibold); }
+.elimp-secao { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ds-color-text-muted); margin: 4px 0 8px; display: flex; align-items: center; gap: 2px; }
+.elimp-opcoes { display: flex; flex-direction: column; gap: 8px; }
+.elimp-opcao { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-lg); cursor: pointer; transition: border-color var(--ds-duration-fast) var(--ds-ease-standard), background var(--ds-duration-fast) var(--ds-ease-standard); }
+.elimp-opcao:hover { background: var(--ds-sidebar-item-hover); }
+.elimp-opcao.sel { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); }
+.elimp-opcao-linha { display: flex; align-items: center; gap: 10px; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); }
+.elimp-opcao-linha input { margin: 0; accent-color: var(--ds-color-action); width: 16px; height: 16px; flex-shrink: 0; }
+.elimp-opcao-linha > .material-symbols-outlined:not(.elwiz-info) { font-size: 18px; color: var(--ds-color-text-muted); }
+.elimp-destino { padding-left: 26px; }
+.elimp-destino.hidden { display: none; }
+@media (max-width: 768px) { .elimp-opcao { min-height: 44px; } }
+</style>
+
 <div id="modal-novo-elemento" class="modal-overlay hidden" data-app-portal data-fechar="fecharModalElemento" onclick="if(event.target===this) window[this.dataset.fechar]()">
   <div class="modal-card modal-lg wiz-rail-modal">
 
@@ -2357,6 +2397,13 @@ function _elIdsRespPlanoPessoal() {
 }
 function definirContextoPermitidoEl() {
   if (_elIdsRespPlanoPessoal()) { unidadesContextoPermitidoEl = []; return; }
+  // Plano NEGOCIADO: responsável do elemento no escopo de quem indica (lotação + subunidades),
+  // salvo com NEGOCIADO_RESPONSAVEIS_LIVRES ligada (app_ui_utils: uiEscopoRespIdsUnidades)
+  if (dadosDetalhados && dadosDetalhados.plano && dadosDetalhados.plano.categoria === 'NEGOCIADO') {
+    const escopo = uiEscopoRespIdsUnidades(cacheUnidadesEl, 'NEGOCIADO_RESPONSAVEIS_LIVRES');
+    unidadesContextoPermitidoEl = escopo ? cacheUnidadesEl.filter(u => escopo.has(String(u.id))) : cacheUnidadesEl;
+    return;
+  }
   if (!dadosDetalhados || !dadosDetalhados.plano || dadosDetalhados.plano.tipoResponsavel !== 'UNIDADE') {
     unidadesContextoPermitidoEl = cacheUnidadesEl;
     return;
@@ -5837,21 +5884,151 @@ function achatarArvoreParaTabela(no, nivel, listaResult) {
   }
 }
 
+// --- EXCLUSÃO DE ELEMENTO: diálogo de impacto (§11.1) ---
+// Estrutura aparece na hora (título + spinner local); o impacto chega de apiGetImpactoExclusaoElemento.
+// Com exigeDecisao, o usuário escolhe UMA ação para os indicadores com resultado; sem ela, confirmação simples.
+var _elImp = { id: null, impacto: null, acao: '', destino: '' };
+var seletorDestinoElImp = null;
+
 function confirmarExclusaoElemento(id, titulo) {
-  showConfirm(
-    'Excluir Item?',
-    `Deseja excluir "<strong>${escapeHtml(titulo)}</strong>"?<br>Atenção: Todos os filhos e indicadores deste item também serão removidos.`,
-    function() {
-      mostrarLoader();
-      _elementosSDK.chamar('apiExcluirElemento', id).then(function() {
-          esconderLoader();
-          atualizarConteudoPlano();
-      }, function(err) {
-          esconderLoader();
-          showMessage('error', 'Erro', escapeHtml(err.message));
-      });
+  _elImp = { id: id, impacto: null, acao: '', destino: '' };
+  document.getElementById('elimp-nome').textContent = titulo || '';
+  document.getElementById('elimp-nome').setAttribute('data-title', titulo || '');
+  document.getElementById('elimp-corpo').innerHTML = spinnerListaHTML('Verificando o que será afetado…');
+  _elImpAtualizarBotao();
+  document.getElementById('modal-el-impacto').classList.remove('hidden');
+  if (typeof bloquearFundo === 'function') bloquearFundo();
+  _elementosSDK.chamar('apiGetImpactoExclusaoElemento', id).then(function(imp) {
+    if (_elImp.id !== id) return;
+    _elImp.impacto = imp || {};
+    _elImpRender();
+  }, function(err) {
+    if (_elImp.id !== id) return;
+    document.getElementById('elimp-corpo').innerHTML = '<p style="margin:0;color:var(--ds-color-danger-fg);font-size:var(--ds-text-sm)">' + escapeHtml(err.message) + '</p>';
+  });
+}
+
+function elImpFechar() {
+  document.getElementById('modal-el-impacto').classList.add('hidden');
+  if (typeof desbloquearFundo === 'function') desbloquearFundo();
+  _elImp.id = null;
+}
+
+function _elImpPlural(n, um, varios) { return n + ' ' + (n === 1 ? um : varios); }
+
+function _elImpRender() {
+  var imp = _elImp.impacto;
+  var inds = imp.indicadores || [];
+  var cont = { APAGAR: 0, PROMOVIDO: 0, DECIDIR: 0 };
+  inds.forEach(function(i) { if (cont[i.destino] !== undefined) cont[i.destino]++; });
+  var qEl = Number(imp.qtdElementos) || 1, qRi = Number(imp.qtdRiscos) || 0;
+
+  var linha = function(icone, html, dica) {
+    return '<li class="elimp-item"><span class="material-symbols-outlined" aria-hidden="true">' + icone + '</span><span>' + html
+      + (dica ? '<span class="material-symbols-outlined elwiz-info" data-title="' + escapeHtml(dica) + '">info</span>' : '') + '</span></li>';
+  };
+  var h = '<ul class="elimp-lista">';
+  h += linha('account_tree', '<strong>' + _elImpPlural(qEl, 'elemento', 'elementos') + '</strong>' + (qEl > 1 ? ' (este e os que estão abaixo dele)' : ''));
+  if (qRi) h += linha('warning', '<strong>' + _elImpPlural(qRi, 'risco', 'riscos') + '</strong>');
+  if (cont.APAGAR) h += linha('monitoring', '<strong>' + _elImpPlural(cont.APAGAR, 'indicador', 'indicadores') + '</strong> sem resultado', 'Nunca foram medidos: vão para a lixeira junto com o elemento.');
+  if (cont.PROMOVIDO) h += linha('swap_horiz', '<strong>' + _elImpPlural(cont.PROMOVIDO, 'indicador', 'indicadores') + '</strong> continua' + (cont.PROMOVIDO === 1 ? '' : 'm') + ' em outro elemento', 'Também são aferidos em outro elemento, que passa a ser o principal. Responsáveis fora do escopo dele saem.');
+  if (cont.DECIDIR) h += linha('query_stats', '<strong>' + _elImpPlural(cont.DECIDIR, 'indicador', 'indicadores') + '</strong> com resultado lançado');
+  h += '</ul>';
+
+  if (imp.exigeDecisao) {
+    var destinos = imp.elementosDestino || [];
+    var opc = function(acao, icone, rotulo, dica, extra, desab) {
+      var sel = _elImp.acao === acao;
+      return '<label class="elimp-opcao' + (sel ? ' sel' : '') + '"' + (desab ? ' style="opacity:.5;cursor:not-allowed" data-title="Não há outro elemento ativo neste plano."' : '') + '>'
+        + '<span class="elimp-opcao-linha"><input type="radio" name="elimp-acao" value="' + acao + '"' + (sel ? ' checked' : '') + (desab ? ' disabled' : '')
+        + ' onchange="elImpEscolher(\'' + acao + '\')"><span class="material-symbols-outlined" aria-hidden="true">' + icone + '</span>'
+        + '<span>' + rotulo + '<span class="material-symbols-outlined elwiz-info" data-title="' + escapeHtml(dica) + '">info</span></span></span>'
+        + (extra || '') + '</label>';
+    };
+    h += '<div class="elimp-secao">O que fazer com ' + (cont.DECIDIR === 1 ? 'o indicador com resultado' : 'os indicadores com resultado') + '</div>';
+    h += '<div class="elimp-opcoes" role="radiogroup">'
+      + opc('MOVER', 'drive_file_move', 'Mover para outro elemento', 'Passam a ser aferidos no elemento escolhido, com metas e resultados. Responsáveis fora do escopo dele saem.',
+          '<div class="elimp-destino' + (_elImp.acao === 'MOVER' ? '' : ' hidden') + '" onclick="event.stopPropagation()"><div id="elimp-selresp-destino"></div></div>', !destinos.length)
+      + opc('SEM_VINCULO', 'link_off', 'Deixar sem vínculo', 'Continuam no plano, sem elemento e sem efeito no desempenho. Podem ser reanexados depois pela lixeira do plano.')
+      + opc('ARQUIVAR', 'inventory_2', 'Arquivar', 'Vão para a lixeira com metas e resultados e voltam se o elemento for restaurado.')
+      + '</div>';
+  }
+  document.getElementById('elimp-corpo').innerHTML = h;
+  if (imp.exigeDecisao && _elImp.acao === 'MOVER') _elImpMontarDestino();
+  _elImpAtualizarBotao();
+}
+
+function elImpEscolher(acao) {
+  _elImp.acao = acao;
+  if (acao !== 'MOVER') _elImp.destino = '';
+  document.querySelectorAll('#elimp-corpo .elimp-opcao').forEach(function(l) {
+    var inp = l.querySelector('input');
+    l.classList.toggle('sel', !!(inp && inp.value === acao));
+  });
+  var dest = document.querySelector('#elimp-corpo .elimp-destino');
+  if (dest) dest.classList.toggle('hidden', acao !== 'MOVER');
+  if (acao === 'MOVER') _elImpMontarDestino();
+  _elImpAtualizarBotao();
+}
+
+// Destino: mesmo seletor de seleção única da posição na árvore (SeletorLista, modo único)
+function _elImpMontarDestino() {
+  var cont = document.getElementById('elimp-selresp-destino');
+  if (!cont || cont.dataset.montado) return;
+  cont.dataset.montado = '1';
+  seletorDestinoElImp = null;
+  var cores = (typeof dadosDetalhados !== 'undefined' && dadosDetalhados && dadosDetalhados.coresTipo) || {};
+  var tipos = {};
+  (_elElementos || []).forEach(function(e) { tipos[String(e.id)] = e.tipo; });
+  var opcoes = (_elImp.impacto.elementosDestino || []).slice()
+    .sort(function(a, b) { return compararCodigos(a.codigo, b.codigo); })
+    .map(function(e) { var t = tipos[String(e.id)]; return { id: e.id, titulo: e.titulo, codigo: e.codigo, tipo: t, cor: cores[t] || COR_TIPO_PADRAO }; });
+  seletorDestinoElImp = SeletorLista.criar({
+    containerId: 'elimp-selresp-destino',
+    semGrupos: true,
+    unico: true,
+    getOpcoes: function() { return opcoes; },
+    getLimite: function() { return null; },
+    onChange: function() { _elImp.destino = seletorDestinoElImp.getIds()[0] || ''; _elImpAtualizarBotao(); },
+    textos: {
+      rotulo: 'Elemento de destino', icone: 'drive_file_move',
+      placeholder: 'Escolha o elemento', vazio: 'Nenhum outro elemento ativo neste plano.', vazioBusca: ' neste plano',
+      chipsAria: 'Elemento de destino', telaTitulo: 'Elemento de destino', telaBusca: 'Buscar elementos deste plano',
+      remover: 'Remover destino '
     }
-  );
+  });
+}
+
+function _elImpDecisaoValida() {
+  var imp = _elImp.impacto;
+  if (!imp) return false;
+  if (!imp.exigeDecisao) return true;
+  if (_elImp.acao === 'MOVER') return !!_elImp.destino;
+  return _elImp.acao === 'SEM_VINCULO' || _elImp.acao === 'ARQUIVAR';
+}
+function _elImpAtualizarBotao() {
+  var b = document.getElementById('elimp-confirmar');
+  if (b) b.disabled = !_elImpDecisaoValida();
+}
+
+function elImpConfirmar() {
+  if (!_elImpDecisaoValida()) return;
+  var id = _elImp.id, imp = _elImp.impacto;
+  var args = ['apiExcluirElemento', id];
+  if (imp.exigeDecisao) {
+    var decisao = { acao: _elImp.acao };
+    if (_elImp.acao === 'MOVER') decisao.idElementoDestino = _elImp.destino;
+    args.push(decisao);
+  }
+  elImpFechar();
+  mostrarLoader();
+  _elementosSDK.chamar.apply(_elementosSDK, args).then(function() {
+    esconderLoader();
+    atualizarConteudoPlano();
+  }, function(err) {
+    esconderLoader();
+    showMessage('error', 'Erro', escapeHtml(err.message));
+  });
 }
 
 function prepararNovoFilho(idPai) {

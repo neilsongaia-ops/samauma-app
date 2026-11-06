@@ -4080,8 +4080,11 @@ function _plwConteudo(kind, filtro) {
     return !nq2 || _plwNorm(u.sigla).indexOf(nq2) > -1 || _plwNorm(u.nome).indexOf(nq2) > -1;
   });
   if (lotacao) uns.sort(function(a, b) { return (String(b.id) === lotacao) - (String(a.id) === lotacao); });
+  // Servidor responsável: lotação de quem indica + subunidades, salvo com RESPONSAVEL_PLANO_QUALQUER_SERVIDOR ligada
+  var escopoSrv = uiEscopoRespIdsUnidades(cacheUnidadesPlano, 'RESPONSAVEL_PLANO_QUALQUER_SERVIDOR');
   var srv = cacheUsuariosPlano.filter(function(u) {
-    if (comp && comp.indexOf(String(u.idUnidadeLotacao)) < 0) return false;
+    if (escopoSrv) { if (!escopoSrv.has(String(u.idUnidadeLotacao))) return false; }
+    else if (comp && comp.indexOf(String(u.idUnidadeLotacao)) < 0) return false;
     if (kind === 'adic' && principal === 'USER:' + u.id) return false;
     return !nq2 || _plwNorm(u.nome).indexOf(nq2) > -1 || String(u.siape || '').indexOf(nq2) > -1;
   });
@@ -4392,7 +4395,7 @@ function prepararDadosPlanoResp(onReady) {
   busca.placeholder = 'Carregando unidades e servidores...';
   google.script.run
     .withSuccessHandler(function(lista) {
-      cacheUnidadesPlano = (lista || []).map(function(u) { return { id: String(u.id).trim(), nome: u.nome, sigla: u.sigla }; });
+      cacheUnidadesPlano = (lista || []).map(function(u) { return { id: String(u.id).trim(), nome: u.nome, sigla: u.sigla, idPai: u.idPai ? String(u.idPai).trim() : null }; });
       finalizar();
     })
     .withFailureHandler(function(err) {
@@ -7372,6 +7375,467 @@ function _cfgLinhaHTML(item, lista, viol) {
 }
 </script>
 
+    <!-- ARQUIVO: components_lixeira_plano.html
+     LIXEIRA DE ITENS DO PLANO (docs/regras_negocio_planos.md §11.2) — aba "Lixeira" do painel lateral do
+     detalhe do plano (#detp-panel, ao lado de Detalhes/Atividade). Também abre pelo menu "Mais opções".
+     Dados: apiGetLixeiraPlano(idPlano) → { elementos, indicadores, riscos, metas, semVinculo }.
+     Ações (só com plano editável — planoPermiteEdicao()): Restaurar (apiRestaurarItemPlano) e, para indicador
+     sem vínculo, Reanexar (apiReanexarIndicador). O painel tem 380px: a lista já é galeria de cards
+     (docs/design_system.md "Listas e tabelas no mobile viram galeria de cards"), ações só no ⋮.
+     Nomes globais com prefixo "lxp"/"_lxp". -->
+
+<div id="modal-lxp-reanexar" class="modal-overlay hidden" data-fechar="lxpFecharReanexar" onclick="if(event.target===this) window[this.dataset.fechar]()">
+  <div class="modal-card" style="max-width: 460px;" role="dialog" aria-modal="true" aria-labelledby="lxp-reanexar-titulo">
+    <div class="modal-header">
+      <div style="min-width:0">
+        <h3 id="lxp-reanexar-titulo">Reanexar indicador<span class="material-symbols-outlined lxp-info" data-title="Volta a ser aferido no elemento escolhido e a contar no desempenho. Responsáveis fora do escopo dele saem.">info</span></h3>
+        <p id="lxp-reanexar-nome" class="lxp-sub"></p>
+      </div>
+      <button class="btn-icon-close" onclick="lxpFecharReanexar()" data-title="Fechar" aria-label="Fechar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body"><div id="lxp-reanexar-sel"></div></div>
+    <div class="modal-footer">
+      <button type="button" class="ds-btn ds-btn--ghost" onclick="lxpFecharReanexar()">Cancelar</button>
+      <button type="button" class="ds-btn ds-btn--primary" id="lxp-reanexar-ok" onclick="lxpConfirmarReanexar()" disabled>
+        <span class="material-symbols-outlined">link</span>Reanexar
+      </button>
+    </div>
+  </div>
+</div>
+
+<style>
+.lxp-info { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; margin-left: 4px; }
+.lxp-sub { margin: 2px 0 0; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lxp-topo { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.lxp-grupo + .lxp-grupo { margin-top: 20px; }
+.lxp-grupo-titulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ds-color-text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
+.lxp-grupo-qtd { font-weight: 600; color: var(--ds-color-text-muted); }
+.lxp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 8px; }
+.lxp-card {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "tag acoes" "titulo titulo" "det det";
+  align-items: center; gap: 2px 8px; padding: 8px 6px 10px 12px;
+  background: var(--ds-glass-bg-strong); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl);
+}
+.lxp-card-tag { grid-area: tag; justify-self: start; }
+.lxp-card-acoes { grid-area: acoes; }
+.lxp-card-titulo { grid-area: titulo; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); color: var(--ds-color-text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 6px; }
+.lxp-card-det { grid-area: det; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); padding-right: 6px; }
+.lxp-card-det > span { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }
+.lxp-card-det .material-symbols-outlined { font-size: 14px; }
+.lxp-vazio { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 32px 8px; text-align: center; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
+.lxp-vazio .material-symbols-outlined { font-size: 32px; }
+.lxp-erro { font-size: var(--ds-text-sm); color: var(--ds-color-danger-fg); }
+body.high-contrast .lxp-card { background: #000; border-color: #fff; }
+</style>
+
+<script>
+var _lxp = { idPlano: null, dados: null, carregando: false, erro: '', reanexar: null };
+var seletorReanexarLxp = null;
+
+var LXP_TIPOS = [
+  { chave: 'elementos',   tipo: 'ELEMENTO',  rotulo: 'Elementos',   icone: 'account_tree' },
+  { chave: 'indicadores', tipo: 'INDICADOR', rotulo: 'Indicadores', icone: 'monitoring' },
+  { chave: 'metas',       tipo: 'META',      rotulo: 'Metas',       icone: 'flag' },
+  { chave: 'riscos',      tipo: 'RISCO',     rotulo: 'Riscos',      icone: 'warning' }
+];
+
+// Abre o painel lateral direto na aba Lixeira (menu "Mais opções" do cabeçalho)
+function lxpAbrirNoPainel() {
+  if (typeof window._appNotificarPainelFechado === 'function') window._appNotificarPainelFechado();
+  if (typeof _detpRenderDetalhes === 'function') _detpRenderDetalhes();
+  abrirPainelDetalhes('detalhes');
+  _detpMudarAba('lixeira');
+}
+
+function lxpCarregar(forcar) {
+  var p = dadosDetalhados && dadosDetalhados.plano;
+  if (!p) return;
+  if (!forcar && _lxp.idPlano === String(p.id) && (_lxp.dados || _lxp.carregando)) { lxpRender(); return; }
+  var id = String(p.id);
+  _lxp = { idPlano: id, dados: null, carregando: true, erro: '', reanexar: null };
+  lxpRender();
+  google.script.run
+    .withSuccessHandler(function(d) {
+      if (_lxp.idPlano !== id) return;
+      _lxp.carregando = false; _lxp.dados = d || {};
+      lxpRender();
+    })
+    .withFailureHandler(function(err) {
+      if (_lxp.idPlano !== id) return;
+      _lxp.carregando = false; _lxp.erro = (err && err.message) || String(err);
+      lxpRender();
+    })
+    .apiGetLixeiraPlano(id);
+}
+
+// Ao trocar de plano, a lixeira anterior não pode aparecer
+function lxpInvalidar() { _lxp = { idPlano: null, dados: null, carregando: false, erro: '', reanexar: null }; }
+
+function _lxpData(v) {
+  if (v === null || v === undefined || v === '') return '';
+  var d = typeof v === 'number' ? new Date(v) : new Date(String(v));
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString('pt-BR');
+}
+function _lxpRotulo(it) { return it.titulo || it.nome || it.periodo || it.rotulo || ''; }
+function _lxpPlural(n, um, varios) { return n + ' ' + (n === 1 ? um : varios); }
+
+function _lxpCard(grupo, it, podeEditar) {
+  var rotulo = _lxpRotulo(it);
+  var det = [];
+  if (it.excluidoEm || it.excluidoPor) {
+    var quem = it.excluidoPor ? nomeRespExibicao(it.excluidoPor, 'USER') : '';
+    det.push('<span' + (it.excluidoPor ? ' data-title="Excluído por ' + escapeHtml(it.excluidoPor) + '"' : '') + '><span class="material-symbols-outlined" aria-hidden="true">delete</span>'
+      + escapeHtml(_lxpData(it.excluidoEm)) + (quem ? ' · ' + escapeHtml(quem) : '') + '</span>');
+  }
+  if (grupo.tipo === 'META' && it.indicador) det.push('<span data-title="Indicador"><span class="material-symbols-outlined" aria-hidden="true">monitoring</span>' + escapeHtml(it.indicador) + '</span>');
+  if (grupo.tipo === 'INDICADOR') {
+    var nm = Number(it.metas) || 0, nr = Number(it.resultados) || 0;
+    if (nm) det.push('<span>' + _lxpPlural(nm, 'meta', 'metas') + '</span>');
+    if (nr) det.push('<span>' + _lxpPlural(nr, 'resultado', 'resultados') + '</span>');
+  }
+  var idAcoes = 'lxp-' + grupo.tipo + '-' + it.id;
+  var acoes = acoesLinhaHTML(idAcoes, [
+    { icone: 'restore_from_trash', rotulo: 'Restaurar', onclick: "lxpRestaurar('" + grupo.tipo + "','" + escapeJsAttr(it.id) + "')", principal: true, oculto: !podeEditar }
+  ], { maxDireto: 0 });
+  return '<div class="lxp-card">'
+    + '<span class="lxp-card-tag ds-badge ds-badge--neutral">' + escapeHtml(grupo.rotulo.replace(/s$/, '')) + '</span>'
+    + '<span class="lxp-card-acoes">' + acoes + '</span>'
+    + '<div class="lxp-card-titulo" data-title="' + escapeHtml(rotulo) + '">' + escapeHtml(rotulo) + '</div>'
+    + (det.length ? '<div class="lxp-card-det">' + det.join('') + '</div>' : '')
+    + '</div>';
+}
+
+function _lxpCardSemVinculo(it, podeEditar) {
+  var nome = it.nome || it.titulo || '';
+  var det = [];
+  var nm = Number(it.metas) || 0, nr = Number(it.resultados) || 0;
+  if (nm) det.push('<span>' + _lxpPlural(nm, 'meta', 'metas') + '</span>');
+  if (nr) det.push('<span>' + _lxpPlural(nr, 'resultado', 'resultados') + '</span>');
+  var acoes = acoesLinhaHTML('lxp-sv-' + it.id, [
+    { icone: 'link', rotulo: 'Reanexar a um elemento', onclick: "lxpAbrirReanexar('" + escapeJsAttr(it.id) + "')", principal: true, oculto: !podeEditar }
+  ], { maxDireto: 0 });
+  return '<div class="lxp-card">'
+    + '<span class="lxp-card-tag ds-badge ds-badge--warning"><span class="material-symbols-outlined" aria-hidden="true">link_off</span>Sem vínculo</span>'
+    + '<span class="lxp-card-acoes">' + acoes + '</span>'
+    + '<div class="lxp-card-titulo" data-title="' + escapeHtml(nome) + '">' + escapeHtml(nome) + '</div>'
+    + (det.length ? '<div class="lxp-card-det">' + det.join('') + '</div>' : '')
+    + '</div>';
+}
+
+function lxpRender() {
+  var cont = document.getElementById('detp-view-lixeira');
+  if (!cont) return;
+  if (_lxp.carregando && !_lxp.dados) { cont.innerHTML = spinnerListaHTML('Carregando lixeira…'); return; }
+  if (_lxp.erro) { cont.innerHTML = '<p class="lxp-erro">' + escapeHtml(_lxp.erro) + '</p>'; return; }
+  var d = _lxp.dados || {};
+  var podeEditar = typeof planoPermiteEdicao === 'function' && planoPermiteEdicao();
+  var html = '';
+  var sv = d.semVinculo || [];
+  if (sv.length) {
+    html += '<div class="lxp-grupo"><div class="lxp-grupo-titulo">Indicadores sem vínculo <span class="lxp-grupo-qtd">· ' + sv.length + '</span>'
+      + '<span class="material-symbols-outlined lxp-info" data-title="Continuam no plano, sem elemento e sem efeito no desempenho, até serem reanexados.">info</span></div>'
+      + '<div class="lxp-cards">' + sv.map(function(it) { return _lxpCardSemVinculo(it, podeEditar); }).join('') + '</div></div>';
+  }
+  LXP_TIPOS.forEach(function(g) {
+    var lista = d[g.chave] || [];
+    if (!lista.length) return;
+    html += '<div class="lxp-grupo"><div class="lxp-grupo-titulo">' + g.rotulo + ' <span class="lxp-grupo-qtd">· ' + lista.length + '</span></div>'
+      + '<div class="lxp-cards">' + lista.map(function(it) { return _lxpCard(g, it, podeEditar); }).join('') + '</div></div>';
+  });
+  cont.innerHTML = html || '<div class="lxp-vazio"><span class="material-symbols-outlined" aria-hidden="true">delete_sweep</span>A lixeira está vazia</div>';
+}
+
+function lxpRestaurar(tipo, id) {
+  var idPlano = _lxp.idPlano;
+  mostrarLoader();
+  google.script.run
+    .withSuccessHandler(function(res) {
+      esconderLoader();
+      var qtd = res && Number(res.qtd);
+      if (qtd > 1) showMessage('success', 'Restaurado', 'Voltaram ' + qtd + ' itens que tinham saído juntos.');
+      lxpCarregar(true);
+      if (typeof carregarDetalhesPlano === 'function') carregarDetalhesPlano(idPlano, _metaOtimistaDoAtual());
+    })
+    .withFailureHandler(function(err) {
+      esconderLoader();
+      showMessage('error', 'Não foi possível restaurar', escapeHtml(err.message));
+    })
+    .apiRestaurarItemPlano(idPlano, tipo, id);
+}
+
+// --- Reanexar indicador sem vínculo (escolhe um elemento ativo do plano) ---
+function lxpAbrirReanexar(idIndicador) {
+  var it = ((_lxp.dados && _lxp.dados.semVinculo) || []).find(function(x) { return String(x.id) === String(idIndicador); });
+  _lxp.reanexar = { id: idIndicador, destino: '' };
+  document.getElementById('lxp-reanexar-nome').textContent = it ? (it.nome || '') : '';
+  document.getElementById('lxp-reanexar-ok').disabled = true;
+  var cont = document.getElementById('lxp-reanexar-sel');
+  cont.innerHTML = '';
+  var cores = (dadosDetalhados && dadosDetalhados.coresTipo) || {};
+  var opcoes = ((dadosDetalhados && dadosDetalhados.elementos) || [])
+    .filter(function(e) { return e.status !== 'Cancelado'; })
+    .slice().sort(function(a, b) { return compararCodigos(a.codigo, b.codigo); })
+    .map(function(e) { return { id: e.id, titulo: e.titulo, codigo: e.codigo, tipo: e.tipo, cor: cores[e.tipo] || (typeof COR_TIPO_PADRAO !== 'undefined' ? COR_TIPO_PADRAO : undefined) }; });
+  seletorReanexarLxp = SeletorLista.criar({
+    containerId: 'lxp-reanexar-sel',
+    semGrupos: true,
+    filtrosTipo: true,
+    unico: true,
+    getOpcoes: function() { return opcoes; },
+    getLimite: function() { return null; },
+    onChange: function() {
+      _lxp.reanexar.destino = seletorReanexarLxp.getIds()[0] || '';
+      document.getElementById('lxp-reanexar-ok').disabled = !_lxp.reanexar.destino;
+    },
+    textos: {
+      rotulo: 'Elemento', icone: 'account_tree',
+      placeholder: 'Escolha o elemento', vazio: 'Nenhum elemento ativo neste plano.', vazioBusca: ' neste plano',
+      chipsAria: 'Elemento escolhido', telaTitulo: 'Elemento', telaBusca: 'Buscar elementos deste plano',
+      remover: 'Remover '
+    }
+  });
+  document.getElementById('modal-lxp-reanexar').classList.remove('hidden');
+  if (typeof bloquearFundo === 'function') bloquearFundo();
+}
+
+function lxpFecharReanexar() {
+  document.getElementById('modal-lxp-reanexar').classList.add('hidden');
+  if (typeof desbloquearFundo === 'function') desbloquearFundo();
+}
+
+function lxpConfirmarReanexar() {
+  var r = _lxp.reanexar;
+  if (!r || !r.destino) return;
+  var idPlano = _lxp.idPlano;
+  lxpFecharReanexar();
+  mostrarLoader();
+  google.script.run
+    .withSuccessHandler(function(res) {
+      esconderLoader();
+      var n = res && Number(res.responsaveisRemovidos);
+      if (n > 0) showMessage('warning', 'Indicador reanexado', (n === 1 ? '1 responsável saiu' : n + ' responsáveis saíram') + ' por não caber no escopo do elemento.');
+      lxpCarregar(true);
+      if (typeof carregarDetalhesPlano === 'function') carregarDetalhesPlano(idPlano, _metaOtimistaDoAtual());
+    })
+    .withFailureHandler(function(err) {
+      esconderLoader();
+      showMessage('error', 'Não foi possível reanexar', escapeHtml(err.message));
+    })
+    .apiReanexarIndicador(r.id, r.destino);
+}
+</script>
+
+    <!-- ARQUIVO: components_mudancas_revisao.html
+     RELATÓRIO "O QUE MUDOU" NA REVISÃO (docs/regras_negocio_planos.md §11.3) — faixa no topo do detalhe do plano
+     (mesmo lugar e padrão do #solicitacao-banner), visível com o plano "Em Revisão" ou "Em Análise" de uma revisão,
+     para quem conduz e para quem analisa. A faixa mostra o resumo; "Ver mudanças" abre o relatório em modal.
+     Dados: apiGetMudancasRevisao(idPlano, idRevisao?). Nomes de campo (coluna) → rótulo pt-BR em MRV_CAMPOS.
+     Nomes globais com prefixo "mrv"/"_mrv". -->
+
+<div id="modal-mrv" class="modal-overlay hidden" data-fechar="mrvFechar" onclick="if(event.target===this) window[this.dataset.fechar]()">
+  <div class="modal-card" style="max-width: 640px;" role="dialog" aria-modal="true" aria-labelledby="mrv-titulo">
+    <div class="modal-header">
+      <div style="min-width:0">
+        <h3 id="mrv-titulo">O que mudou na revisão</h3>
+        <p id="mrv-abertura" class="mrv-sub"></p>
+      </div>
+      <button class="btn-icon-close" onclick="mrvFechar()" data-title="Fechar" aria-label="Fechar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body" id="mrv-corpo" style="max-height: min(70vh, 640px); overflow-y: auto;"></div>
+    <div class="modal-footer">
+      <button type="button" class="ds-btn ds-btn--ghost" onclick="mrvFechar()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<style>
+#mrv-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px;
+  padding: 10px 14px; border-radius: var(--ds-r-xl); background: var(--ds-status-revisao-bg); border: 1px solid var(--ds-glass-border); }
+#mrv-banner.hidden { display: none; }
+.mrv-banner-txt { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
+.mrv-banner-txt > .material-symbols-outlined { color: var(--ds-status-revisao-fg); }
+.mrv-banner-motivo { color: var(--ds-color-text-muted); }
+.mrv-sub { margin: 2px 0 0; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); }
+.mrv-resumo { display: flex; flex-wrap: wrap; gap: 6px; }
+.mrv-resumo .ds-badge { font-weight: 600; }
+.mrv-grupo + .mrv-grupo { margin-top: 20px; }
+.mrv-grupo-titulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ds-color-text-muted); margin-bottom: 6px; }
+.mrv-item { padding: 8px 0; border-bottom: 1px solid var(--ds-glass-border); }
+.mrv-item:last-child { border-bottom: none; }
+.mrv-item-cab { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.mrv-item-rotulo { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.mrv-item-cab .ds-badge { flex-shrink: 0; }
+.mrv-campos { display: grid; grid-template-columns: minmax(110px, max-content) minmax(0, 1fr); gap: 4px 12px; margin: 6px 0 0; font-size: var(--ds-text-sm); }
+.mrv-campo { color: var(--ds-color-text-muted); }
+.mrv-depara { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; min-width: 0; overflow-wrap: anywhere; }
+.mrv-de { color: var(--ds-color-text-muted); text-decoration: line-through; }
+.mrv-para { color: var(--ds-color-text); font-weight: var(--ds-weight-medium); }
+.mrv-seta { font-size: 14px; color: var(--ds-color-text-muted); align-self: center; }
+.mrv-vazio { padding: 24px 0; text-align: center; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
+@media (max-width: 768px) { .mrv-campos { grid-template-columns: minmax(0, 1fr); gap: 0 0; } .mrv-campo { margin-top: 6px; } }
+</style>
+
+<script>
+var _mrv = { idPlano: null, dados: null, carregando: false, erro: '' };
+
+var MRV_TIPOS = [
+  { tipo: 'ELEMENTO',  rotulo: 'Elementos' },
+  { tipo: 'INDICADOR', rotulo: 'Indicadores' },
+  { tipo: 'META',      rotulo: 'Metas' },
+  { tipo: 'RISCO',     rotulo: 'Riscos' }
+];
+
+// Coluna → rótulo amigável. Coluna desconhecida: separa o CamelCase ("DataFimPrevisto" → "Data fim previsto").
+var MRV_CAMPOS = {
+  Titulo: 'Título', Nome: 'Nome', Descricao: 'Descrição', Codigo: 'Código', Tipo: 'Tipo', Status: 'Status',
+  IdElementoPai: 'Elemento superior', IdElemento: 'Elemento', IdIndicador: 'Indicador', Peso: 'Peso',
+  CustoEstimado: 'Custo estimado', CustoRealizado: 'Custo realizado',
+  DataInicioPrevisto: 'Início previsto', DataFimPrevisto: 'Fim previsto', DataInicio: 'Início', DataFim: 'Fim',
+  DataInicioReal: 'Início real', DataFimReal: 'Fim real', Prazo: 'Prazo',
+  Responsaveis: 'Responsáveis', Responsavel: 'Responsável', IdResponsavel: 'Responsável',
+  Formula: 'Fórmula', UnidadeMedida: 'Unidade de medida', Unidade: 'Unidade', Polaridade: 'Polaridade',
+  Periodicidade: 'Periodicidade', Fonte: 'Fonte', LinhaBase: 'Linha de base', Acumulado: 'Acumulado',
+  Valor: 'Valor', ValorMeta: 'Valor da meta', Meta: 'Meta', Periodo: 'Período', Ano: 'Ano',
+  Probabilidade: 'Probabilidade', Impacto: 'Impacto', Nivel: 'Nível', NivelRisco: 'Nível do risco',
+  Natureza: 'Natureza', Categoria: 'Categoria', Causa: 'Causa', Consequencia: 'Consequência', Resposta: 'Resposta',
+  Observacao: 'Observação', Observacoes: 'Observações', Justificativa: 'Justificativa', Como: 'Como', PorQue: 'Por quê', Onde: 'Onde'
+};
+function _mrvCampo(c) {
+  if (MRV_CAMPOS[c]) return MRV_CAMPOS[c];
+  var s = String(c || '').replace(/^Id(?=[A-Z])/, '').replace(/([a-zà-ú])([A-Z])/g, '$1 $2').toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function _mrvValor(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  if (Array.isArray(v)) return v.length ? v.join(', ') : '—';
+  if (typeof v === 'boolean') return v ? 'Sim' : 'Não';
+  var s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}(T|$)/.test(s)) return _isoParaBR(s);
+  return s;
+}
+
+function _mrvVisivel(p) {
+  if (!p) return false;
+  return p.status === 'Em Revisão' || (p.status === 'Em Análise' && !!(p.revisao && p.revisao.emAnalise));
+}
+
+// Chamado em renderizarCabecalho do detalhe (junto com renderizarSolicitacaoBanner)
+function mrvRenderBanner(plano) {
+  var b = document.getElementById('mrv-banner');
+  if (!b) return;
+  if (!_mrvVisivel(plano)) { b.classList.add('hidden'); return; }
+  b.classList.remove('hidden');
+  var id = String(plano.id);
+  if (_mrv.idPlano !== id) mrvCarregar(id);
+  else _mrvPintarBanner();
+}
+
+function mrvCarregar(id) {
+  _mrv = { idPlano: id, dados: null, carregando: true, erro: '' };
+  _mrvPintarBanner();
+  google.script.run
+    .withSuccessHandler(function(d) {
+      if (_mrv.idPlano !== id) return;
+      _mrv.carregando = false; _mrv.dados = d || {};
+      _mrvPintarBanner();
+      if (!document.getElementById('modal-mrv').classList.contains('hidden')) _mrvRenderModal();
+    })
+    .withFailureHandler(function(err) {
+      if (_mrv.idPlano !== id) return;
+      _mrv.carregando = false; _mrv.erro = (err && err.message) || String(err);
+      _mrvPintarBanner();
+    })
+    .apiGetMudancasRevisao(id);
+}
+function mrvInvalidar() { _mrv = { idPlano: null, dados: null, carregando: false, erro: '' }; }
+
+function _mrvContagens(m) {
+  return { add: (m.adicionados || []).length, rem: (m.removidos || []).length, alt: (m.alterados || []).length };
+}
+function _mrvResumoHTML(m) {
+  var c = _mrvContagens(m), h = [];
+  if (c.add) h.push('<span class="ds-badge ds-badge--success" data-title="Acrescentados">+' + c.add + '</span>');
+  if (c.rem) h.push('<span class="ds-badge ds-badge--danger" data-title="Removidos">−' + c.rem + '</span>');
+  if (c.alt) h.push('<span class="ds-badge ds-badge--info" data-title="Alterados">' + c.alt + ' alterado' + (c.alt === 1 ? '' : 's') + '</span>');
+  return h.join('');
+}
+
+function _mrvPintarBanner() {
+  var b = document.getElementById('mrv-banner');
+  if (!b) return;
+  var txt = '<div class="mrv-banner-txt"><span class="material-symbols-outlined" aria-hidden="true">difference</span><strong>O que mudou na revisão</strong>';
+  var acao = '';
+  if (_mrv.carregando) {
+    txt += '<span class="lista-spinner" style="width:16px;height:16px" aria-label="Carregando"></span>';
+  } else if (_mrv.erro) {
+    txt += '<span class="mrv-banner-motivo">' + escapeHtml(_mrv.erro) + '</span>';
+  } else if (_mrv.dados && _mrv.dados.disponivel === false) {
+    txt += '<span class="mrv-banner-motivo">' + escapeHtml(_mrv.dados.motivo || 'Indisponível para esta revisão.') + '</span>';
+  } else if (_mrv.dados) {
+    var m = _mrv.dados.mudancas || {};
+    var total = Number(m.total) || 0;
+    txt += total ? '<span class="mrv-resumo">' + _mrvResumoHTML(m) + '</span>' : '<span class="mrv-banner-motivo">Nenhuma mudança até agora</span>';
+    if (total) acao = '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="mrvAbrir()"><span class="material-symbols-outlined">visibility</span>Ver mudanças</button>';
+  }
+  b.innerHTML = txt + '</div>' + acao;
+}
+
+function mrvAbrir() {
+  _mrvRenderModal();
+  document.getElementById('modal-mrv').classList.remove('hidden');
+  if (typeof bloquearFundo === 'function') bloquearFundo();
+}
+function mrvFechar() {
+  document.getElementById('modal-mrv').classList.add('hidden');
+  if (typeof desbloquearFundo === 'function') desbloquearFundo();
+}
+
+function _mrvRenderModal() {
+  var corpo = document.getElementById('mrv-corpo');
+  var ab = document.getElementById('mrv-abertura');
+  if (!_mrv.dados) { corpo.innerHTML = spinnerListaHTML('Comparando com o início da revisão…'); ab.textContent = ''; return; }
+  var d = _mrv.dados, m = d.mudancas || {};
+  ab.textContent = d.abertura ? 'Desde a abertura, em ' + _mrvValor(d.abertura) : '';
+  var itens = [];
+  (m.adicionados || []).forEach(function(x) { itens.push({ k: 'add', x: x }); });
+  (m.removidos || []).forEach(function(x) { itens.push({ k: 'rem', x: x }); });
+  (m.alterados || []).forEach(function(x) { itens.push({ k: 'alt', x: x }); });
+  if (!itens.length) { corpo.innerHTML = '<div class="mrv-vazio">Nenhuma mudança até agora</div>'; return; }
+  var BADGE = {
+    add: '<span class="ds-badge ds-badge--success">Acrescentado</span>',
+    rem: '<span class="ds-badge ds-badge--danger">Removido</span>',
+    alt: '<span class="ds-badge ds-badge--info">Alterado</span>'
+  };
+  var ORDEM = { add: 0, alt: 1, rem: 2 };
+  var html = '<div class="mrv-resumo" style="margin-bottom:16px">' + _mrvResumoHTML(m) + '</div>';
+  MRV_TIPOS.forEach(function(t) {
+    var doTipo = itens.filter(function(i) { return i.x.tipo === t.tipo; })
+      .sort(function(a, b) { return ORDEM[a.k] - ORDEM[b.k]; });
+    if (!doTipo.length) return;
+    html += '<div class="mrv-grupo"><div class="mrv-grupo-titulo">' + t.rotulo + '</div>' + doTipo.map(function(i) {
+      var rot = i.x.rotulo || '';
+      var campos = i.k === 'alt' && (i.x.campos || []).length
+        ? '<div class="mrv-campos">' + i.x.campos.map(function(c) {
+            return '<span class="mrv-campo">' + escapeHtml(_mrvCampo(c.campo)) + '</span>'
+              + '<span class="mrv-depara"><span class="mrv-de">' + escapeHtml(_mrvValor(c.de)) + '</span>'
+              + '<span class="material-symbols-outlined mrv-seta" aria-label="para">arrow_forward</span>'
+              + '<span class="mrv-para">' + escapeHtml(_mrvValor(c.para)) + '</span></span>';
+          }).join('') + '</div>'
+        : '';
+      return '<div class="mrv-item"><div class="mrv-item-cab">' + BADGE[i.k]
+        + '<span class="mrv-item-rotulo" data-title="' + escapeHtml(rot) + '">' + escapeHtml(rot) + '</span></div>' + campos + '</div>';
+    }).join('') + '</div>';
+  });
+  corpo.innerHTML = html;
+}
+</script>
+
     <!-- ARQUIVO: components_acoes_linha.html -->
 <!-- AÇÕES DE LINHA/ITEM (padrão único do sistema): 2–3 ações diretas na linha + ícone ⋮ (três pontos)
      que abre um menu com as demais. Substitui a antiga toolbar recolhível por linha (.det-toolbar com
@@ -8197,6 +8661,33 @@ function _isoParaBR(iso) {
   if (!iso) return '';
   var p = String(iso).split('T')[0].split('-');
   return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : String(iso);
+}
+
+// --- Escopo de responsável (espelho do servidor, só para não oferecer opção que será recusada) ---
+// Padrão: unidade de lotação de quem indica + subunidades. Liberado (qualquer servidor ativo) quando a chave
+// global indicada está ligada. As chaves chegam em usuarioLogado.chavesResponsavel (
+//   { RESPONSAVEL_PLANO_QUALQUER_SERVIDOR: bool, NEGOCIADO_RESPONSAVEIS_LIVRES: bool }).
+// Enquanto o servidor não mandar a chave (undefined), não filtra: o servidor revalida de qualquer jeito.
+function uiEscopoRespLiberado(chave) {
+  var u = (typeof usuarioLogado !== 'undefined') ? usuarioLogado : null;
+  var ch = u && u.chavesResponsavel;
+  if (!ch || typeof ch[chave] !== 'boolean') return true;
+  return ch[chave];
+}
+// Ids (string) das unidades no escopo: lotação + descendentes (via idPai). null = sem filtro.
+function uiEscopoRespIdsUnidades(unidades, chave) {
+  if (uiEscopoRespLiberado(chave)) return null;
+  var u = (typeof usuarioLogado !== 'undefined') ? usuarioLogado : null;
+  var raiz = u && u.idUnidadeLotacao ? String(u.idUnidadeLotacao) : '';
+  if (!raiz) return null;
+  var filhos = {};
+  (unidades || []).forEach(function(x) {
+    var pai = x.idPai ? String(x.idPai) : '';
+    if (pai && pai !== String(x.id)) (filhos[pai] = filhos[pai] || []).push(String(x.id));
+  });
+  var ids = new Set([raiz]), pilha = [raiz];
+  while (pilha.length) (filhos[pilha.pop()] || []).forEach(function(f) { if (!ids.has(f)) { ids.add(f); pilha.push(f); } });
+  return ids;
 }
 </script>
 
@@ -10843,6 +11334,9 @@ function solicitarExclusao(id, nomePlano) {
     </div>
   </div>
 
+  <!-- Faixa "O que mudou na revisão" (plano Em Revisão / Em Análise de revisão): components_mudancas_revisao.html -->
+  <div id="mrv-banner" class="hidden" role="status"></div>
+
   <!-- Hero aberto: só título + status + avaliação.
        Em repouso, título e botão/ações (div logo abaixo, sobreposta a esta linha)
        ficam lado a lado. Ao rolar, o título some; as ações sobem até o topo e param;
@@ -10917,6 +11411,7 @@ function solicitarExclusao(id, nomePlano) {
     <div class="detp-tabs">
       <button type="button" class="detp-tab active" id="detp-tab-detalhes" onclick="_detpMudarAba('detalhes')">Detalhes</button>
       <button type="button" class="detp-tab" id="detp-tab-atividade" onclick="_detpMudarAba('atividade')">Atividade</button>
+      <button type="button" class="detp-tab" id="detp-tab-lixeira" onclick="_detpMudarAba('lixeira')">Lixeira</button>
       <button type="button" class="ds-icon-action ds-icon-action--sm" onclick="abrirConfigPlanoCfg()"
               data-title="Configurações do plano" aria-label="Configurações do plano" style="margin-left:auto">
         <span class="material-symbols-outlined">settings</span>
@@ -10929,6 +11424,7 @@ function solicitarExclusao(id, nomePlano) {
     <div class="detp-body">
       <div id="detp-view-detalhes" class="detp-view"><!-- injetado via JS (_detpRenderDetalhes) --></div>
       <div id="detp-view-atividade" class="detp-view hidden"><!-- injetado via JS (_detpRenderAtividade) --></div>
+      <div id="detp-view-lixeira" class="detp-view hidden"><!-- injetado via JS (lxpRender, components_lixeira_plano.html) --></div>
     </div>
     <!-- Corpo de app instalável (ver docs/arquitetura_apps_modulares.md, SDK
          abrirPainel/fecharPainel): quando um app assume o painel, ele é dono de
@@ -12735,6 +13231,7 @@ body.high-contrast .el-chip-meta {
 #page-plano-detalhe > *:last-child { margin-bottom: 0; }
 
 #solicitacao-banner { margin-bottom: 16px !important; border-radius: var(--ds-r-xl) !important; }
+#detp-tab-lixeira { white-space: nowrap; }
 
 /* Hero aberto: título + status, rola normalmente com a página */
 #page-plano-detalhe .detalhe-hero {
@@ -13451,6 +13948,10 @@ function limparTelaDetalhes(trocouDePlano, manterAba) {
   if (badgeAv) { badgeAv.classList.add('hidden'); badgeAv.innerHTML = ''; }
   const banner = document.getElementById('solicitacao-banner');
   if (banner) banner.classList.add('hidden');
+  const mrvBanner = document.getElementById('mrv-banner');
+  if (mrvBanner) mrvBanner.classList.add('hidden');
+  if (typeof mrvInvalidar === 'function') mrvInvalidar();
+  if (typeof lxpInvalidar === 'function') lxpInvalidar();
   const btnNovoItem = document.getElementById('btn-novo-item');
   if (btnNovoItem) btnNovoItem.classList.add('hidden');
 
@@ -13684,6 +14185,9 @@ function renderizarHeader() {
   // depois que o app injeta, então não dá pra mexer nele direto daqui.
 
   renderizarSolicitacaoBanner(p);
+  if (typeof mrvRenderBanner === 'function') mrvRenderBanner(p);
+  // Lixeira aberta no painel: recarrega (restaurar/excluir em outra aba muda o conteúdo)
+  if (_detpAbaAtiva === 'lixeira' && typeof lxpCarregar === 'function') lxpCarregar(true);
   renderizarBotoesTramite(p);
   _detpRenderDetalhes(); // Painel de detalhes (#detp-panel): mantém sempre atualizado, aberto ou não
   _detPrepararListenersSticky();
@@ -14215,6 +14719,7 @@ function _detAbrirMenuAcoes(ev) {
     principal.push({ icone: 'edit_note', label: 'Solicitar revisão', onclick: 'abrirModalSolicitarRevisao()' });
   }
   if (principal.length) grupos.push({ itens: principal });
+  if (p.status !== 'Excluído') grupos.push({ itens: [{ icone: 'delete_sweep', label: 'Lixeira do plano', onclick: 'lxpAbrirNoPainel()' }] });
 
   const temElem = dadosDetalhados.elementos && dadosDetalhados.elementos.length > 0;
   const temInd = (dadosDetalhados.indicadores && dadosDetalhados.indicadores.length > 0) ||
@@ -14373,9 +14878,12 @@ function _detpMudarAba(aba) {
   _detpAbaAtiva = aba;
   document.getElementById('detp-tab-detalhes').classList.toggle('active', aba === 'detalhes');
   document.getElementById('detp-tab-atividade').classList.toggle('active', aba === 'atividade');
+  document.getElementById('detp-tab-lixeira').classList.toggle('active', aba === 'lixeira');
   document.getElementById('detp-view-detalhes').classList.toggle('hidden', aba !== 'detalhes');
   document.getElementById('detp-view-atividade').classList.toggle('hidden', aba !== 'atividade');
+  document.getElementById('detp-view-lixeira').classList.toggle('hidden', aba !== 'lixeira');
   if (aba === 'atividade' && !_auditCarregado) carregarLogsAuditoria();
+  if (aba === 'lixeira' && typeof lxpCarregar === 'function') lxpCarregar(false);
 }
 
 const DETP_STATUS_SLUG = {
