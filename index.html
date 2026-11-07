@@ -7197,6 +7197,8 @@ function _cfgNotificarAlteracao(chave) {
     if (it && dadosDetalhados && dadosDetalhados.plano) {
       dadosDetalhados.plano.visibilidade = it.valor ? 'Público' : 'Privado';
       if (typeof _detpRenderDetalhes === 'function') _detpRenderDetalhes();
+      // Colaboração externa depende da visibilidade: atualiza o wizard de elemento se já montado
+      if (typeof _wizardElAtualizarBloqueioIndicar === 'function' && typeof seletorIndicarColaboradorElemento !== 'undefined' && seletorIndicarColaboradorElemento) _wizardElAtualizarBloqueioIndicar();
     }
   }
   if (typeof atualizarConteudoPlano === 'function') { try { atualizarConteudoPlano(); } catch (e) { /* aba Elementos ainda não carregada */ } }

@@ -154,6 +154,7 @@ body.high-contrast .el-peso-bola.cheia { background: var(--ds-color-action); bor
 /* Toggle "Aberto para colaboração externa" */
 .elwiz-toggle-linha { display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
 .elwiz-switch { position: relative; display: inline-flex; cursor: pointer; }
+.elwiz-switch.elwiz-switch-off { cursor: not-allowed; opacity: .5; }
 .elwiz-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
 .elwiz-switch-track { width: 38px; height: 20px; background: var(--ds-color-border-strong); border-radius: 12px; position: relative; transition: background 0.15s; flex-shrink: 0; }
 .elwiz-switch-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--ds-color-surface); box-shadow: 0 1px 2px rgba(0,0,0,0.3); transition: left 0.15s; }
@@ -1247,14 +1248,14 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
               <span class="elwiz-switch-track"><span class="elwiz-switch-thumb"></span></span>
             </label>
             <div>
-              <div class="elwiz-toggle-titulo" id="lbl-el-aberto-colaboracao">Fechado para colaboração</div>
+              <div class="elwiz-toggle-titulo"><span id="lbl-el-aberto-colaboracao">Fechado para colaboração</span><span id="info-el-colab-publico" class="material-symbols-outlined elwiz-info hidden" aria-hidden="true">info</span></div>
             </div>
           </div>
           <small id="error-el-colab-janela" class="error-text hidden">Este plano não está mais na janela de colaboração (Elaboração, Análise ou Revisão) — não é possível abrir para colaboração externa agora.</small>
 
           <div class="elwiz-divisor"></div>
 
-          <div class="elwiz-secao-titulo" style="font-size:0.95rem">Indicar colaboradores <span class="material-symbols-outlined elwiz-info" aria-hidden="true" data-title="Cada indicado recebe um convite e pode aceitar ou recusar.">info</span></div>
+          <div class="elwiz-secao-titulo" style="font-size:0.95rem">Indicar colaboradores <span class="material-symbols-outlined elwiz-info" aria-hidden="true" data-title="Cada indicado recebe um convite e pode aceitar ou recusar.">info</span><span id="info-el-indicar-publico" class="material-symbols-outlined elwiz-info hidden" aria-hidden="true">info</span></div>
           <div id="el-indicar-wrap">
             <div id="el-indicar-selresp"></div>
           </div>
@@ -2232,7 +2233,8 @@ function _elIniciar() {
 // Handshake com o host
 // ================================================================
 
-// app_elementos_regras — regras de tela e utilitários (sem render de lista)
+
+// app_elementos_regras — regras de tela e utilitários: seletores do wizard, datas, tipo, contexto de responsáveis, informações de vínculo, modo de exibição
 function _initSeletorRespElemento() {
   if (seletorRespElemento) return;
   seletorRespElemento = SeletorResponsaveis.criar({
@@ -2661,6 +2663,56 @@ function imprimirElementos() {
   showMessage('info', 'Em Breve', 'A funcionalidade de impressão será implementada em breve.');
 }
 
+function toggleExpandirTudo() {
+  arvoreTotalmenteExpandida = !arvoreTotalmenteExpandida;
+
+  // Tabela hierárquica (modo padrão)
+  const tbody = document.getElementById('el-tbody');
+  if (tbody) {
+    tbody.querySelectorAll('tr.el-filho').forEach(tr => {
+      tr.classList.toggle('el-visivel', arvoreTotalmenteExpandida);
+    });
+    tbody.querySelectorAll('.el-toggle-btn').forEach(btn => {
+      btn.classList.toggle('expanded', arvoreTotalmenteExpandida);
+      btn.setAttribute('aria-label', arvoreTotalmenteExpandida ? 'Recolher' : 'Expandir');
+    });
+  }
+
+  // tree-root legado (modo reorganizar)
+  const root = document.getElementById('tree-root');
+  if (root) {
+    root.querySelectorAll('.tree-children').forEach(container => {
+      container.style.display = arvoreTotalmenteExpandida ? 'block' : 'none';
+    });
+    root.querySelectorAll('.toggle-icon').forEach(btn => {
+      if (arvoreTotalmenteExpandida) {
+        btn.classList.add('expanded');
+        btn.innerText = 'expand_more';
+      } else {
+        btn.classList.remove('expanded');
+        btn.innerText = 'chevron_right';
+      }
+    });
+  }
+
+  const btnExpandir = document.getElementById('btn-expandir-arvore');
+  const icone = btnExpandir ? btnExpandir.querySelector('.material-symbols-outlined') : null;
+
+  if (arvoreTotalmenteExpandida) {
+    if (icone) icone.textContent = 'unfold_less';
+    if (btnExpandir) btnExpandir.dataset.title = 'Recolher Tudo';
+  } else {
+    if (icone) icone.textContent = 'unfold_more';
+    if (btnExpandir) btnExpandir.dataset.title = 'Expandir Tudo';
+  }
+}
+
+function _atualizarContadorTipos() {
+  // Contadores de tipos eliminados no novo layout
+}
+
+
+// app_elementos_reorganizar — modo Reorganizar da lista (arrastar linhas, salvar/cancelar ordem)
 function _atualizarCabecalhoReorganizar(salvando) {
   var thNormal = document.getElementById('el-th-normal');
   var thReorg = document.getElementById('el-th-reorganizar');
@@ -2796,6 +2848,8 @@ function _getTrComDescendentes(tr) {
   return rows;
 }
 
+
+// app_elementos_gantt — visão Gantt: datas, zoom, arrasto e hover
 function _ganttParseData(str) {
   if (!str) return null;
   var s = String(str).trim();
@@ -2964,54 +3018,8 @@ function _ganttInitRowHover(rootEl) {
   });
 }
 
-function toggleExpandirTudo() {
-  arvoreTotalmenteExpandida = !arvoreTotalmenteExpandida;
 
-  // Tabela hierárquica (modo padrão)
-  const tbody = document.getElementById('el-tbody');
-  if (tbody) {
-    tbody.querySelectorAll('tr.el-filho').forEach(tr => {
-      tr.classList.toggle('el-visivel', arvoreTotalmenteExpandida);
-    });
-    tbody.querySelectorAll('.el-toggle-btn').forEach(btn => {
-      btn.classList.toggle('expanded', arvoreTotalmenteExpandida);
-      btn.setAttribute('aria-label', arvoreTotalmenteExpandida ? 'Recolher' : 'Expandir');
-    });
-  }
-
-  // tree-root legado (modo reorganizar)
-  const root = document.getElementById('tree-root');
-  if (root) {
-    root.querySelectorAll('.tree-children').forEach(container => {
-      container.style.display = arvoreTotalmenteExpandida ? 'block' : 'none';
-    });
-    root.querySelectorAll('.toggle-icon').forEach(btn => {
-      if (arvoreTotalmenteExpandida) {
-        btn.classList.add('expanded');
-        btn.innerText = 'expand_more';
-      } else {
-        btn.classList.remove('expanded');
-        btn.innerText = 'chevron_right';
-      }
-    });
-  }
-
-  const btnExpandir = document.getElementById('btn-expandir-arvore');
-  const icone = btnExpandir ? btnExpandir.querySelector('.material-symbols-outlined') : null;
-
-  if (arvoreTotalmenteExpandida) {
-    if (icone) icone.textContent = 'unfold_less';
-    if (btnExpandir) btnExpandir.dataset.title = 'Recolher Tudo';
-  } else {
-    if (icone) icone.textContent = 'unfold_more';
-    if (btnExpandir) btnExpandir.dataset.title = 'Expandir Tudo';
-  }
-}
-
-function _atualizarContadorTipos() {
-  // Contadores de tipos eliminados no novo layout
-}
-
+// app_elementos_organograma — visão Organograma: layout, rotas de relacionamento, zoom, tela cheia, arrastar e mover nós, desfazer
 /* ── RENDERIZAÇÃO: TABELA HIERÁRQUICA DE ELEMENTOS ──── */
 function planoPodeOrganizarDiagrama() {
   var p = dadosDetalhados && dadosDetalhados.plano && dadosDetalhados.plano.permissoes;
@@ -3818,6 +3826,8 @@ function orgDescartar() {
   renderizarOrganograma();
 }
 
+
+// app_elementos_arvore — árvore da lista: montar hierarquia, expandir/recolher e nós DOM
 function elToggleFilhos(ev, parentId) {
   if (ev && ev.stopPropagation) ev.stopPropagation();
   var btn = (ev && ev.currentTarget && ev.currentTarget.classList && ev.currentTarget.classList.contains('el-toggle-btn'))
@@ -4007,6 +4017,17 @@ function criarNoDOM(item) {
   return div;
 }
 
+function prepararNovoFilho(idPai) {
+  abrirModalNovoElemento(idPai);
+}
+
+// Botão "Atualizar" da aba Elementos: recarrega só os dados de Elementos
+// (apiGetAbaElementos) e re-renderiza as 4 visualizações locais; o resultado
+// é devolvido ao host via reportarDados, que recalcula KPIs/menu/Indicadores/
+// Monitoramento — nenhum código deste app chama essas telas diretamente.
+
+
+// app_elementos_importar — modal de importação de elementos (escolha de ação e destino)
 // --- COLABORAÇÃO EXTERNA: aceitar/recusar solicitações pendentes de um elemento ---
 
 function elImpFechar() {
@@ -4069,15 +4090,6 @@ function _elImpAtualizarBotao() {
   var b = document.getElementById('elimp-confirmar');
   if (b) b.disabled = !_elImpDecisaoValida();
 }
-
-function prepararNovoFilho(idPai) {
-  abrirModalNovoElemento(idPai);
-}
-
-// Botão "Atualizar" da aba Elementos: recarrega só os dados de Elementos
-// (apiGetAbaElementos) e re-renderiza as 4 visualizações locais; o resultado
-// é devolvido ao host via reportarDados, que recalcula KPIs/menu/Indicadores/
-// Monitoramento — nenhum código deste app chama essas telas diretamente.
 
 // app_elementos_lista — render de lista/tabela/árvore, filtros, ordenação, paginação, menus
 function _buscarDatasHerdadas(idPai) {
@@ -5844,10 +5856,31 @@ function _wizardElIniciar(idPaiInternoFixo) {
 // Cria (uma única vez) o seletor múltiplo de responsáveis do elemento.
 // Unidades restritas ao contexto do plano (subárvore da Unidade responsável);
 // servidores restritos às lotações dentro desse mesmo contexto.
+// Colaboração externa só existe em plano Público (regra do servidor): em plano Privado o
+// toggle fica desabilitado e desmarcado, e indicar fica bloqueado, com (i) explicando.
+function _elPlanoPublico() {
+  const p = dadosDetalhados && dadosDetalhados.plano;
+  return !p || p.visibilidade !== 'Privado';
+}
 function _wizardElAtualizarBloqueioIndicar() {
-  seletorIndicarColaboradorElemento.setDisabled(!estadoColabJanelaAbertaEl);
+  const publico = _elPlanoPublico();
+  const dicaPublico = 'Disponível apenas em planos públicos';
+  const chk = document.getElementById('input-el-aberto-colaboracao');
+  chk.disabled = !publico;
+  if (!publico) chk.checked = false;
+  chk.closest('.elwiz-switch').classList.toggle('elwiz-switch-off', !publico);
+  _wizardElAtualizarLabelColaboracao();
+  ['info-el-colab-publico', 'info-el-indicar-publico'].forEach(function (id) {
+    const ico = document.getElementById(id);
+    ico.classList.toggle('hidden', publico);
+    if (publico) ico.removeAttribute('data-title'); else ico.setAttribute('data-title', dicaPublico);
+  });
+  document.getElementById('error-el-colab-janela').classList.toggle('hidden', estadoColabJanelaAbertaEl || !publico);
+  seletorIndicarColaboradorElemento.setDisabled(!estadoColabJanelaAbertaEl || !publico);
   const wrap = document.getElementById('el-indicar-wrap');
-  if (estadoColabJanelaAbertaEl) {
+  if (!publico) {
+    wrap.setAttribute('data-title', dicaPublico);
+  } else if (estadoColabJanelaAbertaEl) {
     wrap.removeAttribute('data-title');
   } else {
     wrap.setAttribute('data-title', 'Só é possível indicar colaboradores enquanto o plano está em Elaboração, em Análise, ou em Revisão.');
