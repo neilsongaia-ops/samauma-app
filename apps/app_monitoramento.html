@@ -287,6 +287,10 @@ tr.is-open .mon-seta { transform: rotate(90deg); }
 <div id="monit-corpo-wrap"></div>
 
 <script>
+// Dividido por responsabilidade (fase d — docs/refatoracao_frontend.md). Mesmo <script>, mesmo escopo global;
+// instruções de topo ficam em _estado na ordem original; funções são içadas, então a ordem entre arquivos não importa.
+// app_monitoramento_estado — estado global, constantes e inicialização (instruções de topo, na ordem original)
+
 // ── INSTÂNCIA DO SDK SAMAÚMA PARA MONITORAMENTO ─────────────────
 var _monitoramentoSDK = criarSamaumaSDK();
 window._desempenhoSDK = _monitoramentoSDK;
@@ -333,6 +337,179 @@ var _PERF_CORES_STATUS = {
   'Cancelado':    { cor: 'var(--ds-color-danger-fg)', bg: 'var(--ds-color-danger-bg)' }
 };
 
+window.addEventListener('resize', function() {
+  _monitResizeCharts();
+});
+
+var _monitFiltrosDef = {
+  status:   { label: 'Status',      chave: 'filtroStatus',   modo: 'progresso' },
+  obj:      { label: 'Elemento',    chave: 'filtroElem',     modo: '*' },
+  resp:     { label: 'Responsável', chave: 'filtroResp',     modo: '*' },
+  conceito: { label: 'Conceito',    chave: 'filtroConceito', modo: 'desempenho' }
+};
+
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('monit-search-wrap'), caixa = document.getElementById('monit-search-caixa');
+  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
+  var inp = document.getElementById('monit-filtro-busca');
+  if (inp && !inp.value.trim()) {
+    caixa.classList.add('hidden');
+    var st = document.getElementById('monit-search-toggle');
+    if (st) st.classList.remove('hidden');
+  }
+});
+_monitoramentoSDK.aoVisibilidade(function(info) {
+  var visivel = !!(info && info.aba && info.pagina);
+  _monitAbaVisivel = visivel;
+  if (visivel) {
+    if (!_perfDados && !_monitCarregando && _monitPlanoId && _monitPlanoId !== 'undefined') {
+      _monitCarregarDados(false);
+    } else if (_perfDados && _monitStale && !_monitCarregando) {
+      _monitCarregarDados(true, true);
+    } else if (_perfDados) {
+      setTimeout(function() {
+        _monitDesenharResumo(_perfDados);
+        _monitResizeCharts();
+      }, 50);
+    }
+  }
+});
+
+_monitoramentoSDK.aoContexto(function(ctx) {
+  if (!ctx) return;
+  var novoId = String(ctx.idPlano || (ctx.plano && ctx.plano.id) || '');
+  if (!novoId || novoId === 'undefined') return;
+  var mudouPlano = (_monitPlanoId !== novoId);
+  _monitCtx = ctx;
+  _monitPlanoId = novoId;
+
+  if (!mudouPlano) {
+    // Plano reaberto (ou trâmite): o que está em memória pode ter ficado defasado
+    _monitStale = true;
+    if (_monitAbaVisivel && _perfDados && !_monitCarregando) _monitCarregarDados(true, true);
+    return;
+  }
+
+  if (mudouPlano) {
+    _monitCarregando = false;
+    _monitStale = false;
+    _perfDados = null;
+    _perfExpandidos = {};
+    monitTudoExpandido = false;
+    _monitDestruirTodosCharts();
+    estadoMonit.busca = '';
+    estadoMonit.filtroStatus = '';
+    estadoMonit.filtroResp = '';
+    estadoMonit.filtroElem = '';
+    estadoMonit.filtroConceito = '';
+    estadoMonit.tipoElementoBarras = '';
+    estadoMonit.paginaAtual = 1;
+    if (_monitAbaVisivel) {
+      _monitCarregarDados(false);
+    } else {
+      var wrap = document.getElementById('monit-corpo-wrap');
+      if (wrap) wrap.innerHTML = '';
+    }
+  }
+});
+
+// Chamadas pelo host quando Elementos/Indicadores reportam dados: se o que a aba
+// mostra deixou de bater com a lista atual, marca como defasado (recarrega ao ficar visível).
+window.monitVerificarElementos = function(elementos) {
+  var sig = function(l) { return (l || []).map(function(e) { return String(e.id) + '|' + String(e.status || 'Não Iniciado') + '|' + Number(e.percentual || 0); }).sort().join(';'); };
+  _monitMarcarSeMudou(sig(elementos), sig(_perfDados && _perfDados.elementos));
+};
+window.monitVerificarIndicadores = function(indicadores) {
+  var sig = function(l) { return (l || []).map(function(i) { return String(i.id); }).sort().join(';'); };
+  _monitMarcarSeMudou(sig(indicadores), sig(_perfDados && _perfDados.indicadores));
+};
+
+_monitoramentoSDK.aoTema(function(tema) {
+  if (_perfDados && _monitAbaVisivel) {
+    _monitDesenharResumo(_perfDados);
+    _monitRedesenharGraficosHistorico();
+  }
+});
+
+_monitoramentoSDK.aoTecla(function(ev) {
+  if (ev && ev.key === 'Escape') {
+    if (estadoMonit.busca) {
+      limparFiltroMonitBusca();
+      return true;
+    }
+    var temExpandidos = Object.keys(_perfExpandidos).some(function(k) { return _perfExpandidos[k]; });
+    if (temExpandidos) {
+      _perfExpandidos = {};
+      monitTudoExpandido = false;
+      _monitRenderCorpo();
+      return true;
+    }
+    var temFiltro = estadoMonit.filtroStatus || estadoMonit.filtroResp || estadoMonit.filtroElem || estadoMonit.filtroConceito;
+    if (temFiltro) {
+      limparFiltrosMonit();
+      return true;
+    }
+  }
+  return false;
+});
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+
+// app_monitoramento_api — chamadas ao servidor (SDK / google.script.run / apiX)
+function _monitCarregarDados(forcar, silencioso) {
+  if (!_monitPlanoId || _monitPlanoId === 'undefined' || _monitCarregando) return;
+  _monitCarregando = true;
+  _monitStale = false;
+  var idPlanoReq = _monitPlanoId;
+  if (forcar && !silencioso) {
+    _perfDados = null;
+  }
+
+  var wrap = document.getElementById('monit-corpo-wrap');
+  if (silencioso && _perfDados) {
+    // nada a mostrar: os dados atuais continuam visíveis
+  } else if (wrap && !_perfDados) {
+    wrap.innerHTML = '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>';
+  } else {
+    var tbMonit = document.getElementById('monit-tbody');
+    if (tbMonit) tbMonit.innerHTML = '<tr><td colspan="9" style="padding:0">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>') + '</td></tr>';
+  }
+
+  _monitoramentoSDK.chamar('apiGetAbaMonitoramento', _monitPlanoId)
+    .then(function(res) {
+      if (idPlanoReq !== _monitPlanoId) return; // resposta de um plano já abandonado
+      _monitCarregando = false;
+      _perfDados = res;
+      if (!silencioso) {
+        _perfExpandidos = {};
+        monitTudoExpandido = false;
+      }
+      renderizarMonitoramento(res);
+
+      var d = (res && res.desempenho && res.desempenho.proprio) || {};
+      if (d.pendentes > 0) {
+        _monitoramentoSDK.reportarAlerta(d.pendentes, d.pendentes + ' resultado(s) pendente(s) de validação');
+      } else {
+        _monitoramentoSDK.reportarAlerta(null);
+      }
+    })
+    .catch(function(err) {
+      if (idPlanoReq !== _monitPlanoId) return;
+      _monitCarregando = false;
+      var tbMonit = document.getElementById('monit-tbody');
+      var msg = (err && err.message) || String(err);
+      if (tbMonit) {
+        tbMonit.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(msg) + '</td></tr>';
+      } else if (wrap) {
+        wrap.innerHTML = '<div style="color:var(--ds-color-danger); padding:20px">Erro: ' + escapeHtml(msg) + '</div>';
+      }
+    });
+}
+
+// ── REGISTRO DE HOOKS DO SDK ───────────────────────────────────
+
+// app_monitoramento_regras — regras de tela e utilitários (sem render de lista)
+
 function _monitParseData(str) {
   var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(str || ''));
   return m ? new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])) : null;
@@ -352,29 +529,10 @@ function _monitRotulosElementosInd(ind) {
   return ind.elemLabel ? [ind.elemLabel] : [];
 }
 // Até 3 visíveis; acima disso, 2 + "mais N elementos" com os demais no tooltip (mesmo padrão da aba Indicadores)
-function _monitElementosIndHTML(ind) {
-  var rot = _monitRotulosElementosInd(ind);
-  if (!rot.length) return '—';
-  var vis = rot.length > 3 ? rot.slice(0, 2) : rot;
-  var h = '<span class="mon-det-elems" style="display:flex;flex-direction:column;gap:2px">' + vis.map(function(r) {
-    return '<span data-title="' + escapeHtml(r) + '">' + escapeHtml(r) + '</span>';
-  }).join('');
-  if (rot.length > vis.length) {
-    var n = rot.length - vis.length;
-    h += '<span class="rsc-link" tabindex="0" style="align-self:flex-start" data-title="' + escapeHtml(rot.slice(vis.length).join('; ')) + '">mais ' + n + ' elemento' + (n > 1 ? 's' : '') + '</span>';
-  }
-  return h + '</span>';
-}
-// Peso pode ser decimal (média dos pesos dos elementos): pt-BR, até 2 casas, sem zeros sobrando
 function _monitFmtPeso(p) {
   var n = Number(p);
   if (p === null || p === undefined || p === '' || isNaN(n)) return '';
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-}
-
-function _monitDetLinha(label, valor) {
-  return valor ? '<div class="detp-linha"><span class="detp-linha-label">' + label + '</span>'
-    + '<span class="detp-linha-valor">' + valor + '</span></div>' : '';
 }
 
 function _monitCor(varOuCor) {
@@ -443,10 +601,6 @@ function _monitResizeCharts() {
     }
   });
 }
-
-window.addEventListener('resize', function() {
-  _monitResizeCharts();
-});
 
 function _monitOptAnel(valor, cor, rotulo) {
   var t = _monitTema();
@@ -578,18 +732,6 @@ function _perfBadgeConceito(conceito, extraStyle) {
   return '<span class="perf-badge" style="background:' + c.bg + ';color:' + c.text + ';' + (extraStyle || '') + '">' + escapeHtml(conceito) + '</span>';
 }
 
-function _monitLinhasProgresso() {
-  return (_perfDados && _perfDados.elementos) || [];
-}
-
-function _monitLinhasDesempenho() {
-  return (_perfDados && _perfDados.indicadores) || [];
-}
-
-function _monitListaAtiva() {
-  return estadoMonit.modo === 'progresso' ? _monitLinhasProgresso() : _monitLinhasDesempenho();
-}
-
 function _monitDentroDoElemento(idElemento, idRaiz) {
   var elems = (_perfDados && _perfDados.elementos) || [];
   var paiDe = {};
@@ -602,101 +744,6 @@ function _monitDentroDoElemento(idElemento, idRaiz) {
     seguranca++;
   }
   return false;
-}
-
-function _monitFiltrar(lista) {
-  var b = (estadoMonit.busca || '').trim().toLowerCase();
-  return (lista || []).filter(function(item) {
-    var resp = String(item.responsavel || '');
-    if (estadoMonit.modo === 'progresso') {
-      if (estadoMonit.filtroStatus && item.status !== estadoMonit.filtroStatus) return false;
-      if (estadoMonit.filtroResp && resp.indexOf(estadoMonit.filtroResp) === -1) return false;
-      if (estadoMonit.filtroElem && !_monitDentroDoElemento(item.id, estadoMonit.filtroElem)) return false;
-      if (b && (String(item.codigo || '') + ' ' + String(item.titulo || '') + ' ' + resp).toLowerCase().indexOf(b) === -1) return false;
-    } else {
-      if (estadoMonit.filtroElem && !_monitIdsElementosInd(item).some(function(idE) { return _monitDentroDoElemento(idE, estadoMonit.filtroElem); })) return false;
-      if (estadoMonit.filtroConceito && item.conceitoLabel !== estadoMonit.filtroConceito) return false;
-      if (estadoMonit.filtroResp && resp.indexOf(estadoMonit.filtroResp) === -1) return false;
-      if (b && (String(item.nome || '') + ' ' + _monitRotulosElementosInd(item).join(' ') + ' ' + resp).toLowerCase().indexOf(b) === -1) return false;
-    }
-    return true;
-  });
-}
-
-function _monitSortLista(lista) {
-  var col = estadoMonit.sort.col;
-  var dir = estadoMonit.sort.dir;
-  return lista.slice().sort(function(a, b) {
-    var va = a[col], vb = b[col], cmp;
-    if (col === 'codigo' || col === 'codigoElem') {
-      cmp = (typeof compararCodigos === 'function')
-        ? compararCodigos(String(va || ''), String(vb || ''))
-        : String(va || '').localeCompare(String(vb || ''), 'pt', { numeric: true });
-    } else if (typeof va === 'number' && typeof vb === 'number') {
-      cmp = va - vb;
-    } else {
-      cmp = String(va == null ? '' : va).toLowerCase().localeCompare(String(vb == null ? '' : vb).toLowerCase(), 'pt');
-    }
-    return dir === 'asc' ? cmp : -cmp;
-  });
-}
-
-function monitOrdenar(col) {
-  if (estadoMonit.sort.col === col) {
-    estadoMonit.sort.dir = estadoMonit.sort.dir === 'asc' ? 'desc' : 'asc';
-  } else {
-    estadoMonit.sort.col = col;
-    estadoMonit.sort.dir = 'asc';
-  }
-  estadoMonit.paginaAtual = 1;
-  _monitRenderCorpo();
-}
-
-function monitDefinirColunaOrdenacao(col) {
-  if (!estadoMonit.sort) estadoMonit.sort = { col: col, dir: 'asc' };
-  else estadoMonit.sort.col = col;
-  estadoMonit.paginaAtual = 1;
-  _monitRenderCorpo();
-}
-
-function monitDefinirDirecaoOrdenacao(dir) {
-  if (!estadoMonit.sort) estadoMonit.sort = { col: estadoMonit.modo === 'progresso' ? 'codigo' : 'alcanceSort', dir: dir };
-  else estadoMonit.sort.dir = dir;
-  estadoMonit.paginaAtual = 1;
-  _monitRenderCorpo();
-}
-
-function monitAbrirMenuOrdenar(ev) {
-  ev.stopPropagation();
-  var gatilho = ev.currentTarget;
-  var modo = estadoMonit.modo;
-  var colunas = modo === 'progresso'
-    ? [
-        { valor: 'codigo',      label: 'Elemento' },
-        { valor: 'status',      label: 'Status' },
-        { valor: 'percentual',  label: 'Progresso' },
-        { valor: 'prazoSort',   label: 'Prazo' },
-        { valor: 'responsavel', label: 'Responsável' }
-      ]
-    : [
-        { valor: 'nome',          label: 'Indicador' },
-        { valor: 'alcanceSort',   label: 'Alcance' },
-        { valor: 'conceitoLabel', label: 'Conceito' },
-        { valor: 'contribSort',   label: 'Contribuição' }
-      ];
-  var colAtual = (estadoMonit.sort && estadoMonit.sort.col) || (modo === 'progresso' ? 'codigo' : 'alcanceSort');
-  var dirAtual = (estadoMonit.sort && estadoMonit.sort.dir) || 'asc';
-  if (typeof abrirMenuSelecao === 'function') {
-    abrirMenuSelecao(gatilho, [
-      { label: 'Ordenar por', itens: colunas.map(function(c) {
-        return { label: c.label, ativo: c.valor === colAtual, onclick: "monitDefinirColunaOrdenacao('" + c.valor + "')" };
-      }) },
-      { label: 'Ordem', itens: [
-        { label: 'Crescente',   ativo: dirAtual === 'asc',  onclick: "monitDefinirDirecaoOrdenacao('asc')" },
-        { label: 'Decrescente', ativo: dirAtual === 'desc', onclick: "monitDefinirDirecaoOrdenacao('desc')" }
-      ] }
-    ]);
-  }
 }
 
 function monitAbrirPainelIndicador(id) {
@@ -712,72 +759,6 @@ function monitAbrirPainelIndicador(id) {
 
 function imprimirMonitoramento() {
   window.print();
-}
-
-function exportarMonitoramento() {
-  var modo = estadoMonit.modo;
-  var lista = _monitSortLista(_monitFiltrar(_monitListaAtiva()));
-  var pNome = (_monitCtx && _monitCtx.plano && _monitCtx.plano.nome) || 'plano';
-  var nomePlano = pNome.replace(/[^\wÀ-ú]/g, '_');
-  var linhas = [];
-  var fnCell = typeof _csvCell === 'function' ? _csvCell : function(v) { return '"' + String(v || '').replace(/"/g, '""') + '"'; };
-
-  if (modo === 'progresso') {
-    var cab = ['Codigo', 'Elemento', 'Tipo', 'Status', 'Progresso', 'Prazo', 'Responsavel'];
-    linhas.push(cab.map(fnCell).join(','));
-    lista.forEach(function(l) {
-      linhas.push([
-        l.codigo || '',
-        l.titulo || '',
-        l.tipo || '',
-        l.status || '',
-        _isNum(l.percentual) ? (Math.round(l.percentual) + '%') : '',
-        l.prazo || '',
-        l.responsavel || ''
-      ].map(fnCell).join(','));
-    });
-    var csvContent = linhas.join('\n');
-    if (typeof _downloadCSV === 'function') {
-      _downloadCSV(csvContent, 'monitoramento_progresso_' + nomePlano + '.csv');
-    } else {
-      var blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      var link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'monitoramento_progresso_' + nomePlano + '.csv';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  } else {
-    var cab = ['Indicador', 'Elemento Vinculado', 'Polaridade', 'Realizado', 'Meta', 'Alcance', 'Conceito', 'Pontos', 'Contribuicao', 'Responsavel'];
-    linhas.push(cab.map(fnCell).join(','));
-    lista.forEach(function(i) {
-      linhas.push([
-        i.nome || '',
-        _monitRotulosElementosInd(i).join('; '),
-        i.interpretacao || '',
-        _isNum(i.valorRealizado) ? String(i.valorRealizado) : '',
-        _isNum(i.valorMeta) ? String(i.valorMeta) : '',
-        _isNum(i.alcance) ? (Math.round(i.alcance) + '%') : '',
-        i.conceitoLabel || '',
-        _isNum(i.pontos) ? String(i.pontos) : '',
-        _isNum(i.contribuicao) ? String(i.contribuicao) : '',
-        i.responsavel || ''
-      ].map(fnCell).join(','));
-    });
-    var csvContent = linhas.join('\n');
-    if (typeof _downloadCSV === 'function') {
-      _downloadCSV(csvContent, 'monitoramento_desempenho_' + nomePlano + '.csv');
-    } else {
-      var blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      var link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'monitoramento_desempenho_' + nomePlano + '.csv';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  }
 }
 
 function monitMudarModo(modo) {
@@ -796,51 +777,6 @@ function monitMudarTamanho(val) {
   estadoMonit.itensPorPagina = parseInt(val, 10) || 20;
   estadoMonit.paginaAtual = 1;
   _monitRenderCorpo();
-}
-
-function monitMudarPagina(dir) {
-  var total = _monitFiltrar(_monitListaAtiva()).length;
-  var totalPags = Math.max(1, Math.ceil(total / estadoMonit.itensPorPagina));
-  if (dir === 'prev' && estadoMonit.paginaAtual > 1) estadoMonit.paginaAtual--;
-  if (dir === 'next' && estadoMonit.paginaAtual < totalPags) estadoMonit.paginaAtual++;
-  if (estadoMonit.paginaAtual < 1) estadoMonit.paginaAtual = 1;
-  if (estadoMonit.paginaAtual > totalPags) estadoMonit.paginaAtual = totalPags;
-  _monitRenderCorpo();
-}
-
-function monitIrParaPagina(pg) {
-  var total = _monitFiltrar(_monitListaAtiva()).length;
-  var totalPags = Math.max(1, Math.ceil(total / estadoMonit.itensPorPagina));
-  var p = parseInt(pg, 10) || 1;
-  estadoMonit.paginaAtual = Math.min(Math.max(1, p), totalPags);
-  _monitRenderCorpo();
-}
-
-function _monitAtualizarPaginacao(total, start) {
-  var pag = document.getElementById('monit-pagination');
-  if (!pag) return;
-  var itensPag = estadoMonit.itensPorPagina;
-  var totalPags = Math.max(1, Math.ceil(total / itensPag));
-  if (estadoMonit.paginaAtual > totalPags) estadoMonit.paginaAtual = totalPags;
-  if (estadoMonit.paginaAtual < 1) estadoMonit.paginaAtual = 1;
-
-  var fim = Math.min(start + itensPag, total);
-  var counter = document.getElementById('monit-pag-counter');
-  if (counter) counter.textContent = (total === 0 ? '0 de 0' : (start + 1) + '–' + fim + ' de ' + total);
-
-  var sel = document.getElementById('monit-pag-selector');
-  if (sel) {
-    sel.innerHTML = '';
-    for (var i = 1; i <= totalPags; i++) {
-      var opt = document.createElement('option');
-      opt.value = i;
-      opt.text = i;
-      if (i === estadoMonit.paginaAtual) opt.selected = true;
-      sel.appendChild(opt);
-    }
-    sel.value = String(estadoMonit.paginaAtual);
-    sel.disabled = (totalPags <= 1 || total === 0);
-  }
 }
 
 function _monitTiposElementosPlano() {
@@ -954,22 +890,6 @@ function _monitElementosBarras() {
   };
 }
 
-function monitAbrirMenuTipos(btn, ev) {
-  if (ev) ev.stopPropagation();
-  var info = _monitElementosBarras();
-  if (!info.tiposDisponiveis || info.tiposDisponiveis.length <= 1) return;
-  var itens = info.tiposDisponiveis.map(function(t) {
-    return {
-      label: t.tipo,
-      ativo: t.tipo === info.tipo,
-      onclick: "monitMudarTipoBarras('" + escapeJsAttr(t.tipo) + "')"
-    };
-  });
-  if (typeof abrirMenuSelecao === 'function') {
-    abrirMenuSelecao(btn, [{ itens: itens }]);
-  }
-}
-
 function monitMudarTipoBarras(novoTipo) {
   estadoMonit.tipoElementoBarras = novoTipo;
   if (_perfDados) {
@@ -990,6 +910,372 @@ function _monitVencidos() {
 }
 
 function _monitTrunc(s, n) { s = String(s || ''); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+function _monitBaseSem(campo) {
+  var salvo = estadoMonit[campo]; estadoMonit[campo] = '';
+  var l = _monitFiltrar(_monitListaAtiva());
+  estadoMonit[campo] = salvo;
+  return l;
+}
+
+function _monitClassificarFaixa(faixas, valor) {
+  if (!faixas || !faixas.length || valor === null || valor === undefined || isNaN(valor)) return null;
+  for (var i = 0; i < faixas.length; i++) {
+    if (valor >= faixas[i].min) return faixas[i];
+  }
+  return faixas[faixas.length - 1];
+}
+
+function _monitDesenharResumo(dados) {
+  if (!dados || typeof echarts === 'undefined') return;
+  _monitLimparCharts();
+  if (estadoMonit.modo === 'progresso') {
+    var p = (dados.progresso && dados.progresso.proprio) || {};
+    var temFiltroProg = !!(estadoMonit.busca || estadoMonit.filtroStatus || estadoMonit.filtroResp || estadoMonit.filtroElem);
+    var pAtual = temFiltroProg ? _monitProgressoFiltrado(_monitFiltrar(_monitLinhasProgresso())) : p;
+    _monitChart('anel', 'mon-chart-anel', _monitOptAnel(_isNum(pAtual.pct) ? pAtual.pct : 0, _monitCor('var(--ds-color-action)'), 'execução'));
+    var base = _monitBaseSem('filtroStatus');
+    _monitChart('rosca', 'mon-chart-rosca', _monitOptRosca(_MON_ORD_STATUS.map(function(s) {
+      return { chave: s, rot: s, cor: (_PERF_CORES_STATUS[s] || {}).cor, n: base.filter(function(l) { return l.status === s; }).length };
+    }), base.length, 'elementos', estadoMonit.filtroStatus), function(x) { monitFiltrarStatus(x.name); });
+
+    var infoBarras = _monitElementosBarras();
+    var objs = (infoBarras.lista || []).slice().sort(function(a, b) {
+      if (Math.abs(a.pct - b.pct) > 0.001) return a.pct - b.pct;
+      return (typeof compararCodigos === 'function')
+        ? compararCodigos(String(b.o.codigo || ''), String(a.o.codigo || ''))
+        : String(b.o.codigo || '').localeCompare(String(a.o.codigo || ''), 'pt', { numeric: true });
+    });
+    var el = document.getElementById('mon-chart-barras');
+    if (el) el.style.height = Math.max(220, objs.length * 34 + 16) + 'px';
+    _monitChart('barras', 'mon-chart-barras', _monitOptBarras(
+      objs.map(function(x) { return _monitTrunc((x.o.codigo ? x.o.codigo + '  ' : '') + x.o.titulo, 34); }),
+      objs.map(function(x) { return x.pct; }),
+      objs.map(function() { return 'var(--ds-color-action)'; }),
+      objs.map(function(x) { return estadoMonit.filtroElem && String(estadoMonit.filtroElem) !== String(x.o.id) ? 0.25 : 1; }),
+      function(x) { var o = objs[x.dataIndex]; return escapeHtml(o.o.titulo) + '<br/><b>' + _fmtNumBR(o.pct) + '%</b> de execução'; },
+      false
+    ), function(x) { var o = objs[x.dataIndex]; if (o) monitFiltrarObjetivo(String(o.o.id)); });
+    return;
+  }
+  var d = (dados.desempenho && dados.desempenho.proprio) || {};
+  var temFiltroDesemp = !!(estadoMonit.busca || estadoMonit.filtroElem || estadoMonit.filtroResp || estadoMonit.filtroConceito);
+  var dAtual = temFiltroDesemp ? _monitDesempenhoFiltrado(_monitFiltrar(_monitLinhasDesempenho()), dados.faixas) : d;
+  var cc = _PERF_CORES_CONCEITO[dAtual.conceito];
+  _monitChart('anel', 'mon-chart-anel', _monitOptAnel(_isNum(dAtual.ieg) ? dAtual.ieg : 0, _monitCor(cc ? cc.text : 'var(--ds-color-action)'), 'IEG'));
+  var baseC = _monitBaseSem('filtroConceito');
+  _monitChart('rosca', 'mon-chart-rosca', _monitOptRosca(_MON_ORD_CONC.map(function(k) {
+    var c = _PERF_CORES_CONCEITO[k];
+    return { chave: k, rot: k, cor: c ? c.text : 'var(--ds-color-border-strong)', n: baseC.filter(function(l) { return l.conceitoLabel === k; }).length };
+  }), baseC.length, 'indicadores', estadoMonit.filtroConceito), function(x) { monitFiltrarConceito(x.name); });
+
+  var ap = _monitFiltrar(_monitLinhasDesempenho()).filter(function(i) { return _isNum(i.alcance); })
+    .sort(function(a, b) { return a.alcance - b.alcance; });
+  var elb = document.getElementById('mon-chart-barras');
+  if (elb) elb.style.height = Math.max(220, ap.length * 30 + 24) + 'px';
+  _monitChart('barras', 'mon-chart-barras', _monitOptBarras(
+    ap.map(function(i) { return _monitTrunc(i.nome, 30); }),
+    ap.map(function(i) { return i.alcance; }),
+    ap.map(function(i) { return (_PERF_CORES_CONCEITO[i.conceito] || { text: 'var(--ds-color-text-muted)' }).text; }),
+    ap.map(function() { return 1; }),
+    function(x) { var i = ap[x.dataIndex]; return escapeHtml(i.nome) + '<br/>Alcance <b>' + _fmtNumBR(i.alcance) + '%</b> · ' + escapeHtml(i.conceitoLabel); },
+    true
+  ), function(x) { var i = ap[x.dataIndex]; if (i) { _perfExpandidos[String(i.id)] = true; _monitRenderCorpo(); } });
+}
+
+function _monitRedesenharGraficosHistorico() {
+  if (estadoMonit.modo !== 'desempenho' || !_perfDados) return;
+  var lista = _monitLinhasDesempenho();
+  lista.forEach(function(ind) {
+    if (_perfExpandidos[ind.id]) {
+      _monitChart('hist_' + ind.id, 'mon-hist-' + ind.id, _monitOptHistorico(ind));
+    }
+  });
+}
+
+function _monitCamposAtivos() {
+  return estadoMonit.modo === 'progresso' ? ['status', 'obj', 'resp'] : ['conceito', 'obj', 'resp'];
+}
+
+function perfToggleExpand(idInd, ev) {
+  if (ev && ev.target.closest && ev.target.closest('button, a, .acoes-linha')) return;
+  _perfExpandidos[idInd] = !_perfExpandidos[idInd];
+  _monitRenderCorpo();
+}
+
+function monitToggleExpandirTudo() {
+  monitTudoExpandido = !monitTudoExpandido;
+  _perfExpandidos = {};
+  if (monitTudoExpandido) _monitFiltrar(_monitLinhasDesempenho()).forEach(function(l) { _perfExpandidos[String(l.id)] = true; });
+  _monitRenderCorpo();
+}
+
+function atualizarMonitoramento() {
+  _monitCarregarDados(true);
+}
+
+// silencioso=true: atualização em segundo plano — mantém na tela o que já está carregado
+// (sem spinner, sem zerar filtros/linhas expandidas) e só troca quando a resposta chega.
+function _monitMarcarSeMudou(assinaturaAtual, assinaturaMonit) {
+  if (!_perfDados || assinaturaAtual === assinaturaMonit) return;
+  _monitStale = true;
+  if (_monitAbaVisivel && !_monitCarregando) _monitCarregarDados(true, true);
+}
+
+// app_monitoramento_lista — render de lista/tabela/árvore, filtros, ordenação, paginação, menus
+function _monitElementosIndHTML(ind) {
+  var rot = _monitRotulosElementosInd(ind);
+  if (!rot.length) return '—';
+  var vis = rot.length > 3 ? rot.slice(0, 2) : rot;
+  var h = '<span class="mon-det-elems" style="display:flex;flex-direction:column;gap:2px">' + vis.map(function(r) {
+    return '<span data-title="' + escapeHtml(r) + '">' + escapeHtml(r) + '</span>';
+  }).join('');
+  if (rot.length > vis.length) {
+    var n = rot.length - vis.length;
+    h += '<span class="rsc-link" tabindex="0" style="align-self:flex-start" data-title="' + escapeHtml(rot.slice(vis.length).join('; ')) + '">mais ' + n + ' elemento' + (n > 1 ? 's' : '') + '</span>';
+  }
+  return h + '</span>';
+}
+// Peso pode ser decimal (média dos pesos dos elementos): pt-BR, até 2 casas, sem zeros sobrando
+
+function _monitDetLinha(label, valor) {
+  return valor ? '<div class="detp-linha"><span class="detp-linha-label">' + label + '</span>'
+    + '<span class="detp-linha-valor">' + valor + '</span></div>' : '';
+}
+
+function _monitLinhasProgresso() {
+  return (_perfDados && _perfDados.elementos) || [];
+}
+
+function _monitLinhasDesempenho() {
+  return (_perfDados && _perfDados.indicadores) || [];
+}
+
+function _monitListaAtiva() {
+  return estadoMonit.modo === 'progresso' ? _monitLinhasProgresso() : _monitLinhasDesempenho();
+}
+
+function _monitFiltrar(lista) {
+  var b = (estadoMonit.busca || '').trim().toLowerCase();
+  return (lista || []).filter(function(item) {
+    var resp = String(item.responsavel || '');
+    if (estadoMonit.modo === 'progresso') {
+      if (estadoMonit.filtroStatus && item.status !== estadoMonit.filtroStatus) return false;
+      if (estadoMonit.filtroResp && resp.indexOf(estadoMonit.filtroResp) === -1) return false;
+      if (estadoMonit.filtroElem && !_monitDentroDoElemento(item.id, estadoMonit.filtroElem)) return false;
+      if (b && (String(item.codigo || '') + ' ' + String(item.titulo || '') + ' ' + resp).toLowerCase().indexOf(b) === -1) return false;
+    } else {
+      if (estadoMonit.filtroElem && !_monitIdsElementosInd(item).some(function(idE) { return _monitDentroDoElemento(idE, estadoMonit.filtroElem); })) return false;
+      if (estadoMonit.filtroConceito && item.conceitoLabel !== estadoMonit.filtroConceito) return false;
+      if (estadoMonit.filtroResp && resp.indexOf(estadoMonit.filtroResp) === -1) return false;
+      if (b && (String(item.nome || '') + ' ' + _monitRotulosElementosInd(item).join(' ') + ' ' + resp).toLowerCase().indexOf(b) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function _monitSortLista(lista) {
+  var col = estadoMonit.sort.col;
+  var dir = estadoMonit.sort.dir;
+  return lista.slice().sort(function(a, b) {
+    var va = a[col], vb = b[col], cmp;
+    if (col === 'codigo' || col === 'codigoElem') {
+      cmp = (typeof compararCodigos === 'function')
+        ? compararCodigos(String(va || ''), String(vb || ''))
+        : String(va || '').localeCompare(String(vb || ''), 'pt', { numeric: true });
+    } else if (typeof va === 'number' && typeof vb === 'number') {
+      cmp = va - vb;
+    } else {
+      cmp = String(va == null ? '' : va).toLowerCase().localeCompare(String(vb == null ? '' : vb).toLowerCase(), 'pt');
+    }
+    return dir === 'asc' ? cmp : -cmp;
+  });
+}
+
+function monitOrdenar(col) {
+  if (estadoMonit.sort.col === col) {
+    estadoMonit.sort.dir = estadoMonit.sort.dir === 'asc' ? 'desc' : 'asc';
+  } else {
+    estadoMonit.sort.col = col;
+    estadoMonit.sort.dir = 'asc';
+  }
+  estadoMonit.paginaAtual = 1;
+  _monitRenderCorpo();
+}
+
+function monitDefinirColunaOrdenacao(col) {
+  if (!estadoMonit.sort) estadoMonit.sort = { col: col, dir: 'asc' };
+  else estadoMonit.sort.col = col;
+  estadoMonit.paginaAtual = 1;
+  _monitRenderCorpo();
+}
+
+function monitDefinirDirecaoOrdenacao(dir) {
+  if (!estadoMonit.sort) estadoMonit.sort = { col: estadoMonit.modo === 'progresso' ? 'codigo' : 'alcanceSort', dir: dir };
+  else estadoMonit.sort.dir = dir;
+  estadoMonit.paginaAtual = 1;
+  _monitRenderCorpo();
+}
+
+function monitAbrirMenuOrdenar(ev) {
+  ev.stopPropagation();
+  var gatilho = ev.currentTarget;
+  var modo = estadoMonit.modo;
+  var colunas = modo === 'progresso'
+    ? [
+        { valor: 'codigo',      label: 'Elemento' },
+        { valor: 'status',      label: 'Status' },
+        { valor: 'percentual',  label: 'Progresso' },
+        { valor: 'prazoSort',   label: 'Prazo' },
+        { valor: 'responsavel', label: 'Responsável' }
+      ]
+    : [
+        { valor: 'nome',          label: 'Indicador' },
+        { valor: 'alcanceSort',   label: 'Alcance' },
+        { valor: 'conceitoLabel', label: 'Conceito' },
+        { valor: 'contribSort',   label: 'Contribuição' }
+      ];
+  var colAtual = (estadoMonit.sort && estadoMonit.sort.col) || (modo === 'progresso' ? 'codigo' : 'alcanceSort');
+  var dirAtual = (estadoMonit.sort && estadoMonit.sort.dir) || 'asc';
+  if (typeof abrirMenuSelecao === 'function') {
+    abrirMenuSelecao(gatilho, [
+      { label: 'Ordenar por', itens: colunas.map(function(c) {
+        return { label: c.label, ativo: c.valor === colAtual, onclick: "monitDefinirColunaOrdenacao('" + c.valor + "')" };
+      }) },
+      { label: 'Ordem', itens: [
+        { label: 'Crescente',   ativo: dirAtual === 'asc',  onclick: "monitDefinirDirecaoOrdenacao('asc')" },
+        { label: 'Decrescente', ativo: dirAtual === 'desc', onclick: "monitDefinirDirecaoOrdenacao('desc')" }
+      ] }
+    ]);
+  }
+}
+
+function exportarMonitoramento() {
+  var modo = estadoMonit.modo;
+  var lista = _monitSortLista(_monitFiltrar(_monitListaAtiva()));
+  var pNome = (_monitCtx && _monitCtx.plano && _monitCtx.plano.nome) || 'plano';
+  var nomePlano = pNome.replace(/[^\wÀ-ú]/g, '_');
+  var linhas = [];
+  var fnCell = typeof _csvCell === 'function' ? _csvCell : function(v) { return '"' + String(v || '').replace(/"/g, '""') + '"'; };
+
+  if (modo === 'progresso') {
+    var cab = ['Codigo', 'Elemento', 'Tipo', 'Status', 'Progresso', 'Prazo', 'Responsavel'];
+    linhas.push(cab.map(fnCell).join(','));
+    lista.forEach(function(l) {
+      linhas.push([
+        l.codigo || '',
+        l.titulo || '',
+        l.tipo || '',
+        l.status || '',
+        _isNum(l.percentual) ? (Math.round(l.percentual) + '%') : '',
+        l.prazo || '',
+        l.responsavel || ''
+      ].map(fnCell).join(','));
+    });
+    var csvContent = linhas.join('\n');
+    if (typeof _downloadCSV === 'function') {
+      _downloadCSV(csvContent, 'monitoramento_progresso_' + nomePlano + '.csv');
+    } else {
+      var blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'monitoramento_progresso_' + nomePlano + '.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  } else {
+    var cab = ['Indicador', 'Elemento Vinculado', 'Polaridade', 'Realizado', 'Meta', 'Alcance', 'Conceito', 'Pontos', 'Contribuicao', 'Responsavel'];
+    linhas.push(cab.map(fnCell).join(','));
+    lista.forEach(function(i) {
+      linhas.push([
+        i.nome || '',
+        _monitRotulosElementosInd(i).join('; '),
+        i.interpretacao || '',
+        _isNum(i.valorRealizado) ? String(i.valorRealizado) : '',
+        _isNum(i.valorMeta) ? String(i.valorMeta) : '',
+        _isNum(i.alcance) ? (Math.round(i.alcance) + '%') : '',
+        i.conceitoLabel || '',
+        _isNum(i.pontos) ? String(i.pontos) : '',
+        _isNum(i.contribuicao) ? String(i.contribuicao) : '',
+        i.responsavel || ''
+      ].map(fnCell).join(','));
+    });
+    var csvContent = linhas.join('\n');
+    if (typeof _downloadCSV === 'function') {
+      _downloadCSV(csvContent, 'monitoramento_desempenho_' + nomePlano + '.csv');
+    } else {
+      var blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'monitoramento_desempenho_' + nomePlano + '.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }
+}
+
+function monitMudarPagina(dir) {
+  var total = _monitFiltrar(_monitListaAtiva()).length;
+  var totalPags = Math.max(1, Math.ceil(total / estadoMonit.itensPorPagina));
+  if (dir === 'prev' && estadoMonit.paginaAtual > 1) estadoMonit.paginaAtual--;
+  if (dir === 'next' && estadoMonit.paginaAtual < totalPags) estadoMonit.paginaAtual++;
+  if (estadoMonit.paginaAtual < 1) estadoMonit.paginaAtual = 1;
+  if (estadoMonit.paginaAtual > totalPags) estadoMonit.paginaAtual = totalPags;
+  _monitRenderCorpo();
+}
+
+function monitIrParaPagina(pg) {
+  var total = _monitFiltrar(_monitListaAtiva()).length;
+  var totalPags = Math.max(1, Math.ceil(total / estadoMonit.itensPorPagina));
+  var p = parseInt(pg, 10) || 1;
+  estadoMonit.paginaAtual = Math.min(Math.max(1, p), totalPags);
+  _monitRenderCorpo();
+}
+
+function _monitAtualizarPaginacao(total, start) {
+  var pag = document.getElementById('monit-pagination');
+  if (!pag) return;
+  var itensPag = estadoMonit.itensPorPagina;
+  var totalPags = Math.max(1, Math.ceil(total / itensPag));
+  if (estadoMonit.paginaAtual > totalPags) estadoMonit.paginaAtual = totalPags;
+  if (estadoMonit.paginaAtual < 1) estadoMonit.paginaAtual = 1;
+
+  var fim = Math.min(start + itensPag, total);
+  var counter = document.getElementById('monit-pag-counter');
+  if (counter) counter.textContent = (total === 0 ? '0 de 0' : (start + 1) + '–' + fim + ' de ' + total);
+
+  var sel = document.getElementById('monit-pag-selector');
+  if (sel) {
+    sel.innerHTML = '';
+    for (var i = 1; i <= totalPags; i++) {
+      var opt = document.createElement('option');
+      opt.value = i;
+      opt.text = i;
+      if (i === estadoMonit.paginaAtual) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.value = String(estadoMonit.paginaAtual);
+    sel.disabled = (totalPags <= 1 || total === 0);
+  }
+}
+
+function monitAbrirMenuTipos(btn, ev) {
+  if (ev) ev.stopPropagation();
+  var info = _monitElementosBarras();
+  if (!info.tiposDisponiveis || info.tiposDisponiveis.length <= 1) return;
+  var itens = info.tiposDisponiveis.map(function(t) {
+    return {
+      label: t.tipo,
+      ativo: t.tipo === info.tipo,
+      onclick: "monitMudarTipoBarras('" + escapeJsAttr(t.tipo) + "')"
+    };
+  });
+  if (typeof abrirMenuSelecao === 'function') {
+    abrirMenuSelecao(btn, [{ itens: itens }]);
+  }
+}
 
 function _monitCardHTML(tipo, titulo, sub, info, idChart, extraHTML, customHeaderHTML) {
   var chartHTML = tipo === 'barras'
@@ -1017,13 +1303,6 @@ function _monitLegendaHTML(itens, selecionado, fnNome) {
   }).join('') + '</div>';
 }
 
-function _monitBaseSem(campo) {
-  var salvo = estadoMonit[campo]; estadoMonit[campo] = '';
-  var l = _monitFiltrar(_monitListaAtiva());
-  estadoMonit[campo] = salvo;
-  return l;
-}
-
 function _monitProgressoFiltrado(linhasFiltradas) {
   var hoje = new Date(); hoje.setHours(0, 0, 0, 0);
   // Elemento com filhos (não cancelados) não entra na média: o progresso dele vem dos filhos (mesma regra do servidor)
@@ -1045,14 +1324,6 @@ function _monitProgressoFiltrado(linhasFiltradas) {
     concluidos: concluidos,
     vencidos: venc
   };
-}
-
-function _monitClassificarFaixa(faixas, valor) {
-  if (!faixas || !faixas.length || valor === null || valor === undefined || isNaN(valor)) return null;
-  for (var i = 0; i < faixas.length; i++) {
-    if (valor >= faixas[i].min) return faixas[i];
-  }
-  return faixas[faixas.length - 1];
 }
 
 function _monitDesempenhoFiltrado(linhasFiltradas, faixasConfig) {
@@ -1153,87 +1424,9 @@ function _monitResumoHTML(dados) {
     + '</div>';
 }
 
-function _monitDesenharResumo(dados) {
-  if (!dados || typeof echarts === 'undefined') return;
-  _monitLimparCharts();
-  if (estadoMonit.modo === 'progresso') {
-    var p = (dados.progresso && dados.progresso.proprio) || {};
-    var temFiltroProg = !!(estadoMonit.busca || estadoMonit.filtroStatus || estadoMonit.filtroResp || estadoMonit.filtroElem);
-    var pAtual = temFiltroProg ? _monitProgressoFiltrado(_monitFiltrar(_monitLinhasProgresso())) : p;
-    _monitChart('anel', 'mon-chart-anel', _monitOptAnel(_isNum(pAtual.pct) ? pAtual.pct : 0, _monitCor('var(--ds-color-action)'), 'execução'));
-    var base = _monitBaseSem('filtroStatus');
-    _monitChart('rosca', 'mon-chart-rosca', _monitOptRosca(_MON_ORD_STATUS.map(function(s) {
-      return { chave: s, rot: s, cor: (_PERF_CORES_STATUS[s] || {}).cor, n: base.filter(function(l) { return l.status === s; }).length };
-    }), base.length, 'elementos', estadoMonit.filtroStatus), function(x) { monitFiltrarStatus(x.name); });
-
-    var infoBarras = _monitElementosBarras();
-    var objs = (infoBarras.lista || []).slice().sort(function(a, b) {
-      if (Math.abs(a.pct - b.pct) > 0.001) return a.pct - b.pct;
-      return (typeof compararCodigos === 'function')
-        ? compararCodigos(String(b.o.codigo || ''), String(a.o.codigo || ''))
-        : String(b.o.codigo || '').localeCompare(String(a.o.codigo || ''), 'pt', { numeric: true });
-    });
-    var el = document.getElementById('mon-chart-barras');
-    if (el) el.style.height = Math.max(220, objs.length * 34 + 16) + 'px';
-    _monitChart('barras', 'mon-chart-barras', _monitOptBarras(
-      objs.map(function(x) { return _monitTrunc((x.o.codigo ? x.o.codigo + '  ' : '') + x.o.titulo, 34); }),
-      objs.map(function(x) { return x.pct; }),
-      objs.map(function() { return 'var(--ds-color-action)'; }),
-      objs.map(function(x) { return estadoMonit.filtroElem && String(estadoMonit.filtroElem) !== String(x.o.id) ? 0.25 : 1; }),
-      function(x) { var o = objs[x.dataIndex]; return escapeHtml(o.o.titulo) + '<br/><b>' + _fmtNumBR(o.pct) + '%</b> de execução'; },
-      false
-    ), function(x) { var o = objs[x.dataIndex]; if (o) monitFiltrarObjetivo(String(o.o.id)); });
-    return;
-  }
-  var d = (dados.desempenho && dados.desempenho.proprio) || {};
-  var temFiltroDesemp = !!(estadoMonit.busca || estadoMonit.filtroElem || estadoMonit.filtroResp || estadoMonit.filtroConceito);
-  var dAtual = temFiltroDesemp ? _monitDesempenhoFiltrado(_monitFiltrar(_monitLinhasDesempenho()), dados.faixas) : d;
-  var cc = _PERF_CORES_CONCEITO[dAtual.conceito];
-  _monitChart('anel', 'mon-chart-anel', _monitOptAnel(_isNum(dAtual.ieg) ? dAtual.ieg : 0, _monitCor(cc ? cc.text : 'var(--ds-color-action)'), 'IEG'));
-  var baseC = _monitBaseSem('filtroConceito');
-  _monitChart('rosca', 'mon-chart-rosca', _monitOptRosca(_MON_ORD_CONC.map(function(k) {
-    var c = _PERF_CORES_CONCEITO[k];
-    return { chave: k, rot: k, cor: c ? c.text : 'var(--ds-color-border-strong)', n: baseC.filter(function(l) { return l.conceitoLabel === k; }).length };
-  }), baseC.length, 'indicadores', estadoMonit.filtroConceito), function(x) { monitFiltrarConceito(x.name); });
-
-  var ap = _monitFiltrar(_monitLinhasDesempenho()).filter(function(i) { return _isNum(i.alcance); })
-    .sort(function(a, b) { return a.alcance - b.alcance; });
-  var elb = document.getElementById('mon-chart-barras');
-  if (elb) elb.style.height = Math.max(220, ap.length * 30 + 24) + 'px';
-  _monitChart('barras', 'mon-chart-barras', _monitOptBarras(
-    ap.map(function(i) { return _monitTrunc(i.nome, 30); }),
-    ap.map(function(i) { return i.alcance; }),
-    ap.map(function(i) { return (_PERF_CORES_CONCEITO[i.conceito] || { text: 'var(--ds-color-text-muted)' }).text; }),
-    ap.map(function() { return 1; }),
-    function(x) { var i = ap[x.dataIndex]; return escapeHtml(i.nome) + '<br/>Alcance <b>' + _fmtNumBR(i.alcance) + '%</b> · ' + escapeHtml(i.conceitoLabel); },
-    true
-  ), function(x) { var i = ap[x.dataIndex]; if (i) { _perfExpandidos[String(i.id)] = true; _monitRenderCorpo(); } });
-}
-
-function _monitRedesenharGraficosHistorico() {
-  if (estadoMonit.modo !== 'desempenho' || !_perfDados) return;
-  var lista = _monitLinhasDesempenho();
-  lista.forEach(function(ind) {
-    if (_perfExpandidos[ind.id]) {
-      _monitChart('hist_' + ind.id, 'mon-hist-' + ind.id, _monitOptHistorico(ind));
-    }
-  });
-}
-
 function monitFiltrarStatus(s)   { estadoMonit.filtroStatus   = estadoMonit.filtroStatus === s ? '' : s; estadoMonit.paginaAtual = 1; renderizarMonitoramento(_perfDados); }
 function monitFiltrarConceito(c) { estadoMonit.filtroConceito = estadoMonit.filtroConceito === c ? '' : c; estadoMonit.paginaAtual = 1; renderizarMonitoramento(_perfDados); }
 function monitFiltrarObjetivo(id){ estadoMonit.filtroElem     = String(estadoMonit.filtroElem) === String(id) ? '' : String(id); estadoMonit.paginaAtual = 1; renderizarMonitoramento(_perfDados); }
-
-var _monitFiltrosDef = {
-  status:   { label: 'Status',      chave: 'filtroStatus',   modo: 'progresso' },
-  obj:      { label: 'Elemento',    chave: 'filtroElem',     modo: '*' },
-  resp:     { label: 'Responsável', chave: 'filtroResp',     modo: '*' },
-  conceito: { label: 'Conceito',    chave: 'filtroConceito', modo: 'desempenho' }
-};
-
-function _monitCamposAtivos() {
-  return estadoMonit.modo === 'progresso' ? ['status', 'obj', 'resp'] : ['conceito', 'obj', 'resp'];
-}
 
 function _monitRotuloFiltro(campo) {
   var v = estadoMonit[_monitFiltrosDef[campo].chave];
@@ -1298,17 +1491,6 @@ function monitAbrirBusca() {
   var sc = document.getElementById('monit-search-caixa'); if (sc) sc.classList.remove('hidden');
   var fb = document.getElementById('monit-filtro-busca'); if (fb) fb.focus();
 }
-
-document.addEventListener('click', function(e) {
-  var wrap = document.getElementById('monit-search-wrap'), caixa = document.getElementById('monit-search-caixa');
-  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
-  var inp = document.getElementById('monit-filtro-busca');
-  if (inp && !inp.value.trim()) {
-    caixa.classList.add('hidden');
-    var st = document.getElementById('monit-search-toggle');
-    if (st) st.classList.remove('hidden');
-  }
-});
 
 function aplicarFiltrosMonit() {
   estadoMonit.busca = (document.getElementById('monit-filtro-busca') || {}).value || '';
@@ -1561,177 +1743,7 @@ function _monitRenderCorpo() {
   _monitAtualizarPaginacao(total, start);
 }
 
-function perfToggleExpand(idInd, ev) {
-  if (ev && ev.target.closest && ev.target.closest('button, a, .acoes-linha')) return;
-  _perfExpandidos[idInd] = !_perfExpandidos[idInd];
-  _monitRenderCorpo();
-}
-
-function monitToggleExpandirTudo() {
-  monitTudoExpandido = !monitTudoExpandido;
-  _perfExpandidos = {};
-  if (monitTudoExpandido) _monitFiltrar(_monitLinhasDesempenho()).forEach(function(l) { _perfExpandidos[String(l.id)] = true; });
-  _monitRenderCorpo();
-}
-
-function atualizarMonitoramento() {
-  _monitCarregarDados(true);
-}
-
-// silencioso=true: atualização em segundo plano — mantém na tela o que já está carregado
-// (sem spinner, sem zerar filtros/linhas expandidas) e só troca quando a resposta chega.
-function _monitCarregarDados(forcar, silencioso) {
-  if (!_monitPlanoId || _monitPlanoId === 'undefined' || _monitCarregando) return;
-  _monitCarregando = true;
-  _monitStale = false;
-  var idPlanoReq = _monitPlanoId;
-  if (forcar && !silencioso) {
-    _perfDados = null;
-  }
-
-  var wrap = document.getElementById('monit-corpo-wrap');
-  if (silencioso && _perfDados) {
-    // nada a mostrar: os dados atuais continuam visíveis
-  } else if (wrap && !_perfDados) {
-    wrap.innerHTML = '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>';
-  } else {
-    var tbMonit = document.getElementById('monit-tbody');
-    if (tbMonit) tbMonit.innerHTML = '<tr><td colspan="9" style="padding:0">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>') + '</td></tr>';
-  }
-
-  _monitoramentoSDK.chamar('apiGetAbaMonitoramento', _monitPlanoId)
-    .then(function(res) {
-      if (idPlanoReq !== _monitPlanoId) return; // resposta de um plano já abandonado
-      _monitCarregando = false;
-      _perfDados = res;
-      if (!silencioso) {
-        _perfExpandidos = {};
-        monitTudoExpandido = false;
-      }
-      renderizarMonitoramento(res);
-
-      var d = (res && res.desempenho && res.desempenho.proprio) || {};
-      if (d.pendentes > 0) {
-        _monitoramentoSDK.reportarAlerta(d.pendentes, d.pendentes + ' resultado(s) pendente(s) de validação');
-      } else {
-        _monitoramentoSDK.reportarAlerta(null);
-      }
-    })
-    .catch(function(err) {
-      if (idPlanoReq !== _monitPlanoId) return;
-      _monitCarregando = false;
-      var tbMonit = document.getElementById('monit-tbody');
-      var msg = (err && err.message) || String(err);
-      if (tbMonit) {
-        tbMonit.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(msg) + '</td></tr>';
-      } else if (wrap) {
-        wrap.innerHTML = '<div style="color:var(--ds-color-danger); padding:20px">Erro: ' + escapeHtml(msg) + '</div>';
-      }
-    });
-}
-
-// ── REGISTRO DE HOOKS DO SDK ───────────────────────────────────
-_monitoramentoSDK.aoVisibilidade(function(info) {
-  var visivel = !!(info && info.aba && info.pagina);
-  _monitAbaVisivel = visivel;
-  if (visivel) {
-    if (!_perfDados && !_monitCarregando && _monitPlanoId && _monitPlanoId !== 'undefined') {
-      _monitCarregarDados(false);
-    } else if (_perfDados && _monitStale && !_monitCarregando) {
-      _monitCarregarDados(true, true);
-    } else if (_perfDados) {
-      setTimeout(function() {
-        _monitDesenharResumo(_perfDados);
-        _monitResizeCharts();
-      }, 50);
-    }
-  }
-});
-
-_monitoramentoSDK.aoContexto(function(ctx) {
-  if (!ctx) return;
-  var novoId = String(ctx.idPlano || (ctx.plano && ctx.plano.id) || '');
-  if (!novoId || novoId === 'undefined') return;
-  var mudouPlano = (_monitPlanoId !== novoId);
-  _monitCtx = ctx;
-  _monitPlanoId = novoId;
-
-  if (!mudouPlano) {
-    // Plano reaberto (ou trâmite): o que está em memória pode ter ficado defasado
-    _monitStale = true;
-    if (_monitAbaVisivel && _perfDados && !_monitCarregando) _monitCarregarDados(true, true);
-    return;
-  }
-
-  if (mudouPlano) {
-    _monitCarregando = false;
-    _monitStale = false;
-    _perfDados = null;
-    _perfExpandidos = {};
-    monitTudoExpandido = false;
-    _monitDestruirTodosCharts();
-    estadoMonit.busca = '';
-    estadoMonit.filtroStatus = '';
-    estadoMonit.filtroResp = '';
-    estadoMonit.filtroElem = '';
-    estadoMonit.filtroConceito = '';
-    estadoMonit.tipoElementoBarras = '';
-    estadoMonit.paginaAtual = 1;
-    if (_monitAbaVisivel) {
-      _monitCarregarDados(false);
-    } else {
-      var wrap = document.getElementById('monit-corpo-wrap');
-      if (wrap) wrap.innerHTML = '';
-    }
-  }
-});
-
-// Chamadas pelo host quando Elementos/Indicadores reportam dados: se o que a aba
-// mostra deixou de bater com a lista atual, marca como defasado (recarrega ao ficar visível).
-function _monitMarcarSeMudou(assinaturaAtual, assinaturaMonit) {
-  if (!_perfDados || assinaturaAtual === assinaturaMonit) return;
-  _monitStale = true;
-  if (_monitAbaVisivel && !_monitCarregando) _monitCarregarDados(true, true);
-}
-window.monitVerificarElementos = function(elementos) {
-  var sig = function(l) { return (l || []).map(function(e) { return String(e.id) + '|' + String(e.status || 'Não Iniciado') + '|' + Number(e.percentual || 0); }).sort().join(';'); };
-  _monitMarcarSeMudou(sig(elementos), sig(_perfDados && _perfDados.elementos));
-};
-window.monitVerificarIndicadores = function(indicadores) {
-  var sig = function(l) { return (l || []).map(function(i) { return String(i.id); }).sort().join(';'); };
-  _monitMarcarSeMudou(sig(indicadores), sig(_perfDados && _perfDados.indicadores));
-};
-
-_monitoramentoSDK.aoTema(function(tema) {
-  if (_perfDados && _monitAbaVisivel) {
-    _monitDesenharResumo(_perfDados);
-    _monitRedesenharGraficosHistorico();
-  }
-});
-
-_monitoramentoSDK.aoTecla(function(ev) {
-  if (ev && ev.key === 'Escape') {
-    if (estadoMonit.busca) {
-      limparFiltroMonitBusca();
-      return true;
-    }
-    var temExpandidos = Object.keys(_perfExpandidos).some(function(k) { return _perfExpandidos[k]; });
-    if (temExpandidos) {
-      _perfExpandidos = {};
-      monitTudoExpandido = false;
-      _monitRenderCorpo();
-      return true;
-    }
-    var temFiltro = estadoMonit.filtroStatus || estadoMonit.filtroResp || estadoMonit.filtroElem || estadoMonit.filtroConceito;
-    if (temFiltro) {
-      limparFiltrosMonit();
-      return true;
-    }
-  }
-  return false;
-});
-
-// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+// app_monitoramento_eventos — registro das ações delegadas (uiRegistrarAcoes)
 uiRegistrarAcoes('mon', {
   '1': function (event) { monitAbrirMenuTipos(this, event); },
   '2': function (event) { monitAbrirBusca(); },
@@ -1757,4 +1769,6 @@ uiRegistrarAcoes('mon', {
   '22': function (event) { monitAbrirPainelIndicador(uiArgJs(this.dataset.adblclick0)); event.stopPropagation(); },
   '23': function (event) { monitAbrirPainelIndicador(uiArgJs(this.dataset.aclick0)); }
 });
+
+
 </script>

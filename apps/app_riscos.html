@@ -798,6 +798,10 @@ body.high-contrast .rsc-tabela tr.rsc-linha { border-color: #fff; }
 <div id="rsc-corpo-wrap"></div>
 
 <script>
+// Dividido por responsabilidade (fase d — docs/refatoracao_frontend.md). Mesmo <script>, mesmo escopo global;
+// instruções de topo ficam em _estado na ordem original; funções são içadas, então a ordem entre arquivos não importa.
+// app_riscos_estado — estado global, constantes e inicialização (instruções de topo, na ordem original)
+
 // ================================================================
 // INSTÂNCIA DO SDK PARA O APP RISCOS
 // ================================================================
@@ -832,7 +836,6 @@ const _RISCO_PROBS = ['Muito Baixa', 'Baixa', 'Média', 'Alta', 'Muito Alta'];
 const _RISCO_IMPS  = ['Muito Baixo', 'Baixo', 'Médio', 'Alto', 'Muito Alto'];
 const _RISCO_PESOS = [1, 2, 5, 8, 10];
 const _RISCO_NIVEL_ROTULO = { RB: 'Baixo', RM: 'Médio', RA: 'Alto', RE: 'Extremo' };
-function _riscoNivelCelula(pp, pi) { var n = pp * pi; return n >= 80 ? 'RE' : n >= 40 ? 'RA' : n >= 10 ? 'RM' : 'RB'; }
 
 var _PESOS_PROB_CLI = { 'Muito Baixa': 1, 'Baixa': 2, 'Média': 5, 'Alta': 8, 'Muito Alta': 10 };
 var _PESOS_IMP_CLI  = { 'Muito Baixo': 1, 'Baixo': 2, 'Médio': 5, 'Alto': 8, 'Muito Alto': 10 };
@@ -848,22 +851,6 @@ var _MENSAGENS_APETITE_CLI = {
   RA: 'O risco alto deverá ser priorizado para tratamento, pois está fora do limite de apetite tolerado. A definição de ação de tratamento é obrigatória.',
   RE: 'O risco extremo deverá ser priorizado para tratamento, pois está fora do limite de apetite tolerado. A definição de ação de tratamento é obrigatória.'
 };
-
-function _rscPodeEditar() {
-  if (_rscCtx && _rscCtx.permissoes) {
-    return !!_rscCtx.permissoes.gerenciarElementos;
-  }
-  return false;
-}
-
-function _rscObterIdPlano() {
-  return (_rscCtx && _rscCtx.idPlano) || null;
-}
-
-
-// ================================================================
-// WIZARD MODAL DE RISCO (_rwiz*)
-// ================================================================
 var estadoWizardRisco = { atual: 1, passos: [1, 2, 3, 4] };
 var RWIZ_TITULOS = [
   { titulo: 'Identificação', desc: 'Objeto analisado, evento e natureza do risco.' },
@@ -872,154 +859,12 @@ var RWIZ_TITULOS = [
   { titulo: 'Responsáveis', desc: 'Quem acompanha este risco.' }
 ];
 
-function _rwizResumoPasso(n) {
-  if (n === 1) {
-    var sel = document.getElementById('risco-objeto-select');
-    var opt = sel ? sel.options[sel.selectedIndex] : null;
-    return opt && opt.value ? opt.textContent : '';
-  }
-  return '';
-}
-
-function _rwizRenderRail() {
-  var wrap = document.getElementById('rwiz-rail-lista');
-  var contador = document.getElementById('rwiz-rail-contador');
-  var mobTexto = document.getElementById('rwiz-mob-texto');
-  if (!wrap) return;
-  var passos = estadoWizardRisco.passos;
-  var idxAtual = passos.indexOf(estadoWizardRisco.atual);
-
-  wrap.innerHTML = passos.map(function(p, i) {
-    var atual = p === estadoWizardRisco.atual;
-    var concluido = i < idxAtual;
-    var cls = 'wiz-rail-item';
-    if (atual) cls += ' wiz-rail-atual';
-    else if (concluido) cls += ' wiz-rail-concluido';
-    var info = RWIZ_TITULOS[i] || { titulo: 'Etapa ' + p, desc: '' };
-    var resumo = atual ? _rwizResumoPasso(p) : '';
-    var numHTML = concluido ? '<span class="material-symbols-outlined">check</span>' : String(i + 1);
-    return '<button type="button" class="' + cls + '" data-on-click="risco.18" data-rclick0="' + p + '">'
-      + '<span class="wiz-rail-num">' + numHTML + '</span>'
-      + '<span>'
-      +   '<div class="wiz-rail-item-titulo">' + escapeHtml(info.titulo) + '</div>'
-      +   '<div class="wiz-rail-item-desc">' + escapeHtml(resumo || info.desc) + '</div>'
-      + '</span>'
-      + '</button>';
-  }).join('');
-
-  var pct = Math.round(((idxAtual + 1) / passos.length) * 100);
-  var fill = document.getElementById('rwiz-rail-fill');
-  if (fill) fill.style.width = pct + '%';
-  var mobFill = document.getElementById('rwiz-mob-fill');
-  if (mobFill) mobFill.style.width = pct + '%';
-  var texto = 'Etapa ' + (idxAtual + 1) + ' de ' + passos.length;
-  if (contador) contador.textContent = texto;
-  if (mobTexto) mobTexto.textContent = texto;
-}
-
-function _rwizIrPara(n, direcao) {
-  var trocarAgora = function() {
-    estadoWizardRisco.atual = n;
-    document.querySelectorAll('#modal-risco .wizard-step').forEach(function(el) {
-      el.classList.toggle('hidden', Number(el.dataset.step) !== n);
-    });
-    _rwizRenderRail();
-    var passos = estadoWizardRisco.passos;
-    document.getElementById('btn-risco-voltar').classList.toggle('hidden', n === passos[0]);
-    document.getElementById('btn-risco-proximo').classList.toggle('hidden', n === passos[passos.length - 1]);
-    document.getElementById('btn-risco-salvar').classList.toggle('hidden', n !== passos[passos.length - 1]);
-    var viewport = document.querySelector('#modal-risco .wizard-steps-viewport');
-    if (viewport) viewport.scrollTop = 0;
-    estadoWizardRisco.transicionando = false;
-  };
-
-  var atualEl = document.getElementById('wizard-risco-step-' + estadoWizardRisco.atual);
-  if (!direcao || !atualEl || Number(atualEl.dataset.step) === n || estadoWizardRisco.transicionando) {
-    trocarAgora();
-    return;
-  }
-  estadoWizardRisco.transicionando = true;
-  var saiClasse = direcao === 'frente' ? 'wizard-slide-out-left' : 'wizard-slide-out-right';
-  atualEl.classList.add(saiClasse);
-  setTimeout(function() {
-    atualEl.classList.remove(saiClasse);
-    trocarAgora();
-  }, 180);
-}
-
-function _rwizIrParaRail(n) {
-  if (n === estadoWizardRisco.atual) return;
-  if (n > estadoWizardRisco.atual && !_rwizValidarPassoAtual()) return;
-  _rwizIrPara(n, n > estadoWizardRisco.atual ? 'frente' : 'tras');
-}
-
 var RWIZ_MSGS_CAMPO = {
   'risco-objeto-select': { valueMissing: 'Selecione o elemento do plano.' },
   'risco-descricao':     { valueMissing: 'Descreva o risco ou evento.', tooShort: 'Use pelo menos 10 caracteres.' },
   'risco-probabilidade': { valueMissing: 'Selecione a probabilidade.' },
   'risco-impacto':       { valueMissing: 'Selecione o impacto.' }
 };
-function _rwizClasseErro(campo) {
-  return campo.tagName === 'SELECT' ? 'ds-select--error' : campo.tagName === 'TEXTAREA' ? 'ds-textarea--error' : 'ds-input--error';
-}
-function _rwizMsgCampo(campo) {
-  var v = campo.validity;
-  var overrides = RWIZ_MSGS_CAMPO[campo.id] || {};
-  if (v.valueMissing) return overrides.valueMissing || 'Preencha este campo.';
-  if (v.tooShort) return overrides.tooShort || ('Use pelo menos ' + campo.minLength + ' caracteres.');
-  if (v.tooLong) return overrides.tooLong || ('Use no máximo ' + campo.maxLength + ' caracteres.');
-  return campo.validationMessage || 'Verifique este campo.';
-}
-function _rwizExibirErro(campo) {
-  campo.classList.add(_rwizClasseErro(campo));
-  var erro = document.getElementById(campo.id + '-erro');
-  if (erro) { erro.textContent = _rwizMsgCampo(campo); erro.classList.remove('hidden'); }
-}
-function _rwizLimparErro(campo) {
-  campo.classList.remove('ds-input--error', 'ds-select--error', 'ds-textarea--error');
-  var erro = document.getElementById(campo.id + '-erro');
-  if (erro) { erro.classList.add('hidden'); erro.textContent = ''; }
-}
-function _rwizContador(campo) {
-  var span = document.getElementById(campo.id + '-contador');
-  if (span) span.textContent = campo.value.length + '/' + campo.maxLength;
-}
-
-function _rwizValidarNatureza() {
-  var erro = document.getElementById('risco-nat-erro');
-  if (_naturezasSelecionadasRisco().length === 0) {
-    if (erro) { erro.textContent = 'Selecione ao menos uma natureza.'; erro.classList.remove('hidden'); }
-    return false;
-  }
-  if (erro) erro.classList.add('hidden');
-  return true;
-}
-
-function _rwizValidarPassoAtual() {
-  var stepEl = document.getElementById('wizard-risco-step-' + estadoWizardRisco.atual);
-  if (!stepEl) return true;
-  var campos = stepEl.querySelectorAll('input, textarea, select');
-  for (var i = 0; i < campos.length; i++) {
-    var campo = campos[i];
-    if (campo.closest('.hidden')) continue;
-    if (!campo.checkValidity()) { _rwizExibirErro(campo); campo.focus(); return false; }
-  }
-  if (estadoWizardRisco.atual === 1 && !_rwizValidarNatureza()) return false;
-  return true;
-}
-
-function _rwizProximo() {
-  if (!_rwizValidarPassoAtual()) return;
-  var passos = estadoWizardRisco.passos;
-  var idx = passos.indexOf(estadoWizardRisco.atual);
-  if (idx < passos.length - 1) _rwizIrPara(passos[idx + 1], 'frente');
-}
-
-function _rwizVoltar() {
-  var passos = estadoWizardRisco.passos;
-  var idx = passos.indexOf(estadoWizardRisco.atual);
-  if (idx > 0) _rwizIrPara(passos[idx - 1], 'tras');
-}
 
 (function () {
   var form = document.getElementById('form-risco');
@@ -1036,123 +881,114 @@ function _rwizVoltar() {
   });
 })();
 
-function _rwizValidarTudoAntesDeSalvar() {
-  var form = document.getElementById('form-risco');
-  var campos = form.querySelectorAll('input, textarea, select');
-  for (var i = 0; i < campos.length; i++) {
-    var campo = campos[i];
-    if (campo.checkValidity()) continue;
-    var stepEl = campo.closest('.wizard-step');
-    if (stepEl) _rwizIrPara(Number(stepEl.dataset.step));
-    _rwizExibirErro(campo);
-    campo.focus();
-    return false;
-  }
-  if (!_rwizValidarNatureza()) { _rwizIrPara(1); return false; }
-  return true;
-}
-
-function _rwizIniciar() {
-  _rwizIrPara(1);
-}
-
-function _popularElementosRisco(idElementoSelecionado) {
-  var sel = document.getElementById('risco-objeto-select');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">— Selecione um elemento —</option>';
-  var baseElems = (_elementosResumoCache && _elementosResumoCache.length)
-    ? _elementosResumoCache
-    : [];
-  if (!baseElems || !baseElems.length) return;
-  var elems = baseElems.slice().sort(function(a, b) {
-    return typeof compararCodigos === 'function' ? compararCodigos(a.codigo, b.codigo) : 0;
-  });
-  elems.forEach(function(el) {
-    var opt = document.createElement('option');
-    opt.value = String(el.id);
-    opt.setAttribute('data-titulo', el.titulo || '');
-    opt.setAttribute('data-codigo', el.codigo || '');
-    var label = (el.codigo ? el.codigo + ' — ' : '') + el.titulo;
-    if (el.tipo) label += ' (' + el.tipo + ')';
-    opt.textContent = label;
-    if (idElementoSelecionado && String(el.id) === String(idElementoSelecionado)) opt.selected = true;
-    sel.appendChild(opt);
-  });
-}
-
-function _rwizSelecionarObjeto() {
-  var sel = document.getElementById('risco-objeto-select');
-  document.getElementById('risco-id-elemento').value = sel.value || '';
-  _rwizLimparErro(sel);
-  _rwizRenderRail();
-}
-
 var _riscoParesCC = [];
 
-function _gerarIdCausaTemp() {
-  return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-}
-
-function adicionarCausaConsequenciaRisco() {
-  var causaInput = document.getElementById('risco-causa-input');
-  var consequenciaInput = document.getElementById('risco-consequencia-input');
-  var causa = causaInput.value.trim();
-  var consequencia = consequenciaInput.value.trim();
-  if (!causa && !consequencia) {
-    if (typeof showMessage === 'function') showMessage('warning', 'Atenção', 'Informe ao menos a causa ou a consequência.');
-    return;
-  }
-  _riscoParesCC.push({ id: _gerarIdCausaTemp(), causa: causa, consequencia: consequencia });
-  causaInput.value = '';
-  consequenciaInput.value = '';
-  causaInput.focus();
-  _renderizarCausasConsequenciasRisco();
-}
-
-function removerCausaConsequenciaRisco(idx) {
-  _riscoParesCC.splice(idx, 1);
-  _renderizarCausasConsequenciasRisco();
-}
-
-function _renderizarCausasConsequenciasRisco() {
-  var container = document.getElementById('risco-causas-lista');
-  if (!container) return;
-  if (!_riscoParesCC.length) {
-    container.innerHTML = '<div class="risco-causa-vazio" style="font-size:0.78rem;padding:6px 2px">Nenhuma causa/consequência adicionada ainda.</div>';
-    return;
-  }
-  container.innerHTML = _riscoParesCC.map(function(p, i) {
-    return '<div class="risco-causa-item">'
-      + '<div class="risco-causa-num">' + (i + 1) + '</div>'
-      + '<div style="flex:1;min-width:0">'
-      +   '<div><strong>Causa:</strong> ' + escapeHtml(p.causa || '—') + '</div>'
-      +   '<div><strong>Consequência:</strong> ' + escapeHtml(p.consequencia || '—') + '</div>'
-      + '</div>'
-      + '<button type="button" class="btn-icon-sm btn-icon-del" data-title="Remover" data-on-click="risco.19" data-rclick0="' + i + '"><span class="material-symbols-outlined icon-xs">delete</span></button>'
-      + '</div>';
-  }).join('');
-}
-
-function toggleNaturezaRisco(btn) {
-  btn.classList.toggle('active');
-  var erro = document.getElementById('risco-nat-erro');
-  if (erro) erro.classList.add('hidden');
-}
-
-function _naturezasSelecionadasRisco() {
-  return Array.from(document.querySelectorAll('#risco-nat-chips .risco-nat-chip.active')).map(function(b) {
-    return b.getAttribute('data-valor');
-  });
-}
-
-function _setNaturezasSelecionadasRisco(lista) {
-  lista = lista || [];
-  document.querySelectorAll('#risco-nat-chips .risco-nat-chip').forEach(function(b) {
-    b.classList.toggle('active', lista.indexOf(b.getAttribute('data-valor')) !== -1);
-  });
-}
-
 let _cacheNaturezasRisco = null;
+
+var cacheUnidadesRisco = [];
+var cacheUsuariosRisco = [];
+var seletorRespRisco = null;
+var _tratFormIdRisco = null;
+
+var cacheUnidadesTrat = [];
+var cacheUsuariosTrat = [];
+var seletorRespTrat = null;
+
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('riscos-search-wrap');
+  var caixa = document.getElementById('riscos-search-caixa');
+  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
+  var inp = document.getElementById('riscos-filtro-busca');
+  if (inp && !inp.value.trim()) {
+    caixa.classList.add('hidden');
+    var tg = document.getElementById('riscos-search-toggle');
+    if (tg) tg.classList.remove('hidden');
+  }
+});
+
+var _riscosFiltrosDef = {
+  nat:   { label: 'Natureza',    chave: 'filtroNat' },
+  nivel: { label: 'Nível',       chave: 'filtroNivel' },
+  resp:  { label: 'Responsável', chave: 'filtroResp' }
+};
+_riscosSDK.aoVisibilidade(function(v) {
+  _rscVis = v;
+  if (v.aba && v.pagina && _rscCtx && !_rscCarregado && !_rscCarregando) {
+    carregarRiscos();
+  }
+});
+
+_riscosSDK.aoContexto(function(ctx) {
+  if (_rscCtx && String(_rscCtx.idPlano) === String(ctx.idPlano)) {
+    _rscCtx = ctx;
+    if (_rscCarregado) {
+      renderizarSecaoRiscos();
+      _rscAtualizarContador();
+    }
+    return;
+  }
+  _rscCtx = ctx;
+  _rscCarregado = false;
+  _rscCarregando = false;
+  _riscosCache = [];
+  _elementosResumoCache = [];
+  estadoRiscos.busca = '';
+  estadoRiscos.filtroNat = '';
+  estadoRiscos.filtroProb = '';
+  estadoRiscos.filtroImp = '';
+  estadoRiscos.filtroNivel = '';
+  estadoRiscos.filtroResp = '';
+  estadoRiscos.paginaAtual = 1;
+  estadoRiscos.expandidos = {};
+  estadoRiscos.selecionados = {};
+  estadoRiscos.painelId = null;
+
+  if (_rscVis.aba && _rscVis.pagina) {
+    carregarRiscos();
+  }
+});
+
+_riscosSDK.aoPainelFechado(function() {
+  if (estadoRiscos && estadoRiscos.painelId) {
+    estadoRiscos.painelId = null;
+    if (_rscCarregado && typeof _riscosRenderCorpo === 'function') {
+      _riscosRenderCorpo();
+    }
+  }
+});
+
+_riscosSDK.aoTecla(function(evt) {
+  if (evt.key === 'Escape') {
+    if (typeof riscosCancelarSelecao === 'function' && Object.keys(estadoRiscos.selecionados || {}).length > 0) {
+      riscosCancelarSelecao();
+      return true;
+    }
+  } else if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && String(evt.key).toLowerCase() === 'a') {
+    if (typeof riscosToggleSelecionarTodos === 'function') {
+      riscosToggleSelecionarTodos(true);
+      return true;
+    }
+  }
+  return false;
+});
+
+// Compatibilidade global
+window.carregarRiscos = carregarRiscos;
+window.atualizarRiscos = atualizarRiscos;
+window.abrirModalRisco = abrirModalRisco;
+window.fecharModalRisco = fecharModalRisco;
+window.abrirModalTratamentoForm = abrirModalTratamentoForm;
+window.fecharModalTratamentoForm = fecharModalTratamentoForm;
+window.abrirModalCausaRapida = abrirModalCausaRapida;
+window.fecharModalCausaRapida = fecharModalCausaRapida;
+window.riscosToggleSelecionarTodos = riscosToggleSelecionarTodos;
+window.riscosCancelarSelecao = riscosCancelarSelecao;
+window.estadoRiscos = estadoRiscos;
+window._riscosSDK = _riscosSDK;
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+
+// app_riscos_api — chamadas ao servidor (SDK / google.script.run / apiX)
 
 function _garantirCatalogoNaturezasRisco(callback) {
   if (_cacheNaturezasRisco) { callback(); return; }
@@ -1163,98 +999,6 @@ function _garantirCatalogoNaturezasRisco(callback) {
     _cacheNaturezasRisco = [];
     callback();
   });
-}
-
-function _renderChipsNaturezaRisco(selecionadas) {
-  const cont = document.getElementById('risco-nat-chips');
-  if (!cont) return;
-  if (!_cacheNaturezasRisco || !_cacheNaturezasRisco.length) {
-    cont.innerHTML = '<span style="font-size:0.82rem;color:var(--ds-color-text-ui-muted)">Nenhuma natureza cadastrada — configure em Configurações do Sistema → Planejamento → Riscos.</span>';
-    return;
-  }
-  cont.innerHTML = _cacheNaturezasRisco.map(function(n) {
-    return '<button type="button" class="risco-nat-chip" data-valor="' + escapeJsAttr(n.valor) + '" data-on-click="risco.20">' + escapeHtml(n.valor) + '</button>';
-  }).join('');
-  _setNaturezasSelecionadasRisco(selecionadas);
-}
-
-function abrirModalRisco(risco) {
-  document.getElementById('modal-risco-titulo').innerText = risco ? 'Editar risco' : 'Novo risco';
-  var eyebrow = document.getElementById('rwiz-eyebrow');
-  var planoNome = (_rscCtx && _rscCtx.plano && _rscCtx.plano.nome) || '';
-  if (eyebrow) eyebrow.textContent = planoNome;
-  document.getElementById('risco-id-edicao').value    = risco ? risco.id : '';
-  document.getElementById('risco-id-elemento').value  = risco ? (risco.idElemento || '') : '';
-  _popularElementosRisco(risco ? risco.idElemento : '');
-  document.getElementById('risco-descricao').value = risco ? risco.risco : '';
-  _rwizContador(document.getElementById('risco-descricao'));
-  _riscoParesCC = (risco && Array.isArray(risco.causasConsequencias)) ? risco.causasConsequencias.slice() : [];
-  document.getElementById('risco-causa-input').value = '';
-  document.getElementById('risco-consequencia-input').value = '';
-  _renderizarCausasConsequenciasRisco();
-  document.getElementById('risco-nat-chips').innerHTML = typeof spinnerListaHTML === 'function' ? spinnerListaHTML('Carregando…') : 'Carregando…';
-  _garantirCatalogoNaturezasRisco(function() {
-    _renderChipsNaturezaRisco(risco ? risco.naturezasRisco : []);
-  });
-  document.getElementById('risco-probabilidade').value = risco ? risco.probabilidade : '';
-  document.getElementById('risco-impacto').value       = risco ? risco.impacto : '';
-  atualizarNivelRisco();
-
-  document.querySelectorAll('#modal-risco .ds-input--error, #modal-risco .ds-select--error, #modal-risco .ds-textarea--error')
-    .forEach(function(el) { el.classList.remove('ds-input--error', 'ds-select--error', 'ds-textarea--error'); });
-  document.querySelectorAll('#modal-risco .ds-help--error').forEach(function(el) { el.classList.add('hidden'); });
-
-  _initSeletorRespRisco();
-  prepararDadosRiscoResp(function() {
-    if (!seletorRespRisco) return;
-    if (risco && risco.responsaveis && risco.responsaveis.length) {
-      seletorRespRisco.setLista(risco.responsaveis.map(function(r) { return { id: r.id, tipo: r.tipo, nome: r.nome }; }));
-    } else if (risco && risco.idResponsavel) {
-      seletorRespRisco.setLista([{ id: risco.idResponsavel, tipo: risco.tipoResponsavel || 'UNIDADE', nome: risco.nomeResponsavel || '' }]);
-    } else {
-      seletorRespRisco.limpar();
-    }
-  });
-
-  document.getElementById('modal-risco').classList.remove('hidden');
-  if (typeof bloquearFundo === 'function') bloquearFundo();
-  _rwizIniciar();
-}
-
-function fecharModalRisco() {
-  document.getElementById('modal-risco').classList.add('hidden');
-  if (typeof desbloquearFundo === 'function') desbloquearFundo();
-}
-
-function atualizarNivelRisco() {
-  var prob   = document.getElementById('risco-probabilidade').value;
-  var imp    = document.getElementById('risco-impacto').value;
-  var el     = document.getElementById('risco-nivel-preview');
-  var banner = document.getElementById('risco-apetite-banner');
-  var icone  = document.getElementById('risco-apetite-icone');
-  var texto  = document.getElementById('risco-apetite-texto');
-  if (!prob || !imp) {
-    el.removeAttribute('style');
-    el.textContent = '—';
-    banner.className = 'risco-apetite-banner';
-    icone.textContent = 'info';
-    texto.textContent = 'Selecione a probabilidade e o impacto para calcular o apetite ao risco.';
-    return;
-  }
-  var pp    = _PESOS_PROB_CLI[prob] || 0;
-  var pi    = _PESOS_IMP_CLI[imp]  || 0;
-  var n     = pp * pi;
-  var nivel = n >= 80 ? 'RE' : n >= 40 ? 'RA' : n >= 10 ? 'RM' : 'RB';
-  var cor   = _CORES_NIVEL[nivel];
-  el.style.background = cor.bg;
-  el.style.color      = cor.text;
-  el.style.border     = '1px solid ' + cor.text + '44';
-  el.textContent = cor.label;
-
-  var dentro = nivel === 'RB' || nivel === 'RM';
-  banner.className = 'risco-apetite-banner ' + (dentro ? 'dentro' : 'fora');
-  icone.textContent = dentro ? 'check_circle' : 'warning';
-  texto.textContent = _MENSAGENS_APETITE_CLI[nivel];
 }
 
 function salvarRisco(event) {
@@ -1302,115 +1046,6 @@ function salvarRisco(event) {
   });
 }
 
-function onRiscoSalvo() {
-  if (typeof esconderLoader === 'function') esconderLoader();
-  fecharModalRisco();
-  carregarRiscos();
-  if (typeof showMessage === 'function') showMessage('success', 'Salvo', 'Risco salvo com sucesso.');
-}
-
-function onRiscoErro(err) {
-  if (typeof esconderLoader === 'function') esconderLoader();
-  if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
-}
-
-// Hierarquia e autocomplete de responsáveis pelo Risco
-function _processarHierarquiaUnidadeRisco(lista) {
-  var mapa = {}, raizesGlobais = [];
-  lista.forEach(function(u) { u.children = []; mapa[u.id] = u; });
-  lista.forEach(function(u) {
-    if (u.id === u.idPai) u.idPai = null;
-    if (u.idPai && mapa[u.idPai]) mapa[u.idPai].children.push(u);
-    else raizesGlobais.push(u);
-  });
-  return { mapa: mapa, raizesGlobais: raizesGlobais };
-}
-function _achatarArvoreRisco(noRaiz) {
-  var resultado = [], stack = [noRaiz], visitados = {};
-  while (stack.length > 0) {
-    var no = stack.pop();
-    if (visitados[no.id]) continue;
-    visitados[no.id] = true;
-    resultado.push(no);
-    if (no.children && no.children.length > 0) {
-      var filhos = no.children.slice().sort(function(a, b) { return (a.sigla || '').localeCompare(b.sigla || ''); });
-      for (var i = filhos.length - 1; i >= 0; i--) stack.push(filhos[i]);
-    }
-  }
-  return resultado;
-}
-function _unidadesContextoPermitidoRisco(cacheUnidadesLocal) {
-  var planoObj = _rscCtx && _rscCtx.plano;
-  if (!planoObj || planoObj.tipoResponsavel !== 'UNIDADE') {
-    return cacheUnidadesLocal;
-  }
-  var idUnidadePlano = String(planoObj.idUnidade).trim();
-  var h = _processarHierarquiaUnidadeRisco(cacheUnidadesLocal);
-  if (h.mapa[idUnidadePlano]) return _achatarArvoreRisco(h.mapa[idUnidadePlano]);
-  var listaPermitida = [];
-  h.raizesGlobais.forEach(function(no) { listaPermitida = listaPermitida.concat(_achatarArvoreRisco(no)); });
-  return listaPermitida;
-}
-function _filtroUsuariosPorContexto(cacheUnidadesLocal, listaUsuarios) {
-  var permitidas = _unidadesContextoPermitidoRisco(cacheUnidadesLocal);
-  var setIds = {};
-  permitidas.forEach(function(u) { setIds[String(u.id)] = true; });
-  return listaUsuarios.filter(function(u) { return setIds[String(u.idUnidadeLotacao)]; });
-}
-
-function _unidadesContextoPermitidoTrat(cacheUnidadesLocal) {
-  var risco = (typeof _riscoPorId === 'function') ? _riscoPorId(_tratFormIdRisco) : null;
-  var herdados = (risco && risco.responsaveis) || [];
-  var unidadesHerdadas = herdados.filter(function(r) { return r.tipo === 'UNIDADE'; }).map(function(r) { return r.id; });
-  var usuariosHerdados = herdados.filter(function(r) { return r.tipo === 'USER'; }).map(function(r) { return r.id; });
-  if (unidadesHerdadas.length === 0 && usuariosHerdados.length === 0) {
-    return _unidadesContextoPermitidoRisco(cacheUnidadesLocal);
-  }
-  if (unidadesHerdadas.length === 0) return [];
-  var h = _processarHierarquiaUnidadeRisco(cacheUnidadesLocal);
-  var vistos = {};
-  var listaPermitida = [];
-  unidadesHerdadas.forEach(function(idUnidade) {
-    if (h.mapa[idUnidade]) {
-      _achatarArvoreRisco(h.mapa[idUnidade]).forEach(function(no) {
-        if (!vistos[no.id]) { vistos[no.id] = true; listaPermitida.push(no); }
-      });
-    }
-  });
-  return listaPermitida;
-}
-
-function _usuariosExclusivosContextoTrat() {
-  var risco = (typeof _riscoPorId === 'function') ? _riscoPorId(_tratFormIdRisco) : null;
-  var herdados = (risco && risco.responsaveis) || [];
-  return herdados.filter(function(r) { return r.tipo === 'USER'; }).map(function(r) { return String(r.id); });
-}
-
-function _filtroUsuariosPorContextoTrat(cacheUnidadesLocal, listaUsuarios) {
-  var permitidas = _unidadesContextoPermitidoTrat(cacheUnidadesLocal);
-  var setIds = {};
-  permitidas.forEach(function(u) { setIds[String(u.id)] = true; });
-  var setExclusivos = {};
-  _usuariosExclusivosContextoTrat().forEach(function(id) { setExclusivos[id] = true; });
-  return listaUsuarios.filter(function(u) { return setIds[String(u.idUnidadeLotacao)] || setExclusivos[String(u.id)]; });
-}
-
-var cacheUnidadesRisco = [];
-var cacheUsuariosRisco = [];
-var seletorRespRisco = null;
-
-function _initSeletorRespRisco() {
-  if (seletorRespRisco || typeof SeletorResponsaveis === 'undefined') return;
-  seletorRespRisco = SeletorResponsaveis.criar({
-    containerId: 'risco-selresp',
-    label: 'Responsáveis pelo Risco *',
-    getUnidades: function() { return cacheUnidadesRisco; },
-    getUsuarios: function() { return cacheUsuariosRisco; },
-    filtroUnidades: function(lista) { return _unidadesContextoPermitidoRisco(lista); },
-    filtroUsuarios: function(lista) { return _filtroUsuariosPorContexto(cacheUnidadesRisco, lista); }
-  });
-}
-
 function prepararDadosRiscoResp(onReady) {
   var finalizar = onReady || function() {};
   if (cacheUnidadesRisco.length === 0) {
@@ -1435,87 +1070,6 @@ function carregarUsuariosRisco() {
 // ================================================================
 // MODAL: AÇÃO DE TRATAMENTO
 // ================================================================
-var _tratFormIdRisco = null;
-
-function _prepararModalTratamento(idRisco, trat, idCausaPreSelecionada) {
-  _tratFormIdRisco = idRisco;
-  document.getElementById('trat-id-edicao').value = trat ? trat.id : '';
-  document.getElementById('trat-id-risco').value = idRisco;
-  document.getElementById('modal-trat-form-titulo').textContent = trat ? 'Editar Ação de Tratamento' : 'Nova Ação de Tratamento';
-  document.getElementById('trat-form-botao-texto').textContent = trat ? 'Salvar Alteração' : 'Salvar';
-
-  var risco = _riscoPorId(idRisco);
-  document.getElementById('modal-trat-form-risco-desc').innerText = risco ? risco.risco : '';
-
-  document.getElementById('trat-acao').value              = trat ? (trat.acao || '') : '';
-  document.getElementById('trat-descricao').value         = trat ? (trat.descricao || '') : '';
-  document.getElementById('trat-periodicidade').value     = trat ? (trat.periodicidade || '') : '';
-  document.getElementById('trat-intervalo-qtd').value     = trat ? (trat.intervaloQtd || '') : '';
-  document.getElementById('trat-intervalo-unidade').value = trat ? (trat.intervaloUnidade || 'Dias') : 'Dias';
-  onMudarPeriodicidadeTrat();
-  document.getElementById('trat-data-referencia').value   = trat ? (trat.dataReferencia || '') : '';
-
-  var idCausaInicial = trat ? (trat.idCausa || '') : (idCausaPreSelecionada || '');
-  _popularCausasVinculoTrat(idCausaInicial);
-  document.getElementById('trat-causa-vinculo').value = idCausaInicial;
-
-  _initSeletorRespTrat();
-  prepararDadosTratResp(function() {
-    if (!seletorRespTrat) return;
-    if (trat && trat.responsaveis && trat.responsaveis.length) {
-      seletorRespTrat.setLista(trat.responsaveis.map(function(r) { return { id: r.id, tipo: r.tipo, nome: r.nome }; }));
-    } else if (!trat && risco && risco.responsaveis && risco.responsaveis.length) {
-      seletorRespTrat.setLista(risco.responsaveis);
-    } else {
-      seletorRespTrat.limpar();
-    }
-  });
-
-  document.getElementById('modal-tratamento-form').classList.remove('hidden');
-  if (typeof bloquearFundo === 'function') bloquearFundo();
-  document.getElementById('trat-acao').focus();
-}
-
-function abrirModalTratamentoForm(idRisco, idCausaPreSelecionada) {
-  _prepararModalTratamento(idRisco, null, idCausaPreSelecionada);
-}
-
-function abrirModalEdicaoTratamento(trat) {
-  _prepararModalTratamento(trat.idRisco, trat);
-}
-
-function fecharModalTratamentoForm() {
-  document.getElementById('modal-tratamento-form').classList.add('hidden');
-  if (typeof desbloquearFundo === 'function') desbloquearFundo();
-  _tratFormIdRisco = null;
-}
-
-function _popularCausasVinculoTrat(idCausaAtual) {
-  var sel = document.getElementById('trat-causa-vinculo');
-  sel.innerHTML = '<option value="">Geral (risco como um todo)</option>';
-  var risco = _riscoPorId(_tratFormIdRisco);
-  var pares = (risco && risco.causasConsequencias) || [];
-  var encontrada = false;
-  pares.forEach(function(p) {
-    if (!p.causa) return;
-    if (idCausaAtual && p.id === idCausaAtual) encontrada = true;
-    var opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = p.causa;
-    sel.appendChild(opt);
-  });
-  if (idCausaAtual && !encontrada) {
-    var optRemovida = document.createElement('option');
-    optRemovida.value = idCausaAtual;
-    optRemovida.textContent = '(causa removida do risco)';
-    sel.appendChild(optRemovida);
-  }
-}
-
-function onMudarPeriodicidadeTrat() {
-  var v = document.getElementById('trat-periodicidade').value;
-  document.getElementById('trat-intervalo-wrap').classList.toggle('hidden', v !== 'Contínuo');
-}
 
 function handleSalvarTratamento(e) {
   e.preventDefault();
@@ -1561,19 +1115,6 @@ function handleSalvarTratamento(e) {
 // ================================================================
 // MODAL: NOVA CAUSA/CONSEQUÊNCIA
 // ================================================================
-function abrirModalCausaRapida(idRisco) {
-  document.getElementById('causa-rapida-id-risco').value = idRisco;
-  document.getElementById('causa-rapida-causa').value = '';
-  document.getElementById('causa-rapida-consequencia').value = '';
-  document.getElementById('modal-causa-rapida').classList.remove('hidden');
-  if (typeof bloquearFundo === 'function') bloquearFundo();
-  document.getElementById('causa-rapida-causa').focus();
-}
-
-function fecharModalCausaRapida() {
-  document.getElementById('modal-causa-rapida').classList.add('hidden');
-  if (typeof desbloquearFundo === 'function') desbloquearFundo();
-}
 
 function handleSalvarCausaRapida(e) {
   e.preventDefault();
@@ -1596,22 +1137,6 @@ function handleSalvarCausaRapida(e) {
   }, function(err) {
     if (typeof esconderLoader === 'function') esconderLoader();
     if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
-  });
-}
-
-var cacheUnidadesTrat = [];
-var cacheUsuariosTrat = [];
-var seletorRespTrat = null;
-
-function _initSeletorRespTrat() {
-  if (seletorRespTrat || typeof SeletorResponsaveis === 'undefined') return;
-  seletorRespTrat = SeletorResponsaveis.criar({
-    containerId: 'trat-selresp',
-    label: 'Responsáveis *',
-    getUnidades: function() { return cacheUnidadesTrat; },
-    getUsuarios: function() { return cacheUsuariosTrat; },
-    filtroUnidades: function(lista) { return _unidadesContextoPermitidoTrat(lista); },
-    filtroUsuarios: function(lista) { return _filtroUsuariosPorContextoTrat(cacheUnidadesTrat, lista); }
   });
 }
 
@@ -1673,9 +1198,6 @@ function carregarRiscos() {
   });
 }
 
-function atualizarRiscos() { carregarRiscos(); }
-function imprimirRiscos() { window.print(); }
-
 function _rscAtualizarContador() {
   var total = _riscosCache.length;
   var criticosSemTrat = _riscosCache.filter(function(r) {
@@ -1686,32 +1208,378 @@ function _rscAtualizarContador() {
   _riscosSDK.reportarAlerta(criticosSemTrat, criticosSemTrat + (criticosSemTrat === 1 ? ' risco de alta severidade sem ação de tratamento' : ' riscos de alta severidade sem ação de tratamento'));
 }
 
+function riscosExcluirSelecionados() {
+  var ids = Object.keys(estadoRiscos.selecionados);
+  if (!ids.length) return;
+  if (typeof showConfirm !== 'function') return;
+  showConfirm('Excluir riscos?', 'Deseja excluir ' + ids.length + (ids.length === 1 ? ' risco' : ' riscos') + ' e suas causas e ações? Esta ação não pode ser desfeita.', function() {
+    if (typeof mostrarLoader === 'function') mostrarLoader();
+    var pendentes = ids.length, erros = [];
+    ids.forEach(function(id) {
+      _riscosSDK.chamar('apiExcluirRisco', id).then(function() {
+        pendentes--;
+        if (pendentes === 0) concluir();
+      }, function(err) {
+        erros.push(err.message || String(err));
+        pendentes--;
+        if (pendentes === 0) concluir();
+      });
+    });
+    function concluir() {
+      if (typeof esconderLoader === 'function') esconderLoader();
+      estadoRiscos.selecionados = {};
+      if (erros.length && typeof showMessage === 'function') showMessage('error', 'Alguns riscos não foram excluídos', escapeHtml(erros[0]));
+      else if (typeof showMessage === 'function') showMessage('success', 'Excluídos', 'Riscos excluídos com sucesso.');
+      _riscosRecarregarLista();
+    }
+  });
+}
+
+function _riscosRenderPainel(r) {
+  var idRisco = String(r.id), idj = escapeHtml(idRisco);
+  var podeEditar = _rscPodeEditar();
+  var c = _CORES_NIVEL_DET[r.nivelRisco] || { bg: 'var(--ds-color-surface-2)', text: 'var(--ds-color-text-muted)' };
+  var trats = r.tratamentos || [], pares = r.causasConsequencias || [];
+  var ids = {}; pares.forEach(function(p) { ids[String(p.id)] = true; });
+
+  var apetite = r.apetiteRisco === 'Não' ? '<span class="detp-risco-val is-fora">Fora do apetite</span>'
+    : r.apetiteRisco === 'Sim' ? '<span class="detp-risco-val is-ok">Dentro do apetite</span>' : '<span class="detp-risco-val">—</span>';
+  var nats = (r.naturezasRisco || []).map(function(n) { return '<span class="detp-risco-chip">' + escapeHtml(n) + '</span>'; }).join('')
+    || '<span class="detp-risco-val">—</span>';
+  var resps = (r.responsaveis || []).map(function(x, i, arr) {
+    var nomeFmt = typeof nomeRespExibicao === 'function' ? nomeRespExibicao(x.nome, x.tipo) : x.nome;
+    return '<div class="detp-resp-item"><span class="material-symbols-outlined">' + (x.tipo === 'USER' ? 'person' : 'apartment') + '</span>'
+      + '<span>' + escapeHtml(nomeFmt) + '</span>'
+      + (arr.length > 1 ? '<span class="detp-resp-papel">' + (i === 0 ? 'Principal' : 'Adicional') + '</span>' : '') + '</div>';
+  }).join('');
+
+  var cards = pares.map(function(p) {
+    var doGrupo = trats.filter(function(t) { return String(t.idCausa) === String(p.id); });
+    return '<div class="detp-causa-card">'
+      + '<div class="detp-risco-campo"><span class="detp-risco-rot">Causa</span><span class="detp-causa-txt">' + escapeHtml(p.causa || '—') + '</span></div>'
+      + '<div class="detp-risco-campo"><span class="detp-risco-rot">Consequência</span><span class="detp-causa-txt">' + escapeHtml(p.consequencia || '—') + '</span></div>'
+      + '<div class="detp-causa-acoes">'
+      +   (doGrupo.length
+            ? doGrupo.map(function(t) { return _riscoTratItemHTML(t, idj, podeEditar); }).join('')
+            : '<div class="detp-trat-vazio"><span class="material-symbols-outlined">error</span>Sem ação de tratamento</div>')
+      +   (podeEditar ? '<button type="button" class="rsc-link" data-on-click="risco.54" data-aclick0="' + idj + '" data-aclick1="' + escapeHtml(String(p.id)) + '"><span class="material-symbols-outlined">add</span>Ação de tratamento</button>' : '')
+      + '</div></div>';
+  }).join('');
+  var gerais = trats.filter(function(t) { return !t.idCausa || !ids[String(t.idCausa)]; });
+  if (gerais.length) {
+    cards += '<div class="detp-causa-card"><span class="detp-risco-rot">Ações gerais</span>'
+      + gerais.map(function(t) { return _riscoTratItemHTML(t, idj, podeEditar); }).join('') + '</div>';
+  }
+  if (!cards) cards = '<p class="detp-texto-bloco" style="color:var(--ds-color-text-muted)">Nenhuma causa ou ação cadastrada.</p>';
+
+  var painelHTML =
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin:-4px -4px 14px 0">'
+    +   '<span class="detp-tab active" style="pointer-events:none">Detalhes do risco</span>'
+    +   '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.55" data-title="Fechar" aria-label="Fechar painel de detalhes"><span class="material-symbols-outlined">close</span></button>'
+    + '</div>'
+    + '<div class="detp-secao">'
+    +   '<h3 class="detp-risco-titulo">' + escapeHtml(r.risco || '') + '</h3>'
+    +   '<div class="detp-risco-vinculo"><span class="material-symbols-outlined">' + (r.tipoRisco === 'GERAL' ? 'flag' : 'category') + '</span>' + escapeHtml(_riscoVinculoTxt(r)) + '</div>'
+    +   '<div class="detp-risco-grade">'
+    +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Nível</span><span class="rsc-nivel-pill" style="align-self:flex-start;background:' + c.bg + ';color:' + c.text + '">' + escapeHtml(_RISCO_NIVEL_ROTULO[r.nivelRisco] || '—') + '</span></div>'
+    +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Apetite ao risco</span>' + apetite + '</div>'
+    +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Probabilidade</span><span class="detp-risco-val">' + escapeHtml(r.probabilidade || '—') + '</span></div>'
+    +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Impacto</span><span class="detp-risco-val">' + escapeHtml(r.impacto || '—') + '</span></div>'
+    +     '<div class="detp-risco-campo span-2"><span class="detp-risco-rot">Natureza</span><div class="detp-risco-chips">' + nats + '</div></div>'
+    +     (resps ? '<div class="detp-risco-campo span-2"><span class="detp-risco-rot">Responsáveis</span><div>' + resps + '</div></div>' : '')
+    +   '</div>'
+    + '</div>'
+    + '<div class="detp-secao">'
+    +   '<div class="detp-risco-sec-cab"><strong>Causas e tratamento</strong>'
+    +     '<span>' + pares.length + (pares.length === 1 ? ' causa' : ' causas') + ' · ' + trats.length + (trats.length === 1 ? ' ação' : ' ações') + '</span>'
+    +     (podeEditar ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.53" data-aclick0="' + idj + '" data-title="Adicionar causa e consequência" aria-label="Adicionar causa e consequência"><span class="material-symbols-outlined">add</span></button>' : '')
+    +   '</div>'
+    +   cards
+    + '</div>';
+
+  _riscosSDK.abrirPainel(painelHTML);
+}
+
+function _riscosRecarregarLista() {
+  var idPlano = _rscObterIdPlano();
+  if (!idPlano) return;
+  _riscosSDK.chamar('apiGetAbaRiscos', idPlano).then(function(res) {
+    if (!_rscCtx || String(_rscCtx.idPlano) !== String(idPlano)) return;
+    _riscosCache = (res && res.riscos) || [];
+    _elementosResumoCache = (res && res.elementosResumo) || [];
+    _rscAtualizarContador();
+    renderizarSecaoRiscos();
+    if (estadoRiscos.painelId) {
+      var rp = _riscoPorId(estadoRiscos.painelId);
+      if (rp) _riscosRenderPainel(rp); else _riscosSDK.fecharPainel();
+    }
+  }, function(err) {
+    if (typeof showMessage === 'function') showMessage('error', 'Erro ao recarregar', escapeHtml(err.message || String(err)));
+  });
+}
+
+function riscosExcluirAcaoTratamento(idRisco, idTratamento) {
+  if (typeof showConfirm !== 'function') return;
+  showConfirm('Excluir Ação?', 'Deseja excluir esta ação de tratamento? Esta ação não pode ser desfeita.', function() {
+    if (typeof mostrarLoader === 'function') mostrarLoader();
+    _riscosSDK.chamar('apiExcluirTratamento', idTratamento).then(function() {
+      if (typeof esconderLoader === 'function') esconderLoader();
+      _riscosRecarregarLista();
+      if (typeof showMessage === 'function') showMessage('success', 'Excluída', 'Ação de tratamento excluída.');
+    }, function(err) {
+      if (typeof esconderLoader === 'function') esconderLoader();
+      if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+    });
+  });
+}
+
+function confirmarExclusaoRisco(id, desc) {
+  if (typeof showConfirm !== 'function') return;
+  showConfirm('Excluir Risco?', 'Deseja excluir o risco: <strong>' + escapeHtml(desc) + '</strong>?', function() {
+    if (typeof mostrarLoader === 'function') mostrarLoader();
+    _riscosSDK.chamar('apiExcluirRisco', id).then(function() {
+      if (typeof esconderLoader === 'function') esconderLoader();
+      carregarRiscos();
+      if (typeof showMessage === 'function') showMessage('success', 'Excluído', 'Risco excluído.');
+    }, function(err) {
+      if (typeof esconderLoader === 'function') esconderLoader();
+      if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+    });
+  });
+}
+
+// ================================================================
+// HANDSHAKE COM O HOST
+// ================================================================
+
+// app_riscos_regras — regras de tela e utilitários (sem render de lista)
+function _riscoNivelCelula(pp, pi) { var n = pp * pi; return n >= 80 ? 'RE' : n >= 40 ? 'RA' : n >= 10 ? 'RM' : 'RB'; }
+
+function _rscPodeEditar() {
+  if (_rscCtx && _rscCtx.permissoes) {
+    return !!_rscCtx.permissoes.gerenciarElementos;
+  }
+  return false;
+}
+
+function _rscObterIdPlano() {
+  return (_rscCtx && _rscCtx.idPlano) || null;
+}
+
+
+// ================================================================
+// WIZARD MODAL DE RISCO (_rwiz*)
+// ================================================================
+
+function _popularElementosRisco(idElementoSelecionado) {
+  var sel = document.getElementById('risco-objeto-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Selecione um elemento —</option>';
+  var baseElems = (_elementosResumoCache && _elementosResumoCache.length)
+    ? _elementosResumoCache
+    : [];
+  if (!baseElems || !baseElems.length) return;
+  var elems = baseElems.slice().sort(function(a, b) {
+    return typeof compararCodigos === 'function' ? compararCodigos(a.codigo, b.codigo) : 0;
+  });
+  elems.forEach(function(el) {
+    var opt = document.createElement('option');
+    opt.value = String(el.id);
+    opt.setAttribute('data-titulo', el.titulo || '');
+    opt.setAttribute('data-codigo', el.codigo || '');
+    var label = (el.codigo ? el.codigo + ' — ' : '') + el.titulo;
+    if (el.tipo) label += ' (' + el.tipo + ')';
+    opt.textContent = label;
+    if (idElementoSelecionado && String(el.id) === String(idElementoSelecionado)) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function _gerarIdCausaTemp() {
+  return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function adicionarCausaConsequenciaRisco() {
+  var causaInput = document.getElementById('risco-causa-input');
+  var consequenciaInput = document.getElementById('risco-consequencia-input');
+  var causa = causaInput.value.trim();
+  var consequencia = consequenciaInput.value.trim();
+  if (!causa && !consequencia) {
+    if (typeof showMessage === 'function') showMessage('warning', 'Atenção', 'Informe ao menos a causa ou a consequência.');
+    return;
+  }
+  _riscoParesCC.push({ id: _gerarIdCausaTemp(), causa: causa, consequencia: consequencia });
+  causaInput.value = '';
+  consequenciaInput.value = '';
+  causaInput.focus();
+  _renderizarCausasConsequenciasRisco();
+}
+
+function removerCausaConsequenciaRisco(idx) {
+  _riscoParesCC.splice(idx, 1);
+  _renderizarCausasConsequenciasRisco();
+}
+
+function toggleNaturezaRisco(btn) {
+  btn.classList.toggle('active');
+  var erro = document.getElementById('risco-nat-erro');
+  if (erro) erro.classList.add('hidden');
+}
+
+function atualizarNivelRisco() {
+  var prob   = document.getElementById('risco-probabilidade').value;
+  var imp    = document.getElementById('risco-impacto').value;
+  var el     = document.getElementById('risco-nivel-preview');
+  var banner = document.getElementById('risco-apetite-banner');
+  var icone  = document.getElementById('risco-apetite-icone');
+  var texto  = document.getElementById('risco-apetite-texto');
+  if (!prob || !imp) {
+    el.removeAttribute('style');
+    el.textContent = '—';
+    banner.className = 'risco-apetite-banner';
+    icone.textContent = 'info';
+    texto.textContent = 'Selecione a probabilidade e o impacto para calcular o apetite ao risco.';
+    return;
+  }
+  var pp    = _PESOS_PROB_CLI[prob] || 0;
+  var pi    = _PESOS_IMP_CLI[imp]  || 0;
+  var n     = pp * pi;
+  var nivel = n >= 80 ? 'RE' : n >= 40 ? 'RA' : n >= 10 ? 'RM' : 'RB';
+  var cor   = _CORES_NIVEL[nivel];
+  el.style.background = cor.bg;
+  el.style.color      = cor.text;
+  el.style.border     = '1px solid ' + cor.text + '44';
+  el.textContent = cor.label;
+
+  var dentro = nivel === 'RB' || nivel === 'RM';
+  banner.className = 'risco-apetite-banner ' + (dentro ? 'dentro' : 'fora');
+  icone.textContent = dentro ? 'check_circle' : 'warning';
+  texto.textContent = _MENSAGENS_APETITE_CLI[nivel];
+}
+
+function onRiscoSalvo() {
+  if (typeof esconderLoader === 'function') esconderLoader();
+  fecharModalRisco();
+  carregarRiscos();
+  if (typeof showMessage === 'function') showMessage('success', 'Salvo', 'Risco salvo com sucesso.');
+}
+
+function onRiscoErro(err) {
+  if (typeof esconderLoader === 'function') esconderLoader();
+  if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+}
+
+// Hierarquia e autocomplete de responsáveis pelo Risco
+function _processarHierarquiaUnidadeRisco(lista) {
+  var mapa = {}, raizesGlobais = [];
+  lista.forEach(function(u) { u.children = []; mapa[u.id] = u; });
+  lista.forEach(function(u) {
+    if (u.id === u.idPai) u.idPai = null;
+    if (u.idPai && mapa[u.idPai]) mapa[u.idPai].children.push(u);
+    else raizesGlobais.push(u);
+  });
+  return { mapa: mapa, raizesGlobais: raizesGlobais };
+}
+function _unidadesContextoPermitidoRisco(cacheUnidadesLocal) {
+  var planoObj = _rscCtx && _rscCtx.plano;
+  if (!planoObj || planoObj.tipoResponsavel !== 'UNIDADE') {
+    return cacheUnidadesLocal;
+  }
+  var idUnidadePlano = String(planoObj.idUnidade).trim();
+  var h = _processarHierarquiaUnidadeRisco(cacheUnidadesLocal);
+  if (h.mapa[idUnidadePlano]) return _achatarArvoreRisco(h.mapa[idUnidadePlano]);
+  var listaPermitida = [];
+  h.raizesGlobais.forEach(function(no) { listaPermitida = listaPermitida.concat(_achatarArvoreRisco(no)); });
+  return listaPermitida;
+}
+
+function _unidadesContextoPermitidoTrat(cacheUnidadesLocal) {
+  var risco = (typeof _riscoPorId === 'function') ? _riscoPorId(_tratFormIdRisco) : null;
+  var herdados = (risco && risco.responsaveis) || [];
+  var unidadesHerdadas = herdados.filter(function(r) { return r.tipo === 'UNIDADE'; }).map(function(r) { return r.id; });
+  var usuariosHerdados = herdados.filter(function(r) { return r.tipo === 'USER'; }).map(function(r) { return r.id; });
+  if (unidadesHerdadas.length === 0 && usuariosHerdados.length === 0) {
+    return _unidadesContextoPermitidoRisco(cacheUnidadesLocal);
+  }
+  if (unidadesHerdadas.length === 0) return [];
+  var h = _processarHierarquiaUnidadeRisco(cacheUnidadesLocal);
+  var vistos = {};
+  var listaPermitida = [];
+  unidadesHerdadas.forEach(function(idUnidade) {
+    if (h.mapa[idUnidade]) {
+      _achatarArvoreRisco(h.mapa[idUnidade]).forEach(function(no) {
+        if (!vistos[no.id]) { vistos[no.id] = true; listaPermitida.push(no); }
+      });
+    }
+  });
+  return listaPermitida;
+}
+
+function _usuariosExclusivosContextoTrat() {
+  var risco = (typeof _riscoPorId === 'function') ? _riscoPorId(_tratFormIdRisco) : null;
+  var herdados = (risco && risco.responsaveis) || [];
+  return herdados.filter(function(r) { return r.tipo === 'USER'; }).map(function(r) { return String(r.id); });
+}
+
+function _initSeletorRespRisco() {
+  if (seletorRespRisco || typeof SeletorResponsaveis === 'undefined') return;
+  seletorRespRisco = SeletorResponsaveis.criar({
+    containerId: 'risco-selresp',
+    label: 'Responsáveis pelo Risco *',
+    getUnidades: function() { return cacheUnidadesRisco; },
+    getUsuarios: function() { return cacheUsuariosRisco; },
+    filtroUnidades: function(lista) { return _unidadesContextoPermitidoRisco(lista); },
+    filtroUsuarios: function(lista) { return _filtroUsuariosPorContexto(cacheUnidadesRisco, lista); }
+  });
+}
+
+function _popularCausasVinculoTrat(idCausaAtual) {
+  var sel = document.getElementById('trat-causa-vinculo');
+  sel.innerHTML = '<option value="">Geral (risco como um todo)</option>';
+  var risco = _riscoPorId(_tratFormIdRisco);
+  var pares = (risco && risco.causasConsequencias) || [];
+  var encontrada = false;
+  pares.forEach(function(p) {
+    if (!p.causa) return;
+    if (idCausaAtual && p.id === idCausaAtual) encontrada = true;
+    var opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.causa;
+    sel.appendChild(opt);
+  });
+  if (idCausaAtual && !encontrada) {
+    var optRemovida = document.createElement('option');
+    optRemovida.value = idCausaAtual;
+    optRemovida.textContent = '(causa removida do risco)';
+    sel.appendChild(optRemovida);
+  }
+}
+
+function onMudarPeriodicidadeTrat() {
+  var v = document.getElementById('trat-periodicidade').value;
+  document.getElementById('trat-intervalo-wrap').classList.toggle('hidden', v !== 'Contínuo');
+}
+
+function _initSeletorRespTrat() {
+  if (seletorRespTrat || typeof SeletorResponsaveis === 'undefined') return;
+  seletorRespTrat = SeletorResponsaveis.criar({
+    containerId: 'trat-selresp',
+    label: 'Responsáveis *',
+    getUnidades: function() { return cacheUnidadesTrat; },
+    getUsuarios: function() { return cacheUsuariosTrat; },
+    filtroUnidades: function(lista) { return _unidadesContextoPermitidoTrat(lista); },
+    filtroUsuarios: function(lista) { return _filtroUsuariosPorContextoTrat(cacheUnidadesTrat, lista); }
+  });
+}
+
+function atualizarRiscos() { carregarRiscos(); }
+function imprimirRiscos() { window.print(); }
+
 function _riscosDados() {
   return {
     com: _riscosCache.filter(function(r) { return (r.tratamentos || []).length > 0; }),
     sem: _riscosCache.filter(function(r) { return (r.tratamentos || []).length === 0; })
   };
-}
-
-function _riscosListaAtiva() {
-  return _riscosCache || [];
-}
-
-function _riscosFiltrar(lista) {
-  var e = estadoRiscos;
-  var termo = (e.busca || '').toLowerCase();
-  return (lista || []).filter(function(r) {
-    if (termo) {
-      var textoCC = (r.causasConsequencias || []).map(function(p) { return (p.causa || '') + ' ' + (p.consequencia || ''); }).join(' ');
-      if (!((r.risco || '').toLowerCase().includes(termo) || textoCC.toLowerCase().includes(termo))) return false;
-    }
-    if (e.filtroNat && (r.naturezasRisco || []).indexOf(e.filtroNat) === -1) return false;
-    if (e.filtroProb && (r.probabilidade || '') !== e.filtroProb) return false;
-    if (e.filtroImp && (r.impacto || '') !== e.filtroImp) return false;
-    if (e.filtroNivel && (r.nivelRisco || '') !== e.filtroNivel) return false;
-    if (e.filtroResp && !(r.nomesResponsaveis || []).some(function(n) { return n === e.filtroResp; })) return false;
-    return true;
-  });
 }
 
 function _riscosBaseSem(camposIgnorados) {
@@ -1734,6 +1602,219 @@ function _riscoPrioridadePeso(r) {
   if (isFora && (!temCausas || !temTrat)) return 1;
   if (isFora && temTrat) return 2;
   return 3;
+}
+
+function _riscosSyncSortIcons() {
+  var col = (estadoRiscos.sort && estadoRiscos.sort.col) || 'prioridade';
+  var dir = (estadoRiscos.sort && estadoRiscos.sort.dir) || 'asc';
+  ['risco', 'nivel', 'probimpacto', 'responsavel'].forEach(function(c) {
+    var el = document.getElementById('riscos-sort-icon-' + c);
+    if (!el) return;
+    el.className = 'sort-icon';
+    el.textContent = c === col ? (dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '';
+  });
+}
+
+function _riscosSyncBarra() {
+  var e = estadoRiscos;
+  var bc = document.getElementById('riscos-btn-clear');
+  if (bc) bc.classList.toggle('hidden', !e.busca);
+  var respTipo = {};
+  _riscosCache.forEach(function(r) { (r.responsaveis || []).forEach(function(x) { respTipo[x.nome] = x.tipo; }); });
+  var rotulos = {
+    nat: e.filtroNat,
+    nivel: e.filtroNivel ? _RISCO_NIVEL_ROTULO[e.filtroNivel] : '',
+    resp: e.filtroResp ? nomeRespExibicao(e.filtroResp, respTipo[e.filtroResp]) : ''
+  };
+  Object.keys(_riscosFiltrosDef).forEach(function(c) {
+    var v = rotulos[c];
+    var lb = document.getElementById('riscos-filtro-label-' + c);
+    if (lb) lb.textContent = v ? _riscosFiltrosDef[c].label + ': ' + v : _riscosFiltrosDef[c].label;
+    var bt = document.getElementById('riscos-filtro-btn-' + c);
+    if (bt) bt.classList.toggle('el-filtro-btn--ativo', !!v);
+    var x = document.getElementById('riscos-filtro-x-' + c);
+    if (x) x.classList.toggle('hidden', !v);
+  });
+  var celWrap = document.getElementById('riscos-filtro-cel');
+  if (celWrap) {
+    var temCel = !!(e.filtroProb && e.filtroImp);
+    celWrap.classList.toggle('hidden', !temCel);
+    var cl = document.getElementById('riscos-filtro-label-cel');
+    if (cl && temCel) cl.textContent = e.filtroProb + ' × ' + String(e.filtroImp).toLowerCase();
+  }
+  var bl = document.getElementById('riscos-btn-limpar');
+  if (bl) bl.classList.toggle('hidden', !_riscosTemFiltro());
+}
+
+function importarRiscos() {
+  if (typeof showMessage === 'function') showMessage('info', 'Em Desenvolvimento', 'A importação de riscos será liberada em breve.');
+}
+function baixarModeloRiscos() {
+  if (typeof showMessage === 'function') showMessage('info', 'Em Desenvolvimento', 'O modelo de planilha para importação de riscos será liberado em breve.');
+}
+
+function _riscoCobertura(r) {
+  var cob = {};
+  (r.tratamentos || []).forEach(function(t) { if (t.idCausa) cob[String(t.idCausa)] = (cob[String(t.idCausa)] || 0) + 1; });
+  var descobertas = (r.causasConsequencias || []).filter(function(c) { return !cob[String(c.id)]; }).length;
+  return { porCausa: cob, descobertas: descobertas };
+}
+
+function _riscoVinculoTxt(r) {
+  return r.tipoRisco === 'GERAL' || !r.objetoAnalisado ? 'Risco geral do plano' : 'Vinculado a ' + r.objetoAnalisado;
+}
+
+function riscosToggleExpand(id) {
+  var k = String(id);
+  estadoRiscos.expandidos[k] = !estadoRiscos.expandidos[k];
+  _riscosRenderCorpo();
+}
+
+function riscosToggleExpandirTodos() {
+  var lista = _riscosSortLista(_riscosFiltrar(_riscosListaAtiva()));
+  var start = (estadoRiscos.paginaAtual - 1) * estadoRiscos.itensPorPagina;
+  var pagina = lista.slice(start, start + estadoRiscos.itensPorPagina);
+  var todos = pagina.every(function(r) { return estadoRiscos.expandidos[String(r.id)]; });
+  pagina.forEach(function(r) { estadoRiscos.expandidos[String(r.id)] = !todos; });
+  _riscosRenderCorpo();
+}
+
+function _riscoPeriodicidade(t) {
+  return (t.periodicidade === 'Contínuo' && t.intervaloQtd)
+    ? 'A cada ' + t.intervaloQtd + ' ' + String(t.intervaloUnidade || '').toLowerCase()
+    : (t.periodicidade || '');
+}
+
+function riscosAbrirPainel(id) {
+  var r = _riscoPorId(id);
+  if (!r) return;
+  if (typeof window._appNotificarPainelFechado === 'function') window._appNotificarPainelFechado(); // outros apps largam o painel
+  estadoRiscos.painelId = String(id);
+  _riscosRenderPainel(r);
+  _riscosRenderCorpo();
+}
+
+function riscosNovaAcaoTratamento(idRisco, idCausaPreSelecionada) {
+  abrirModalTratamentoForm(idRisco, idCausaPreSelecionada);
+}
+
+function riscosEditarAcaoTratamento(idRisco, idTratamento) {
+  var risco = _riscoPorId(idRisco);
+  var trat = risco && (risco.tratamentos || []).find(function(t) { return String(t.id) === String(idTratamento); });
+  if (!trat) return;
+  abrirModalEdicaoTratamento(trat);
+}
+
+function riscosMudarTamanho(valor) {
+  estadoRiscos.itensPorPagina = parseInt(valor, 10) || 10;
+  estadoRiscos.paginaAtual = 1;
+  _riscosRenderCorpo();
+}
+
+function _riscoPorId(id) {
+  return _riscosCache.find(function(r) { return String(r.id) === String(id); }) || null;
+}
+
+function editarRisco(id) {
+  var r = _riscoPorId(id);
+  if (r) abrirModalRisco(r);
+}
+
+// app_riscos_lista — render de lista/tabela/árvore, filtros, ordenação, paginação, menus
+
+function _renderizarCausasConsequenciasRisco() {
+  var container = document.getElementById('risco-causas-lista');
+  if (!container) return;
+  if (!_riscoParesCC.length) {
+    container.innerHTML = '<div class="risco-causa-vazio" style="font-size:0.78rem;padding:6px 2px">Nenhuma causa/consequência adicionada ainda.</div>';
+    return;
+  }
+  container.innerHTML = _riscoParesCC.map(function(p, i) {
+    return '<div class="risco-causa-item">'
+      + '<div class="risco-causa-num">' + (i + 1) + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      +   '<div><strong>Causa:</strong> ' + escapeHtml(p.causa || '—') + '</div>'
+      +   '<div><strong>Consequência:</strong> ' + escapeHtml(p.consequencia || '—') + '</div>'
+      + '</div>'
+      + '<button type="button" class="btn-icon-sm btn-icon-del" data-title="Remover" data-on-click="risco.19" data-rclick0="' + i + '"><span class="material-symbols-outlined icon-xs">delete</span></button>'
+      + '</div>';
+  }).join('');
+}
+
+function _naturezasSelecionadasRisco() {
+  return Array.from(document.querySelectorAll('#risco-nat-chips .risco-nat-chip.active')).map(function(b) {
+    return b.getAttribute('data-valor');
+  });
+}
+
+function _setNaturezasSelecionadasRisco(lista) {
+  lista = lista || [];
+  document.querySelectorAll('#risco-nat-chips .risco-nat-chip').forEach(function(b) {
+    b.classList.toggle('active', lista.indexOf(b.getAttribute('data-valor')) !== -1);
+  });
+}
+
+function _renderChipsNaturezaRisco(selecionadas) {
+  const cont = document.getElementById('risco-nat-chips');
+  if (!cont) return;
+  if (!_cacheNaturezasRisco || !_cacheNaturezasRisco.length) {
+    cont.innerHTML = '<span style="font-size:0.82rem;color:var(--ds-color-text-ui-muted)">Nenhuma natureza cadastrada — configure em Configurações do Sistema → Planejamento → Riscos.</span>';
+    return;
+  }
+  cont.innerHTML = _cacheNaturezasRisco.map(function(n) {
+    return '<button type="button" class="risco-nat-chip" data-valor="' + escapeJsAttr(n.valor) + '" data-on-click="risco.20">' + escapeHtml(n.valor) + '</button>';
+  }).join('');
+  _setNaturezasSelecionadasRisco(selecionadas);
+}
+function _achatarArvoreRisco(noRaiz) {
+  var resultado = [], stack = [noRaiz], visitados = {};
+  while (stack.length > 0) {
+    var no = stack.pop();
+    if (visitados[no.id]) continue;
+    visitados[no.id] = true;
+    resultado.push(no);
+    if (no.children && no.children.length > 0) {
+      var filhos = no.children.slice().sort(function(a, b) { return (a.sigla || '').localeCompare(b.sigla || ''); });
+      for (var i = filhos.length - 1; i >= 0; i--) stack.push(filhos[i]);
+    }
+  }
+  return resultado;
+}
+function _filtroUsuariosPorContexto(cacheUnidadesLocal, listaUsuarios) {
+  var permitidas = _unidadesContextoPermitidoRisco(cacheUnidadesLocal);
+  var setIds = {};
+  permitidas.forEach(function(u) { setIds[String(u.id)] = true; });
+  return listaUsuarios.filter(function(u) { return setIds[String(u.idUnidadeLotacao)]; });
+}
+
+function _filtroUsuariosPorContextoTrat(cacheUnidadesLocal, listaUsuarios) {
+  var permitidas = _unidadesContextoPermitidoTrat(cacheUnidadesLocal);
+  var setIds = {};
+  permitidas.forEach(function(u) { setIds[String(u.id)] = true; });
+  var setExclusivos = {};
+  _usuariosExclusivosContextoTrat().forEach(function(id) { setExclusivos[id] = true; });
+  return listaUsuarios.filter(function(u) { return setIds[String(u.idUnidadeLotacao)] || setExclusivos[String(u.id)]; });
+}
+
+function _riscosListaAtiva() {
+  return _riscosCache || [];
+}
+
+function _riscosFiltrar(lista) {
+  var e = estadoRiscos;
+  var termo = (e.busca || '').toLowerCase();
+  return (lista || []).filter(function(r) {
+    if (termo) {
+      var textoCC = (r.causasConsequencias || []).map(function(p) { return (p.causa || '') + ' ' + (p.consequencia || ''); }).join(' ');
+      if (!((r.risco || '').toLowerCase().includes(termo) || textoCC.toLowerCase().includes(termo))) return false;
+    }
+    if (e.filtroNat && (r.naturezasRisco || []).indexOf(e.filtroNat) === -1) return false;
+    if (e.filtroProb && (r.probabilidade || '') !== e.filtroProb) return false;
+    if (e.filtroImp && (r.impacto || '') !== e.filtroImp) return false;
+    if (e.filtroNivel && (r.nivelRisco || '') !== e.filtroNivel) return false;
+    if (e.filtroResp && !(r.nomesResponsaveis || []).some(function(n) { return n === e.filtroResp; })) return false;
+    return true;
+  });
 }
 
 function _riscosSortLista(lista) {
@@ -1827,17 +1908,6 @@ function riscosDefinirDirecaoOrdenacao(dir) {
   _riscosRenderCorpo();
 }
 
-function _riscosSyncSortIcons() {
-  var col = (estadoRiscos.sort && estadoRiscos.sort.col) || 'prioridade';
-  var dir = (estadoRiscos.sort && estadoRiscos.sort.dir) || 'asc';
-  ['risco', 'nivel', 'probimpacto', 'responsavel'].forEach(function(c) {
-    var el = document.getElementById('riscos-sort-icon-' + c);
-    if (!el) return;
-    el.className = 'sort-icon';
-    el.textContent = c === col ? (dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '';
-  });
-}
-
 function _riscosTemFiltro() {
   var e = estadoRiscos;
   return !!(e.busca || e.filtroNat || e.filtroProb || e.filtroImp || e.filtroNivel || e.filtroResp);
@@ -1858,30 +1928,12 @@ function riscosLimparBusca() {
   aplicarFiltrosRiscos();
 }
 
-document.addEventListener('click', function(e) {
-  var wrap = document.getElementById('riscos-search-wrap');
-  var caixa = document.getElementById('riscos-search-caixa');
-  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
-  var inp = document.getElementById('riscos-filtro-busca');
-  if (inp && !inp.value.trim()) {
-    caixa.classList.add('hidden');
-    var tg = document.getElementById('riscos-search-toggle');
-    if (tg) tg.classList.remove('hidden');
-  }
-});
-
 function aplicarFiltrosRiscos() {
   estadoRiscos.busca = (document.getElementById('riscos-filtro-busca') || {}).value || '';
   estadoRiscos.paginaAtual = 1;
   _riscosSyncBarra();
   _riscosRenderCorpo();
 }
-
-var _riscosFiltrosDef = {
-  nat:   { label: 'Natureza',    chave: 'filtroNat' },
-  nivel: { label: 'Nível',       chave: 'filtroNivel' },
-  resp:  { label: 'Responsável', chave: 'filtroResp' }
-};
 
 function riscosAbrirFiltro(campo, ev) {
   ev.stopPropagation();
@@ -1931,37 +1983,6 @@ function limparFiltrosRiscos() {
   _riscosRenderCorpo();
 }
 
-function _riscosSyncBarra() {
-  var e = estadoRiscos;
-  var bc = document.getElementById('riscos-btn-clear');
-  if (bc) bc.classList.toggle('hidden', !e.busca);
-  var respTipo = {};
-  _riscosCache.forEach(function(r) { (r.responsaveis || []).forEach(function(x) { respTipo[x.nome] = x.tipo; }); });
-  var rotulos = {
-    nat: e.filtroNat,
-    nivel: e.filtroNivel ? _RISCO_NIVEL_ROTULO[e.filtroNivel] : '',
-    resp: e.filtroResp ? nomeRespExibicao(e.filtroResp, respTipo[e.filtroResp]) : ''
-  };
-  Object.keys(_riscosFiltrosDef).forEach(function(c) {
-    var v = rotulos[c];
-    var lb = document.getElementById('riscos-filtro-label-' + c);
-    if (lb) lb.textContent = v ? _riscosFiltrosDef[c].label + ': ' + v : _riscosFiltrosDef[c].label;
-    var bt = document.getElementById('riscos-filtro-btn-' + c);
-    if (bt) bt.classList.toggle('el-filtro-btn--ativo', !!v);
-    var x = document.getElementById('riscos-filtro-x-' + c);
-    if (x) x.classList.toggle('hidden', !v);
-  });
-  var celWrap = document.getElementById('riscos-filtro-cel');
-  if (celWrap) {
-    var temCel = !!(e.filtroProb && e.filtroImp);
-    celWrap.classList.toggle('hidden', !temCel);
-    var cl = document.getElementById('riscos-filtro-label-cel');
-    if (cl && temCel) cl.textContent = e.filtroProb + ' × ' + String(e.filtroImp).toLowerCase();
-  }
-  var bl = document.getElementById('riscos-btn-limpar');
-  if (bl) bl.classList.toggle('hidden', !_riscosTemFiltro());
-}
-
 function riscosSelecionarCelula(pi, ii) {
   var p = _RISCO_PROBS[pi], i = _RISCO_IMPS[ii];
   var igual = estadoRiscos.filtroProb === p && estadoRiscos.filtroImp === i;
@@ -1977,13 +1998,6 @@ function riscosSelecionarNivel(cod) {
   estadoRiscos.paginaAtual = 1;
   _riscosSyncBarra();
   _riscosRenderCorpo();
-}
-
-function importarRiscos() {
-  if (typeof showMessage === 'function') showMessage('info', 'Em Desenvolvimento', 'A importação de riscos será liberada em breve.');
-}
-function baixarModeloRiscos() {
-  if (typeof showMessage === 'function') showMessage('info', 'Em Desenvolvimento', 'O modelo de planilha para importação de riscos será liberado em breve.');
 }
 
 function renderizarSecaoRiscos() {
@@ -2159,17 +2173,6 @@ function _riscosRenderNiveis() {
         ? '<div class="rsc-alerta"><span class="material-symbols-outlined">info</span><span><strong>' + fora + '</strong> fora do apetite ao risco</span></div>'
         : '<div class="rsc-alerta rsc-alerta--ok"><span class="material-symbols-outlined">check_circle</span><span>Todos dentro do apetite ao risco</span></div>';
   }
-}
-
-function _riscoCobertura(r) {
-  var cob = {};
-  (r.tratamentos || []).forEach(function(t) { if (t.idCausa) cob[String(t.idCausa)] = (cob[String(t.idCausa)] || 0) + 1; });
-  var descobertas = (r.causasConsequencias || []).filter(function(c) { return !cob[String(c.id)]; }).length;
-  return { porCausa: cob, descobertas: descobertas };
-}
-
-function _riscoVinculoTxt(r) {
-  return r.tipoRisco === 'GERAL' || !r.objetoAnalisado ? 'Risco geral do plano' : 'Vinculado a ' + r.objetoAnalisado;
 }
 
 function _riscoLinhaHTML(r, podeEditar) {
@@ -2386,21 +2389,6 @@ function _riscosAtualizarSelecaoVisual() {
   _riscosAtualizarSelecao(listaCompleta);
 }
 
-function riscosToggleExpand(id) {
-  var k = String(id);
-  estadoRiscos.expandidos[k] = !estadoRiscos.expandidos[k];
-  _riscosRenderCorpo();
-}
-
-function riscosToggleExpandirTodos() {
-  var lista = _riscosSortLista(_riscosFiltrar(_riscosListaAtiva()));
-  var start = (estadoRiscos.paginaAtual - 1) * estadoRiscos.itensPorPagina;
-  var pagina = lista.slice(start, start + estadoRiscos.itensPorPagina);
-  var todos = pagina.every(function(r) { return estadoRiscos.expandidos[String(r.id)]; });
-  pagina.forEach(function(r) { estadoRiscos.expandidos[String(r.id)] = !todos; });
-  _riscosRenderCorpo();
-}
-
 function riscosToggleSelecao(id, marcado) {
   var idStr = String(id);
   if (marcado) {
@@ -2467,39 +2455,6 @@ function _riscosAtualizarSelecao(listaCompleta) {
   if (typeof detAtualizarOffsetsSticky === 'function') detAtualizarOffsetsSticky();
 }
 
-function riscosExcluirSelecionados() {
-  var ids = Object.keys(estadoRiscos.selecionados);
-  if (!ids.length) return;
-  if (typeof showConfirm !== 'function') return;
-  showConfirm('Excluir riscos?', 'Deseja excluir ' + ids.length + (ids.length === 1 ? ' risco' : ' riscos') + ' e suas causas e ações? Esta ação não pode ser desfeita.', function() {
-    if (typeof mostrarLoader === 'function') mostrarLoader();
-    var pendentes = ids.length, erros = [];
-    ids.forEach(function(id) {
-      _riscosSDK.chamar('apiExcluirRisco', id).then(function() {
-        pendentes--;
-        if (pendentes === 0) concluir();
-      }, function(err) {
-        erros.push(err.message || String(err));
-        pendentes--;
-        if (pendentes === 0) concluir();
-      });
-    });
-    function concluir() {
-      if (typeof esconderLoader === 'function') esconderLoader();
-      estadoRiscos.selecionados = {};
-      if (erros.length && typeof showMessage === 'function') showMessage('error', 'Alguns riscos não foram excluídos', escapeHtml(erros[0]));
-      else if (typeof showMessage === 'function') showMessage('success', 'Excluídos', 'Riscos excluídos com sucesso.');
-      _riscosRecarregarLista();
-    }
-  });
-}
-
-function _riscoPeriodicidade(t) {
-  return (t.periodicidade === 'Contínuo' && t.intervaloQtd)
-    ? 'A cada ' + t.intervaloQtd + ' ' + String(t.intervaloUnidade || '').toLowerCase()
-    : (t.periodicidade || '');
-}
-
 function _riscoTratItemHTML(t, idRisco, podeEditar) {
   var resp = (t.responsaveis || [])[0];
   var meta = [
@@ -2520,130 +2475,6 @@ function _riscoTratItemHTML(t, idRisco, podeEditar) {
     +   (meta ? '<span class="detp-trat-meta">' + escapeHtml(meta) + '</span>' : '')
     +   (perdida ? '<span class="detp-trat-meta" style="color:var(--ds-color-danger)">' + escapeHtml(t.causaTexto) + '</span>' : '')
     + '</div>' + acoes + '</div>';
-}
-
-function _riscosRenderPainel(r) {
-  var idRisco = String(r.id), idj = escapeHtml(idRisco);
-  var podeEditar = _rscPodeEditar();
-  var c = _CORES_NIVEL_DET[r.nivelRisco] || { bg: 'var(--ds-color-surface-2)', text: 'var(--ds-color-text-muted)' };
-  var trats = r.tratamentos || [], pares = r.causasConsequencias || [];
-  var ids = {}; pares.forEach(function(p) { ids[String(p.id)] = true; });
-
-  var apetite = r.apetiteRisco === 'Não' ? '<span class="detp-risco-val is-fora">Fora do apetite</span>'
-    : r.apetiteRisco === 'Sim' ? '<span class="detp-risco-val is-ok">Dentro do apetite</span>' : '<span class="detp-risco-val">—</span>';
-  var nats = (r.naturezasRisco || []).map(function(n) { return '<span class="detp-risco-chip">' + escapeHtml(n) + '</span>'; }).join('')
-    || '<span class="detp-risco-val">—</span>';
-  var resps = (r.responsaveis || []).map(function(x, i, arr) {
-    var nomeFmt = typeof nomeRespExibicao === 'function' ? nomeRespExibicao(x.nome, x.tipo) : x.nome;
-    return '<div class="detp-resp-item"><span class="material-symbols-outlined">' + (x.tipo === 'USER' ? 'person' : 'apartment') + '</span>'
-      + '<span>' + escapeHtml(nomeFmt) + '</span>'
-      + (arr.length > 1 ? '<span class="detp-resp-papel">' + (i === 0 ? 'Principal' : 'Adicional') + '</span>' : '') + '</div>';
-  }).join('');
-
-  var cards = pares.map(function(p) {
-    var doGrupo = trats.filter(function(t) { return String(t.idCausa) === String(p.id); });
-    return '<div class="detp-causa-card">'
-      + '<div class="detp-risco-campo"><span class="detp-risco-rot">Causa</span><span class="detp-causa-txt">' + escapeHtml(p.causa || '—') + '</span></div>'
-      + '<div class="detp-risco-campo"><span class="detp-risco-rot">Consequência</span><span class="detp-causa-txt">' + escapeHtml(p.consequencia || '—') + '</span></div>'
-      + '<div class="detp-causa-acoes">'
-      +   (doGrupo.length
-            ? doGrupo.map(function(t) { return _riscoTratItemHTML(t, idj, podeEditar); }).join('')
-            : '<div class="detp-trat-vazio"><span class="material-symbols-outlined">error</span>Sem ação de tratamento</div>')
-      +   (podeEditar ? '<button type="button" class="rsc-link" data-on-click="risco.54" data-aclick0="' + idj + '" data-aclick1="' + escapeHtml(String(p.id)) + '"><span class="material-symbols-outlined">add</span>Ação de tratamento</button>' : '')
-      + '</div></div>';
-  }).join('');
-  var gerais = trats.filter(function(t) { return !t.idCausa || !ids[String(t.idCausa)]; });
-  if (gerais.length) {
-    cards += '<div class="detp-causa-card"><span class="detp-risco-rot">Ações gerais</span>'
-      + gerais.map(function(t) { return _riscoTratItemHTML(t, idj, podeEditar); }).join('') + '</div>';
-  }
-  if (!cards) cards = '<p class="detp-texto-bloco" style="color:var(--ds-color-text-muted)">Nenhuma causa ou ação cadastrada.</p>';
-
-  var painelHTML =
-    '<div style="display:flex;align-items:center;justify-content:space-between;margin:-4px -4px 14px 0">'
-    +   '<span class="detp-tab active" style="pointer-events:none">Detalhes do risco</span>'
-    +   '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.55" data-title="Fechar" aria-label="Fechar painel de detalhes"><span class="material-symbols-outlined">close</span></button>'
-    + '</div>'
-    + '<div class="detp-secao">'
-    +   '<h3 class="detp-risco-titulo">' + escapeHtml(r.risco || '') + '</h3>'
-    +   '<div class="detp-risco-vinculo"><span class="material-symbols-outlined">' + (r.tipoRisco === 'GERAL' ? 'flag' : 'category') + '</span>' + escapeHtml(_riscoVinculoTxt(r)) + '</div>'
-    +   '<div class="detp-risco-grade">'
-    +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Nível</span><span class="rsc-nivel-pill" style="align-self:flex-start;background:' + c.bg + ';color:' + c.text + '">' + escapeHtml(_RISCO_NIVEL_ROTULO[r.nivelRisco] || '—') + '</span></div>'
-    +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Apetite ao risco</span>' + apetite + '</div>'
-    +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Probabilidade</span><span class="detp-risco-val">' + escapeHtml(r.probabilidade || '—') + '</span></div>'
-    +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Impacto</span><span class="detp-risco-val">' + escapeHtml(r.impacto || '—') + '</span></div>'
-    +     '<div class="detp-risco-campo span-2"><span class="detp-risco-rot">Natureza</span><div class="detp-risco-chips">' + nats + '</div></div>'
-    +     (resps ? '<div class="detp-risco-campo span-2"><span class="detp-risco-rot">Responsáveis</span><div>' + resps + '</div></div>' : '')
-    +   '</div>'
-    + '</div>'
-    + '<div class="detp-secao">'
-    +   '<div class="detp-risco-sec-cab"><strong>Causas e tratamento</strong>'
-    +     '<span>' + pares.length + (pares.length === 1 ? ' causa' : ' causas') + ' · ' + trats.length + (trats.length === 1 ? ' ação' : ' ações') + '</span>'
-    +     (podeEditar ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.53" data-aclick0="' + idj + '" data-title="Adicionar causa e consequência" aria-label="Adicionar causa e consequência"><span class="material-symbols-outlined">add</span></button>' : '')
-    +   '</div>'
-    +   cards
-    + '</div>';
-
-  _riscosSDK.abrirPainel(painelHTML);
-}
-
-function riscosAbrirPainel(id) {
-  var r = _riscoPorId(id);
-  if (!r) return;
-  if (typeof window._appNotificarPainelFechado === 'function') window._appNotificarPainelFechado(); // outros apps largam o painel
-  estadoRiscos.painelId = String(id);
-  _riscosRenderPainel(r);
-  _riscosRenderCorpo();
-}
-
-function _riscosRecarregarLista() {
-  var idPlano = _rscObterIdPlano();
-  if (!idPlano) return;
-  _riscosSDK.chamar('apiGetAbaRiscos', idPlano).then(function(res) {
-    if (!_rscCtx || String(_rscCtx.idPlano) !== String(idPlano)) return;
-    _riscosCache = (res && res.riscos) || [];
-    _elementosResumoCache = (res && res.elementosResumo) || [];
-    _rscAtualizarContador();
-    renderizarSecaoRiscos();
-    if (estadoRiscos.painelId) {
-      var rp = _riscoPorId(estadoRiscos.painelId);
-      if (rp) _riscosRenderPainel(rp); else _riscosSDK.fecharPainel();
-    }
-  }, function(err) {
-    if (typeof showMessage === 'function') showMessage('error', 'Erro ao recarregar', escapeHtml(err.message || String(err)));
-  });
-}
-
-function riscosNovaAcaoTratamento(idRisco, idCausaPreSelecionada) {
-  abrirModalTratamentoForm(idRisco, idCausaPreSelecionada);
-}
-
-function riscosEditarAcaoTratamento(idRisco, idTratamento) {
-  var risco = _riscoPorId(idRisco);
-  var trat = risco && (risco.tratamentos || []).find(function(t) { return String(t.id) === String(idTratamento); });
-  if (!trat) return;
-  abrirModalEdicaoTratamento(trat);
-}
-
-function riscosExcluirAcaoTratamento(idRisco, idTratamento) {
-  if (typeof showConfirm !== 'function') return;
-  showConfirm('Excluir Ação?', 'Deseja excluir esta ação de tratamento? Esta ação não pode ser desfeita.', function() {
-    if (typeof mostrarLoader === 'function') mostrarLoader();
-    _riscosSDK.chamar('apiExcluirTratamento', idTratamento).then(function() {
-      if (typeof esconderLoader === 'function') esconderLoader();
-      _riscosRecarregarLista();
-      if (typeof showMessage === 'function') showMessage('success', 'Excluída', 'Ação de tratamento excluída.');
-    }, function(err) {
-      if (typeof esconderLoader === 'function') esconderLoader();
-      if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
-    });
-  });
-}
-
-function riscosMudarTamanho(valor) {
-  estadoRiscos.itensPorPagina = parseInt(valor, 10) || 10;
-  estadoRiscos.paginaAtual = 1;
-  _riscosRenderCorpo();
 }
 
 function riscosMudarPagina(dir) {
@@ -2670,109 +2501,292 @@ function _riscosAtualizarPaginacao(total, start) {
   }
 }
 
-function _riscoPorId(id) {
-  return _riscosCache.find(function(r) { return String(r.id) === String(id); }) || null;
-}
+// app_riscos_modais — modais e wizards (abrir, validar, salvar)
 
-function editarRisco(id) {
-  var r = _riscoPorId(id);
-  if (r) abrirModalRisco(r);
-}
-
-function confirmarExclusaoRisco(id, desc) {
-  if (typeof showConfirm !== 'function') return;
-  showConfirm('Excluir Risco?', 'Deseja excluir o risco: <strong>' + escapeHtml(desc) + '</strong>?', function() {
-    if (typeof mostrarLoader === 'function') mostrarLoader();
-    _riscosSDK.chamar('apiExcluirRisco', id).then(function() {
-      if (typeof esconderLoader === 'function') esconderLoader();
-      carregarRiscos();
-      if (typeof showMessage === 'function') showMessage('success', 'Excluído', 'Risco excluído.');
-    }, function(err) {
-      if (typeof esconderLoader === 'function') esconderLoader();
-      if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
-    });
-  });
-}
-
-// ================================================================
-// HANDSHAKE COM O HOST
-// ================================================================
-_riscosSDK.aoVisibilidade(function(v) {
-  _rscVis = v;
-  if (v.aba && v.pagina && _rscCtx && !_rscCarregado && !_rscCarregando) {
-    carregarRiscos();
+function _rwizResumoPasso(n) {
+  if (n === 1) {
+    var sel = document.getElementById('risco-objeto-select');
+    var opt = sel ? sel.options[sel.selectedIndex] : null;
+    return opt && opt.value ? opt.textContent : '';
   }
-});
+  return '';
+}
 
-_riscosSDK.aoContexto(function(ctx) {
-  if (_rscCtx && String(_rscCtx.idPlano) === String(ctx.idPlano)) {
-    _rscCtx = ctx;
-    if (_rscCarregado) {
-      renderizarSecaoRiscos();
-      _rscAtualizarContador();
-    }
+function _rwizRenderRail() {
+  var wrap = document.getElementById('rwiz-rail-lista');
+  var contador = document.getElementById('rwiz-rail-contador');
+  var mobTexto = document.getElementById('rwiz-mob-texto');
+  if (!wrap) return;
+  var passos = estadoWizardRisco.passos;
+  var idxAtual = passos.indexOf(estadoWizardRisco.atual);
+
+  wrap.innerHTML = passos.map(function(p, i) {
+    var atual = p === estadoWizardRisco.atual;
+    var concluido = i < idxAtual;
+    var cls = 'wiz-rail-item';
+    if (atual) cls += ' wiz-rail-atual';
+    else if (concluido) cls += ' wiz-rail-concluido';
+    var info = RWIZ_TITULOS[i] || { titulo: 'Etapa ' + p, desc: '' };
+    var resumo = atual ? _rwizResumoPasso(p) : '';
+    var numHTML = concluido ? '<span class="material-symbols-outlined">check</span>' : String(i + 1);
+    return '<button type="button" class="' + cls + '" data-on-click="risco.18" data-rclick0="' + p + '">'
+      + '<span class="wiz-rail-num">' + numHTML + '</span>'
+      + '<span>'
+      +   '<div class="wiz-rail-item-titulo">' + escapeHtml(info.titulo) + '</div>'
+      +   '<div class="wiz-rail-item-desc">' + escapeHtml(resumo || info.desc) + '</div>'
+      + '</span>'
+      + '</button>';
+  }).join('');
+
+  var pct = Math.round(((idxAtual + 1) / passos.length) * 100);
+  var fill = document.getElementById('rwiz-rail-fill');
+  if (fill) fill.style.width = pct + '%';
+  var mobFill = document.getElementById('rwiz-mob-fill');
+  if (mobFill) mobFill.style.width = pct + '%';
+  var texto = 'Etapa ' + (idxAtual + 1) + ' de ' + passos.length;
+  if (contador) contador.textContent = texto;
+  if (mobTexto) mobTexto.textContent = texto;
+}
+
+function _rwizIrPara(n, direcao) {
+  var trocarAgora = function() {
+    estadoWizardRisco.atual = n;
+    document.querySelectorAll('#modal-risco .wizard-step').forEach(function(el) {
+      el.classList.toggle('hidden', Number(el.dataset.step) !== n);
+    });
+    _rwizRenderRail();
+    var passos = estadoWizardRisco.passos;
+    document.getElementById('btn-risco-voltar').classList.toggle('hidden', n === passos[0]);
+    document.getElementById('btn-risco-proximo').classList.toggle('hidden', n === passos[passos.length - 1]);
+    document.getElementById('btn-risco-salvar').classList.toggle('hidden', n !== passos[passos.length - 1]);
+    var viewport = document.querySelector('#modal-risco .wizard-steps-viewport');
+    if (viewport) viewport.scrollTop = 0;
+    estadoWizardRisco.transicionando = false;
+  };
+
+  var atualEl = document.getElementById('wizard-risco-step-' + estadoWizardRisco.atual);
+  if (!direcao || !atualEl || Number(atualEl.dataset.step) === n || estadoWizardRisco.transicionando) {
+    trocarAgora();
     return;
   }
-  _rscCtx = ctx;
-  _rscCarregado = false;
-  _rscCarregando = false;
-  _riscosCache = [];
-  _elementosResumoCache = [];
-  estadoRiscos.busca = '';
-  estadoRiscos.filtroNat = '';
-  estadoRiscos.filtroProb = '';
-  estadoRiscos.filtroImp = '';
-  estadoRiscos.filtroNivel = '';
-  estadoRiscos.filtroResp = '';
-  estadoRiscos.paginaAtual = 1;
-  estadoRiscos.expandidos = {};
-  estadoRiscos.selecionados = {};
-  estadoRiscos.painelId = null;
+  estadoWizardRisco.transicionando = true;
+  var saiClasse = direcao === 'frente' ? 'wizard-slide-out-left' : 'wizard-slide-out-right';
+  atualEl.classList.add(saiClasse);
+  setTimeout(function() {
+    atualEl.classList.remove(saiClasse);
+    trocarAgora();
+  }, 180);
+}
 
-  if (_rscVis.aba && _rscVis.pagina) {
-    carregarRiscos();
+function _rwizIrParaRail(n) {
+  if (n === estadoWizardRisco.atual) return;
+  if (n > estadoWizardRisco.atual && !_rwizValidarPassoAtual()) return;
+  _rwizIrPara(n, n > estadoWizardRisco.atual ? 'frente' : 'tras');
+}
+function _rwizClasseErro(campo) {
+  return campo.tagName === 'SELECT' ? 'ds-select--error' : campo.tagName === 'TEXTAREA' ? 'ds-textarea--error' : 'ds-input--error';
+}
+function _rwizMsgCampo(campo) {
+  var v = campo.validity;
+  var overrides = RWIZ_MSGS_CAMPO[campo.id] || {};
+  if (v.valueMissing) return overrides.valueMissing || 'Preencha este campo.';
+  if (v.tooShort) return overrides.tooShort || ('Use pelo menos ' + campo.minLength + ' caracteres.');
+  if (v.tooLong) return overrides.tooLong || ('Use no máximo ' + campo.maxLength + ' caracteres.');
+  return campo.validationMessage || 'Verifique este campo.';
+}
+function _rwizExibirErro(campo) {
+  campo.classList.add(_rwizClasseErro(campo));
+  var erro = document.getElementById(campo.id + '-erro');
+  if (erro) { erro.textContent = _rwizMsgCampo(campo); erro.classList.remove('hidden'); }
+}
+function _rwizLimparErro(campo) {
+  campo.classList.remove('ds-input--error', 'ds-select--error', 'ds-textarea--error');
+  var erro = document.getElementById(campo.id + '-erro');
+  if (erro) { erro.classList.add('hidden'); erro.textContent = ''; }
+}
+function _rwizContador(campo) {
+  var span = document.getElementById(campo.id + '-contador');
+  if (span) span.textContent = campo.value.length + '/' + campo.maxLength;
+}
+
+function _rwizValidarNatureza() {
+  var erro = document.getElementById('risco-nat-erro');
+  if (_naturezasSelecionadasRisco().length === 0) {
+    if (erro) { erro.textContent = 'Selecione ao menos uma natureza.'; erro.classList.remove('hidden'); }
+    return false;
   }
-});
+  if (erro) erro.classList.add('hidden');
+  return true;
+}
 
-_riscosSDK.aoPainelFechado(function() {
-  if (estadoRiscos && estadoRiscos.painelId) {
-    estadoRiscos.painelId = null;
-    if (_rscCarregado && typeof _riscosRenderCorpo === 'function') {
-      _riscosRenderCorpo();
-    }
+function _rwizValidarPassoAtual() {
+  var stepEl = document.getElementById('wizard-risco-step-' + estadoWizardRisco.atual);
+  if (!stepEl) return true;
+  var campos = stepEl.querySelectorAll('input, textarea, select');
+  for (var i = 0; i < campos.length; i++) {
+    var campo = campos[i];
+    if (campo.closest('.hidden')) continue;
+    if (!campo.checkValidity()) { _rwizExibirErro(campo); campo.focus(); return false; }
   }
-});
+  if (estadoWizardRisco.atual === 1 && !_rwizValidarNatureza()) return false;
+  return true;
+}
 
-_riscosSDK.aoTecla(function(evt) {
-  if (evt.key === 'Escape') {
-    if (typeof riscosCancelarSelecao === 'function' && Object.keys(estadoRiscos.selecionados || {}).length > 0) {
-      riscosCancelarSelecao();
-      return true;
-    }
-  } else if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && String(evt.key).toLowerCase() === 'a') {
-    if (typeof riscosToggleSelecionarTodos === 'function') {
-      riscosToggleSelecionarTodos(true);
-      return true;
-    }
+function _rwizProximo() {
+  if (!_rwizValidarPassoAtual()) return;
+  var passos = estadoWizardRisco.passos;
+  var idx = passos.indexOf(estadoWizardRisco.atual);
+  if (idx < passos.length - 1) _rwizIrPara(passos[idx + 1], 'frente');
+}
+
+function _rwizVoltar() {
+  var passos = estadoWizardRisco.passos;
+  var idx = passos.indexOf(estadoWizardRisco.atual);
+  if (idx > 0) _rwizIrPara(passos[idx - 1], 'tras');
+}
+
+function _rwizValidarTudoAntesDeSalvar() {
+  var form = document.getElementById('form-risco');
+  var campos = form.querySelectorAll('input, textarea, select');
+  for (var i = 0; i < campos.length; i++) {
+    var campo = campos[i];
+    if (campo.checkValidity()) continue;
+    var stepEl = campo.closest('.wizard-step');
+    if (stepEl) _rwizIrPara(Number(stepEl.dataset.step));
+    _rwizExibirErro(campo);
+    campo.focus();
+    return false;
   }
-  return false;
-});
+  if (!_rwizValidarNatureza()) { _rwizIrPara(1); return false; }
+  return true;
+}
 
-// Compatibilidade global
-window.carregarRiscos = carregarRiscos;
-window.atualizarRiscos = atualizarRiscos;
-window.abrirModalRisco = abrirModalRisco;
-window.fecharModalRisco = fecharModalRisco;
-window.abrirModalTratamentoForm = abrirModalTratamentoForm;
-window.fecharModalTratamentoForm = fecharModalTratamentoForm;
-window.abrirModalCausaRapida = abrirModalCausaRapida;
-window.fecharModalCausaRapida = fecharModalCausaRapida;
-window.riscosToggleSelecionarTodos = riscosToggleSelecionarTodos;
-window.riscosCancelarSelecao = riscosCancelarSelecao;
-window.estadoRiscos = estadoRiscos;
-window._riscosSDK = _riscosSDK;
+function _rwizIniciar() {
+  _rwizIrPara(1);
+}
 
-// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+function _rwizSelecionarObjeto() {
+  var sel = document.getElementById('risco-objeto-select');
+  document.getElementById('risco-id-elemento').value = sel.value || '';
+  _rwizLimparErro(sel);
+  _rwizRenderRail();
+}
+
+function abrirModalRisco(risco) {
+  document.getElementById('modal-risco-titulo').innerText = risco ? 'Editar risco' : 'Novo risco';
+  var eyebrow = document.getElementById('rwiz-eyebrow');
+  var planoNome = (_rscCtx && _rscCtx.plano && _rscCtx.plano.nome) || '';
+  if (eyebrow) eyebrow.textContent = planoNome;
+  document.getElementById('risco-id-edicao').value    = risco ? risco.id : '';
+  document.getElementById('risco-id-elemento').value  = risco ? (risco.idElemento || '') : '';
+  _popularElementosRisco(risco ? risco.idElemento : '');
+  document.getElementById('risco-descricao').value = risco ? risco.risco : '';
+  _rwizContador(document.getElementById('risco-descricao'));
+  _riscoParesCC = (risco && Array.isArray(risco.causasConsequencias)) ? risco.causasConsequencias.slice() : [];
+  document.getElementById('risco-causa-input').value = '';
+  document.getElementById('risco-consequencia-input').value = '';
+  _renderizarCausasConsequenciasRisco();
+  document.getElementById('risco-nat-chips').innerHTML = typeof spinnerListaHTML === 'function' ? spinnerListaHTML('Carregando…') : 'Carregando…';
+  _garantirCatalogoNaturezasRisco(function() {
+    _renderChipsNaturezaRisco(risco ? risco.naturezasRisco : []);
+  });
+  document.getElementById('risco-probabilidade').value = risco ? risco.probabilidade : '';
+  document.getElementById('risco-impacto').value       = risco ? risco.impacto : '';
+  atualizarNivelRisco();
+
+  document.querySelectorAll('#modal-risco .ds-input--error, #modal-risco .ds-select--error, #modal-risco .ds-textarea--error')
+    .forEach(function(el) { el.classList.remove('ds-input--error', 'ds-select--error', 'ds-textarea--error'); });
+  document.querySelectorAll('#modal-risco .ds-help--error').forEach(function(el) { el.classList.add('hidden'); });
+
+  _initSeletorRespRisco();
+  prepararDadosRiscoResp(function() {
+    if (!seletorRespRisco) return;
+    if (risco && risco.responsaveis && risco.responsaveis.length) {
+      seletorRespRisco.setLista(risco.responsaveis.map(function(r) { return { id: r.id, tipo: r.tipo, nome: r.nome }; }));
+    } else if (risco && risco.idResponsavel) {
+      seletorRespRisco.setLista([{ id: risco.idResponsavel, tipo: risco.tipoResponsavel || 'UNIDADE', nome: risco.nomeResponsavel || '' }]);
+    } else {
+      seletorRespRisco.limpar();
+    }
+  });
+
+  document.getElementById('modal-risco').classList.remove('hidden');
+  if (typeof bloquearFundo === 'function') bloquearFundo();
+  _rwizIniciar();
+}
+
+function fecharModalRisco() {
+  document.getElementById('modal-risco').classList.add('hidden');
+  if (typeof desbloquearFundo === 'function') desbloquearFundo();
+}
+
+function _prepararModalTratamento(idRisco, trat, idCausaPreSelecionada) {
+  _tratFormIdRisco = idRisco;
+  document.getElementById('trat-id-edicao').value = trat ? trat.id : '';
+  document.getElementById('trat-id-risco').value = idRisco;
+  document.getElementById('modal-trat-form-titulo').textContent = trat ? 'Editar Ação de Tratamento' : 'Nova Ação de Tratamento';
+  document.getElementById('trat-form-botao-texto').textContent = trat ? 'Salvar Alteração' : 'Salvar';
+
+  var risco = _riscoPorId(idRisco);
+  document.getElementById('modal-trat-form-risco-desc').innerText = risco ? risco.risco : '';
+
+  document.getElementById('trat-acao').value              = trat ? (trat.acao || '') : '';
+  document.getElementById('trat-descricao').value         = trat ? (trat.descricao || '') : '';
+  document.getElementById('trat-periodicidade').value     = trat ? (trat.periodicidade || '') : '';
+  document.getElementById('trat-intervalo-qtd').value     = trat ? (trat.intervaloQtd || '') : '';
+  document.getElementById('trat-intervalo-unidade').value = trat ? (trat.intervaloUnidade || 'Dias') : 'Dias';
+  onMudarPeriodicidadeTrat();
+  document.getElementById('trat-data-referencia').value   = trat ? (trat.dataReferencia || '') : '';
+
+  var idCausaInicial = trat ? (trat.idCausa || '') : (idCausaPreSelecionada || '');
+  _popularCausasVinculoTrat(idCausaInicial);
+  document.getElementById('trat-causa-vinculo').value = idCausaInicial;
+
+  _initSeletorRespTrat();
+  prepararDadosTratResp(function() {
+    if (!seletorRespTrat) return;
+    if (trat && trat.responsaveis && trat.responsaveis.length) {
+      seletorRespTrat.setLista(trat.responsaveis.map(function(r) { return { id: r.id, tipo: r.tipo, nome: r.nome }; }));
+    } else if (!trat && risco && risco.responsaveis && risco.responsaveis.length) {
+      seletorRespTrat.setLista(risco.responsaveis);
+    } else {
+      seletorRespTrat.limpar();
+    }
+  });
+
+  document.getElementById('modal-tratamento-form').classList.remove('hidden');
+  if (typeof bloquearFundo === 'function') bloquearFundo();
+  document.getElementById('trat-acao').focus();
+}
+
+function abrirModalTratamentoForm(idRisco, idCausaPreSelecionada) {
+  _prepararModalTratamento(idRisco, null, idCausaPreSelecionada);
+}
+
+function abrirModalEdicaoTratamento(trat) {
+  _prepararModalTratamento(trat.idRisco, trat);
+}
+
+function fecharModalTratamentoForm() {
+  document.getElementById('modal-tratamento-form').classList.add('hidden');
+  if (typeof desbloquearFundo === 'function') desbloquearFundo();
+  _tratFormIdRisco = null;
+}
+function abrirModalCausaRapida(idRisco) {
+  document.getElementById('causa-rapida-id-risco').value = idRisco;
+  document.getElementById('causa-rapida-causa').value = '';
+  document.getElementById('causa-rapida-consequencia').value = '';
+  document.getElementById('modal-causa-rapida').classList.remove('hidden');
+  if (typeof bloquearFundo === 'function') bloquearFundo();
+  document.getElementById('causa-rapida-causa').focus();
+}
+
+function fecharModalCausaRapida() {
+  document.getElementById('modal-causa-rapida').classList.add('hidden');
+  if (typeof desbloquearFundo === 'function') desbloquearFundo();
+}
+
+// app_riscos_eventos — registro das ações delegadas (uiRegistrarAcoes)
 uiRegistrarAcoes('risco', {
   '1': function (event) { if(event.target===this) window[this.dataset.fechar](); },
   '2': function (event) { fecharModalRisco(); },
@@ -2830,4 +2844,6 @@ uiRegistrarAcoes('risco', {
   '54': function (event) { riscosNovaAcaoTratamento(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); },
   '55': function (event) { _riscosSDK.fecharPainel(); }
 });
+
+
 </script>

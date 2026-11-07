@@ -465,6 +465,10 @@ function criarSamaumaSDK() {
 </script>
 
 <script>
+// Dividido por responsabilidade (fase d — docs/refatoracao_frontend.md). Mesmo <script>, mesmo escopo global;
+// instruções de topo ficam em _estado na ordem original; funções são içadas, então a ordem entre arquivos não importa.
+// app_forum_estado — estado global, constantes e inicialização (instruções de topo, na ordem original)
+
 // ================================================================
 // App Fórum — "instalável" (ver docs/arquitetura_apps_modulares.md).
 // Entregue via apiObterHtmlApp + injeção dinâmica no DOM do host (não em
@@ -512,12 +516,6 @@ var _forumRev = '';
 var _FORUM_POLL_MIN = 5000;
 var _FORUM_POLL_MAX = 30000;     // aba do Fórum à vista: no máximo 30 s entre consultas quando nada muda
 var _FORUM_POLL_MAX_BG = 60000;  // aba do Fórum em segundo plano (só alimenta o selo de não lidas): 60 s
-
-function _apiDisponivel(nome) {
-  try { return typeof google.script.run[nome] === 'function'; } catch (e) { return false; }
-}
-
-// Tons suaves (fundo claro + texto escuro), estáveis por id/e-mail via hash.
 var _FT_TONS = [
   ['var(--ds-color-info-bg)', 'var(--ds-color-info-fg)'],
   ['var(--ds-color-success-bg)', 'var(--ds-color-success-fg)'],
@@ -528,22 +526,452 @@ var _FT_TONS = [
   ['var(--ds-color-warning-bg)', 'var(--ds-color-warning-fg)'],
   ['var(--ds-color-surface-2)', 'var(--ds-color-text-muted)']
 ];
+
+var _FT_STOP = ['de', 'do', 'da', 'dos', 'das', 'e', 'em', 'para', 'com', 'no', 'na', 'nos', 'nas', 'o', 'a', 'os', 'as', 'por'];
+
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) _forumPararPolling();
+  else if (_forumPollAtivo()) _forumIniciarPolling();
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  if (document.querySelector('.ext-mini-overlay:not(.hidden), .sys-overlay:not(.hidden)')) return;
+  if (_forumEditando) { cancelarEdicaoForum(); return; }
+  if (_forumRespondendo) { cancelarRespostaForum(); return; }
+  if (_forumTopicoAtualId) { _forumFecharPainelChat(); }
+});
+_forumSDK.aoVisibilidade(function(v) {
+  var antesAba = _vis.aba;
+  _vis = v;
+  if (v.pagina && !_forumPollTimer) _forumIniciarPolling();
+  if (v.aba && v.pagina && _ctx && !_forumTopicosCarregados) {
+    _forumTopicosCarregados = true;
+    forumSidebarCarregarTopicos();
+  }
+  if (!antesAba && v.aba && _forumTopicoAtualId) _forumMarcarTopicoAtualLido();
+});
+
+_forumSDK.aoContexto(function(ctx) {
+  if (_ctx && String(_ctx.idPlano) === String(ctx.idPlano)) {
+    _ctx = ctx;
+    forumSidebarRenderizarSecao();
+    if (_forumTopicosCarregados && typeof forumSidebarRenderLista === 'function') {
+      forumSidebarRenderLista();
+    }
+    return;
+  }
+  _ctx = ctx;
+  _forumIniciar();
+});
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+
+// app_forum_api — chamadas ao servidor (SDK / google.script.run / apiX)
+
+function _apiDisponivel(nome) {
+  try { return typeof google.script.run[nome] === 'function'; } catch (e) { return false; }
+}
+
+// Tons suaves (fundo claro + texto escuro), estáveis por id/e-mail via hash.
+
+function forumSidebarCarregarTopicos() {
+  if (!_ctx) return;
+  _forumSDK.chamar('apiListarTopicosForum', _ctx.idPlano).then(function(res) {
+    _forumTopicos = res.topicos || [];
+    forumSidebarRenderChips();
+    forumSidebarRenderLista();
+  }, function(err) {
+    var el = document.getElementById('ft-lista-topicos');
+    if (el) el.innerHTML = '<div style="padding:15px;color:var(--ds-color-danger)">Erro ao carregar tópicos: ' + escapeHtml(err.message) + '</div>';
+  });
+
+  _forumSDK.chamar('apiListarListasForum', _ctx.idPlano).then(function(res) {
+    _forumListasUsuario = res || [];
+    forumSidebarRenderChips();
+  }, function() { /* silencioso: listas são um recurso auxiliar */ });
+}
+
+function forumSidebarAtualizar() {
+  if (!_ctx) return;
+  _forumSDK.chamar('apiListarTopicosForum', _ctx.idPlano).then(function(res) {
+    _forumTopicos = res.topicos || [];
+    forumSidebarRenderChips();
+    forumSidebarRenderLista();
+  }, function() { /* silencioso: próximo ciclo tenta de novo */ });
+}
+
+function forumTopicoSalvar() {
+  var input = document.getElementById('ft-topico-nome-input');
+  var nome = (input.value || '').trim();
+  if (nome.length < 3 || nome.length > 60) {
+    showMessage('error', 'Nome inválido', 'O nome do tópico deve ter entre 3 e 60 caracteres.');
+    return;
+  }
+  if (!_ctx) return;
+
+  if (_ftTopicoEditandoId) {
+    var idEditando = _ftTopicoEditandoId;
+    _forumSDK.chamar('apiRenomearTopicoForum', { idTopico: idEditando, nome: nome }).then(function() {
+      fecharModalFtTopico();
+      var t = forumSidebarObterTopico(idEditando);
+      if (t) { t.nome = nome; forumSidebarRenderLista(); }
+      if (String(_forumTopicoAtualId) === String(idEditando)) _ftAtualizarHeaderAtual();
+    }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
+  } else {
+    _forumSDK.chamar('apiCriarTopicoForum', { idPlano: _ctx.idPlano, nome: nome }).then(function(res) {
+      fecharModalFtTopico();
+      _forumTopicos.unshift({
+        id: res.id, nome: res.nome, criadoPor: (_forumUsuario && _forumUsuario.email) || '',
+        ultimaMensagem: null, naoLidas: 0, fixado: false, favorito: false, arquivado: false,
+        listas: [], podeGerenciar: true
+      });
+      forumSidebarRenderLista();
+      forumTopicoAbrir(res.id);
+      forumSidebarCarregarTopicos();
+    }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
+  }
+}
+
+function forumTopicoConfirmarExcluir(id, nome) {
+  showConfirm('Excluir tópico "' + escapeHtml(nome) + '"?', 'Todas as mensagens deste tópico serão excluídas junto. Esta ação não pode ser desfeita.', function() {
+    _forumSDK.chamar('apiExcluirTopicoForum', id).then(function() {
+      _forumTopicos = _forumTopicos.filter(function(t) { return String(t.id) !== String(id); });
+      if (String(_forumTopicoAtualId) === String(id)) _forumFecharPainelChat();
+      forumSidebarRenderLista();
+    }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
+  });
+}
+
+// ================================================================
+// AÇÕES DE TÓPICO: fixar / favoritar / arquivar / marcar não lida
+// (otimistas: refletem na hora, desfazem se o backend rejeitar)
+// ================================================================
+function forumTopicoFixar(id, fixar) {
+  var t = forumSidebarObterTopico(id);
+  if (fixar) {
+    var qtdFixados = _forumTopicos.filter(function(x) { return x.fixado && String(x.id) !== String(id); }).length;
+    if (qtdFixados >= 3) {
+      showMessage('error', 'Limite atingido', 'Você já fixou 3 tópicos neste plano. Desafixe um para fixar outro.');
+      return;
+    }
+  }
+  var anterior = t ? t.fixado : false;
+  if (t) { t.fixado = fixar; forumSidebarRenderLista(); }
+  _forumSDK.chamar('apiFixarTopicoForum', id, fixar).then(function() {
+    _ftAtualizarHeaderAtual();
+  }, function(err) {
+    if (t) { t.fixado = anterior; forumSidebarRenderLista(); }
+    showMessage('error', 'Erro', escapeHtml(err.message));
+  });
+}
+
+function forumTopicoFavoritar(id, favorito) {
+  var t = forumSidebarObterTopico(id);
+  var anterior = t ? t.favorito : false;
+  if (t) { t.favorito = favorito; forumSidebarRenderLista(); }
+  _forumSDK.chamar('apiFavoritarTopicoForum', id, favorito).then(function() {
+    _ftAtualizarHeaderAtual();
+  }, function(err) {
+    if (t) { t.favorito = anterior; forumSidebarRenderLista(); }
+    showMessage('error', 'Erro', escapeHtml(err.message));
+  });
+}
+
+function forumTopicoArquivar(id, arquivado) {
+  var t = forumSidebarObterTopico(id);
+  var anterior = t ? t.arquivado : false;
+  if (t) { t.arquivado = arquivado; forumSidebarRenderLista(); }
+  _forumSDK.chamar('apiArquivarTopicoForum', id, arquivado).then(function() {
+    _ftAtualizarHeaderAtual();
+  }, function(err) {
+    if (t) { t.arquivado = anterior; forumSidebarRenderLista(); }
+    showMessage('error', 'Erro', escapeHtml(err.message));
+  });
+}
+
+function forumTopicoMarcarNaoLida(id) {
+  var t = forumSidebarObterTopico(id);
+  if (t) { t.naoLidas = Math.max(t.naoLidas || 0, 1); forumSidebarRenderLista(); }
+  var eraAtual = String(_forumTopicoAtualId) === String(id);
+  if (eraAtual) _forumFecharPainelChat();
+  _forumSDK.chamar('apiMarcarTopicoNaoLido', id).then(function() {}, function(err) {
+    showMessage('error', 'Erro', escapeHtml(err.message));
+  });
+}
+
+// ================================================================
+// LISTAS PERSONALIZADAS (privadas ao usuário) — criar e associar tópicos
+// ================================================================
+
+function forumListaToggleTopico(idLista, marcado) {
+  var idTopico = _ftModalListaTopicoAlvo;
+  if (!idTopico) return;
+  var t = forumSidebarObterTopico(idTopico);
+  if (t) {
+    t.listas = t.listas || [];
+    if (marcado) { if (t.listas.indexOf(String(idLista)) === -1) t.listas.push(String(idLista)); }
+    else { t.listas = t.listas.filter(function(x) { return String(x) !== String(idLista); }); }
+  }
+  var chamada = marcado
+    ? _forumSDK.chamar('apiAdicionarTopicoALista', { idTopico: idTopico, idLista: idLista })
+    : _forumSDK.chamar('apiRemoverTopicoDaLista', { idTopico: idTopico, idLista: idLista });
+  chamada.then(function() { forumSidebarRenderLista(); }, function(err) {
+    showMessage('error', 'Erro', escapeHtml(err.message));
+    forumListaRenderPicker();
+  });
+}
+
+function forumListaSalvar() {
+  var input = document.getElementById('ft-lista-nome-input');
+  var nome = (input.value || '').trim();
+  if (nome.length < 2 || nome.length > 40) {
+    showMessage('error', 'Nome inválido', 'O nome da lista deve ter entre 2 e 40 caracteres.');
+    return;
+  }
+  if (!_ctx) return;
+
+  if (_ftListaEditandoId) {
+    var idEditando = _ftListaEditandoId;
+    _forumSDK.chamar('apiRenomearListaForum', { idLista: idEditando, nome: nome }).then(function() {
+      var l = _forumListasUsuario.find(function(x) { return String(x.id) === String(idEditando); });
+      if (l) l.nome = nome;
+      forumSidebarRenderChips();
+      fecharModalFtLista();
+    }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
+    return;
+  }
+
+  var vieDoPicker = _ftListaModalVeioDoPicker;
+  var alvoTopico = _ftModalListaTopicoAlvo;
+  _forumSDK.chamar('apiCriarListaForum', { idPlano: _ctx.idPlano, nome: nome }).then(function(res) {
+    _forumListasUsuario.push({ id: res.id, nome: res.nome, qtdTopicos: 0 });
+    forumSidebarRenderChips();
+    fecharModalFtLista();
+    if (vieDoPicker && alvoTopico) {
+      forumListaRenderPicker();
+      forumListaToggleTopico(res.id, true);
+    }
+  }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
+}
+
+function forumListaConfirmarExcluir(id, nome) {
+  document.querySelectorAll('.ft-lista-chip-menu.show').forEach(function(el) { el.classList.remove('show'); });
+  showConfirm('Excluir lista "' + escapeHtml(nome) + '"?', 'Os tópicos continuam existindo normalmente; só deixam de estar organizados por esta lista.', function() {
+    _forumSDK.chamar('apiExcluirListaForum', id).then(function() {
+      _forumListasUsuario = _forumListasUsuario.filter(function(x) { return String(x.id) !== String(id); });
+      _forumTopicos.forEach(function(t) {
+        if (t.listas) t.listas = t.listas.filter(function(x) { return String(x) !== String(id); });
+      });
+      if (_ftFiltroAtivo === 'LISTA:' + id) _ftFiltroAtivo = 'TUDO';
+      forumSidebarRenderChips();
+      forumSidebarRenderLista();
+    }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
+  });
+}
+
+// ================================================================
+// TEMPO REAL: polling leve e adaptativo — roda enquanto a tela-mãe (não
+// necessariamente esta aba) estiver visível, para alimentar o badge; quando
+// esta aba está ativa (_vis.aba), também sincroniza a conversa aberta.
+// ================================================================
+
+function _forumAtualizarBadge() {
+  if (!_ctx || !_apiDisponivel('apiGetForumStatus')) return;
+  _forumSDK.chamar('apiGetForumStatus', _ctx.idPlano).then(function(res) {
+    if (_vis.aba) return; // usuário abriu esta aba nesse meio-tempo
+    _forumSDK.reportarBadge(Number(res.total) || 0);
+  }, function() { /* silencioso */ });
+}
+
+function _forumVerificarNovidades() {
+  if (!_forumPollAtivo()) { _forumPararPolling(); return; }
+  if (!_apiDisponivel('apiGetForumRev')) { _forumPararPolling(); return; }
+  _forumSDK.chamar('apiGetForumRev', _ctx.idPlano).then(function(rev) {
+    if (!_forumPollAtivo()) return;
+    if (rev && !_forumRev) {
+      _forumRev = rev;
+    } else if (rev && rev !== _forumRev) {
+      _forumRev = rev;
+      _forumPollDelay = _FORUM_POLL_MIN;
+      if (_vis.aba && _forumTopicoAtualId) {
+        _forumSincronizar();
+        forumSidebarAtualizar();
+      } else if (_vis.aba) {
+        forumSidebarAtualizar();
+      } else {
+        _forumAtualizarBadge();
+      }
+    } else {
+      _forumPollDelay = Math.min(Math.round(_forumPollDelay * 1.5), _vis.aba ? _FORUM_POLL_MAX : _FORUM_POLL_MAX_BG);
+    }
+    _forumAgendarPoll();
+  }, function() {
+    _forumPollDelay = _vis.aba ? _FORUM_POLL_MAX : _FORUM_POLL_MAX_BG;
+    _forumAgendarPoll();
+  });
+}
+
+function _forumSincronizar() {
+  if (!_forumTopicoAtualId) return;
+  _forumSDK.chamar('apiGetMensagensForum', _forumTopicoAtualId, null, _FORUM_JANELA).then(function(res) {
+    var feed = document.getElementById('forum-feed');
+    var noFundo = !feed || (feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80);
+
+    var novas = res.mensagens || [];
+    var meuEmail = _forumUsuario ? String(_forumUsuario.email).toLowerCase() : '';
+    var pendentes = _forumMsgs.filter(function(m) {
+      if (String(m.id).indexOf('tmp-') !== 0 && !m.erro) return false;
+      return !novas.some(function(s) {
+        return String(s.autorEmail).toLowerCase() === meuEmail && s.texto === m.texto;
+      });
+    });
+
+    _forumMsgs = novas.concat(pendentes);
+    _forumTemMais = !!res.temMais;
+    _forumRev = res.rev || _forumRev;
+    if (res.usuarioAtual) _forumUsuario = res.usuarioAtual;
+    _forumRenderFeed();
+    if (noFundo) _forumRolarFim();
+    if (_vis.aba) _forumMarcarTopicoAtualLido();
+  }, function() { /* silencioso: o próximo ciclo tenta de novo */ });
+}
+
+function _forumMarcarTopicoAtualLido() {
+  if (!_forumTopicoAtualId) return;
+  if (_apiDisponivel('apiMarcarTopicoLido')) {
+    _forumSDK.chamar('apiMarcarTopicoLido', _forumTopicoAtualId).then(function() {}, function() {});
+  }
+  forumSidebarZerarNaoLidas(_forumTopicoAtualId);
+}
+
+function forumTopicoAbrir(idTopico, forcar) {
+  if (!idTopico) return;
+  var shell = document.getElementById('forum-shell');
+  if (_forumTopicoAtualId === String(idTopico) && !forcar) {
+    if (shell) shell.classList.add('chat-aberto');
+    return;
+  }
+  _forumTopicoAtualId = String(idTopico);
+  _forumMsgs = [];
+  _forumTemMais = false;
+  _forumRespondendo = null;
+  _forumEditando = null;
+
+  if (shell) shell.classList.add('chat-aberto');
+  forumSidebarMarcarAtivo(_forumTopicoAtualId);
+  _forumMontarChatPane(_forumTopicoAtualId);
+
+  var feed = document.getElementById('forum-feed');
+  if (feed) feed.innerHTML = spinnerListaHTML();
+
+  _forumSDK.chamar('apiGetMensagensForum', idTopico, null, _FORUM_JANELA).then(function(res) {
+    if (_forumTopicoAtualId !== String(idTopico)) return;
+    _forumMsgs = res.mensagens || [];
+    _forumTemMais = !!res.temMais;
+    _forumUsuario = res.usuarioAtual || _forumUsuario;
+    _forumRev = res.rev || _forumRev;
+    _forumRenderFeed();
+    _forumRolarFim();
+    _forumMarcarTopicoAtualLido();
+  }, function(err) {
+    var el = document.getElementById('forum-feed');
+    if (el) el.innerHTML = '<div style="padding:15px; color:var(--ds-color-danger)">Erro ao carregar o tópico: ' + escapeHtml(err.message) + '</div>';
+  });
+}
+
+function carregarMensagensAntigas() {
+  if (!_forumMsgs.length || !_forumTopicoAtualId) return;
+  var btn = document.getElementById('forum-btn-antigas');
+  if (btn) { btn.disabled = true; btn.textContent = 'Carregando…'; }
+
+  var feed = document.getElementById('forum-feed');
+  var alturaAntes = feed ? feed.scrollHeight : 0;
+
+  _forumSDK.chamar('apiGetMensagensForum', _forumTopicoAtualId, _forumMsgs[0].id, _FORUM_JANELA).then(function(res) {
+    _forumMsgs = (res.mensagens || []).concat(_forumMsgs);
+    _forumTemMais = !!res.temMais;
+    _forumRenderFeed();
+    if (feed) feed.scrollTop = feed.scrollHeight - alturaAntes + feed.scrollTop;
+  }, function(err) {
+    showMessage('error', 'Erro', escapeHtml(err.message));
+    _forumRenderFeed();
+  });
+}
+
+function excluirMensagemForum(id) {
+  var m = _forumMsgs.find(function(x) { return String(x.id) === String(id); });
+  if (!m || !_forumPodeGerenciar(m)) return;
+  showConfirm('Excluir mensagem?', 'A mensagem será removida da conversa para todos.', function() {
+    _forumMsgs = _forumMsgs.filter(function(x) { return String(x.id) !== String(id); });
+    if (_forumEditando === String(id)) cancelarEdicaoForum();
+    _forumRenderFeed();
+    _forumSDK.chamar('apiExcluirMensagemForum', id).then(function() {}, function(err) {
+      showMessage('error', 'Não foi possível excluir', escapeHtml(err.message));
+      atualizarForum();
+    });
+  });
+}
+
+function _forumEnviarBackend(msg, idResposta) {
+  _forumSDK.chamar('apiEnviarMensagemForum', {
+    idTopico: _forumTopicoAtualId,
+    texto: msg.texto,
+    idResposta: idResposta || ''
+  }).then(function(res) {
+    var jaExiste = _forumMsgs.some(function(x) { return x !== msg && String(x.id) === String(res.id); });
+    if (jaExiste) {
+      _forumMsgs = _forumMsgs.filter(function(x) { return x !== msg; });
+    } else {
+      msg.id = res.id;
+      msg.dataHora = res.dataHora;
+      msg.pendente = false;
+      msg.erro = false;
+    }
+    _forumRenderFeed();
+  }, function(err) {
+    msg.pendente = false;
+    msg.erro = true;
+    _forumRenderFeed();
+    showMessage('error', 'Falha ao enviar', escapeHtml(err.message) + '<br>Clique no ícone vermelho da mensagem para reenviar.');
+  });
+}
+
+function _forumConcluirEdicao(texto, ta) {
+  var id = _forumEditando;
+  var m = _forumMsgs.find(function(x) { return String(x.id) === String(id); });
+  cancelarEdicaoForum();
+  if (!m) return;
+
+  var textoAntigo = m.texto;
+  var editadaAntes = m.editada;
+  m.texto = texto;
+  m.editada = true;
+  _forumRenderFeed();
+
+  _forumSDK.chamar('apiEditarMensagemForum', { id: id, texto: texto }).then(function() {}, function(err) {
+    m.texto = textoAntigo;
+    m.editada = editadaAntes;
+    _forumRenderFeed();
+    showMessage('error', 'Não foi possível editar', escapeHtml(err.message));
+  });
+}
+
+// ================================================================
+// Handshake com o host
+// ================================================================
+
+// app_forum_regras — regras de tela e utilitários (sem render de lista)
 function _ftTom(seed) {
   var h = 0, s = String(seed || '');
   for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 100000;
   return _FT_TONS[h % _FT_TONS.length];
 }
 function _ftCorAvatar(seed) { return _ftTom(seed)[1]; }
-
-var _FT_STOP = ['de', 'do', 'da', 'dos', 'das', 'e', 'em', 'para', 'com', 'no', 'na', 'nos', 'nas', 'o', 'a', 'os', 'as', 'por'];
 function _ftIniciaisTopico(nome) {
   var p = String(nome || '?').replace(/[^\p{L}\s]/gu, '').trim().split(/\s+/)
     .filter(function(w) { return w && _FT_STOP.indexOf(w.toLowerCase()) === -1; });
   return (((p[0] || nome || '?').charAt(0)) + (p[1] ? p[1].charAt(0) : '')).toUpperCase();
-}
-function _ftAvatarTopicoHTML(t) {
-  var tom = _ftTom(t.id);
-  return '<span class="ft-avatar-topico" style="background:' + tom[0] + ';color:' + tom[1] + '">' + escapeHtml(_ftIniciaisTopico(t.nome)) + '</span>';
 }
 function _ftIniciais(nome) {
   var partes = String(nome || '?').trim().split(/\s+/);
@@ -554,23 +982,6 @@ function _forumIniciais(nome) { return _ftIniciais(nome); }
 function _forumCorAvatar(email) { return _ftCorAvatar(email); }
 
 // MOTOR DE FORMATACAO ESTILO WHATSAPP: *negrito*, _italico_, ~tachado~, ```mono```
-function forumFormatarTexto(texto) {
-  var MARCA = String.fromCharCode(1);
-  var out = escapeHtml(texto == null ? '' : String(texto));
-  var mono = [];
-  out = out.replace(/```([^`]+?)```/g, function(cap0, inner) {
-    mono.push(inner);
-    return MARCA + (mono.length - 1) + MARCA;
-  });
-  out = out.replace(/\*([^*\n]+?)\*/g, '<strong>$1</strong>');
-  out = out.replace(/_([^_\n]+?)_/g, '<em>$1</em>');
-  out = out.replace(/~([^~\n]+?)~/g, '<s>$1</s>');
-  var reMarca = new RegExp(MARCA + '(\\d+)' + MARCA, 'g');
-  out = out.replace(reMarca, function(cap0, i) {
-    return '<code>' + mono[Number(i)] + '</code>';
-  });
-  return out;
-}
 
 function forumComposerAplicarMarcador(marcador) {
   var ta = document.getElementById('forum-texto');
@@ -588,6 +999,283 @@ function forumComposerAplicarMarcador(marcador) {
 // ================================================================
 // SIDEBAR: casca de duas colunas + carregamento dos tópicos
 // ================================================================
+
+function forumSidebarObterTopico(id) {
+  for (var i = 0; i < _forumTopicos.length; i++) {
+    if (String(_forumTopicos[i].id) === String(id)) return _forumTopicos[i];
+  }
+  return null;
+}
+
+function forumSidebarMarcarAtivo(id) {
+  document.querySelectorAll('#ft-lista-topicos .ft-topico-item').forEach(function(el) {
+    el.classList.toggle('ativo', el.getAttribute('data-id') === String(id));
+  });
+}
+
+function forumSidebarZerarNaoLidas(id) {
+  var t = forumSidebarObterTopico(id);
+  if (t) { t.naoLidas = 0; forumSidebarRenderLista(); }
+}
+
+function forumTopicoToggleChip(el, chave) {
+  _ftFiltroAtivo = chave;
+  forumSidebarRenderChips();
+  forumSidebarRenderLista();
+}
+
+function _ftAtualizarHeaderAtual() {
+  if (!_forumTopicoAtualId) return;
+  var t = forumSidebarObterTopico(_forumTopicoAtualId);
+  var header = document.getElementById('forum-chat-header');
+  if (header && t) header.innerHTML = forumChatHeaderHTML(t, _forumTopicoAtualId);
+}
+
+// ================================================================
+// AÇÕES DE TÓPICO: criar / renomear / excluir
+// ================================================================
+function _forumPollAtivo() {
+  return !!_ctx && _vis.pagina && !document.hidden;
+}
+
+function _forumPararPolling() {
+  if (_forumPollTimer) { clearTimeout(_forumPollTimer); _forumPollTimer = null; }
+}
+
+function _forumIniciarPolling() {
+  _forumPararPolling();
+  _forumPollDelay = _FORUM_POLL_MIN;
+  _forumAgendarPoll();
+}
+
+function _forumAgendarPoll() {
+  _forumPararPolling();
+  if (!_forumPollAtivo()) return;
+  _forumPollTimer = setTimeout(_forumVerificarNovidades, _forumPollDelay);
+}
+
+function _forumPodeGerenciar(m) {
+  if (!m || m.pendente || m.erro || String(m.id).indexOf('tmp-') === 0) return false;
+  if (!_forumUsuario || String(m.autorEmail).toLowerCase() !== String(_forumUsuario.email).toLowerCase()) return false;
+  var t = new Date(String(m.dataHora || '').replace(' ', 'T') + ':00');
+  return !isNaN(t.getTime()) && (Date.now() - t.getTime()) <= _FORUM_JANELA_EDICAO_MS;
+}
+
+function _forumRotuloData(dataHora) {
+  var d = String(dataHora || '').substring(0, 10);
+  var hoje = new Date();
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  var chaveHoje = hoje.getFullYear() + '-' + pad(hoje.getMonth() + 1) + '-' + pad(hoje.getDate());
+  var ontem = new Date(hoje.getTime() - 86400000);
+  var chaveOntem = ontem.getFullYear() + '-' + pad(ontem.getMonth() + 1) + '-' + pad(ontem.getDate());
+  if (d === chaveHoje) return 'Hoje';
+  if (d === chaveOntem) return 'Ontem';
+  var p = d.split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d;
+}
+
+// Ponto de entrada: chamado quando o contexto (idPlano/permissões) chega do host.
+function _forumIniciar() {
+  forumSidebarRenderizarSecao();
+  _forumTopicosCarregados = false;
+  if (_vis.aba && _vis.pagina) {
+    _forumTopicosCarregados = true;
+    forumSidebarCarregarTopicos();
+  } else {
+    // Aba fora de vista: só o selo de não lidas (chamada leve), sem baixar tópicos/listas.
+    _forumAtualizarBadge();
+  }
+  _forumIniciarPolling();
+}
+
+function atualizarForum() {
+  if (!_ctx) return;
+  forumSidebarCarregarTopicos();
+  if (_forumTopicoAtualId) forumTopicoAbrir(_forumTopicoAtualId, true);
+  _forumIniciarPolling();
+}
+
+function forumSidebarVoltar() {
+  var shell = document.getElementById('forum-shell');
+  if (shell) shell.classList.remove('chat-aberto');
+}
+
+function _forumFecharPainelChat() {
+  _forumTopicoAtualId = null;
+  _forumMsgs = [];
+  _forumRespondendo = null;
+  _forumEditando = null;
+  var header = document.getElementById('forum-chat-header');
+  var body = document.getElementById('forum-chat-body');
+  if (header) header.innerHTML = '';
+  if (body) body.innerHTML = _ftChatVazioHTML();
+  forumSidebarMarcarAtivo(null);
+  forumSidebarVoltar();
+}
+
+function _forumMontarChatPane(idTopico) {
+  var header = document.getElementById('forum-chat-header');
+  if (header) {
+    var topico = forumSidebarObterTopico(idTopico);
+    header.innerHTML = forumChatHeaderHTML(topico, idTopico);
+  }
+  var body = document.getElementById('forum-chat-body');
+  if (!body) return;
+  body.innerHTML =
+      '<div id="forum-feed" class="forum-feed"></div>'
+    + '<div class="forum-composer-wrap">'
+    +   '<div class="forum-composer">'
+    +     '<div id="forum-reply-preview"></div>'
+    +     '<textarea id="forum-texto" rows="1" placeholder="Escreva uma mensagem…" aria-label="Mensagem"'
+    +       ' data-on-keydown="forum.24" data-on-input="forum.25"></textarea>'
+    +     '<div class="forum-composer-toolbar">'
+    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.26" data-title="Negrito (*texto*)" aria-label="Negrito"><span class="material-symbols-outlined">format_bold</span></button>'
+    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.27" data-title="Itálico (_texto_)" aria-label="Itálico"><span class="material-symbols-outlined">format_italic</span></button>'
+    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.28" data-title="Tachado (~texto~)" aria-label="Tachado"><span class="material-symbols-outlined">format_strikethrough</span></button>'
+    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.29" data-title="Código (```texto```)" aria-label="Código"><span class="material-symbols-outlined">code</span></button>'
+    +       '<span class="forum-composer-dica">Enter envia · Shift+Enter quebra linha</span>'
+    +       '<button type="button" class="forum-btn-enviar is-vazio" id="forum-btn-enviar" data-on-click="forum.30" data-title="Enviar (Enter)" aria-label="Enviar">'
+    +         '<span class="material-symbols-outlined">send</span></button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>';
+  _forumSyncEnviar();
+}
+
+function _forumRolarFim() {
+  var ir = function() { var f = document.getElementById('forum-feed'); if (f) f.scrollTop = f.scrollHeight; };
+  ir(); requestAnimationFrame(ir); setTimeout(ir, 150);
+}
+
+function _forumSyncEnviar() {
+  var ta = document.getElementById('forum-texto'), bt = document.getElementById('forum-btn-enviar');
+  if (bt) bt.classList.toggle('is-vazio', !(ta && ta.value.trim()));
+}
+
+function _forumAjustarAltura(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
+}
+
+function _forumKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    enviarMensagemForum();
+  }
+}
+
+function _forumIrParaMensagem(id) {
+  var alvo = document.getElementById('fmsg-' + id);
+  if (!alvo) {
+    showMessage('info', 'Mensagem antiga', 'A mensagem original não está carregada. Use "Carregar mensagens anteriores" para encontrá-la.');
+    return;
+  }
+  alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  alvo.classList.add('forum-msg-destaque');
+  setTimeout(function() { alvo.classList.remove('forum-msg-destaque'); }, 1600);
+}
+
+function responderMensagemForum(id) {
+  var m = _forumMsgs.find(function(x) { return String(x.id) === String(id); });
+  if (!m) return;
+  _forumEditando = null;
+  _forumRespondendo = { id: m.id, autorNome: m.autorNome, texto: String(m.texto).substring(0, 140) };
+  _forumRenderReplyPreview();
+  var ta = document.getElementById('forum-texto');
+  if (ta) ta.focus();
+}
+
+function cancelarRespostaForum() {
+  _forumRespondendo = null;
+  _forumRenderReplyPreview();
+}
+
+function editarMensagemForum(id) {
+  var m = _forumMsgs.find(function(x) { return String(x.id) === String(id); });
+  if (!m || !_forumPodeGerenciar(m)) return;
+  _forumRespondendo = null;
+  _forumEditando = String(m.id);
+  var ta = document.getElementById('forum-texto');
+  if (ta) {
+    ta.value = m.texto;
+    _forumAjustarAltura(ta);
+    ta.focus();
+    _forumSyncEnviar();
+  }
+  _forumRenderReplyPreview();
+}
+
+function cancelarEdicaoForum() {
+  _forumEditando = null;
+  var ta = document.getElementById('forum-texto');
+  if (ta) { ta.value = ''; _forumAjustarAltura(ta); }
+  _forumRenderReplyPreview();
+  _forumSyncEnviar();
+}
+
+function enviarMensagemForum() {
+  var ta = document.getElementById('forum-texto');
+  if (!ta) return;
+  var texto = ta.value.trim();
+  if (!texto) return;
+  if (!_forumTopicoAtualId) return;
+
+  if (_forumEditando) {
+    _forumConcluirEdicao(texto, ta);
+    return;
+  }
+
+  var respostaEnviada = _forumRespondendo;
+
+  ta.value = '';
+  _forumAjustarAltura(ta);
+  _forumRespondendo = null;
+  _forumRenderReplyPreview();
+  _forumSyncEnviar();
+
+  var agora = new Date();
+  var pad = function(n) { return String(n).padStart(2, '0'); };
+  var msg = {
+    id: 'tmp-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
+    texto: texto,
+    autorEmail: _forumUsuario ? _forumUsuario.email : '',
+    autorNome: _forumUsuario ? _forumUsuario.nome : '',
+    autorFoto: _forumUsuario ? (_forumUsuario.fotoUrl || '') : '',
+    dataHora: agora.getFullYear() + '-' + pad(agora.getMonth() + 1) + '-' + pad(agora.getDate())
+      + ' ' + pad(agora.getHours()) + ':' + pad(agora.getMinutes()),
+    respostaA: respostaEnviada
+      ? { id: respostaEnviada.id, autorNome: respostaEnviada.autorNome, texto: respostaEnviada.texto }
+      : null,
+    pendente: true,
+    erro: false
+  };
+
+  _forumMsgs.push(msg);
+  if (_forumMsgs.length > _FORUM_MAX_EXIBIDAS) {
+    _forumMsgs = _forumMsgs.slice(-_FORUM_MAX_EXIBIDAS);
+    _forumTemMais = true;
+  }
+  _forumRenderFeed();
+  _forumRolarFim();
+
+  _forumEnviarBackend(msg, respostaEnviada ? respostaEnviada.id : '');
+  _forumIniciarPolling();
+}
+
+function reenviarMensagemForum(id) {
+  var m = _forumMsgs.find(function(x) { return String(x.id) === String(id); });
+  if (!m || !m.erro) return;
+  m.erro = false;
+  m.pendente = true;
+  _forumRenderFeed();
+  _forumEnviarBackend(m, m.respostaA ? m.respostaA.id : '');
+}
+
+// app_forum_lista — render de lista/tabela/árvore, filtros, ordenação, paginação, menus
+function _ftAvatarTopicoHTML(t) {
+  var tom = _ftTom(t.id);
+  return '<span class="ft-avatar-topico" style="background:' + tom[0] + ';color:' + tom[1] + '">' + escapeHtml(_ftIniciaisTopico(t.nome)) + '</span>';
+}
 function forumSidebarRenderizarSecao() {
   var container = document.getElementById('forum-conteudo');
   if (!container) return;
@@ -621,50 +1309,6 @@ function _ftChatVazioHTML() {
     + '<p class="el-esti" style="font-size:0.9rem">Selecione um tópico</p>'
     + '<p style="font-size:0.83rem;color:var(--ds-color-text-muted);margin-top:4px">Ou crie um novo tópico para começar uma conversa.</p>'
     + '</div>';
-}
-
-function forumSidebarCarregarTopicos() {
-  if (!_ctx) return;
-  _forumSDK.chamar('apiListarTopicosForum', _ctx.idPlano).then(function(res) {
-    _forumTopicos = res.topicos || [];
-    forumSidebarRenderChips();
-    forumSidebarRenderLista();
-  }, function(err) {
-    var el = document.getElementById('ft-lista-topicos');
-    if (el) el.innerHTML = '<div style="padding:15px;color:var(--ds-color-danger)">Erro ao carregar tópicos: ' + escapeHtml(err.message) + '</div>';
-  });
-
-  _forumSDK.chamar('apiListarListasForum', _ctx.idPlano).then(function(res) {
-    _forumListasUsuario = res || [];
-    forumSidebarRenderChips();
-  }, function() { /* silencioso: listas são um recurso auxiliar */ });
-}
-
-function forumSidebarAtualizar() {
-  if (!_ctx) return;
-  _forumSDK.chamar('apiListarTopicosForum', _ctx.idPlano).then(function(res) {
-    _forumTopicos = res.topicos || [];
-    forumSidebarRenderChips();
-    forumSidebarRenderLista();
-  }, function() { /* silencioso: próximo ciclo tenta de novo */ });
-}
-
-function forumSidebarObterTopico(id) {
-  for (var i = 0; i < _forumTopicos.length; i++) {
-    if (String(_forumTopicos[i].id) === String(id)) return _forumTopicos[i];
-  }
-  return null;
-}
-
-function forumSidebarMarcarAtivo(id) {
-  document.querySelectorAll('#ft-lista-topicos .ft-topico-item').forEach(function(el) {
-    el.classList.toggle('ativo', el.getAttribute('data-id') === String(id));
-  });
-}
-
-function forumSidebarZerarNaoLidas(id) {
-  var t = forumSidebarObterTopico(id);
-  if (t) { t.naoLidas = 0; forumSidebarRenderLista(); }
 }
 
 function forumSidebarRenderChips() {
@@ -708,12 +1352,6 @@ function toggleListaChipMenu(idLista, event) {
   var estavaAberto = menu.classList.contains('show');
   document.querySelectorAll('.ft-lista-chip-menu.show').forEach(function(el) { el.classList.remove('show'); });
   if (!estavaAberto) menu.classList.add('show');
-}
-
-function forumTopicoToggleChip(el, chave) {
-  _ftFiltroAtivo = chave;
-  forumSidebarRenderChips();
-  forumSidebarRenderLista();
 }
 
 function forumSidebarAplicarFiltros() { forumSidebarRenderLista(); }
@@ -857,158 +1495,6 @@ function forumChatHeaderHTML(topico, idTopico) {
     + '</div>';
 }
 
-function _ftAtualizarHeaderAtual() {
-  if (!_forumTopicoAtualId) return;
-  var t = forumSidebarObterTopico(_forumTopicoAtualId);
-  var header = document.getElementById('forum-chat-header');
-  if (header && t) header.innerHTML = forumChatHeaderHTML(t, _forumTopicoAtualId);
-}
-
-// ================================================================
-// AÇÕES DE TÓPICO: criar / renomear / excluir
-// ================================================================
-function forumTopicoAbrirModalCriar() {
-  _ftTopicoEditandoId = null;
-  document.getElementById('ft-topico-modal-titulo').textContent = 'Novo tópico';
-  var input = document.getElementById('ft-topico-nome-input');
-  input.value = '';
-  document.getElementById('modal-ft-topico').classList.remove('hidden');
-  bloquearFundo();
-  setTimeout(function() { input.focus(); }, 50);
-}
-
-function forumTopicoAbrirModalRenomear(id) {
-  var t = forumSidebarObterTopico(id);
-  if (!t) return;
-  _ftTopicoEditandoId = String(id);
-  document.getElementById('ft-topico-modal-titulo').textContent = 'Renomear tópico';
-  var input = document.getElementById('ft-topico-nome-input');
-  input.value = t.nome;
-  document.getElementById('modal-ft-topico').classList.remove('hidden');
-  bloquearFundo();
-  setTimeout(function() { input.focus(); input.select(); }, 50);
-}
-
-function fecharModalFtTopico() {
-  document.getElementById('modal-ft-topico').classList.add('hidden');
-  desbloquearFundo();
-}
-
-function forumTopicoSalvar() {
-  var input = document.getElementById('ft-topico-nome-input');
-  var nome = (input.value || '').trim();
-  if (nome.length < 3 || nome.length > 60) {
-    showMessage('error', 'Nome inválido', 'O nome do tópico deve ter entre 3 e 60 caracteres.');
-    return;
-  }
-  if (!_ctx) return;
-
-  if (_ftTopicoEditandoId) {
-    var idEditando = _ftTopicoEditandoId;
-    _forumSDK.chamar('apiRenomearTopicoForum', { idTopico: idEditando, nome: nome }).then(function() {
-      fecharModalFtTopico();
-      var t = forumSidebarObterTopico(idEditando);
-      if (t) { t.nome = nome; forumSidebarRenderLista(); }
-      if (String(_forumTopicoAtualId) === String(idEditando)) _ftAtualizarHeaderAtual();
-    }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
-  } else {
-    _forumSDK.chamar('apiCriarTopicoForum', { idPlano: _ctx.idPlano, nome: nome }).then(function(res) {
-      fecharModalFtTopico();
-      _forumTopicos.unshift({
-        id: res.id, nome: res.nome, criadoPor: (_forumUsuario && _forumUsuario.email) || '',
-        ultimaMensagem: null, naoLidas: 0, fixado: false, favorito: false, arquivado: false,
-        listas: [], podeGerenciar: true
-      });
-      forumSidebarRenderLista();
-      forumTopicoAbrir(res.id);
-      forumSidebarCarregarTopicos();
-    }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
-  }
-}
-
-function forumTopicoConfirmarExcluir(id, nome) {
-  showConfirm('Excluir tópico "' + escapeHtml(nome) + '"?', 'Todas as mensagens deste tópico serão excluídas junto. Esta ação não pode ser desfeita.', function() {
-    _forumSDK.chamar('apiExcluirTopicoForum', id).then(function() {
-      _forumTopicos = _forumTopicos.filter(function(t) { return String(t.id) !== String(id); });
-      if (String(_forumTopicoAtualId) === String(id)) _forumFecharPainelChat();
-      forumSidebarRenderLista();
-    }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
-  });
-}
-
-// ================================================================
-// AÇÕES DE TÓPICO: fixar / favoritar / arquivar / marcar não lida
-// (otimistas: refletem na hora, desfazem se o backend rejeitar)
-// ================================================================
-function forumTopicoFixar(id, fixar) {
-  var t = forumSidebarObterTopico(id);
-  if (fixar) {
-    var qtdFixados = _forumTopicos.filter(function(x) { return x.fixado && String(x.id) !== String(id); }).length;
-    if (qtdFixados >= 3) {
-      showMessage('error', 'Limite atingido', 'Você já fixou 3 tópicos neste plano. Desafixe um para fixar outro.');
-      return;
-    }
-  }
-  var anterior = t ? t.fixado : false;
-  if (t) { t.fixado = fixar; forumSidebarRenderLista(); }
-  _forumSDK.chamar('apiFixarTopicoForum', id, fixar).then(function() {
-    _ftAtualizarHeaderAtual();
-  }, function(err) {
-    if (t) { t.fixado = anterior; forumSidebarRenderLista(); }
-    showMessage('error', 'Erro', escapeHtml(err.message));
-  });
-}
-
-function forumTopicoFavoritar(id, favorito) {
-  var t = forumSidebarObterTopico(id);
-  var anterior = t ? t.favorito : false;
-  if (t) { t.favorito = favorito; forumSidebarRenderLista(); }
-  _forumSDK.chamar('apiFavoritarTopicoForum', id, favorito).then(function() {
-    _ftAtualizarHeaderAtual();
-  }, function(err) {
-    if (t) { t.favorito = anterior; forumSidebarRenderLista(); }
-    showMessage('error', 'Erro', escapeHtml(err.message));
-  });
-}
-
-function forumTopicoArquivar(id, arquivado) {
-  var t = forumSidebarObterTopico(id);
-  var anterior = t ? t.arquivado : false;
-  if (t) { t.arquivado = arquivado; forumSidebarRenderLista(); }
-  _forumSDK.chamar('apiArquivarTopicoForum', id, arquivado).then(function() {
-    _ftAtualizarHeaderAtual();
-  }, function(err) {
-    if (t) { t.arquivado = anterior; forumSidebarRenderLista(); }
-    showMessage('error', 'Erro', escapeHtml(err.message));
-  });
-}
-
-function forumTopicoMarcarNaoLida(id) {
-  var t = forumSidebarObterTopico(id);
-  if (t) { t.naoLidas = Math.max(t.naoLidas || 0, 1); forumSidebarRenderLista(); }
-  var eraAtual = String(_forumTopicoAtualId) === String(id);
-  if (eraAtual) _forumFecharPainelChat();
-  _forumSDK.chamar('apiMarcarTopicoNaoLido', id).then(function() {}, function(err) {
-    showMessage('error', 'Erro', escapeHtml(err.message));
-  });
-}
-
-// ================================================================
-// LISTAS PERSONALIZADAS (privadas ao usuário) — criar e associar tópicos
-// ================================================================
-function forumTopicoAbrirModalListas(idTopico) {
-  _ftModalListaTopicoAlvo = String(idTopico);
-  forumListaRenderPicker();
-  document.getElementById('modal-ft-listas-topico').classList.remove('hidden');
-  bloquearFundo();
-}
-
-function fecharModalFtListasTopico() {
-  _ftModalListaTopicoAlvo = null;
-  document.getElementById('modal-ft-listas-topico').classList.add('hidden');
-  desbloquearFundo();
-}
-
 function forumListaRenderPicker() {
   var body = document.getElementById('ft-listas-topico-body');
   if (!body) return;
@@ -1026,388 +1512,6 @@ function forumListaRenderPicker() {
       + '</label>';
   }).join('');
 }
-
-function forumListaToggleTopico(idLista, marcado) {
-  var idTopico = _ftModalListaTopicoAlvo;
-  if (!idTopico) return;
-  var t = forumSidebarObterTopico(idTopico);
-  if (t) {
-    t.listas = t.listas || [];
-    if (marcado) { if (t.listas.indexOf(String(idLista)) === -1) t.listas.push(String(idLista)); }
-    else { t.listas = t.listas.filter(function(x) { return String(x) !== String(idLista); }); }
-  }
-  var chamada = marcado
-    ? _forumSDK.chamar('apiAdicionarTopicoALista', { idTopico: idTopico, idLista: idLista })
-    : _forumSDK.chamar('apiRemoverTopicoDaLista', { idTopico: idTopico, idLista: idLista });
-  chamada.then(function() { forumSidebarRenderLista(); }, function(err) {
-    showMessage('error', 'Erro', escapeHtml(err.message));
-    forumListaRenderPicker();
-  });
-}
-
-function forumListaAbrirModalCriar() {
-  var picker = document.getElementById('modal-ft-listas-topico');
-  _ftListaModalVeioDoPicker = !!(picker && !picker.classList.contains('hidden'));
-  _ftListaEditandoId = null;
-  document.getElementById('ft-lista-modal-titulo').textContent = 'Nova lista';
-  document.getElementById('ft-lista-modal-btn-salvar').textContent = 'Criar';
-  if (_ftListaModalVeioDoPicker) {
-    picker.classList.add('hidden');
-  } else {
-    bloquearFundo();
-  }
-  document.getElementById('ft-lista-nome-input').value = '';
-  document.getElementById('modal-ft-lista').classList.remove('hidden');
-  setTimeout(function() {
-    var input = document.getElementById('ft-lista-nome-input');
-    if (input) input.focus();
-  }, 50);
-}
-
-function forumListaAbrirModalRenomear(id) {
-  var l = _forumListasUsuario.find(function(x) { return String(x.id) === String(id); });
-  if (!l) return;
-  document.querySelectorAll('.ft-lista-chip-menu.show').forEach(function(el) { el.classList.remove('show'); });
-  _ftListaModalVeioDoPicker = false;
-  _ftListaEditandoId = String(id);
-  document.getElementById('ft-lista-modal-titulo').textContent = 'Renomear lista';
-  document.getElementById('ft-lista-modal-btn-salvar').textContent = 'Salvar';
-  var input = document.getElementById('ft-lista-nome-input');
-  input.value = l.nome;
-  document.getElementById('modal-ft-lista').classList.remove('hidden');
-  bloquearFundo();
-  setTimeout(function() { input.focus(); input.select(); }, 50);
-}
-
-function fecharModalFtLista() {
-  document.getElementById('modal-ft-lista').classList.add('hidden');
-  if (_ftListaModalVeioDoPicker) {
-    document.getElementById('modal-ft-listas-topico').classList.remove('hidden');
-  } else {
-    desbloquearFundo();
-  }
-  _ftListaModalVeioDoPicker = false;
-  _ftListaEditandoId = null;
-}
-
-function forumListaSalvar() {
-  var input = document.getElementById('ft-lista-nome-input');
-  var nome = (input.value || '').trim();
-  if (nome.length < 2 || nome.length > 40) {
-    showMessage('error', 'Nome inválido', 'O nome da lista deve ter entre 2 e 40 caracteres.');
-    return;
-  }
-  if (!_ctx) return;
-
-  if (_ftListaEditandoId) {
-    var idEditando = _ftListaEditandoId;
-    _forumSDK.chamar('apiRenomearListaForum', { idLista: idEditando, nome: nome }).then(function() {
-      var l = _forumListasUsuario.find(function(x) { return String(x.id) === String(idEditando); });
-      if (l) l.nome = nome;
-      forumSidebarRenderChips();
-      fecharModalFtLista();
-    }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
-    return;
-  }
-
-  var vieDoPicker = _ftListaModalVeioDoPicker;
-  var alvoTopico = _ftModalListaTopicoAlvo;
-  _forumSDK.chamar('apiCriarListaForum', { idPlano: _ctx.idPlano, nome: nome }).then(function(res) {
-    _forumListasUsuario.push({ id: res.id, nome: res.nome, qtdTopicos: 0 });
-    forumSidebarRenderChips();
-    fecharModalFtLista();
-    if (vieDoPicker && alvoTopico) {
-      forumListaRenderPicker();
-      forumListaToggleTopico(res.id, true);
-    }
-  }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
-}
-
-function forumListaConfirmarExcluir(id, nome) {
-  document.querySelectorAll('.ft-lista-chip-menu.show').forEach(function(el) { el.classList.remove('show'); });
-  showConfirm('Excluir lista "' + escapeHtml(nome) + '"?', 'Os tópicos continuam existindo normalmente; só deixam de estar organizados por esta lista.', function() {
-    _forumSDK.chamar('apiExcluirListaForum', id).then(function() {
-      _forumListasUsuario = _forumListasUsuario.filter(function(x) { return String(x.id) !== String(id); });
-      _forumTopicos.forEach(function(t) {
-        if (t.listas) t.listas = t.listas.filter(function(x) { return String(x) !== String(id); });
-      });
-      if (_ftFiltroAtivo === 'LISTA:' + id) _ftFiltroAtivo = 'TUDO';
-      forumSidebarRenderChips();
-      forumSidebarRenderLista();
-    }, function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); });
-  });
-}
-
-// ================================================================
-// TEMPO REAL: polling leve e adaptativo — roda enquanto a tela-mãe (não
-// necessariamente esta aba) estiver visível, para alimentar o badge; quando
-// esta aba está ativa (_vis.aba), também sincroniza a conversa aberta.
-// ================================================================
-function _forumPollAtivo() {
-  return !!_ctx && _vis.pagina && !document.hidden;
-}
-
-function _forumPararPolling() {
-  if (_forumPollTimer) { clearTimeout(_forumPollTimer); _forumPollTimer = null; }
-}
-
-function _forumIniciarPolling() {
-  _forumPararPolling();
-  _forumPollDelay = _FORUM_POLL_MIN;
-  _forumAgendarPoll();
-}
-
-function _forumAgendarPoll() {
-  _forumPararPolling();
-  if (!_forumPollAtivo()) return;
-  _forumPollTimer = setTimeout(_forumVerificarNovidades, _forumPollDelay);
-}
-
-function _forumAtualizarBadge() {
-  if (!_ctx || !_apiDisponivel('apiGetForumStatus')) return;
-  _forumSDK.chamar('apiGetForumStatus', _ctx.idPlano).then(function(res) {
-    if (_vis.aba) return; // usuário abriu esta aba nesse meio-tempo
-    _forumSDK.reportarBadge(Number(res.total) || 0);
-  }, function() { /* silencioso */ });
-}
-
-function _forumVerificarNovidades() {
-  if (!_forumPollAtivo()) { _forumPararPolling(); return; }
-  if (!_apiDisponivel('apiGetForumRev')) { _forumPararPolling(); return; }
-  _forumSDK.chamar('apiGetForumRev', _ctx.idPlano).then(function(rev) {
-    if (!_forumPollAtivo()) return;
-    if (rev && !_forumRev) {
-      _forumRev = rev;
-    } else if (rev && rev !== _forumRev) {
-      _forumRev = rev;
-      _forumPollDelay = _FORUM_POLL_MIN;
-      if (_vis.aba && _forumTopicoAtualId) {
-        _forumSincronizar();
-        forumSidebarAtualizar();
-      } else if (_vis.aba) {
-        forumSidebarAtualizar();
-      } else {
-        _forumAtualizarBadge();
-      }
-    } else {
-      _forumPollDelay = Math.min(Math.round(_forumPollDelay * 1.5), _vis.aba ? _FORUM_POLL_MAX : _FORUM_POLL_MAX_BG);
-    }
-    _forumAgendarPoll();
-  }, function() {
-    _forumPollDelay = _vis.aba ? _FORUM_POLL_MAX : _FORUM_POLL_MAX_BG;
-    _forumAgendarPoll();
-  });
-}
-
-function _forumSincronizar() {
-  if (!_forumTopicoAtualId) return;
-  _forumSDK.chamar('apiGetMensagensForum', _forumTopicoAtualId, null, _FORUM_JANELA).then(function(res) {
-    var feed = document.getElementById('forum-feed');
-    var noFundo = !feed || (feed.scrollHeight - feed.scrollTop - feed.clientHeight < 80);
-
-    var novas = res.mensagens || [];
-    var meuEmail = _forumUsuario ? String(_forumUsuario.email).toLowerCase() : '';
-    var pendentes = _forumMsgs.filter(function(m) {
-      if (String(m.id).indexOf('tmp-') !== 0 && !m.erro) return false;
-      return !novas.some(function(s) {
-        return String(s.autorEmail).toLowerCase() === meuEmail && s.texto === m.texto;
-      });
-    });
-
-    _forumMsgs = novas.concat(pendentes);
-    _forumTemMais = !!res.temMais;
-    _forumRev = res.rev || _forumRev;
-    if (res.usuarioAtual) _forumUsuario = res.usuarioAtual;
-    _forumRenderFeed();
-    if (noFundo) _forumRolarFim();
-    if (_vis.aba) _forumMarcarTopicoAtualLido();
-  }, function() { /* silencioso: o próximo ciclo tenta de novo */ });
-}
-
-function _forumMarcarTopicoAtualLido() {
-  if (!_forumTopicoAtualId) return;
-  if (_apiDisponivel('apiMarcarTopicoLido')) {
-    _forumSDK.chamar('apiMarcarTopicoLido', _forumTopicoAtualId).then(function() {}, function() {});
-  }
-  forumSidebarZerarNaoLidas(_forumTopicoAtualId);
-}
-
-document.addEventListener('visibilitychange', function() {
-  if (document.hidden) _forumPararPolling();
-  else if (_forumPollAtivo()) _forumIniciarPolling();
-});
-
-function _forumPodeGerenciar(m) {
-  if (!m || m.pendente || m.erro || String(m.id).indexOf('tmp-') === 0) return false;
-  if (!_forumUsuario || String(m.autorEmail).toLowerCase() !== String(_forumUsuario.email).toLowerCase()) return false;
-  var t = new Date(String(m.dataHora || '').replace(' ', 'T') + ':00');
-  return !isNaN(t.getTime()) && (Date.now() - t.getTime()) <= _FORUM_JANELA_EDICAO_MS;
-}
-
-function _forumRotuloData(dataHora) {
-  var d = String(dataHora || '').substring(0, 10);
-  var hoje = new Date();
-  var pad = function(n) { return String(n).padStart(2, '0'); };
-  var chaveHoje = hoje.getFullYear() + '-' + pad(hoje.getMonth() + 1) + '-' + pad(hoje.getDate());
-  var ontem = new Date(hoje.getTime() - 86400000);
-  var chaveOntem = ontem.getFullYear() + '-' + pad(ontem.getMonth() + 1) + '-' + pad(ontem.getDate());
-  if (d === chaveHoje) return 'Hoje';
-  if (d === chaveOntem) return 'Ontem';
-  var p = d.split('-');
-  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d;
-}
-
-// Ponto de entrada: chamado quando o contexto (idPlano/permissões) chega do host.
-function _forumIniciar() {
-  forumSidebarRenderizarSecao();
-  _forumTopicosCarregados = false;
-  if (_vis.aba && _vis.pagina) {
-    _forumTopicosCarregados = true;
-    forumSidebarCarregarTopicos();
-  } else {
-    // Aba fora de vista: só o selo de não lidas (chamada leve), sem baixar tópicos/listas.
-    _forumAtualizarBadge();
-  }
-  _forumIniciarPolling();
-}
-
-function atualizarForum() {
-  if (!_ctx) return;
-  forumSidebarCarregarTopicos();
-  if (_forumTopicoAtualId) forumTopicoAbrir(_forumTopicoAtualId, true);
-  _forumIniciarPolling();
-}
-
-function forumTopicoAbrir(idTopico, forcar) {
-  if (!idTopico) return;
-  var shell = document.getElementById('forum-shell');
-  if (_forumTopicoAtualId === String(idTopico) && !forcar) {
-    if (shell) shell.classList.add('chat-aberto');
-    return;
-  }
-  _forumTopicoAtualId = String(idTopico);
-  _forumMsgs = [];
-  _forumTemMais = false;
-  _forumRespondendo = null;
-  _forumEditando = null;
-
-  if (shell) shell.classList.add('chat-aberto');
-  forumSidebarMarcarAtivo(_forumTopicoAtualId);
-  _forumMontarChatPane(_forumTopicoAtualId);
-
-  var feed = document.getElementById('forum-feed');
-  if (feed) feed.innerHTML = spinnerListaHTML();
-
-  _forumSDK.chamar('apiGetMensagensForum', idTopico, null, _FORUM_JANELA).then(function(res) {
-    if (_forumTopicoAtualId !== String(idTopico)) return;
-    _forumMsgs = res.mensagens || [];
-    _forumTemMais = !!res.temMais;
-    _forumUsuario = res.usuarioAtual || _forumUsuario;
-    _forumRev = res.rev || _forumRev;
-    _forumRenderFeed();
-    _forumRolarFim();
-    _forumMarcarTopicoAtualLido();
-  }, function(err) {
-    var el = document.getElementById('forum-feed');
-    if (el) el.innerHTML = '<div style="padding:15px; color:var(--ds-color-danger)">Erro ao carregar o tópico: ' + escapeHtml(err.message) + '</div>';
-  });
-}
-
-function forumSidebarVoltar() {
-  var shell = document.getElementById('forum-shell');
-  if (shell) shell.classList.remove('chat-aberto');
-}
-
-function _forumFecharPainelChat() {
-  _forumTopicoAtualId = null;
-  _forumMsgs = [];
-  _forumRespondendo = null;
-  _forumEditando = null;
-  var header = document.getElementById('forum-chat-header');
-  var body = document.getElementById('forum-chat-body');
-  if (header) header.innerHTML = '';
-  if (body) body.innerHTML = _ftChatVazioHTML();
-  forumSidebarMarcarAtivo(null);
-  forumSidebarVoltar();
-}
-
-function _forumMontarChatPane(idTopico) {
-  var header = document.getElementById('forum-chat-header');
-  if (header) {
-    var topico = forumSidebarObterTopico(idTopico);
-    header.innerHTML = forumChatHeaderHTML(topico, idTopico);
-  }
-  var body = document.getElementById('forum-chat-body');
-  if (!body) return;
-  body.innerHTML =
-      '<div id="forum-feed" class="forum-feed"></div>'
-    + '<div class="forum-composer-wrap">'
-    +   '<div class="forum-composer">'
-    +     '<div id="forum-reply-preview"></div>'
-    +     '<textarea id="forum-texto" rows="1" placeholder="Escreva uma mensagem…" aria-label="Mensagem"'
-    +       ' data-on-keydown="forum.24" data-on-input="forum.25"></textarea>'
-    +     '<div class="forum-composer-toolbar">'
-    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.26" data-title="Negrito (*texto*)" aria-label="Negrito"><span class="material-symbols-outlined">format_bold</span></button>'
-    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.27" data-title="Itálico (_texto_)" aria-label="Itálico"><span class="material-symbols-outlined">format_italic</span></button>'
-    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.28" data-title="Tachado (~texto~)" aria-label="Tachado"><span class="material-symbols-outlined">format_strikethrough</span></button>'
-    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.29" data-title="Código (```texto```)" aria-label="Código"><span class="material-symbols-outlined">code</span></button>'
-    +       '<span class="forum-composer-dica">Enter envia · Shift+Enter quebra linha</span>'
-    +       '<button type="button" class="forum-btn-enviar is-vazio" id="forum-btn-enviar" data-on-click="forum.30" data-title="Enviar (Enter)" aria-label="Enviar">'
-    +         '<span class="material-symbols-outlined">send</span></button>'
-    +     '</div>'
-    +   '</div>'
-    + '</div>';
-  _forumSyncEnviar();
-}
-
-function carregarMensagensAntigas() {
-  if (!_forumMsgs.length || !_forumTopicoAtualId) return;
-  var btn = document.getElementById('forum-btn-antigas');
-  if (btn) { btn.disabled = true; btn.textContent = 'Carregando…'; }
-
-  var feed = document.getElementById('forum-feed');
-  var alturaAntes = feed ? feed.scrollHeight : 0;
-
-  _forumSDK.chamar('apiGetMensagensForum', _forumTopicoAtualId, _forumMsgs[0].id, _FORUM_JANELA).then(function(res) {
-    _forumMsgs = (res.mensagens || []).concat(_forumMsgs);
-    _forumTemMais = !!res.temMais;
-    _forumRenderFeed();
-    if (feed) feed.scrollTop = feed.scrollHeight - alturaAntes + feed.scrollTop;
-  }, function(err) {
-    showMessage('error', 'Erro', escapeHtml(err.message));
-    _forumRenderFeed();
-  });
-}
-
-function _forumRolarFim() {
-  var ir = function() { var f = document.getElementById('forum-feed'); if (f) f.scrollTop = f.scrollHeight; };
-  ir(); requestAnimationFrame(ir); setTimeout(ir, 150);
-}
-
-function _forumSyncEnviar() {
-  var ta = document.getElementById('forum-texto'), bt = document.getElementById('forum-btn-enviar');
-  if (bt) bt.classList.toggle('is-vazio', !(ta && ta.value.trim()));
-}
-
-function _forumAjustarAltura(ta) {
-  ta.style.height = 'auto';
-  ta.style.height = Math.min(ta.scrollHeight, 140) + 'px';
-}
-
-function _forumKeydown(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    enviarMensagemForum();
-  }
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.key !== 'Escape') return;
-  if (document.querySelector('.ext-mini-overlay:not(.hidden), .sys-overlay:not(.hidden)')) return;
-  if (_forumEditando) { cancelarEdicaoForum(); return; }
-  if (_forumRespondendo) { cancelarRespostaForum(); return; }
-  if (_forumTopicoAtualId) { _forumFecharPainelChat(); }
-});
 
 function _forumRenderFeed() {
   var feed = document.getElementById('forum-feed');
@@ -1500,32 +1604,6 @@ function _forumRenderFeed() {
   _ftAtualizarHeaderAtual();
 }
 
-function _forumIrParaMensagem(id) {
-  var alvo = document.getElementById('fmsg-' + id);
-  if (!alvo) {
-    showMessage('info', 'Mensagem antiga', 'A mensagem original não está carregada. Use "Carregar mensagens anteriores" para encontrá-la.');
-    return;
-  }
-  alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  alvo.classList.add('forum-msg-destaque');
-  setTimeout(function() { alvo.classList.remove('forum-msg-destaque'); }, 1600);
-}
-
-function responderMensagemForum(id) {
-  var m = _forumMsgs.find(function(x) { return String(x.id) === String(id); });
-  if (!m) return;
-  _forumEditando = null;
-  _forumRespondendo = { id: m.id, autorNome: m.autorNome, texto: String(m.texto).substring(0, 140) };
-  _forumRenderReplyPreview();
-  var ta = document.getElementById('forum-texto');
-  if (ta) ta.focus();
-}
-
-function cancelarRespostaForum() {
-  _forumRespondendo = null;
-  _forumRenderReplyPreview();
-}
-
 function _forumRenderReplyPreview() {
   var box = document.getElementById('forum-reply-preview');
   if (!box) return;
@@ -1555,173 +1633,109 @@ function _forumRenderReplyPreview() {
     + '</div>';
 }
 
-function editarMensagemForum(id) {
-  var m = _forumMsgs.find(function(x) { return String(x.id) === String(id); });
-  if (!m || !_forumPodeGerenciar(m)) return;
-  _forumRespondendo = null;
-  _forumEditando = String(m.id);
-  var ta = document.getElementById('forum-texto');
-  if (ta) {
-    ta.value = m.texto;
-    _forumAjustarAltura(ta);
-    ta.focus();
-    _forumSyncEnviar();
-  }
-  _forumRenderReplyPreview();
-}
-
-function cancelarEdicaoForum() {
-  _forumEditando = null;
-  var ta = document.getElementById('forum-texto');
-  if (ta) { ta.value = ''; _forumAjustarAltura(ta); }
-  _forumRenderReplyPreview();
-  _forumSyncEnviar();
-}
-
-function excluirMensagemForum(id) {
-  var m = _forumMsgs.find(function(x) { return String(x.id) === String(id); });
-  if (!m || !_forumPodeGerenciar(m)) return;
-  showConfirm('Excluir mensagem?', 'A mensagem será removida da conversa para todos.', function() {
-    _forumMsgs = _forumMsgs.filter(function(x) { return String(x.id) !== String(id); });
-    if (_forumEditando === String(id)) cancelarEdicaoForum();
-    _forumRenderFeed();
-    _forumSDK.chamar('apiExcluirMensagemForum', id).then(function() {}, function(err) {
-      showMessage('error', 'Não foi possível excluir', escapeHtml(err.message));
-      atualizarForum();
-    });
+// app_forum_modais — modais e wizards (abrir, validar, salvar)
+function forumFormatarTexto(texto) {
+  var MARCA = String.fromCharCode(1);
+  var out = escapeHtml(texto == null ? '' : String(texto));
+  var mono = [];
+  out = out.replace(/```([^`]+?)```/g, function(cap0, inner) {
+    mono.push(inner);
+    return MARCA + (mono.length - 1) + MARCA;
   });
-}
-
-function enviarMensagemForum() {
-  var ta = document.getElementById('forum-texto');
-  if (!ta) return;
-  var texto = ta.value.trim();
-  if (!texto) return;
-  if (!_forumTopicoAtualId) return;
-
-  if (_forumEditando) {
-    _forumConcluirEdicao(texto, ta);
-    return;
-  }
-
-  var respostaEnviada = _forumRespondendo;
-
-  ta.value = '';
-  _forumAjustarAltura(ta);
-  _forumRespondendo = null;
-  _forumRenderReplyPreview();
-  _forumSyncEnviar();
-
-  var agora = new Date();
-  var pad = function(n) { return String(n).padStart(2, '0'); };
-  var msg = {
-    id: 'tmp-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
-    texto: texto,
-    autorEmail: _forumUsuario ? _forumUsuario.email : '',
-    autorNome: _forumUsuario ? _forumUsuario.nome : '',
-    autorFoto: _forumUsuario ? (_forumUsuario.fotoUrl || '') : '',
-    dataHora: agora.getFullYear() + '-' + pad(agora.getMonth() + 1) + '-' + pad(agora.getDate())
-      + ' ' + pad(agora.getHours()) + ':' + pad(agora.getMinutes()),
-    respostaA: respostaEnviada
-      ? { id: respostaEnviada.id, autorNome: respostaEnviada.autorNome, texto: respostaEnviada.texto }
-      : null,
-    pendente: true,
-    erro: false
-  };
-
-  _forumMsgs.push(msg);
-  if (_forumMsgs.length > _FORUM_MAX_EXIBIDAS) {
-    _forumMsgs = _forumMsgs.slice(-_FORUM_MAX_EXIBIDAS);
-    _forumTemMais = true;
-  }
-  _forumRenderFeed();
-  _forumRolarFim();
-
-  _forumEnviarBackend(msg, respostaEnviada ? respostaEnviada.id : '');
-  _forumIniciarPolling();
-}
-
-function _forumEnviarBackend(msg, idResposta) {
-  _forumSDK.chamar('apiEnviarMensagemForum', {
-    idTopico: _forumTopicoAtualId,
-    texto: msg.texto,
-    idResposta: idResposta || ''
-  }).then(function(res) {
-    var jaExiste = _forumMsgs.some(function(x) { return x !== msg && String(x.id) === String(res.id); });
-    if (jaExiste) {
-      _forumMsgs = _forumMsgs.filter(function(x) { return x !== msg; });
-    } else {
-      msg.id = res.id;
-      msg.dataHora = res.dataHora;
-      msg.pendente = false;
-      msg.erro = false;
-    }
-    _forumRenderFeed();
-  }, function(err) {
-    msg.pendente = false;
-    msg.erro = true;
-    _forumRenderFeed();
-    showMessage('error', 'Falha ao enviar', escapeHtml(err.message) + '<br>Clique no ícone vermelho da mensagem para reenviar.');
+  out = out.replace(/\*([^*\n]+?)\*/g, '<strong>$1</strong>');
+  out = out.replace(/_([^_\n]+?)_/g, '<em>$1</em>');
+  out = out.replace(/~([^~\n]+?)~/g, '<s>$1</s>');
+  var reMarca = new RegExp(MARCA + '(\\d+)' + MARCA, 'g');
+  out = out.replace(reMarca, function(cap0, i) {
+    return '<code>' + mono[Number(i)] + '</code>';
   });
+  return out;
+}
+function forumTopicoAbrirModalCriar() {
+  _ftTopicoEditandoId = null;
+  document.getElementById('ft-topico-modal-titulo').textContent = 'Novo tópico';
+  var input = document.getElementById('ft-topico-nome-input');
+  input.value = '';
+  document.getElementById('modal-ft-topico').classList.remove('hidden');
+  bloquearFundo();
+  setTimeout(function() { input.focus(); }, 50);
 }
 
-function reenviarMensagemForum(id) {
-  var m = _forumMsgs.find(function(x) { return String(x.id) === String(id); });
-  if (!m || !m.erro) return;
-  m.erro = false;
-  m.pendente = true;
-  _forumRenderFeed();
-  _forumEnviarBackend(m, m.respostaA ? m.respostaA.id : '');
+function forumTopicoAbrirModalRenomear(id) {
+  var t = forumSidebarObterTopico(id);
+  if (!t) return;
+  _ftTopicoEditandoId = String(id);
+  document.getElementById('ft-topico-modal-titulo').textContent = 'Renomear tópico';
+  var input = document.getElementById('ft-topico-nome-input');
+  input.value = t.nome;
+  document.getElementById('modal-ft-topico').classList.remove('hidden');
+  bloquearFundo();
+  setTimeout(function() { input.focus(); input.select(); }, 50);
 }
 
-function _forumConcluirEdicao(texto, ta) {
-  var id = _forumEditando;
-  var m = _forumMsgs.find(function(x) { return String(x.id) === String(id); });
-  cancelarEdicaoForum();
-  if (!m) return;
-
-  var textoAntigo = m.texto;
-  var editadaAntes = m.editada;
-  m.texto = texto;
-  m.editada = true;
-  _forumRenderFeed();
-
-  _forumSDK.chamar('apiEditarMensagemForum', { id: id, texto: texto }).then(function() {}, function(err) {
-    m.texto = textoAntigo;
-    m.editada = editadaAntes;
-    _forumRenderFeed();
-    showMessage('error', 'Não foi possível editar', escapeHtml(err.message));
-  });
+function fecharModalFtTopico() {
+  document.getElementById('modal-ft-topico').classList.add('hidden');
+  desbloquearFundo();
+}
+function forumTopicoAbrirModalListas(idTopico) {
+  _ftModalListaTopicoAlvo = String(idTopico);
+  forumListaRenderPicker();
+  document.getElementById('modal-ft-listas-topico').classList.remove('hidden');
+  bloquearFundo();
 }
 
-// ================================================================
-// Handshake com o host
-// ================================================================
-_forumSDK.aoVisibilidade(function(v) {
-  var antesAba = _vis.aba;
-  _vis = v;
-  if (v.pagina && !_forumPollTimer) _forumIniciarPolling();
-  if (v.aba && v.pagina && _ctx && !_forumTopicosCarregados) {
-    _forumTopicosCarregados = true;
-    forumSidebarCarregarTopicos();
+function fecharModalFtListasTopico() {
+  _ftModalListaTopicoAlvo = null;
+  document.getElementById('modal-ft-listas-topico').classList.add('hidden');
+  desbloquearFundo();
+}
+
+function forumListaAbrirModalCriar() {
+  var picker = document.getElementById('modal-ft-listas-topico');
+  _ftListaModalVeioDoPicker = !!(picker && !picker.classList.contains('hidden'));
+  _ftListaEditandoId = null;
+  document.getElementById('ft-lista-modal-titulo').textContent = 'Nova lista';
+  document.getElementById('ft-lista-modal-btn-salvar').textContent = 'Criar';
+  if (_ftListaModalVeioDoPicker) {
+    picker.classList.add('hidden');
+  } else {
+    bloquearFundo();
   }
-  if (!antesAba && v.aba && _forumTopicoAtualId) _forumMarcarTopicoAtualLido();
-});
+  document.getElementById('ft-lista-nome-input').value = '';
+  document.getElementById('modal-ft-lista').classList.remove('hidden');
+  setTimeout(function() {
+    var input = document.getElementById('ft-lista-nome-input');
+    if (input) input.focus();
+  }, 50);
+}
 
-_forumSDK.aoContexto(function(ctx) {
-  if (_ctx && String(_ctx.idPlano) === String(ctx.idPlano)) {
-    _ctx = ctx;
-    forumSidebarRenderizarSecao();
-    if (_forumTopicosCarregados && typeof forumSidebarRenderLista === 'function') {
-      forumSidebarRenderLista();
-    }
-    return;
+function forumListaAbrirModalRenomear(id) {
+  var l = _forumListasUsuario.find(function(x) { return String(x.id) === String(id); });
+  if (!l) return;
+  document.querySelectorAll('.ft-lista-chip-menu.show').forEach(function(el) { el.classList.remove('show'); });
+  _ftListaModalVeioDoPicker = false;
+  _ftListaEditandoId = String(id);
+  document.getElementById('ft-lista-modal-titulo').textContent = 'Renomear lista';
+  document.getElementById('ft-lista-modal-btn-salvar').textContent = 'Salvar';
+  var input = document.getElementById('ft-lista-nome-input');
+  input.value = l.nome;
+  document.getElementById('modal-ft-lista').classList.remove('hidden');
+  bloquearFundo();
+  setTimeout(function() { input.focus(); input.select(); }, 50);
+}
+
+function fecharModalFtLista() {
+  document.getElementById('modal-ft-lista').classList.add('hidden');
+  if (_ftListaModalVeioDoPicker) {
+    document.getElementById('modal-ft-listas-topico').classList.remove('hidden');
+  } else {
+    desbloquearFundo();
   }
-  _ctx = ctx;
-  _forumIniciar();
-});
+  _ftListaModalVeioDoPicker = false;
+  _ftListaEditandoId = null;
+}
 
-// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+// app_forum_eventos — registro das ações delegadas (uiRegistrarAcoes)
 uiRegistrarAcoes('forum', {
   '1': function (event) { if(event.target===this) fecharModalFtTopico(); },
   '2': function (event) { fecharModalFtTopico(); },
@@ -1763,6 +1777,8 @@ uiRegistrarAcoes('forum', {
   '38': function (event) { cancelarEdicaoForum(); },
   '39': function (event) { cancelarRespostaForum(); }
 });
+
+
 </script>
 </body>
 </html>

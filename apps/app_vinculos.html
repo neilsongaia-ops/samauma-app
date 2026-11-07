@@ -352,6 +352,10 @@ body.high-contrast .vinc-nivel { border-color: currentColor; }
 </div>
 
 <script>
+// Dividido por responsabilidade (fase d — docs/refatoracao_frontend.md). Mesmo <script>, mesmo escopo global;
+// instruções de topo ficam em _estado na ordem original; funções são içadas, então a ordem entre arquivos não importa.
+// app_vinculos_estado — estado global, constantes e inicialização (instruções de topo, na ordem original)
+
 // ================================================================
 // ESTADO E INSTÂNCIA SDK DO APP VÍNCULOS
 // ================================================================
@@ -402,13 +406,6 @@ var _VINC_DIR = {
 };
 
 // Frase do tooltip da situação (substitui o antigo subtítulo sob o nome)
-function _vincTipSituacao(p) {
-  if (p.vtipo === 'desvinculado' || p.vtipo === 'recusado') return p.subTxt;
-  var D = _VINC_DIR[p.direcao];
-  if (D) return D.txt;
-  if (p.vtipo === 'superior') return 'Plano superior' + (p.papel === 'PRINCIPAL' ? ' principal' : p.papel === 'ADICIONAL' ? ' adicional' : '');
-  return 'Plano subordinado';
-}
 
 var _VINC_COR_STATUS = {
   'Em Elaboração': '#1a56db', 'Em Análise': '#b08400', 'Em Execução': '#137333', 'Em Avaliação': '#c5221f',
@@ -421,6 +418,405 @@ var _vincFiltrosDef = {
   resp:   { label: 'Responsável',   chave: 'filtroResp' },
   tipo:   { label: 'Tipo',          chave: 'filtroTipo' }
 };
+
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('vinc-search-wrap'), caixa = document.getElementById('vinc-search-caixa');
+  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
+  var inp = document.getElementById('vinc-filtro-busca');
+  if (inp && !inp.value.trim()) {
+    caixa.classList.add('hidden');
+    var st = document.getElementById('vinc-search-toggle'); if (st) st.classList.remove('hidden');
+  }
+});
+
+var _VINC_STATUS_SLUG = {
+  'Em Elaboração': 'elaboracao', 'Em Análise': 'analise', 'Em Execução': 'execucao', 'Em Avaliação': 'avaliacao',
+  'Prorrogado': 'prorrogado', 'Em Revisão': 'revisao', 'Finalizado': 'finalizado', 'Cancelado': 'cancelado', 'Excluído': 'cancelado'
+};
+var _vincOrfAbertos = {};
+var _VINC_ACOES = [
+  { id: 'detalhes',    ico: 'right_panel_open', rot: 'Abrir barra lateral',                     unico: true, ok: function(p) { return true; } },
+  { id: 'abrir',       ico: 'open_in_new',  rot: 'Abrir plano',                    unico: true, ok: function(p) { return true; } },
+  { id: 'aprovar',     ico: 'check',        rot: 'Aprovar',                        edita: true,  ok: function(p) { return p.vtipo === 'decidir'; } },
+  { id: 'recusar',     ico: 'close',        rot: 'Recusar',                        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'decidir'; } },
+  { id: 'cancelar',    ico: 'cancel',       rot: 'Cancelar pedido ou proposta',    edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'aguardando'; } },
+  { id: 'desvincular', ico: 'link_off',     rot: 'Desvincular',                    edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'superior' || p.vtipo === 'subordinado'; } },
+  { id: 'dispensar',   ico: 'visibility_off', rot: 'Dispensar',                    edita: true,  ok: function(p) { return p.vtipo === 'recusado'; } },
+  { id: 'excluirorf',  ico: 'delete_sweep', rot: 'Excluir vínculos órfãos',        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'desvinculado'; } },
+  { id: 'exportar',    ico: 'download',     rot: 'Exportar',                       ok: function(p) { return true; } }
+];
+
+var _VINC_TXT_LOTE = {
+  aprovar:     { tit: 'Aprovar vínculos?',                 msg: 'aprovar',                ok: 'Aprovados',   okMsg: 'Vínculos aprovados.' },
+  recusar:     { tit: 'Recusar vínculos?',                 msg: 'recusar',                ok: 'Recusados',   okMsg: 'Vínculos recusados.' },
+  cancelar:    { tit: 'Cancelar pedidos e propostas?',     msg: 'cancelar',               ok: 'Cancelados',  okMsg: 'Pedidos e propostas cancelados.' },
+  desvincular: { tit: 'Desvincular planos?',               msg: 'desvincular',            ok: 'Desvinculados', okMsg: 'Vínculos removidos com sucesso.' },
+  dispensar:   { tit: 'Dispensar recusas?',                msg: 'dispensar',              ok: 'Dispensadas', okMsg: 'Recusas dispensadas.' },
+  excluirorf:  { tit: 'Excluir vínculos órfãos?',          msg: 'excluir os vínculos órfãos de', ok: 'Excluídos', okMsg: 'Vínculos órfãos excluídos.' }
+};
+_vinculosSDK.aoVisibilidade(function(v) {
+  _vincVis = v;
+  if (v.aba && v.pagina && _vincCtx && !_vincCarregado && !_vincCarregando) {
+    carregarAbaVinculos();
+  }
+});
+
+_vinculosSDK.aoContexto(function(ctx) {
+  if (_vincCtx && String(_vincCtx.idPlano) === String(ctx.idPlano)) {
+    _vincCtx = ctx;
+    if (_vincCarregado) {
+      renderizarTabelaVinculos();
+      _vincAtualizarContadorAba();
+    }
+    return;
+  }
+  _vincCtx = ctx;
+  _vincCarregado = false;
+  _vincCarregando = false;
+  _vincDadosCache = { planosVinculados: [], propostasEnviadas: [], propostasRecebidas: [], planosSuperiores: [], desvinculados: [], recusadas: [] };
+  estadoVinculos.busca = '';
+  estadoVinculos.filtroVinc = '';
+  estadoVinculos.filtroStatus = '';
+  estadoVinculos.filtroResp = '';
+  estadoVinculos.filtroTipo = '';
+  estadoVinculos.paginaAtual = 1;
+  estadoVinculos.selecionados = {};
+  if (_vincVis.aba && _vincVis.pagina) {
+    carregarAbaVinculos();
+  }
+});
+
+_vinculosSDK.aoTecla(function(evt) {
+  if (evt.key === 'Escape') {
+    if (typeof vincCancelarSelecao === 'function' && Object.keys(estadoVinculos.selecionados || {}).length > 0) {
+      vincCancelarSelecao();
+      return true;
+    }
+  } else if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && String(evt.key).toLowerCase() === 'a') {
+    if (typeof vincToggleSelecionarTodos === 'function') {
+      vincToggleSelecionarTodos(true);
+      return true;
+    }
+  }
+  return false;
+});
+
+// Compatibilidade global
+window.carregarAbaVinculos = carregarAbaVinculos;
+window.atualizarAbaVinculos = atualizarAbaVinculos;
+window.renderizarTabelaVinculos = renderizarTabelaVinculos;
+window.abrirModalVincularPlano = abrirModalVincularPlano;
+window.fecharModalVincularPlano = fecharModalVincularPlano;
+window.vincToggleSelecionarTodos = vincToggleSelecionarTodos;
+window.vincCancelarSelecao = vincCancelarSelecao;
+window.vincExcluirOrfaos = vincExcluirOrfaos;
+window.vincOrfToggle = vincOrfToggle;
+window.vincAcaoLote = vincAcaoLote;
+window.vincAbrirDetalhesPlano = vincAbrirDetalhesPlano;
+window.estadoVinculos = estadoVinculos;
+window._vinculosSDK = _vinculosSDK;
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+
+// app_vinculos_api — chamadas ao servidor (SDK / google.script.run / apiX)
+
+function _vincAtualizarContadorAba() {
+  var n = _vincListaUnica().filter(function(p) { return p.vtipo === 'decidir'; }).length;
+  var nOrf = 0;
+  (_vincDadosCache.desvinculados || []).forEach(function(d) { nOrf += (d.elementos || []).length + (d.indicadores || []).length; });
+  var partes = [];
+  if (n) partes.push(n + (n === 1 ? ' vínculo aguarda sua decisão' : ' vínculos aguardam sua decisão'));
+  if (nOrf) partes.push(nOrf + (nOrf === 1 ? ' vínculo órfão de plano desvinculado' : ' vínculos órfãos de plano desvinculado'));
+  // alerta (âmbar): decisões pendentes + vínculos órfãos (mesma soma feita por apiGetContagensAbas)
+  _vinculosSDK.reportarAlerta(n + nOrf, partes.join(' · '));
+}
+
+function vincExcluirOrfaos(idSup) {
+  var idPlano = _vincCtx && _vincCtx.idPlano;
+  var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(idSup); })[0];
+  if (!idPlano || !d) return;
+  var nE = (d.elementos || []).length, nI = (d.indicadores || []).length;
+  var qtd = [nE ? _vincPlural(nE, 'vínculo de elemento', 'vínculos de elementos') : '', nI ? _vincPlural(nI, 'vínculo de indicador', 'vínculos de indicadores') : '']
+    .filter(Boolean).join(' e ');
+  showConfirm('Excluir vínculos órfãos?',
+    'Excluir de vez ' + qtd + ' com <strong>' + escapeHtml(d.nomePlanoSuperior || '') + '</strong>?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function(res) {
+          esconderLoader();
+          var n = ((res && res.elementos) || 0) + ((res && res.indicadores) || 0);
+          showMessage('success', 'Excluídos', _vincPlural(n, 'vínculo órfão excluído.', 'vínculos órfãos excluídos.'));
+          carregarAbaVinculos();
+        })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+        .apiExcluirVinculosOrfaos(idPlano, idSup);
+    });
+}
+
+function vincAcaoLote(acao) {
+  var lista = _vincSelecionadosLista();
+  if (!lista.length) return;
+  var p = lista[0];
+  if (acao === 'detalhes') return vincAbrirDetalhesPlano(_vincChave(p));
+  if (acao === 'abrir') return carregarDetalhesPlano(String(p.id));
+  if (acao === 'exportar') return exportarVinculosCSV();
+  var idv = String(p.idVinculo || ''), nome = p.nome || '';
+  if (lista.length === 1) {            // um só item: mesmos diálogos da linha
+    if (acao === 'aprovar')     return p.direcao === 'filho' ? aprovarVinculoPlano(idv, nome) : responderPropostaVinculo(idv, nome, 'ACEITAR');
+    if (acao === 'dispensar')   return vincDispensarRecusado(idv, nome);
+    if (acao === 'recusar')     return p.direcao === 'filho' ? desvincularVinculo(idv, nome, true) : responderPropostaVinculo(idv, nome, 'RECUSAR');
+    if (acao === 'cancelar')    return p.direcao === 'proposta_enviada' ? cancelarPropostaVinculo(idv, nome) : desvincularVinculo(idv, nome);
+    if (acao === 'desvincular') return desvincularVinculo(idv, nome);
+    if (acao === 'excluirorf')  return vincExcluirOrfaos(String(p.id));
+  }
+  var t = _VINC_TXT_LOTE[acao];
+  if (!t) return;
+  showConfirm(t.tit, 'Deseja ' + t.msg + ' ' + lista.length + (acao === 'excluirorf' ? ' planos?' : ' itens selecionados?'), function() {
+    mostrarLoader();
+    var erros = [], i = 0;
+    (function prox() {
+      if (i >= lista.length) {
+        esconderLoader();
+        estadoVinculos.selecionados = {};
+        if (erros.length) showMessage('error', 'Alguns itens não foram processados', escapeHtml(erros[0]));
+        else showMessage('success', t.ok, t.okMsg);
+        carregarAbaVinculos();
+        return;
+      }
+      var c = _vincChamada(acao, lista[i++]);
+      google.script.run
+        .withSuccessHandler(prox)
+        .withFailureHandler(function(err) { erros.push((err && err.message) || String(err)); prox(); })[c[0]](...c.slice(1));
+    })();
+  });
+}
+
+// Barra lateral de detalhes (#detp-panel, do host) com o resumo do plano vinculado
+
+function aprovarVinculoPlano(idVinculo, nomeFilho) {
+  showConfirm(
+    'Aprovar Vínculo?',
+    'Deseja aprovar o vínculo do plano <strong>' + escapeHtml(nomeFilho) + '</strong> com este plano?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+        .apiAprovarVinculoPlano(idVinculo);
+    }
+  );
+}
+
+// recusa = true quando é RECUSAR um pedido pendente recebido (direcao 'filho'): o solicitante passa a ver a recusa
+function desvincularVinculo(idVinculo, nomeAlvo, recusa) {
+  showConfirm(
+    recusa ? 'Recusar pedido?' : 'Desvincular Plano?',
+    recusa ? 'Deseja recusar o pedido de vínculo de <strong>' + escapeHtml(nomeAlvo) + '</strong>?'
+           : 'Deseja remover este vínculo com <strong>' + escapeHtml(nomeAlvo) + '</strong>?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+        .apiDesvincularVinculo(idVinculo, recusa === true);
+    }
+  );
+}
+
+function vincDispensarRecusado(idVinculo, nomeAlvo) {
+  if (!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.vincular)) return;
+  mostrarLoader();
+  _vinculosSDK.chamar('apiDispensarVinculoRecusado', idVinculo).then(function() {
+    esconderLoader();
+    _vincDadosCache.recusadas = (_vincDadosCache.recusadas || []).filter(function(r) { return String(r.idVinculo) !== String(idVinculo); });
+    estadoVinculos.selecionados = {};
+    _vincAtualizarContadorAba();
+    renderizarTabelaVinculos();
+  }).catch(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml((err && err.message) || String(err))); });
+}
+
+function vincPedirDeNovo(chave) {
+  var p = _vincListaUnica().filter(function(x) { return _vincChave(x) === String(chave); })[0];
+  if (!p || !p.podePedirDeNovo || !_vincCtx) return;
+  var proposta = p.direcao === 'proposta';
+  showConfirm(
+    proposta ? 'Propor de novo?' : 'Pedir de novo?',
+    (proposta ? 'Propor novamente que <strong>' + escapeHtml(p.nome || '') + '</strong> seja subordinado a este plano?'
+              : 'Pedir novamente vínculo ao plano superior <strong>' + escapeHtml(p.nome || '') + '</strong>?'),
+    function() {
+      mostrarLoader();
+      _vinculosSDK.chamar(proposta ? 'apiPropoQuerVinculoSubordinado' : 'apiVincularASuperior', _vincCtx.idPlano, String(p.id))
+        .then(function() { esconderLoader(); carregarAbaVinculos(); })
+        .catch(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml((err && err.message) || String(err))); });
+    }
+  );
+}
+
+function definirPlanoSuperiorPrincipal(idVinculo, nomeAlvo) {
+  mostrarLoader();
+  google.script.run
+    .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
+    .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+    .apiDefinirPlanoSuperiorPrincipal(idVinculo);
+}
+
+function cancelarPropostaVinculo(idVinculo, nomeAlvo) {
+  showConfirm(
+    'Cancelar Proposta?',
+    'Deseja cancelar a proposta de vínculo enviada para <strong>' + escapeHtml(nomeAlvo) + '</strong>?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+        .apiCancelarPropostaVinculo(idVinculo);
+    }
+  );
+}
+
+function responderPropostaVinculo(idVinculo, nomeProponente, resposta) {
+  var aceitar = resposta === 'ACEITAR';
+  showConfirm(
+    aceitar ? 'Aceitar Proposta?' : 'Recusar Proposta?',
+    aceitar
+      ? 'Deseja aceitar a proposta de <strong>' + escapeHtml(nomeProponente) + '</strong> para se tornar o plano superior deste plano?'
+      : 'Deseja recusar a proposta de <strong>' + escapeHtml(nomeProponente) + '</strong>?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() {
+          esconderLoader();
+          showMessage('success', aceitar ? 'Aceita' : 'Recusada', aceitar ? 'Vínculo definido.' : 'Proposta recusada.');
+          carregarAbaVinculos();
+        })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+        .apiResponderPropostaVinculoSubordinado(idVinculo, resposta);
+    }
+  );
+}
+function abrirModalVincularPlano(abaInicial) {
+  var idPlanoAtual = _vincCtx && _vincCtx.idPlano;
+  if (!idPlanoAtual) return;
+
+  var aba = (abaInicial === 'subordinado') ? 'subordinado' : 'superior';
+  estadoVincModal.aba = aba;
+  estadoVincModal.busca = ''; estadoVincModal.filtroResp = '';
+  estadoVincModal.paginaAtual = 1;
+  estadoVincModal.candidatosSuperior = [];
+  estadoVincModal.candidatosSubordinado = [];
+
+  var fb = document.getElementById('vp-filtro-busca'); if (fb) fb.value = '';
+  var bc = document.getElementById('vp-btn-clear'); if (bc) bc.style.display = 'none';
+  var ts = document.getElementById('vp-toggle-superior'); if (ts) ts.classList.toggle('active', aba === 'superior');
+  var tb = document.getElementById('vp-toggle-subordinado'); if (tb) tb.classList.toggle('active', aba === 'subordinado');
+  var tbody = document.getElementById('vp-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="padding:0">' + spinnerListaHTML() + '</td></tr>';
+
+  var modal = document.getElementById('modal-vincular-plano');
+  if (modal) modal.classList.remove('hidden');
+  if (typeof bloquearFundo === 'function') bloquearFundo();
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      estadoVincModal.candidatosSuperior = (res && res.candidatosSuperior) || [];
+      estadoVincModal.candidatosSubordinado = (res && res.candidatosSubordinado) || [];
+      vpPopularFiltroResp();
+      vpRenderLista();
+    })
+    .withFailureHandler(function(err) {
+      var tb = document.getElementById('vp-tbody');
+      if (tb) tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(err.message) + '</td></tr>';
+    })
+    .apiGetPlanosVinculavel(idPlanoAtual);
+}
+
+function vpVincularSuperior(idAlvo, nomeAlvo) {
+  var idPlanoAtual = _vincCtx && _vincCtx.idPlano;
+  if (!idPlanoAtual) return;
+  showConfirm(
+    'Vincular Plano?',
+    'Deseja vincular este plano a <strong>' + escapeHtml(nomeAlvo) + '</strong> como plano superior?',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() {
+          esconderLoader();
+          fecharModalVincularPlano();
+          showMessage('success', 'Vinculado', 'Plano superior definido.');
+          carregarAbaVinculos();
+        })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
+        .apiVincularASuperior(idPlanoAtual, idAlvo);
+    }
+  );
+}
+
+function vpSolicitarSubordinado(idAlvo, nomeAlvo) {
+  var idPlanoAtual = _vincCtx && _vincCtx.idPlano;
+  if (!idPlanoAtual) return;
+  showConfirm(
+    'Solicitar Vínculo?',
+    'Deseja propor que <strong>' + escapeHtml(nomeAlvo) + '</strong> se torne subordinado deste plano? A outra parte precisa aceitar antes do vínculo valer.',
+    function() {
+      mostrarLoader();
+      google.script.run
+        .withSuccessHandler(function() {
+          esconderLoader();
+          fecharModalVincularPlano();
+          showMessage('success', 'Proposta enviada', 'Aguardando aceite do responsável do plano.');
+          carregarAbaVinculos();
+        })
+        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
+        .apiPropoQuerVinculoSubordinado(idPlanoAtual, idAlvo);
+    }
+  );
+}
+
+// ================================================================
+// CARREGAMENTO DOS DADOS DO APP
+// ================================================================
+function carregarAbaVinculos() {
+  var idPlano = _vincCtx && _vincCtx.idPlano;
+  if (!idPlano) return;
+  _vincCarregando = true;
+
+  renderizarTabelaVinculos();
+  var tbodyVinc = document.getElementById('vinc-tbody');
+  if (tbodyVinc) tbodyVinc.innerHTML = '<tr class="el-linha-msg"><td colspan="8" style="padding:0">' + spinnerListaHTML() + '</td></tr>';
+
+  _vinculosSDK.chamar('apiGetAbaVinculos', idPlano).then(function(res) {
+    if (!_vincCtx || String(_vincCtx.idPlano) !== String(idPlano)) return; // resposta de um plano já abandonado
+    _vincCarregando = false;
+    _vincCarregado = true;
+    _vincDadosCache = {
+      planosVinculados: (res && res.planosVinculados) || [],
+      propostasEnviadas: (res && res.propostasEnviadas) || [],
+      propostasRecebidas: (res && res.propostasRecebidas) || [],
+      planosSuperiores: (res && res.planosSuperiores) || [],
+      desvinculados: (res && res.desvinculados) || [],
+      recusadas: (res && res.recusadas) || []
+    };
+    // O resumo do plano no cabeçalho (planosSuperiores) pertence ao host: informa via SDK
+    _vinculosSDK.reportarDados({ plano: { planosSuperiores: _vincDadosCache.planosSuperiores } });
+    _vincAtualizarContadorAba();
+    renderizarTabelaVinculos();
+  }, function(err) {
+    if (!_vincCtx || String(_vincCtx.idPlano) !== String(idPlano)) return;
+    _vincCarregando = false;
+    var el = document.getElementById('vinc-tbody');
+    if (el) el.innerHTML = '<tr class="el-linha-msg"><td colspan="8" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(err.message) + '</td></tr>';
+  });
+}
+
+// app_vinculos_regras — regras de tela e utilitários (sem render de lista)
+function _vincTipSituacao(p) {
+  if (p.vtipo === 'desvinculado' || p.vtipo === 'recusado') return p.subTxt;
+  var D = _VINC_DIR[p.direcao];
+  if (D) return D.txt;
+  if (p.vtipo === 'superior') return 'Plano superior' + (p.papel === 'PRINCIPAL' ? ' principal' : p.papel === 'ADICIONAL' ? ' adicional' : '');
+  return 'Plano subordinado';
+}
 
 function _vincBadgeStatus(status) {
   var mapa = {
@@ -495,6 +891,122 @@ function _vincDados() {
   });
   return { superAprov: superAprov, subAprov: subAprov, pendentes: pendentes, desvinculados: desvinculados, recusadas: recusadas };
 }
+
+function _vincSyncBarra() {
+  var e = estadoVinculos;
+  var bc = document.getElementById('vinc-btn-clear'); if (bc) bc.classList.toggle('hidden', !e.busca);
+  var respTipo = {}; _vincListaUnica().forEach(function(p) { if (p.responsavel) respTipo[p.responsavel] = p.tipoResponsavel; });
+  var rot = {
+    vinc: e.filtroVinc ? _VINC_TIPO[e.filtroVinc].rot : '',
+    status: e.filtroStatus,
+    resp: e.filtroResp ? nomeRespExibicao(e.filtroResp, respTipo[e.filtroResp]) : '',
+    tipo: e.filtroTipo
+  };
+  Object.keys(_vincFiltrosDef).forEach(function(c) {
+    var v = rot[c];
+    var lb = document.getElementById('vinc-filtro-label-' + c);
+    if (lb) lb.textContent = v ? _vincFiltrosDef[c].label + ': ' + v : _vincFiltrosDef[c].label;
+    var bt = document.getElementById('vinc-filtro-btn-' + c); if (bt) bt.classList.toggle('el-filtro-btn--ativo', !!v);
+    var x = document.getElementById('vinc-filtro-x-' + c); if (x) x.classList.toggle('hidden', !v);
+  });
+  var bl = document.getElementById('vinc-btn-limpar'); if (bl) bl.classList.toggle('hidden', !_vincTemFiltro());
+}
+
+function _vincPlural(n, s, p) { return n + ' ' + (n === 1 ? s : p); }
+function vincOrfToggle(id) {
+  id = String(id);
+  var aberto = !_vincOrfAbertos[id];
+  if (aberto) _vincOrfAbertos[id] = true; else delete _vincOrfAbertos[id];
+  document.querySelectorAll('#vinc-tbody tr[data-orf]').forEach(function(tr) {
+    if (tr.getAttribute('data-orf') !== id) return;
+    if (tr.classList.contains('vinc-sub')) { tr.classList.toggle('vinc-visivel', aberto); return; }
+    var b = tr.querySelector('.el-toggle-btn');
+    if (b) { b.classList.toggle('expanded', aberto); b.setAttribute('aria-expanded', String(aberto)); }
+  });
+}
+
+function vincMudarTamanho(val) {
+  estadoVinculos.itensPorPagina = parseInt(val, 10) || 10;
+  estadoVinculos.paginaAtual = 1;
+  _vincRenderCorpo();
+}
+function _vincChamada(acao, p) {
+  var idv = p.idVinculo;
+  if (acao === 'aprovar')     return p.direcao === 'filho' ? ['apiAprovarVinculoPlano', idv] : ['apiResponderPropostaVinculoSubordinado', idv, 'ACEITAR'];
+  if (acao === 'dispensar')   return ['apiDispensarVinculoRecusado', idv];
+  if (acao === 'recusar')     return p.direcao === 'filho' ? ['apiDesvincularVinculo', idv, true] : ['apiResponderPropostaVinculoSubordinado', idv, 'RECUSAR'];
+  if (acao === 'cancelar')    return p.direcao === 'proposta_enviada' ? ['apiCancelarPropostaVinculo', idv] : ['apiDesvincularVinculo', idv];
+  if (acao === 'desvincular') return ['apiDesvincularVinculo', idv];
+  if (acao === 'excluirorf')  return ['apiExcluirVinculosOrfaos', _vincCtx.idPlano, String(p.id)];
+  return null;
+}
+function vincAbrirDetalhesPlano(chave) {
+  var p = _vincListaUnica().filter(function(x) { return _vincChave(x) === String(chave); })[0];
+  if (!p) return;
+  var view = document.getElementById('detp-view-detalhes');
+  if (!view || typeof abrirPainelDetalhes !== 'function' || typeof _detpLinha !== 'function') { carregarDetalhesPlano(String(p.id)); return; }
+  if (typeof window._appNotificarPainelFechado === 'function') window._appNotificarPainelFechado();
+  var T = _VINC_TIPO[p.vtipo], D = _VINC_DIR[p.direcao];
+  var vig = p.anoInicio && p.anoFim ? (String(p.anoInicio) === String(p.anoFim) ? p.anoInicio : p.anoInicio + ' – ' + p.anoFim) : (p.anoInicio || p.anoFim || '');
+  var statusBadge = p.status ? '<span class="ds-badge ds-badge--' + (_VINC_STATUS_SLUG[p.status] || 'finalizado') + '">' + escapeHtml(p.status) + '</span>' : '';
+  var pct = (p.progresso == null || isNaN(Number(p.progresso))) ? '' : Math.round(Number(p.progresso)) + '%';
+  var resp = p.responsavel
+    ? '<div class="detp-resp-item"><span class="material-symbols-outlined">' + (p.tipoResponsavel === 'USER' ? 'person' : 'apartment') + '</span><span data-title="' + escapeHtml(p.responsavel) + '">' + escapeHtml(nomeRespExibicao(p.responsavel, p.tipoResponsavel)) + '</span><span class="detp-resp-papel">Principal</span></div>'
+      + (p.respAdicionaisNomes || []).map(function(n) { return '<div class="detp-resp-item"><span class="material-symbols-outlined">person</span><span>' + escapeHtml(n) + '</span><span class="detp-resp-papel">Adicional</span></div>'; }).join('')
+    : '';
+  var sit = '<span class="vinc-detp-sit vinc-row--' + p.vtipo + '"><span class="material-symbols-outlined" aria-hidden="true">' + T.ico + '</span>' + escapeHtml(T.rot) + '</span>';
+  var vinc = _detpLinha('Situação', sit);
+  var guardados = '';
+  if (p.vtipo === 'desvinculado') {
+    var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(p.id); })[0] || {};
+    vinc += p.lixeira ? _detpLinha('Plano', 'Na lixeira · os vínculos voltam a valer se for restaurado') : _detpLinha('Desvinculado em', '<span' + (p.desvinculadoPor ? ' data-title="' + escapeHtml(p.desvinculadoPor) + '"' : '') + '>' + escapeHtml(p.desvinculadoEm || '—') + '</span>')
+      + (p.vinculoAtual === 'Pendente' ? _detpLinha('Novo pedido', 'Aguardando aprovação') : '');
+    var it = function(ico, rot, tit, sup) {
+      return '<div class="detp-ind-item"><span class="material-symbols-outlined vinc-detp-guard" data-title="' + rot + '" aria-label="' + rot + '">' + ico + '</span>'
+        + '<span class="detp-ind-nome" data-title="' + escapeHtml(tit + ' → ' + sup) + '">' + escapeHtml(tit) + ' → ' + escapeHtml(sup) + '</span></div>';
+    };
+    guardados = (d.elementos || []).map(function(e) { return it('account_tree', 'Elemento', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
+      + (d.indicadores || []).map(function(i) { return it('monitoring', 'Indicador', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
+  } else if (p.vtipo === 'recusado') {
+    vinc += _detpLinha(p.direcao === 'proposta' ? 'Proposta' : 'Pedido', p.direcao === 'proposta' ? 'Ser superior deste plano' : 'Ser subordinado deste plano')
+      + _detpLinha('Recusado em', '<span' + (p.recusadoPor ? ' data-title="' + escapeHtml(p.recusadoPor) + '"' : '') + '>' + escapeHtml(p.recusadoEm || '—') + '</span>')
+      + (!p.podePedirDeNovo && p.motivoNaoPodePedirDeNovo ? _detpLinha('Pedir de novo', escapeHtml(p.motivoNaoPodePedirDeNovo)) : '');
+  } else if (D) {
+    vinc += _detpLinha('Pedido', escapeHtml(D.txt.split(' · ')[0]));
+  } else if (p.papel) {
+    vinc += _detpLinha('Papel', p.papel === 'PRINCIPAL' ? 'Principal' : 'Adicional');
+  }
+  var cab = '<div class="vinc-detp-cab">' + (p.tipo ? '<span class="vinc-nivel">' + escapeHtml(p.tipo) + '</span>' : '')
+    + '<h3>' + escapeHtml(p.nome || '') + '</h3></div>';
+  var secoes = [
+    { titulo: 'Vínculo', html: vinc },
+    { titulo: 'Vínculos guardados', html: guardados },
+    { titulo: 'Sobre o plano', html: _detpLinha('Status', statusBadge) + _detpLinha('Vigência', escapeHtml(vig)) + _detpLinha('Progresso', pct) },
+    { titulo: 'Responsáveis', html: resp },
+    { titulo: '', html: '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" data-on-click="vinc.38" data-aclick0="' + escapeHtml(String(p.id)) + '"><span class="material-symbols-outlined">open_in_new</span> Abrir plano</button>' }
+  ];
+  view.innerHTML = cab + secoes.filter(function(x) { return x.html; })
+    .map(function(x) { return '<div class="detp-secao">' + (x.titulo ? '<div class="detp-secao-titulo">' + x.titulo + '</div>' : '') + x.html + '</div>'; }).join('');
+  abrirPainelDetalhes('detalhes');
+}
+
+function vpMudarAba(key) {
+  if (estadoVincModal.aba === key) return;
+  estadoVincModal.aba = key;
+  estadoVincModal.paginaAtual = 1;
+  var ts = document.getElementById('vp-toggle-superior'); if (ts) ts.classList.toggle('active', key === 'superior');
+  var tb = document.getElementById('vp-toggle-subordinado'); if (tb) tb.classList.toggle('active', key === 'subordinado');
+  vpPopularFiltroResp();
+  vpRenderLista();
+}
+
+function atualizarAbaVinculos() { carregarAbaVinculos(); }
+
+// ================================================================
+// HANDSHAKE COM O HOST
+// ================================================================
+
+// app_vinculos_lista — render de lista/tabela/árvore, filtros, ordenação, paginação, menus
 
 function _vincListaUnica() {
   var d = _vincDados();
@@ -628,16 +1140,6 @@ function vincLimparBusca() {
   aplicarFiltrosVinculos();
 }
 
-document.addEventListener('click', function(e) {
-  var wrap = document.getElementById('vinc-search-wrap'), caixa = document.getElementById('vinc-search-caixa');
-  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
-  var inp = document.getElementById('vinc-filtro-busca');
-  if (inp && !inp.value.trim()) {
-    caixa.classList.add('hidden');
-    var st = document.getElementById('vinc-search-toggle'); if (st) st.classList.remove('hidden');
-  }
-});
-
 function aplicarFiltrosVinculos() {
   estadoVinculos.busca = (document.getElementById('vinc-filtro-busca') || {}).value || '';
   estadoVinculos.paginaAtual = 1;
@@ -691,62 +1193,6 @@ function limparFiltrosVinculos() {
   estadoVinculos.paginaAtual = 1;
   _vincSyncBarra();
   _vincRenderCorpo();
-}
-
-function _vincSyncBarra() {
-  var e = estadoVinculos;
-  var bc = document.getElementById('vinc-btn-clear'); if (bc) bc.classList.toggle('hidden', !e.busca);
-  var respTipo = {}; _vincListaUnica().forEach(function(p) { if (p.responsavel) respTipo[p.responsavel] = p.tipoResponsavel; });
-  var rot = {
-    vinc: e.filtroVinc ? _VINC_TIPO[e.filtroVinc].rot : '',
-    status: e.filtroStatus,
-    resp: e.filtroResp ? nomeRespExibicao(e.filtroResp, respTipo[e.filtroResp]) : '',
-    tipo: e.filtroTipo
-  };
-  Object.keys(_vincFiltrosDef).forEach(function(c) {
-    var v = rot[c];
-    var lb = document.getElementById('vinc-filtro-label-' + c);
-    if (lb) lb.textContent = v ? _vincFiltrosDef[c].label + ': ' + v : _vincFiltrosDef[c].label;
-    var bt = document.getElementById('vinc-filtro-btn-' + c); if (bt) bt.classList.toggle('el-filtro-btn--ativo', !!v);
-    var x = document.getElementById('vinc-filtro-x-' + c); if (x) x.classList.toggle('hidden', !v);
-  });
-  var bl = document.getElementById('vinc-btn-limpar'); if (bl) bl.classList.toggle('hidden', !_vincTemFiltro());
-}
-
-function _vincAtualizarContadorAba() {
-  var n = _vincListaUnica().filter(function(p) { return p.vtipo === 'decidir'; }).length;
-  var nOrf = 0;
-  (_vincDadosCache.desvinculados || []).forEach(function(d) { nOrf += (d.elementos || []).length + (d.indicadores || []).length; });
-  var partes = [];
-  if (n) partes.push(n + (n === 1 ? ' vínculo aguarda sua decisão' : ' vínculos aguardam sua decisão'));
-  if (nOrf) partes.push(nOrf + (nOrf === 1 ? ' vínculo órfão de plano desvinculado' : ' vínculos órfãos de plano desvinculado'));
-  // alerta (âmbar): decisões pendentes + vínculos órfãos (mesma soma feita por apiGetContagensAbas)
-  _vinculosSDK.reportarAlerta(n + nOrf, partes.join(' · '));
-}
-
-function _vincPlural(n, s, p) { return n + ' ' + (n === 1 ? s : p); }
-
-function vincExcluirOrfaos(idSup) {
-  var idPlano = _vincCtx && _vincCtx.idPlano;
-  var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(idSup); })[0];
-  if (!idPlano || !d) return;
-  var nE = (d.elementos || []).length, nI = (d.indicadores || []).length;
-  var qtd = [nE ? _vincPlural(nE, 'vínculo de elemento', 'vínculos de elementos') : '', nI ? _vincPlural(nI, 'vínculo de indicador', 'vínculos de indicadores') : '']
-    .filter(Boolean).join(' e ');
-  showConfirm('Excluir vínculos órfãos?',
-    'Excluir de vez ' + qtd + ' com <strong>' + escapeHtml(d.nomePlanoSuperior || '') + '</strong>?',
-    function() {
-      mostrarLoader();
-      google.script.run
-        .withSuccessHandler(function(res) {
-          esconderLoader();
-          var n = ((res && res.elementos) || 0) + ((res && res.indicadores) || 0);
-          showMessage('success', 'Excluídos', _vincPlural(n, 'vínculo órfão excluído.', 'vínculos órfãos excluídos.'));
-          carregarAbaVinculos();
-        })
-        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
-        .apiExcluirVinculosOrfaos(idPlano, idSup);
-    });
 }
 
 function renderizarTabelaVinculos() {
@@ -835,12 +1281,6 @@ function renderizarTabelaVinculos() {
   _vincSyncBarra();
   _vincRenderCorpo();
 }
-
-var _VINC_STATUS_SLUG = {
-  'Em Elaboração': 'elaboracao', 'Em Análise': 'analise', 'Em Execução': 'execucao', 'Em Avaliação': 'avaliacao',
-  'Prorrogado': 'prorrogado', 'Em Revisão': 'revisao', 'Finalizado': 'finalizado', 'Cancelado': 'cancelado', 'Excluído': 'cancelado'
-};
-var _vincOrfAbertos = {};
 
 function _vincLinhaHTML(p, podeEditar) {
   var T = _VINC_TIPO[p.vtipo];
@@ -950,17 +1390,6 @@ function _vincOrfItensHTML(p) {
 }
 
 // expande/recolhe sem re-renderizar (o duplo clique para abrir a barra lateral continua funcionando)
-function vincOrfToggle(id) {
-  id = String(id);
-  var aberto = !_vincOrfAbertos[id];
-  if (aberto) _vincOrfAbertos[id] = true; else delete _vincOrfAbertos[id];
-  document.querySelectorAll('#vinc-tbody tr[data-orf]').forEach(function(tr) {
-    if (tr.getAttribute('data-orf') !== id) return;
-    if (tr.classList.contains('vinc-sub')) { tr.classList.toggle('vinc-visivel', aberto); return; }
-    var b = tr.querySelector('.el-toggle-btn');
-    if (b) { b.classList.toggle('expanded', aberto); b.setAttribute('aria-expanded', String(aberto)); }
-  });
-}
 
 function _vincRenderCorpo() {
   var tbody = document.getElementById('vinc-tbody');
@@ -996,12 +1425,6 @@ function _vincRenderCorpo() {
   }).join('');
   _vincAtualizarPaginacao(total, start);
   _vincAtualizarSelecao(listaCompleta);
-}
-
-function vincMudarTamanho(val) {
-  estadoVinculos.itensPorPagina = parseInt(val, 10) || 10;
-  estadoVinculos.paginaAtual = 1;
-  _vincRenderCorpo();
 }
 
 function vincMudarPagina(dir) {
@@ -1127,17 +1550,6 @@ function _vincAtualizarSelecao(listaVisivel) {
 }
 
 // Ações da barra de seleção: só aparecem as que TODOS os itens selecionados aceitam (as "unico" só com 1 item).
-var _VINC_ACOES = [
-  { id: 'detalhes',    ico: 'right_panel_open', rot: 'Abrir barra lateral',                     unico: true, ok: function(p) { return true; } },
-  { id: 'abrir',       ico: 'open_in_new',  rot: 'Abrir plano',                    unico: true, ok: function(p) { return true; } },
-  { id: 'aprovar',     ico: 'check',        rot: 'Aprovar',                        edita: true,  ok: function(p) { return p.vtipo === 'decidir'; } },
-  { id: 'recusar',     ico: 'close',        rot: 'Recusar',                        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'decidir'; } },
-  { id: 'cancelar',    ico: 'cancel',       rot: 'Cancelar pedido ou proposta',    edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'aguardando'; } },
-  { id: 'desvincular', ico: 'link_off',     rot: 'Desvincular',                    edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'superior' || p.vtipo === 'subordinado'; } },
-  { id: 'dispensar',   ico: 'visibility_off', rot: 'Dispensar',                    edita: true,  ok: function(p) { return p.vtipo === 'recusado'; } },
-  { id: 'excluirorf',  ico: 'delete_sweep', rot: 'Excluir vínculos órfãos',        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'desvinculado'; } },
-  { id: 'exportar',    ico: 'download',     rot: 'Exportar',                       ok: function(p) { return true; } }
-];
 
 function _vincAcoesLoteHTML(selecionados) {
   var n = selecionados.length;
@@ -1156,216 +1568,6 @@ function _vincSelecionadosLista() {
 }
 
 // chamada de servidor de cada ação, por item (decidir/aguardando variam conforme a direção do pedido)
-function _vincChamada(acao, p) {
-  var idv = p.idVinculo;
-  if (acao === 'aprovar')     return p.direcao === 'filho' ? ['apiAprovarVinculoPlano', idv] : ['apiResponderPropostaVinculoSubordinado', idv, 'ACEITAR'];
-  if (acao === 'dispensar')   return ['apiDispensarVinculoRecusado', idv];
-  if (acao === 'recusar')     return p.direcao === 'filho' ? ['apiDesvincularVinculo', idv, true] : ['apiResponderPropostaVinculoSubordinado', idv, 'RECUSAR'];
-  if (acao === 'cancelar')    return p.direcao === 'proposta_enviada' ? ['apiCancelarPropostaVinculo', idv] : ['apiDesvincularVinculo', idv];
-  if (acao === 'desvincular') return ['apiDesvincularVinculo', idv];
-  if (acao === 'excluirorf')  return ['apiExcluirVinculosOrfaos', _vincCtx.idPlano, String(p.id)];
-  return null;
-}
-
-var _VINC_TXT_LOTE = {
-  aprovar:     { tit: 'Aprovar vínculos?',                 msg: 'aprovar',                ok: 'Aprovados',   okMsg: 'Vínculos aprovados.' },
-  recusar:     { tit: 'Recusar vínculos?',                 msg: 'recusar',                ok: 'Recusados',   okMsg: 'Vínculos recusados.' },
-  cancelar:    { tit: 'Cancelar pedidos e propostas?',     msg: 'cancelar',               ok: 'Cancelados',  okMsg: 'Pedidos e propostas cancelados.' },
-  desvincular: { tit: 'Desvincular planos?',               msg: 'desvincular',            ok: 'Desvinculados', okMsg: 'Vínculos removidos com sucesso.' },
-  dispensar:   { tit: 'Dispensar recusas?',                msg: 'dispensar',              ok: 'Dispensadas', okMsg: 'Recusas dispensadas.' },
-  excluirorf:  { tit: 'Excluir vínculos órfãos?',          msg: 'excluir os vínculos órfãos de', ok: 'Excluídos', okMsg: 'Vínculos órfãos excluídos.' }
-};
-
-function vincAcaoLote(acao) {
-  var lista = _vincSelecionadosLista();
-  if (!lista.length) return;
-  var p = lista[0];
-  if (acao === 'detalhes') return vincAbrirDetalhesPlano(_vincChave(p));
-  if (acao === 'abrir') return carregarDetalhesPlano(String(p.id));
-  if (acao === 'exportar') return exportarVinculosCSV();
-  var idv = String(p.idVinculo || ''), nome = p.nome || '';
-  if (lista.length === 1) {            // um só item: mesmos diálogos da linha
-    if (acao === 'aprovar')     return p.direcao === 'filho' ? aprovarVinculoPlano(idv, nome) : responderPropostaVinculo(idv, nome, 'ACEITAR');
-    if (acao === 'dispensar')   return vincDispensarRecusado(idv, nome);
-    if (acao === 'recusar')     return p.direcao === 'filho' ? desvincularVinculo(idv, nome, true) : responderPropostaVinculo(idv, nome, 'RECUSAR');
-    if (acao === 'cancelar')    return p.direcao === 'proposta_enviada' ? cancelarPropostaVinculo(idv, nome) : desvincularVinculo(idv, nome);
-    if (acao === 'desvincular') return desvincularVinculo(idv, nome);
-    if (acao === 'excluirorf')  return vincExcluirOrfaos(String(p.id));
-  }
-  var t = _VINC_TXT_LOTE[acao];
-  if (!t) return;
-  showConfirm(t.tit, 'Deseja ' + t.msg + ' ' + lista.length + (acao === 'excluirorf' ? ' planos?' : ' itens selecionados?'), function() {
-    mostrarLoader();
-    var erros = [], i = 0;
-    (function prox() {
-      if (i >= lista.length) {
-        esconderLoader();
-        estadoVinculos.selecionados = {};
-        if (erros.length) showMessage('error', 'Alguns itens não foram processados', escapeHtml(erros[0]));
-        else showMessage('success', t.ok, t.okMsg);
-        carregarAbaVinculos();
-        return;
-      }
-      var c = _vincChamada(acao, lista[i++]);
-      google.script.run
-        .withSuccessHandler(prox)
-        .withFailureHandler(function(err) { erros.push((err && err.message) || String(err)); prox(); })[c[0]](...c.slice(1));
-    })();
-  });
-}
-
-// Barra lateral de detalhes (#detp-panel, do host) com o resumo do plano vinculado
-function vincAbrirDetalhesPlano(chave) {
-  var p = _vincListaUnica().filter(function(x) { return _vincChave(x) === String(chave); })[0];
-  if (!p) return;
-  var view = document.getElementById('detp-view-detalhes');
-  if (!view || typeof abrirPainelDetalhes !== 'function' || typeof _detpLinha !== 'function') { carregarDetalhesPlano(String(p.id)); return; }
-  if (typeof window._appNotificarPainelFechado === 'function') window._appNotificarPainelFechado();
-  var T = _VINC_TIPO[p.vtipo], D = _VINC_DIR[p.direcao];
-  var vig = p.anoInicio && p.anoFim ? (String(p.anoInicio) === String(p.anoFim) ? p.anoInicio : p.anoInicio + ' – ' + p.anoFim) : (p.anoInicio || p.anoFim || '');
-  var statusBadge = p.status ? '<span class="ds-badge ds-badge--' + (_VINC_STATUS_SLUG[p.status] || 'finalizado') + '">' + escapeHtml(p.status) + '</span>' : '';
-  var pct = (p.progresso == null || isNaN(Number(p.progresso))) ? '' : Math.round(Number(p.progresso)) + '%';
-  var resp = p.responsavel
-    ? '<div class="detp-resp-item"><span class="material-symbols-outlined">' + (p.tipoResponsavel === 'USER' ? 'person' : 'apartment') + '</span><span data-title="' + escapeHtml(p.responsavel) + '">' + escapeHtml(nomeRespExibicao(p.responsavel, p.tipoResponsavel)) + '</span><span class="detp-resp-papel">Principal</span></div>'
-      + (p.respAdicionaisNomes || []).map(function(n) { return '<div class="detp-resp-item"><span class="material-symbols-outlined">person</span><span>' + escapeHtml(n) + '</span><span class="detp-resp-papel">Adicional</span></div>'; }).join('')
-    : '';
-  var sit = '<span class="vinc-detp-sit vinc-row--' + p.vtipo + '"><span class="material-symbols-outlined" aria-hidden="true">' + T.ico + '</span>' + escapeHtml(T.rot) + '</span>';
-  var vinc = _detpLinha('Situação', sit);
-  var guardados = '';
-  if (p.vtipo === 'desvinculado') {
-    var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(p.id); })[0] || {};
-    vinc += p.lixeira ? _detpLinha('Plano', 'Na lixeira · os vínculos voltam a valer se for restaurado') : _detpLinha('Desvinculado em', '<span' + (p.desvinculadoPor ? ' data-title="' + escapeHtml(p.desvinculadoPor) + '"' : '') + '>' + escapeHtml(p.desvinculadoEm || '—') + '</span>')
-      + (p.vinculoAtual === 'Pendente' ? _detpLinha('Novo pedido', 'Aguardando aprovação') : '');
-    var it = function(ico, rot, tit, sup) {
-      return '<div class="detp-ind-item"><span class="material-symbols-outlined vinc-detp-guard" data-title="' + rot + '" aria-label="' + rot + '">' + ico + '</span>'
-        + '<span class="detp-ind-nome" data-title="' + escapeHtml(tit + ' → ' + sup) + '">' + escapeHtml(tit) + ' → ' + escapeHtml(sup) + '</span></div>';
-    };
-    guardados = (d.elementos || []).map(function(e) { return it('account_tree', 'Elemento', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
-      + (d.indicadores || []).map(function(i) { return it('monitoring', 'Indicador', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
-  } else if (p.vtipo === 'recusado') {
-    vinc += _detpLinha(p.direcao === 'proposta' ? 'Proposta' : 'Pedido', p.direcao === 'proposta' ? 'Ser superior deste plano' : 'Ser subordinado deste plano')
-      + _detpLinha('Recusado em', '<span' + (p.recusadoPor ? ' data-title="' + escapeHtml(p.recusadoPor) + '"' : '') + '>' + escapeHtml(p.recusadoEm || '—') + '</span>')
-      + (!p.podePedirDeNovo && p.motivoNaoPodePedirDeNovo ? _detpLinha('Pedir de novo', escapeHtml(p.motivoNaoPodePedirDeNovo)) : '');
-  } else if (D) {
-    vinc += _detpLinha('Pedido', escapeHtml(D.txt.split(' · ')[0]));
-  } else if (p.papel) {
-    vinc += _detpLinha('Papel', p.papel === 'PRINCIPAL' ? 'Principal' : 'Adicional');
-  }
-  var cab = '<div class="vinc-detp-cab">' + (p.tipo ? '<span class="vinc-nivel">' + escapeHtml(p.tipo) + '</span>' : '')
-    + '<h3>' + escapeHtml(p.nome || '') + '</h3></div>';
-  var secoes = [
-    { titulo: 'Vínculo', html: vinc },
-    { titulo: 'Vínculos guardados', html: guardados },
-    { titulo: 'Sobre o plano', html: _detpLinha('Status', statusBadge) + _detpLinha('Vigência', escapeHtml(vig)) + _detpLinha('Progresso', pct) },
-    { titulo: 'Responsáveis', html: resp },
-    { titulo: '', html: '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" data-on-click="vinc.38" data-aclick0="' + escapeHtml(String(p.id)) + '"><span class="material-symbols-outlined">open_in_new</span> Abrir plano</button>' }
-  ];
-  view.innerHTML = cab + secoes.filter(function(x) { return x.html; })
-    .map(function(x) { return '<div class="detp-secao">' + (x.titulo ? '<div class="detp-secao-titulo">' + x.titulo + '</div>' : '') + x.html + '</div>'; }).join('');
-  abrirPainelDetalhes('detalhes');
-}
-
-function aprovarVinculoPlano(idVinculo, nomeFilho) {
-  showConfirm(
-    'Aprovar Vínculo?',
-    'Deseja aprovar o vínculo do plano <strong>' + escapeHtml(nomeFilho) + '</strong> com este plano?',
-    function() {
-      mostrarLoader();
-      google.script.run
-        .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
-        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
-        .apiAprovarVinculoPlano(idVinculo);
-    }
-  );
-}
-
-// recusa = true quando é RECUSAR um pedido pendente recebido (direcao 'filho'): o solicitante passa a ver a recusa
-function desvincularVinculo(idVinculo, nomeAlvo, recusa) {
-  showConfirm(
-    recusa ? 'Recusar pedido?' : 'Desvincular Plano?',
-    recusa ? 'Deseja recusar o pedido de vínculo de <strong>' + escapeHtml(nomeAlvo) + '</strong>?'
-           : 'Deseja remover este vínculo com <strong>' + escapeHtml(nomeAlvo) + '</strong>?',
-    function() {
-      mostrarLoader();
-      google.script.run
-        .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
-        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
-        .apiDesvincularVinculo(idVinculo, recusa === true);
-    }
-  );
-}
-
-function vincDispensarRecusado(idVinculo, nomeAlvo) {
-  if (!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.vincular)) return;
-  mostrarLoader();
-  _vinculosSDK.chamar('apiDispensarVinculoRecusado', idVinculo).then(function() {
-    esconderLoader();
-    _vincDadosCache.recusadas = (_vincDadosCache.recusadas || []).filter(function(r) { return String(r.idVinculo) !== String(idVinculo); });
-    estadoVinculos.selecionados = {};
-    _vincAtualizarContadorAba();
-    renderizarTabelaVinculos();
-  }).catch(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml((err && err.message) || String(err))); });
-}
-
-function vincPedirDeNovo(chave) {
-  var p = _vincListaUnica().filter(function(x) { return _vincChave(x) === String(chave); })[0];
-  if (!p || !p.podePedirDeNovo || !_vincCtx) return;
-  var proposta = p.direcao === 'proposta';
-  showConfirm(
-    proposta ? 'Propor de novo?' : 'Pedir de novo?',
-    (proposta ? 'Propor novamente que <strong>' + escapeHtml(p.nome || '') + '</strong> seja subordinado a este plano?'
-              : 'Pedir novamente vínculo ao plano superior <strong>' + escapeHtml(p.nome || '') + '</strong>?'),
-    function() {
-      mostrarLoader();
-      _vinculosSDK.chamar(proposta ? 'apiPropoQuerVinculoSubordinado' : 'apiVincularASuperior', _vincCtx.idPlano, String(p.id))
-        .then(function() { esconderLoader(); carregarAbaVinculos(); })
-        .catch(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml((err && err.message) || String(err))); });
-    }
-  );
-}
-
-function definirPlanoSuperiorPrincipal(idVinculo, nomeAlvo) {
-  mostrarLoader();
-  google.script.run
-    .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
-    .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
-    .apiDefinirPlanoSuperiorPrincipal(idVinculo);
-}
-
-function cancelarPropostaVinculo(idVinculo, nomeAlvo) {
-  showConfirm(
-    'Cancelar Proposta?',
-    'Deseja cancelar a proposta de vínculo enviada para <strong>' + escapeHtml(nomeAlvo) + '</strong>?',
-    function() {
-      mostrarLoader();
-      google.script.run
-        .withSuccessHandler(function() { esconderLoader(); carregarAbaVinculos(); })
-        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
-        .apiCancelarPropostaVinculo(idVinculo);
-    }
-  );
-}
-
-function responderPropostaVinculo(idVinculo, nomeProponente, resposta) {
-  var aceitar = resposta === 'ACEITAR';
-  showConfirm(
-    aceitar ? 'Aceitar Proposta?' : 'Recusar Proposta?',
-    aceitar
-      ? 'Deseja aceitar a proposta de <strong>' + escapeHtml(nomeProponente) + '</strong> para se tornar o plano superior deste plano?'
-      : 'Deseja recusar a proposta de <strong>' + escapeHtml(nomeProponente) + '</strong>?',
-    function() {
-      mostrarLoader();
-      google.script.run
-        .withSuccessHandler(function() {
-          esconderLoader();
-          showMessage('success', aceitar ? 'Aceita' : 'Recusada', aceitar ? 'Vínculo definido.' : 'Proposta recusada.');
-          carregarAbaVinculos();
-        })
-        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
-        .apiResponderPropostaVinculoSubordinado(idVinculo, resposta);
-    }
-  );
-}
 
 function abrirMenuVinculosMais(ev) {
   var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.vincular);
@@ -1409,57 +1611,6 @@ function exportarVinculosCSV() {
 // ================================================================
 // MODAL VINCULAR PLANO (PORTAL)
 // ================================================================
-function abrirModalVincularPlano(abaInicial) {
-  var idPlanoAtual = _vincCtx && _vincCtx.idPlano;
-  if (!idPlanoAtual) return;
-
-  var aba = (abaInicial === 'subordinado') ? 'subordinado' : 'superior';
-  estadoVincModal.aba = aba;
-  estadoVincModal.busca = ''; estadoVincModal.filtroResp = '';
-  estadoVincModal.paginaAtual = 1;
-  estadoVincModal.candidatosSuperior = [];
-  estadoVincModal.candidatosSubordinado = [];
-
-  var fb = document.getElementById('vp-filtro-busca'); if (fb) fb.value = '';
-  var bc = document.getElementById('vp-btn-clear'); if (bc) bc.style.display = 'none';
-  var ts = document.getElementById('vp-toggle-superior'); if (ts) ts.classList.toggle('active', aba === 'superior');
-  var tb = document.getElementById('vp-toggle-subordinado'); if (tb) tb.classList.toggle('active', aba === 'subordinado');
-  var tbody = document.getElementById('vp-tbody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="padding:0">' + spinnerListaHTML() + '</td></tr>';
-
-  var modal = document.getElementById('modal-vincular-plano');
-  if (modal) modal.classList.remove('hidden');
-  if (typeof bloquearFundo === 'function') bloquearFundo();
-
-  google.script.run
-    .withSuccessHandler(function(res) {
-      estadoVincModal.candidatosSuperior = (res && res.candidatosSuperior) || [];
-      estadoVincModal.candidatosSubordinado = (res && res.candidatosSubordinado) || [];
-      vpPopularFiltroResp();
-      vpRenderLista();
-    })
-    .withFailureHandler(function(err) {
-      var tb = document.getElementById('vp-tbody');
-      if (tb) tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(err.message) + '</td></tr>';
-    })
-    .apiGetPlanosVinculavel(idPlanoAtual);
-}
-
-function fecharModalVincularPlano() {
-  var modal = document.getElementById('modal-vincular-plano');
-  if (modal) modal.classList.add('hidden');
-  if (typeof desbloquearFundo === 'function') desbloquearFundo();
-}
-
-function vpMudarAba(key) {
-  if (estadoVincModal.aba === key) return;
-  estadoVincModal.aba = key;
-  estadoVincModal.paginaAtual = 1;
-  var ts = document.getElementById('vp-toggle-superior'); if (ts) ts.classList.toggle('active', key === 'superior');
-  var tb = document.getElementById('vp-toggle-subordinado'); if (tb) tb.classList.toggle('active', key === 'subordinado');
-  vpPopularFiltroResp();
-  vpRenderLista();
-}
 
 function _vpListaAtiva() {
   return estadoVincModal.aba === 'superior' ? estadoVincModal.candidatosSuperior : estadoVincModal.candidatosSubordinado;
@@ -1574,152 +1725,15 @@ function vpRenderLista() {
   if (btnNext) btnNext.disabled = (estadoVincModal.paginaAtual >= totalPags);
 }
 
-function vpVincularSuperior(idAlvo, nomeAlvo) {
-  var idPlanoAtual = _vincCtx && _vincCtx.idPlano;
-  if (!idPlanoAtual) return;
-  showConfirm(
-    'Vincular Plano?',
-    'Deseja vincular este plano a <strong>' + escapeHtml(nomeAlvo) + '</strong> como plano superior?',
-    function() {
-      mostrarLoader();
-      google.script.run
-        .withSuccessHandler(function() {
-          esconderLoader();
-          fecharModalVincularPlano();
-          showMessage('success', 'Vinculado', 'Plano superior definido.');
-          carregarAbaVinculos();
-        })
-        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
-        .apiVincularASuperior(idPlanoAtual, idAlvo);
-    }
-  );
+// app_vinculos_modais — modais e wizards (abrir, validar, salvar)
+
+function fecharModalVincularPlano() {
+  var modal = document.getElementById('modal-vincular-plano');
+  if (modal) modal.classList.add('hidden');
+  if (typeof desbloquearFundo === 'function') desbloquearFundo();
 }
 
-function vpSolicitarSubordinado(idAlvo, nomeAlvo) {
-  var idPlanoAtual = _vincCtx && _vincCtx.idPlano;
-  if (!idPlanoAtual) return;
-  showConfirm(
-    'Solicitar Vínculo?',
-    'Deseja propor que <strong>' + escapeHtml(nomeAlvo) + '</strong> se torne subordinado deste plano? A outra parte precisa aceitar antes do vínculo valer.',
-    function() {
-      mostrarLoader();
-      google.script.run
-        .withSuccessHandler(function() {
-          esconderLoader();
-          fecharModalVincularPlano();
-          showMessage('success', 'Proposta enviada', 'Aguardando aceite do responsável do plano.');
-          carregarAbaVinculos();
-        })
-        .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
-        .apiPropoQuerVinculoSubordinado(idPlanoAtual, idAlvo);
-    }
-  );
-}
-
-// ================================================================
-// CARREGAMENTO DOS DADOS DO APP
-// ================================================================
-function carregarAbaVinculos() {
-  var idPlano = _vincCtx && _vincCtx.idPlano;
-  if (!idPlano) return;
-  _vincCarregando = true;
-
-  renderizarTabelaVinculos();
-  var tbodyVinc = document.getElementById('vinc-tbody');
-  if (tbodyVinc) tbodyVinc.innerHTML = '<tr class="el-linha-msg"><td colspan="8" style="padding:0">' + spinnerListaHTML() + '</td></tr>';
-
-  _vinculosSDK.chamar('apiGetAbaVinculos', idPlano).then(function(res) {
-    if (!_vincCtx || String(_vincCtx.idPlano) !== String(idPlano)) return; // resposta de um plano já abandonado
-    _vincCarregando = false;
-    _vincCarregado = true;
-    _vincDadosCache = {
-      planosVinculados: (res && res.planosVinculados) || [],
-      propostasEnviadas: (res && res.propostasEnviadas) || [],
-      propostasRecebidas: (res && res.propostasRecebidas) || [],
-      planosSuperiores: (res && res.planosSuperiores) || [],
-      desvinculados: (res && res.desvinculados) || [],
-      recusadas: (res && res.recusadas) || []
-    };
-    // O resumo do plano no cabeçalho (planosSuperiores) pertence ao host: informa via SDK
-    _vinculosSDK.reportarDados({ plano: { planosSuperiores: _vincDadosCache.planosSuperiores } });
-    _vincAtualizarContadorAba();
-    renderizarTabelaVinculos();
-  }, function(err) {
-    if (!_vincCtx || String(_vincCtx.idPlano) !== String(idPlano)) return;
-    _vincCarregando = false;
-    var el = document.getElementById('vinc-tbody');
-    if (el) el.innerHTML = '<tr class="el-linha-msg"><td colspan="8" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(err.message) + '</td></tr>';
-  });
-}
-
-function atualizarAbaVinculos() { carregarAbaVinculos(); }
-
-// ================================================================
-// HANDSHAKE COM O HOST
-// ================================================================
-_vinculosSDK.aoVisibilidade(function(v) {
-  _vincVis = v;
-  if (v.aba && v.pagina && _vincCtx && !_vincCarregado && !_vincCarregando) {
-    carregarAbaVinculos();
-  }
-});
-
-_vinculosSDK.aoContexto(function(ctx) {
-  if (_vincCtx && String(_vincCtx.idPlano) === String(ctx.idPlano)) {
-    _vincCtx = ctx;
-    if (_vincCarregado) {
-      renderizarTabelaVinculos();
-      _vincAtualizarContadorAba();
-    }
-    return;
-  }
-  _vincCtx = ctx;
-  _vincCarregado = false;
-  _vincCarregando = false;
-  _vincDadosCache = { planosVinculados: [], propostasEnviadas: [], propostasRecebidas: [], planosSuperiores: [], desvinculados: [], recusadas: [] };
-  estadoVinculos.busca = '';
-  estadoVinculos.filtroVinc = '';
-  estadoVinculos.filtroStatus = '';
-  estadoVinculos.filtroResp = '';
-  estadoVinculos.filtroTipo = '';
-  estadoVinculos.paginaAtual = 1;
-  estadoVinculos.selecionados = {};
-  if (_vincVis.aba && _vincVis.pagina) {
-    carregarAbaVinculos();
-  }
-});
-
-_vinculosSDK.aoTecla(function(evt) {
-  if (evt.key === 'Escape') {
-    if (typeof vincCancelarSelecao === 'function' && Object.keys(estadoVinculos.selecionados || {}).length > 0) {
-      vincCancelarSelecao();
-      return true;
-    }
-  } else if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && String(evt.key).toLowerCase() === 'a') {
-    if (typeof vincToggleSelecionarTodos === 'function') {
-      vincToggleSelecionarTodos(true);
-      return true;
-    }
-  }
-  return false;
-});
-
-// Compatibilidade global
-window.carregarAbaVinculos = carregarAbaVinculos;
-window.atualizarAbaVinculos = atualizarAbaVinculos;
-window.renderizarTabelaVinculos = renderizarTabelaVinculos;
-window.abrirModalVincularPlano = abrirModalVincularPlano;
-window.fecharModalVincularPlano = fecharModalVincularPlano;
-window.vincToggleSelecionarTodos = vincToggleSelecionarTodos;
-window.vincCancelarSelecao = vincCancelarSelecao;
-window.vincExcluirOrfaos = vincExcluirOrfaos;
-window.vincOrfToggle = vincOrfToggle;
-window.vincAcaoLote = vincAcaoLote;
-window.vincAbrirDetalhesPlano = vincAbrirDetalhesPlano;
-window.estadoVinculos = estadoVinculos;
-window._vinculosSDK = _vinculosSDK;
-
-// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+// app_vinculos_eventos — registro das ações delegadas (uiRegistrarAcoes)
 uiRegistrarAcoes('vinc', {
   '1': function (event) { if(event.target===this) fecharModalVincularPlano(); },
   '2': function (event) { fecharModalVincularPlano(); },
@@ -1762,4 +1776,6 @@ uiRegistrarAcoes('vinc', {
   '39': function (event) { vpVincularSuperior(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); },
   '40': function (event) { vpSolicitarSubordinado(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); }
 });
+
+
 </script>

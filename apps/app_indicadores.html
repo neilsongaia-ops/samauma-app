@@ -696,6 +696,10 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
 </div>
 
 <script>
+// Dividido por responsabilidade (fase d — docs/refatoracao_frontend.md). Mesmo <script>, mesmo escopo global;
+// instruções de topo ficam em _estado na ordem original; funções são içadas, então a ordem entre arquivos não importa.
+// app_indicadores_estado — estado global, constantes e inicialização (instruções de topo, na ordem original)
+
 // ================================================================
 // LÓGICA DO APP INDICADORES E METAS
 // ================================================================
@@ -743,6 +747,388 @@ var _IND_PER_CURTO = {
 };
 
 var _indUltimoClicado = null;
+var IND_ORDEM_CASO = { semmeta: 0, '': 1 };
+
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('ind-search-wrap'), caixa = document.getElementById('ind-search-caixa');
+  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
+  var inp = document.getElementById('ind-filtro-busca');
+  if (inp && !inp.value.trim()) {
+    caixa.classList.add('hidden');
+    var toggle = document.getElementById('ind-search-toggle');
+    if (toggle) toggle.classList.remove('hidden');
+  }
+});
+var IND_CHIPS_VINCULO_MAX = 3;
+var seletorElemInd = null, seletorElemExtraInd = null, seletorSupInd = null;
+var _indConfig = { vinculoIndicadorLimite: null, elementosLimite: null }; // resolvido pelo servidor (null = sem limite)
+
+var _IND_GRUPO_MESMO_PLANO = '__mesmo_plano__';
+var _IND_ROTULO_LIGACAO = { PAI: 'Elemento pai', FILHO: 'Elemento filho', RELACIONADO: 'Relacionado' };
+var _indwizEdicao = false;
+var estadoWizardInd = { atual: 1, passos: [1, 2, 3, 4], transicionando: false };
+var INDWIZ_TITULOS = [
+  { titulo: 'Identificação', desc: 'Nome e onde se encaixa' },
+  { titulo: 'Medição', desc: 'Como e quando medir' },
+  { titulo: 'Responsáveis', desc: 'Quem acompanha' },
+  { titulo: 'Referência', desc: 'Ponto de partida e fonte' }
+];
+
+var INDWIZ_MSGS_CAMPO = {
+  'ind-nome': { valueMissing: 'Informe o nome do indicador.', tooShort: 'Use pelo menos 2 caracteres.' },
+  'ind-formula': { valueMissing: 'Informe a fórmula de cálculo.' },
+  'ind-intervalo-qtd': { valueMissing: 'Informe o intervalo (número maior que zero).', rangeUnderflow: 'Use um número maior que zero.' },
+  'ind-inicio-continuo': { valueMissing: 'Informe a data de início.' }
+};
+(function () {
+  var form = document.getElementById('form-novo-indicador');
+  if (!form) return;
+  form.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' || (e.target.closest && e.target.closest('#ind-selresp'))) return;
+    e.preventDefault();
+    if (estadoWizardInd.atual >= 3) _indwizSalvar(); else _indwizProximo();
+  });
+})();
+var _metaGrade = null;   // resposta de apiGetPeriodosIndicador (períodos + meta de cada um)
+var _metaReq = 0;        // descarta respostas de anos já trocados
+_indicadoresSDK.aoVisibilidade(function(v) {
+  _indVis = v;
+  if (v.aba && v.pagina && _indCtx && !_indCarregado && !_indCarregando) {
+    _indIniciar();
+  }
+});
+
+_indicadoresSDK.aoContexto(function(ctx) {
+  if (_indCtx && String(_indCtx.idPlano) === String(ctx.idPlano)) {
+    // Mesmo plano reaberto (ou trâmite): atualiza contexto e re-renderiza se já carregado
+    _indCtx = ctx;
+    if (_indCarregado) {
+      if (typeof _indRenderCorpo === 'function') _indRenderCorpo();
+      _indicadoresSDK.reportarDados({ indicadores: _indIndicadores, indicadoresSuperiores: _indIndicadoresSuperiores, metas: _indMetas });
+      _indicadoresSDK.reportarContagem(_indIndicadores.length);
+    }
+    return;
+  }
+  _indCtx = ctx;
+  _indCarregado = false;
+  _indIndicadores = [];
+  _indIndicadoresSuperiores = [];
+  _indMetas = [];
+  _indDefinicaoEditavel = { editavel: true, motivo: '' };
+  estadoIndicadores.busca = '';
+  estadoIndicadores.filtroResp = '';
+  estadoIndicadores.filtroFreq = '';
+  estadoIndicadores.filtroElem = '';
+  estadoIndicadores.sort = { col: 'prioridade', dir: 'asc' };
+  estadoIndicadores.paginaAtual = 1;
+  estadoIndicadores.expandidos = {};
+  estadoIndicadores.selecionados = {};
+  estadoIndicadores.painelId = null;
+  _indCarregando = false;
+  _indFilaAposCarga = [];
+  // Só carrega agora se a aba já estiver à vista; senão a notificação de
+  // visibilidade (mudarView) dispara a carga quando o usuário abri-la.
+  if (_indVis.aba && _indVis.pagina) _indIniciar();
+});
+
+_indicadoresSDK.aoPainelFechado(function() {
+  if (estadoIndicadores && estadoIndicadores.painelId) {
+    estadoIndicadores.painelId = null;
+    if (_indCarregado && typeof _indRenderCorpo === 'function') _indRenderCorpo();
+  }
+});
+
+_indicadoresSDK.aoTecla(function(evt) {
+  if (evt.key === 'Escape') {
+    if (typeof indCancelarSelecao === 'function' && Object.keys(estadoIndicadores.selecionados || {}).length > 0) {
+      indCancelarSelecao();
+      return true;
+    }
+  } else if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && String(evt.key).toLowerCase() === 'a') {
+    if (typeof indToggleSelecionarTodos === 'function') {
+      indToggleSelecionarTodos(true);
+      return true;
+    }
+  }
+  return false;
+});
+
+// Exposição global das funções esperadas por outras partes do sistema
+window.abrirModalIndicador = abrirModalIndicador;
+window.abrirModalEdicaoIndicador = _indComDados(abrirModalEdicaoIndicador);
+window.abrirModalIndicadorGlobal = abrirModalIndicadorGlobal;
+window.abrirModalMeta = _indComDados(abrirModalMeta);
+window.abrirModalEdicaoMeta = _indComDados(abrirModalEdicaoMeta);
+window.abrirModalListaIndicadores = _indComDados(abrirModalListaIndicadores);
+window.indAbrirPainel = _indComDados(indAbrirPainel);
+window.exportarIndicadoresMetasCSV = _indComDados(exportarIndicadoresMetasCSV);
+window.confirmarExclusaoIndicador = _indComDados(confirmarExclusaoIndicador);
+window.confirmarExclusaoMeta = _indComDados(confirmarExclusaoMeta);
+window.editarIndicador = _indComDados(editarIndicador);
+window.atualizarAbaIndicadores = atualizarAbaIndicadores;
+window.carregarAbaIndicadores = carregarAbaIndicadores;
+window.indGarantirCarregado = indGarantirCarregado;
+window.renderizarSecaoIndicadores = renderizarSecaoIndicadores;
+window.estadoIndicadores = estadoIndicadores;
+window._indicadoresSDK = _indicadoresSDK;
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+
+// app_indicadores_api — chamadas ao servidor (SDK / google.script.run / apiX)
+
+function indExcluirSelecionados() {
+  var ids = Object.keys(estadoIndicadores.selecionados);
+  if (!ids.length) return;
+  showConfirm('Excluir indicadores?', 'Deseja excluir ' + ids.length + (ids.length === 1 ? ' indicador' : ' indicadores') + ' e suas metas? Esta ação não pode ser desfeita.', function() {
+    mostrarLoader();
+    var promises = ids.map(function(id) {
+      return _indicadoresSDK.chamar('apiExcluirIndicador', id);
+    });
+    Promise.allSettled(promises).then(function(results) {
+      esconderLoader();
+      if (ids.indexOf(estadoIndicadores.painelId) !== -1) {
+        estadoIndicadores.painelId = null;
+        if (typeof fecharPainelDetalhes === 'function') fecharPainelDetalhes();
+      }
+      estadoIndicadores.selecionados = {};
+      var erros = results.filter(function(r) { return r.status === 'rejected'; });
+      if (erros.length) {
+        showMessage('error', 'Alguns indicadores não foram excluídos', escapeHtml(erros[0].reason ? (erros[0].reason.message || String(erros[0].reason)) : 'Erro'));
+      } else {
+        showMessage('success', 'Excluídos', 'Indicadores excluídos com sucesso.');
+      }
+      carregarAbaIndicadores();
+    });
+  });
+}
+
+function confirmarExclusaoIndicador(id, nome) {
+  showConfirm(
+    'Excluir Indicador?',
+    'Deseja excluir o indicador <strong>' + escapeHtml(nome) + '</strong>?<br>Suas metas e resultados deixarão de ser exibidos no plano.',
+    function() {
+      mostrarLoader();
+      _indicadoresSDK.chamar('apiExcluirIndicador', id).then(function() {
+        esconderLoader();
+        carregarAbaIndicadores();
+      }, function(err) {
+        esconderLoader();
+        showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+      });
+    }
+  );
+}
+
+function confirmarExclusaoMeta(id, label) {
+  showConfirm(
+    'Excluir Meta?',
+    'Deseja excluir a meta <strong>' + escapeHtml(label) + '</strong>?<br>Os resultados já lançados para ela deixarão de ser considerados na apuração.',
+    function() {
+      mostrarLoader();
+      _indicadoresSDK.chamar('apiExcluirMeta', id).then(function() {
+        esconderLoader();
+        carregarAbaIndicadores();
+      }, function(err) {
+        esconderLoader();
+        showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+      });
+    }
+  );
+}
+
+function prepararDadosResponsavelInd() {
+  if (cacheUnidadesInd.length === 0) {
+    _indicadoresSDK.chamar('apiGetListaUnidades').then(function(lista) {
+      cacheUnidadesInd = (lista || []).map(function(u) {
+        return {
+          id: String(u.id).trim(), nome: u.nome, sigla: u.sigla,
+          idPai: u.idPai ? String(u.idPai).trim() : null
+        };
+      });
+      definirContextoPermitidoInd();
+      carregarUsuariosInd();
+    });
+  } else {
+    definirContextoPermitidoInd();
+    if (cacheUsuariosInd.length === 0) carregarUsuariosInd();
+  }
+}
+
+function carregarUsuariosInd() {
+  if (cacheUsuariosInd.length > 0) return;
+  _indicadoresSDK.chamar('apiGetListaUsuarios').then(function(lista) {
+    cacheUsuariosInd = lista || [];
+  });
+}
+
+function handleSalvarIndicador(e) {
+  e.preventDefault();
+  if (!_indwizValidarTudoAntesDeSalvar()) return;
+  var responsaveis = seletorRespInd
+    ? seletorRespInd.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; })
+    : [];
+
+  var inputElem = document.getElementById('input-ind-id-elemento');
+  if (!inputElem || !inputElem.value) {
+    showMessage('warning', 'Atenção', 'Selecione o Elemento do Plano ao qual o indicador pertence.');
+    return;
+  }
+
+  if (responsaveis.length === 0) {
+    showMessage('warning', 'Atenção', 'Adicione ao menos um Responsável pela Coleta.');
+    return;
+  }
+
+  var form = e.target;
+  var fonteDados = form.fonteDados.value.trim();
+  if (fonteDados) {
+    var fonteUrl = _urlFonteDados(fonteDados);
+    if (!fonteUrl) {
+      showMessage('warning', 'Atenção', 'O campo <strong>Fonte de Dados</strong> deve ser um link web válido (ex.: https://sigaa.ufpa.br). Corrija o endereço ou deixe o campo em branco.');
+      return;
+    }
+    fonteDados = fonteUrl;
+  }
+
+  mostrarLoader();
+
+  var dados = {
+    nome: form.nome.value,
+    formula: form.formula.value,
+    unidade: form.unidade.value,
+    interpretacao: form.interpretacao.value,
+    frequencia: form.frequencia.value,
+    dataReferencia: form.dataReferencia.value,
+    intervaloQtd: form.intervaloQtd.value,
+    intervaloUnidade: form.intervaloUnidade.value,
+    inicioContinuo: form.inicioContinuo.value,
+    regraAgregacao: form.regraAgregacao.value,
+    indiceBase: form.indiceBase.value,
+    fonteDados: fonteDados,
+    idElementoVinculado: form.idElementoVinculado.value,
+    responsaveis: responsaveis
+  };
+  // Superiores: só segue quando o campo está visível (oculto = nenhum elemento do indicador tem elemento superior)
+  if (seletorSupInd && !document.getElementById('group-ind-superior').classList.contains('hidden')) dados.idsIndicadoresSuperiores = seletorSupInd.getIds();
+  // Outros elementos: só segue quando o campo está visível (oculto = limite 1 sem nada escolhido; não mexe no que já existe)
+  var gExtraSalvar = document.getElementById('group-ind-elementos-extra');
+  if (seletorElemExtraInd && gExtraSalvar && !gExtraSalvar.classList.contains('hidden')) dados.idsElementosAdicionais = seletorElemExtraInd.getIds();
+
+  var idEdicaoEl = document.getElementById('input-ind-id-edicao');
+  var idEdicao = idEdicaoEl ? idEdicaoEl.value : '';
+  var acao = idEdicao ? 'apiAtualizarIndicador' : 'apiSalvarIndicador';
+  if (idEdicao) dados.id = idEdicao;
+
+  _indicadoresSDK.chamar(acao, dados).then(function() {
+    esconderLoader();
+    fecharModalIndicador();
+    carregarAbaIndicadores();
+  }, function(err) {
+    esconderLoader();
+    showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+  });
+}
+
+// ---- Metas por período: o modal mostra os períodos que a frequência do indicador gera para o ano ----
+
+function _metaCarregarGrade() {
+  var idInd = (document.getElementById('input-meta-id-indicador') || {}).value;
+  var ano = parseInt((document.getElementById('input-meta-ano') || {}).value, 10);
+  var box = document.getElementById('meta-grade');
+  var fora = document.getElementById('meta-fora');
+  if (!box) return;
+  _metaGrade = null;
+  _metaSalvarHabilitado(false);
+  if (fora) fora.innerHTML = '';
+  if (!idInd || !ano || ano < 1900 || ano > 9999) { box.innerHTML = ''; return; }
+  box.innerHTML = '<div class="indw-meta-carregando"><div class="lista-spinner"></div>Carregando períodos…</div>';
+  var req = ++_metaReq;
+  _indicadoresSDK.chamar('apiGetPeriodosIndicador', idInd, ano).then(function(res) {
+    if (req !== _metaReq) return;
+    _metaGrade = res;
+    _metaRenderGrade();
+  }, function(err) {
+    if (req !== _metaReq) return;
+    // ex.: indicador Contínuo sem data de início — a mensagem do servidor explica o que falta
+    box.innerHTML = '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">event_busy</span><span>' + escapeHtml((err && err.message) || String(err)) + '</span></div>';
+  });
+}
+
+function handleSalvarMetas(e) {
+  e.preventDefault();
+  if (!_metaGrade) return;
+  var idInd = document.getElementById('input-meta-id-indicador').value;
+  var ano = parseInt(document.getElementById('input-meta-ano').value, 10);
+  var metas = [];
+  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) {
+    metas.push({ inicio: inp.getAttribute('data-inicio'), valor: inp.value });
+  });
+  mostrarLoader();
+  _indicadoresSDK.chamar('apiSalvarMetasPeriodo', { idIndicador: idInd, ano: ano, metas: metas }).then(function() {
+    esconderLoader();
+    fecharModalMeta();
+    carregarAbaIndicadores();
+  }, function(err) {
+    esconderLoader();
+    showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+  });
+}
+
+// ================================================================
+// CICLO DE VIDA DO APP VIA SDK
+// ================================================================
+
+function _indIniciar() {
+  if (!_indCtx || !_indCtx.idPlano) return;
+  _indCarregando = true;
+  renderizarSecaoIndicadores();
+  var tbody = document.getElementById('ind-tbody');
+  if (tbody && !_indCarregado) {
+    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="7" style="padding:0">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner"></div>') + '</td></tr>';
+  }
+
+  _indicadoresSDK.chamar('apiGetAbaIndicadores', _indCtx.idPlano).then(function(res) {
+    _indIndicadores = (res && res.indicadores) || [];
+    _indIndicadoresSuperiores = (res && res.indicadoresSuperiores) || [];
+    _indMetas = (res && res.metas) || [];
+    _indDefinicaoEditavel = (res && res.definicaoEditavel) || { editavel: true, motivo: '' };
+    _indConfig = (res && res.configIndicadores) || { vinculoIndicadorLimite: null, elementosLimite: null };
+    if (seletorRespInd && seletorRespInd.atualizarLimite) seletorRespInd.atualizarLimite();
+    _indCarregado = true;
+    _indCarregando = false;
+
+    _indicadoresSDK.reportarDados({
+      indicadores: _indIndicadores,
+      indicadoresSuperiores: _indIndicadoresSuperiores,
+      metas: _indMetas
+    });
+    _indicadoresSDK.reportarContagem(_indIndicadores.length);
+
+    renderizarSecaoIndicadores();
+
+    // Quem pediu os dados (outras telas/abas) é atendido agora, já com tudo carregado.
+    var fila = _indFilaAposCarga; _indFilaAposCarga = [];
+    fila.forEach(function(cb) { try { cb(); } catch (e) { console.error(e); } });
+
+    if (_indPainelPendenteId) {
+      var pend = _indPainelPendenteId;
+      _indPainelPendenteId = null;
+      indAbrirPainel(pend);
+    } else if (estadoIndicadores.painelId) {
+      var ip = _indPorId(estadoIndicadores.painelId);
+      if (ip) _indRenderPainel(ip); else if (typeof fecharPainelDetalhes === 'function') fecharPainelDetalhes();
+    }
+  }, function(err) {
+    _indCarregando = false;
+    _indFilaAposCarga = [];
+    var tbodyErr = document.getElementById('ind-tbody');
+    if (tbodyErr) {
+      tbodyErr.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(err.message || String(err)) + '</td></tr>';
+    }
+  });
+}
+
+// app_indicadores_regras — regras de tela e utilitários (sem render de lista)
 
 function _indPermiteEdicao() {
   if (_indCtx && _indCtx.permissoes) return !!_indCtx.permissoes.gerenciarElementos;
@@ -790,6 +1176,547 @@ function _indDados() {
   };
 }
 
+function _indPrioridadePeso(p, anos) {
+  if (!p.metas || p.metas.length === 0) return 1;
+  if (anos && anos.length) {
+    var tem = {}; p.metas.forEach(function(m) { tem[m.ano] = true; });
+    var temLacuna = anos.some(function(a) { return !tem[a]; });
+    if (temLacuna) return 2;
+  }
+  return 3;
+}
+
+// Indicadores SEM METAS (linha pintada) vêm SEMPRE no topo, qualquer que seja a ordenação escolhida; a ordenação do usuário
+// só decide a ordem dentro de cada grupo (sem metas, depois os demais).
+function _indRankAtencao(p) {
+  return IND_ORDEM_CASO[_indCasoLinha(p, !p.metas || p.metas.length === 0)];
+}
+
+function _indAnosVigencia(metas) {
+  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano) || {};
+  var ini = parseInt(pl.anoInicio, 10), fim = parseInt(pl.anoFim, 10);
+  if (ini && fim && fim >= ini && fim - ini < 15) {
+    var a = []; for (var y = ini; y <= fim; y++) a.push(y); return a;
+  }
+  var s = {}; (metas || []).forEach(function(m) { if (m.ano) s[m.ano] = true; });
+  return Object.keys(s).map(Number).sort();
+}
+
+function _indPerOrdem(p) { var m = String(p || '').match(/^(\d)/); return m ? +m[1] : 0; }
+function _indCmpMeta(a, b) {
+  var ka = a.periodoInicioISO || '', kb = b.periodoInicioISO || '';
+  if (ka && kb) return ka < kb ? -1 : (ka > kb ? 1 : 0);
+  return _indPerOrdem(a.periodo) - _indPerOrdem(b.periodo);
+}
+function _indEhAnual(p) { return !p || /^anual$/i.test(String(p).trim()); }
+function _indNum(v) {
+  var n = Number(String(v).replace(',', '.'));
+  return isFinite(n) ? n.toLocaleString('pt-BR') : String(v);
+}
+function _indEhMonetario(unidade) {
+  return /^(R\$|\$|€|£|monetário)$/i.test(String(unidade || '').trim());
+}
+function _indValorUnidadeTxt(valor, unidade) {
+  var numStr = _indNum(valor);
+  var u = String(unidade || '').trim();
+  if (_indEhMonetario(u)) {
+    return u + ' ' + numStr;
+  }
+  return numStr + (u ? ' ' + u : '');
+}
+function _indFreqTxt(p) {
+  return (p.frequencia === 'Contínuo' && p.intervaloQtd)
+    ? 'Contínuo (a cada ' + p.intervaloQtd + ' ' + String(p.intervaloUnidade || '').toLowerCase() + ')'
+    : (p.frequencia || '');
+}
+function _indMenorMelhor(p) { return /menor/i.test(String(p.interpretacao || '')); }
+function _indPorId(id) { var d = _indDados(); return d.com.concat(d.sem).find(function(p) { return String(p.id) === String(id); }) || null; }
+
+function _indSyncBarra() {
+  var e = estadoIndicadores, todos = _indDados(); todos = todos.com.concat(todos.sem);
+  var bc = document.getElementById('ind-btn-clear'); if (bc) bc.classList.toggle('hidden', !e.busca);
+  var respTipo = {}, elNome = {};
+  todos.forEach(function(p) {
+    if (p.responsavel) respTipo[p.responsavel] = p.tipoResponsavel;
+    if (p.elemento) elNome[String(p.elemento.id)] = p.elemento.codigo || p.elemento.titulo;
+  });
+  var rot = {
+    resp: e.filtroResp ? nomeRespExibicao(e.filtroResp, respTipo[e.filtroResp]) : '',
+    elem: e.filtroElem ? (e.filtroElem === '—' ? 'sem vínculo' : (elNome[e.filtroElem] || '')) : '',
+    freq: e.filtroFreq
+  };
+  Object.keys(_indFiltrosDef).forEach(function(c) {
+    var v = rot[c];
+    var lb = document.getElementById('ind-filtro-label-' + c);
+    if (lb) lb.textContent = v ? _indFiltrosDef[c].label + ': ' + v : _indFiltrosDef[c].label;
+    var bt = document.getElementById('ind-filtro-btn-' + c); if (bt) bt.classList.toggle('el-filtro-btn--ativo', !!v);
+    var x = document.getElementById('ind-filtro-x-' + c); if (x) x.classList.toggle('hidden', !v);
+  });
+  var bl = document.getElementById('ind-btn-limpar'); if (bl) bl.classList.toggle('hidden', !_indTemFiltro());
+}
+
+function indMudarTamanho(val) {
+  estadoIndicadores.itensPorPagina = parseInt(val, 10) || 10;
+  estadoIndicadores.paginaAtual = 1;
+  _indRenderCorpo();
+}
+
+function _urlFonteDados(valor) {
+  var v = String(valor || '').trim();
+  if (!v || /\s/.test(v)) return null;
+  var comProto = /^https?:\/\//i.test(v) ? v : 'https://' + v;
+  try {
+    var u = new URL(comProto);
+    if ((u.protocol === 'http:' || u.protocol === 'https:') && u.hostname.indexOf('.') > 0) return u.href;
+  } catch (err) {}
+  return null;
+}
+function _indTipVinculoPlano(g) {
+  var t = (g.nome || 'Plano superior') + ': ' + (g.itens || []).filter(Boolean).join('; ');
+  if (g.semEfeito) t += g.pendente ? '  (aguardando aprovação do vínculo entre os planos)' : '  (plano desvinculado — vínculo sem efeito)';
+  return t;
+}
+
+function importarIndicadoresCSV() {
+  showMessage('info', 'Em Desenvolvimento', 'A importação de indicadores via CSV será liberada em breve.');
+}
+
+function indToggleExpand(id) {
+  var k = String(id);
+  estadoIndicadores.expandidos[k] = !estadoIndicadores.expandidos[k];
+  _indRenderCorpo();
+  if (estadoIndicadores.expandidos[k]) _indRolarFaixaAnoAtual(k);
+}
+function _indRolarFaixaAnoAtual(k) {
+  var tr = document.querySelector('tr.ind-linha[data-id="' + k.replace(/"/g, '\\"') + '"]');
+  var det = tr && tr.nextElementSibling;
+  var faixa = det && det.querySelector('.ind-faixa');
+  var atual = faixa && faixa.querySelector('.ind-ano.is-atual');
+  if (!atual || faixa.scrollWidth <= faixa.clientWidth) return;
+  faixa.scrollLeft = Math.max(0, atual.offsetLeft - (faixa.clientWidth - atual.offsetWidth) / 2);
+}
+
+function indToggleExpandirTodos() {
+  var lista = _indSortLista(_indFiltrar(_indListaAtiva()));
+  var start = (estadoIndicadores.paginaAtual - 1) * estadoIndicadores.itensPorPagina;
+  var pagina = lista.slice(start, start + estadoIndicadores.itensPorPagina);
+  var todos = pagina.every(function(p) { return estadoIndicadores.expandidos[String(p.id)]; });
+  pagina.forEach(function(p) { estadoIndicadores.expandidos[String(p.id)] = !todos; });
+  _indRenderCorpo();
+}
+
+function indAbrirPainel(id) {
+  if (!_indCarregado) {
+    _indPainelPendenteId = id;
+    var view = document.getElementById('detp-view-detalhes');
+    if (view && typeof spinnerListaHTML === 'function') view.innerHTML = spinnerListaHTML();
+    if (typeof abrirPainelDetalhes === 'function') abrirPainelDetalhes('detalhes');
+    return;
+  }
+  var p = _indPorId(id);
+  if (!p) return;
+  if (typeof window._appNotificarPainelFechado === 'function') window._appNotificarPainelFechado(); // outros apps largam o painel
+  estadoIndicadores.painelId = String(id);
+  _indRenderPainel(p);
+  if (typeof abrirPainelDetalhes === 'function') abrirPainelDetalhes('detalhes');
+  _indRenderCorpo();
+}
+
+function editarIndicador(id) {
+  abrirModalEdicaoIndicador(id);
+}
+
+function _initSeletorRespInd() {
+  if (seletorRespInd) return;
+  if (typeof SeletorResponsaveis === 'undefined') return;
+  seletorRespInd = SeletorResponsaveis.criar({
+    containerId: 'ind-selresp',
+    label: 'Responsáveis pela coleta',
+    helpText: 'Unidades ou servidores que lançam os resultados deste indicador. Pode adicionar mais de um.',
+    getUnidades: function() { return unidadesContextoPermitidoInd; },
+    getUsuarios: function() { return cacheUsuariosInd; },
+    getLimite: function() { return _indConfig.respIndicadorLimite; },
+    textoLimite: function(l) { return 'Este plano permite até ' + l + ' responsáve' + (l === 1 ? 'l' : 'is') + ' pela coleta por indicador. Remova um para incluir outro.'; },
+    filtroUsuarios: function(lista) {
+      var setUnidadeIds = new Set(unidadesContextoPermitidoInd.map(function(u) { return String(u.id); }));
+      var setExclusivos = new Set(usuariosExclusivosContextoInd.map(String));
+      return (lista || []).filter(function(user) {
+        return setUnidadeIds.has(String(user.idUnidadeLotacao)) || setExclusivos.has(String(user.id));
+      });
+    }
+  });
+}
+
+function _setContextoElemInd(idElemento) {
+  var box = document.getElementById('msg-contexto-elem-ind');
+  var lbl = document.getElementById('lbl-elem-ind');
+  var boxMob = document.getElementById('msg-contexto-elem-ind-mob');
+  var lblMob = document.getElementById('lbl-elem-ind-mob');
+  if (!box || !lbl) return;
+  var el = null;
+  if (idElemento) {
+    var elFromDet = (dadosDetalhados && dadosDetalhados.elementos || []).find(function(e) { return String(e.id) === String(idElemento); });
+    if (elFromDet) {
+      el = elFromDet;
+    } else {
+      var indComEl = _indIndicadores.find(function(i) { return String(i.idElemento) === String(idElemento) && i.nomeElemento; });
+      if (indComEl) {
+        el = { id: idElemento, titulo: indComEl.nomeElemento, codigo: indComEl.codigoElemento || '', tipo: '' };
+      }
+    }
+  }
+  if (el) {
+    var txtEl = (el.codigo ? el.codigo + ' — ' : '') + (el.tipo ? el.tipo + ': ' : '') + el.titulo;
+    lbl.textContent = txtEl;
+    box.classList.remove('hidden');
+    if (boxMob && lblMob) { lblMob.textContent = txtEl; boxMob.classList.remove('hidden'); }
+  } else {
+    box.classList.add('hidden');
+    if (boxMob) boxMob.classList.add('hidden');
+  }
+}
+
+function _indOpcoesElementos(excluirId) {
+  var cores = (dadosDetalhados && dadosDetalhados.coresTipo) || {};
+  return ((dadosDetalhados && dadosDetalhados.elementos) || [])
+    .filter(function(e) { return String(e.id) !== String(excluirId || ''); })
+    .sort(function(a, b) { return (typeof compararCodigos === 'function') ? compararCodigos(a.codigo, b.codigo) : String(a.codigo || '').localeCompare(String(b.codigo || ''), 'pt-BR', { numeric: true }); })
+    .map(function(e) { return { id: e.id, titulo: e.titulo, codigo: e.codigo, tipo: e.tipo, cor: cores[e.tipo] || '' }; });
+}
+
+// Elementos em que o indicador é aferido agora (principal + outros escolhidos)
+function _indIdsElementosAtuais() {
+  var ids = idElementoAtualInd ? [String(idElementoAtualInd)] : [];
+  if (seletorElemExtraInd) seletorElemExtraInd.getIds().forEach(function(id) { if (ids.indexOf(id) < 0) ids.push(id); });
+  return ids;
+}
+
+// Elementos superiores (de planos superiores) de qualquer elemento do indicador
+function _indIdsElementosSuperiores() {
+  var meus = _indIdsElementosAtuais(), vistos = {}, lista = [];
+  ((dadosDetalhados && dadosDetalhados.elementos) || []).forEach(function(e) {
+    if (meus.indexOf(String(e.id)) < 0) return;
+    (e.idsElementoSuperior || (e.idElementoSuperior ? [e.idElementoSuperior] : [])).forEach(function(s) {
+      s = String(s); if (!vistos[s]) { vistos[s] = true; lista.push(s); }
+    });
+  });
+  return lista;
+}
+
+function _indIdPropria() {
+  var i = document.getElementById('input-ind-id-edicao');
+  return i ? String(i.value || '') : '';
+}
+
+// Como os elementos de um indicador do mesmo plano se ligam aos deste indicador (espelha
+// _motivosLigacaoElementosIndicador do servidor): 'PAI' = B é pai de A, 'FILHO' = B é filho de A, 'RELACIONADO'.
+function _indMotivosLigacao(idsB) {
+  var mapa = {}, motivos = [];
+  ((dadosDetalhados && dadosDetalhados.elementos) || []).forEach(function(e) { mapa[String(e.id)] = e; });
+  function add(m) { if (motivos.indexOf(m) < 0) motivos.push(m); }
+  function rels(e) { return (e.idsElementoRelacionado || []).map(String); }
+  _indIdsElementosAtuais().forEach(function(a) {
+    var ea = mapa[a];
+    if (!ea) return;
+    idsB.forEach(function(b) {
+      var eb = mapa[b];
+      if (!eb || a === b) return;
+      if (String(eb.idPai || '') === a) add('FILHO');
+      if (String(ea.idPai || '') === b) add('PAI');
+      if (rels(ea).indexOf(b) > -1 || rels(eb).indexOf(a) > -1) add('RELACIONADO');
+    });
+  });
+  return motivos;
+}
+
+// Já é (direta ou indiretamente) subordinado a este indicador? Vincular criaria um ciclo.
+function _indCriaCiclo(idCandidato) {
+  var self = _indIdPropria();
+  if (!self) return false;
+  var supDe = {};
+  _indIndicadoresDoPlano().forEach(function(i) { supDe[String(i.id)] = (i.idsIndicadoresSuperiores || []).map(String); });
+  var pilha = [String(idCandidato)], vistos = {};
+  while (pilha.length) {
+    var x = pilha.pop();
+    if (x === self) return true;
+    if (vistos[x]) continue;
+    vistos[x] = true;
+    (supDe[x] || []).forEach(function(s) { pilha.push(s); });
+  }
+  return false;
+}
+
+function _indIndicadoresDoPlano() {
+  return _indIndicadores.length ? _indIndicadores : ((dadosDetalhados && dadosDetalhados.indicadores) || []);
+}
+
+function _indTodasMesmoPlano() {
+  var self = _indIdPropria();
+  return _indIndicadoresDoPlano().filter(function(i) { return String(i.id) !== self; }).map(function(i) {
+    var ids = [String(i.idElemento)].concat((i.idsElementosAdicionais || []).map(String));
+    var elem = ((i.codigoElemento ? i.codigoElemento + ' ' : '') + (i.nomeElemento || '')).trim();
+    var mot = _indMotivosLigacao(ids);
+    var rotulo = mot.map(function(m) { return _IND_ROTULO_LIGACAO[m]; }).join(', ');
+    return { id: i.id, titulo: i.nome, codigo: i.codigoElemento || '', tipo: '', cor: '',
+      meta: rotulo + (rotulo && elem ? ' · ' : '') + elem,
+      idPlanoOrigem: _IND_GRUPO_MESMO_PLANO, nomePlanoOrigem: 'Neste plano',
+      idsElementos: ids, aceitaVinculo: true, mesmoPlano: true, motivos: mot };
+  });
+}
+
+function _indTodasSuperiores() {
+  var sups = _indIndicadoresSuperiores.length ? _indIndicadoresSuperiores : ((dadosDetalhados && dadosDetalhados.indicadoresSuperiores) || []);
+  return sups.map(function(i) {
+    var elem = ((i.codigoElemento ? i.codigoElemento + ' ' : '') + (i.nomeElemento || '')).trim();
+    return { id: i.id, titulo: i.nome, codigo: i.codigoElemento || '', tipo: '', meta: elem + (i.unidade ? (elem ? ' · ' : '') + i.unidade : ''), cor: '',
+      idPlanoOrigem: i.idPlanoOrigem || '', nomePlanoOrigem: i.nomePlanoOrigem || 'Plano superior',
+      idsElementos: (i.idsElementos || [i.idElemento]).map(String), aceitaVinculo: i.aceitaVinculo !== false };
+  }).concat(_indTodasMesmoPlano());
+}
+function _indOpcoesSuperiores() {
+  var validos = {};
+  _indIdsElementosSuperiores().forEach(function(id) { validos[id] = true; });
+  var mesmoOk = _indConfig.mesmoPlanoPermitido !== false;
+  return _indTodasSuperiores().filter(function(o) {
+    if (o.mesmoPlano) return mesmoOk && o.motivos.length > 0 && !_indCriaCiclo(o.id);
+    return o.aceitaVinculo && o.idsElementos.some(function(e) { return validos[e]; });
+  });
+}
+
+function _initSeletoresVinculosInd() {
+  if (!seletorElemInd && document.getElementById('ind-selelem')) {
+    seletorElemInd = SeletorLista.criar({
+      containerId: 'ind-selelem', semGrupos: true, filtrosTipo: true, unico: true,
+      getOpcoes: function() { return _indOpcoesElementos(); },
+      getLimite: function() { return null; },
+      onChange: function() { selecionarElementoIndicador(seletorElemInd.getIds()[0] || ''); },
+      textos: {
+        rotulo: 'Elemento do plano', icone: 'category', obrigatorio: true, ajuda: '',
+        placeholder: 'Selecione o elemento', vazio: 'Nenhum elemento neste plano.', vazioBusca: ' neste plano',
+        chipsAria: 'Elemento do plano escolhido', telaTitulo: 'Elemento do plano', telaBusca: 'Buscar elementos deste plano', remover: 'Remover '
+      }
+    });
+  }
+  if (!seletorElemExtraInd && document.getElementById('ind-selelemextra')) {
+    seletorElemExtraInd = SeletorLista.criar({
+      containerId: 'ind-selelemextra', semGrupos: true, filtrosTipo: true,
+      getOpcoes: function() { return _indOpcoesElementos(idElementoAtualInd); },
+      getLimite: function() { var l = _indConfig.elementosLimite; return (l === null || l === undefined) ? null : Math.max(0, l - 1); },
+      onChange: _indAoMudarElementos,
+      textos: {
+        rotulo: 'Também aferido em', icone: 'category',
+        ajuda: 'Outros elementos deste plano em que este mesmo indicador também é aferido. O elemento do plano acima continua sendo o principal.',
+        vazio: 'Nenhum outro elemento neste plano.', vazioBusca: ' neste plano',
+        chipsAria: 'Outros elementos escolhidos', telaTitulo: 'Também aferido em', telaBusca: 'Buscar elementos deste plano', remover: 'Remover '
+      }
+    });
+  }
+  if (!seletorSupInd && document.getElementById('ind-selsup')) {
+    seletorSupInd = SeletorLista.criar({
+      containerId: 'ind-selsup',
+      getOpcoes: _indOpcoesSuperiores, getTodasOpcoes: _indTodasSuperiores,
+      getLimite: function() { return _indConfig.vinculoIndicadorLimite; },
+      onChange: function() {},
+      textos: {
+        rotulo: 'Contribui para indicador superior', icone: 'north_east',
+        ajuda: 'Indicadores que serão impactados pelos resultados deste indicador: os de elementos superiores (planos superiores) e os de elementos pai, filho ou relacionados neste plano.',
+        vazio: 'Nenhum indicador disponível: os elementos deste indicador não têm elementos superiores, pai, filho ou relacionados com indicadores.', vazioBusca: ' entre os indicadores disponíveis',
+        desativado: 'O vínculo com indicadores superiores está desativado neste plano.',
+        chipsAria: 'Indicadores superiores escolhidos', telaTitulo: 'Contribui para', telaBusca: 'Buscar indicadores', remover: 'Remover vínculo com '
+      }
+    });
+  }
+}
+
+// Mostra/esconde os grupos conforme os elementos escolhidos e os limites do plano
+function _indAtualizarGrupos() {
+  var gExtra = document.getElementById('group-ind-elementos-extra');
+  if (gExtra) {
+    var lim = _indConfig.elementosLimite;
+    var temOutros = _indOpcoesElementos(idElementoAtualInd).length > 0;
+    var temSel = !!(seletorElemExtraInd && seletorElemExtraInd.getQuantidade());
+    gExtra.classList.toggle('hidden', !idElementoAtualInd || ((lim === 1 || !temOutros) && !temSel));
+  }
+  var gSup = document.getElementById('group-ind-superior');
+  if (gSup) gSup.classList.toggle('hidden', _indOpcoesSuperiores().length === 0 && !(seletorSupInd && seletorSupInd.getQuantidade()));
+  if (seletorElemExtraInd) seletorElemExtraInd.atualizar();
+  if (seletorSupInd) seletorSupInd.atualizar();
+}
+
+// Elemento(s) mudou: tira o principal dos "outros" e os superiores que deixaram de valer
+function _indAoMudarElementos() {
+  _indAoMudarElementosBase();
+  definirContextoPermitidoInd();
+}
+function _indAoMudarElementosBase() {
+  if (seletorElemExtraInd) {
+    var op = _indOpcoesElementos(idElementoAtualInd);
+    var ids = seletorElemExtraInd.getIds();
+    var manter = ids.filter(function(id) { return String(id) !== String(idElementoAtualInd || ''); });
+    if (manter.length !== ids.length) {
+      seletorElemExtraInd.setLista(manter.map(function(id) { return op.find(function(o) { return String(o.id) === id; }) || { id: id }; }));
+    }
+  }
+  if (seletorSupInd) {
+    var atuais = seletorSupInd.getIds();
+    var ficam = _indOpcoesSuperiores().filter(function(o) { return atuais.indexOf(String(o.id)) > -1; });
+    if (ficam.length !== atuais.length) seletorSupInd.setLista(ficam);
+  }
+  _indAtualizarGrupos();
+}
+
+// Abertura do modal: escolhe os vínculos já gravados (idsAdic = outros elementos; idsSup = indicadores superiores)
+function _indPrepararVinculos(idsAdic, idsSup) {
+  _initSeletoresVinculosInd();
+  if (!seletorElemExtraInd || !seletorSupInd) return;
+  seletorElemExtraInd.limpar();
+  seletorSupInd.limpar();
+  var op = _indOpcoesElementos(idElementoAtualInd);
+  seletorElemExtraInd.setLista((idsAdic || []).map(function(id) { return op.find(function(o) { return String(o.id) === String(id); }) || { id: id }; }));
+  var todas = _indTodasSuperiores();
+  seletorSupInd.setLista((idsSup || []).map(function(id) {
+    return todas.find(function(o) { return String(o.id) === String(id); }) || { id: id, titulo: 'Indicador do plano superior', codigo: '', nomePlanoOrigem: '' };
+  }));
+  seletorSupInd.setCarregando(!_indCarregado);
+  if (!_indCarregado) _indFilaAposCarga.push(function() { seletorSupInd.setCarregando(false); _indAtualizarGrupos(); });
+  _indAtualizarGrupos();
+  definirContextoPermitidoInd();
+}
+
+function definirContextoPermitidoInd() {
+  usuariosExclusivosContextoInd = [];
+  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano);
+  if (!pl || pl.tipoResponsavel !== 'UNIDADE') {
+    unidadesContextoPermitidoInd = cacheUnidadesInd;
+    return;
+  }
+  // União dos responsáveis de TODOS os elementos do indicador (principal + "Também aferido em").
+  // Se algum elemento ainda não tem responsável (ou nenhum foi escolhido), vale o plano inteiro (espelha o servidor).
+  var elems = (dadosDetalhados && dadosDetalhados.elementos) || [];
+  var idsEl = _indIdsElementosAtuais();
+  var algumSemResp = idsEl.length === 0;
+  var unidadesHerdadas = [], usuariosHerdados = [];
+  idsEl.forEach(function(id) {
+    var el = elems.find(function(e) { return String(e.id) === String(id); });
+    var herdados = _respElementoParaListaInd(el);
+    if (!herdados.length) { algumSemResp = true; return; }
+    herdados.forEach(function(r) {
+      var alvo = r.tipo === 'USER' ? usuariosHerdados : unidadesHerdadas;
+      if (alvo.indexOf(String(r.id)) < 0) alvo.push(String(r.id));
+    });
+  });
+
+  if (algumSemResp) {
+    var idUnidadePlano = String(pl.idUnidade).trim();
+    var hier = processarHierarquiaInd(cacheUnidadesInd);
+    var mapa = hier.mapa, raizesGlobais = hier.raizesGlobais;
+    var listaPermitida = [];
+    if (mapa[idUnidadePlano]) listaPermitida = achatarArvoreInd(mapa[idUnidadePlano]);
+    else raizesGlobais.forEach(function(no) { listaPermitida = listaPermitida.concat(achatarArvoreInd(no)); });
+    unidadesContextoPermitidoInd = listaPermitida;
+    return;
+  }
+
+  usuariosExclusivosContextoInd = usuariosHerdados;
+  if (unidadesHerdadas.length === 0) {
+    unidadesContextoPermitidoInd = [];
+    return;
+  }
+  var hier2 = processarHierarquiaInd(cacheUnidadesInd);
+  var mapa2 = hier2.mapa;
+  var vistos = new Set();
+  var listaPermitida2 = [];
+  unidadesHerdadas.forEach(function(idUnidade) {
+    if (mapa2[idUnidade]) {
+      achatarArvoreInd(mapa2[idUnidade]).forEach(function(no) {
+        if (!vistos.has(no.id)) { vistos.add(no.id); listaPermitida2.push(no); }
+      });
+    }
+  });
+  unidadesContextoPermitidoInd = listaPermitida2;
+}
+
+function processarHierarquiaInd(lista) {
+  var mapa = {}; var raizesGlobais = [];
+  (lista || []).forEach(function(u) { u.children = []; mapa[u.id] = u; });
+  (lista || []).forEach(function(u) {
+    if (u.id === u.idPai) u.idPai = null;
+    if (u.idPai && mapa[u.idPai]) mapa[u.idPai].children.push(u);
+    else raizesGlobais.push(u);
+  });
+  return { mapa: mapa, raizesGlobais: raizesGlobais };
+}
+
+function onMudarFrequenciaInd() {
+  var el = document.getElementById('ind-frequencia');
+  var v = el ? el.value : '';
+  var wrap = document.getElementById('ind-intervalo-wrap');
+  if (wrap) wrap.classList.toggle('hidden', v !== 'Contínuo');
+  ['ind-intervalo-qtd', 'ind-inicio-continuo'].forEach(function(id) {
+    var campo = document.getElementById(id);
+    if (campo) campo.required = (v === 'Contínuo');
+  });
+}
+
+// Travas da definição (frequência/intervalo/início/regra): só na EDIÇÃO e fora da janela de elaboração/revisão.
+// O servidor aplica a mesma regra (apiAtualizarIndicador) — aqui só evita o erro depois de preencher.
+function _indAplicarTravaDefinicao(edicao) {
+  var travar = !!edicao && !_indDefinicaoEditavel.editavel;
+  ['ind-frequencia', 'ind-regra-agregacao', 'ind-intervalo-qtd', 'ind-intervalo-unidade', 'ind-inicio-continuo'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.disabled = travar;
+  });
+  document.querySelectorAll('#modal-novo-indicador .ind-trava').forEach(function(ic) { ic.classList.toggle('hidden', !travar); });
+  var avisoTrava = document.getElementById('indwiz-aviso-trava');
+  if (avisoTrava) avisoTrava.classList.toggle('hidden', !travar);
+  // Elemento principal, outros elementos e indicadores superiores seguem a mesma janela estrutural (o servidor também recusa)
+  var motivoTrava = 'Travado durante a execução do plano. Para alterar, abra uma revisão.';
+  [seletorElemInd, seletorElemExtraInd, seletorSupInd].forEach(function(sl) { if (sl) sl.setDesabilitado(travar, motivoTrava); });
+}
+
+// ================================================================
+// WIZARD DO MODAL DE INDICADOR (_indwiz*) — mesmo padrão do wizard de Risco (_rwiz*)
+// ================================================================
+
+function _metaPreencherTodos() {
+  var v = (document.getElementById('input-meta-preencher') || {}).value;
+  if (v === undefined || String(v).trim() === '') return;
+  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) { inp.value = String(v).trim(); });
+}
+
+function carregarAbaIndicadores() {
+  _indIniciar();
+}
+
+// Recarrega só se a aba já foi carregada alguma vez; se nunca foi aberta, os dados
+// virão frescos quando for (carga sob demanda) — não vale gastar uma chamada agora.
+function atualizarAbaIndicadores() {
+  if (!_indCarregado && !_indCarregando) return;
+  _indIniciar();
+}
+
+// Garante os dados carregados antes de executar `cb` (síncrono se já carregado).
+// Usado por quem depende dos indicadores sem a aba estar aberta (aba Monitoramento,
+// exportação, painel/lista de indicadores abertos a partir de Elementos).
+function indGarantirCarregado(cb) {
+  if (_indCarregado) { if (cb) cb(); return; }
+  if (cb) _indFilaAposCarga.push(cb);
+  if (!_indCarregando) _indIniciar();
+}
+
+function _indComDados(fn) {
+  return function() {
+    var self = this, args = arguments;
+    indGarantirCarregado(function() { fn.apply(self, args); });
+  };
+}
+
+// Handshake de inicialização
+// Carga sob demanda: só busca os dados quando a aba fica visível (o SDK entrega
+// {pagina, aba}); o contador da aba vem do host (KPIs do cabeçalho) sem precisar disto.
+
+// app_indicadores_lista — render de lista/tabela/árvore, filtros, ordenação, paginação, menus
+
 function _indListaAtiva() {
   return _indDados().todos;
 }
@@ -807,23 +1734,6 @@ function _indFiltrar(lista) {
     if (fElem && (p.elemento ? String(p.elemento.id) : '—') !== fElem) return false;
     return true;
   });
-}
-
-function _indPrioridadePeso(p, anos) {
-  if (!p.metas || p.metas.length === 0) return 1;
-  if (anos && anos.length) {
-    var tem = {}; p.metas.forEach(function(m) { tem[m.ano] = true; });
-    var temLacuna = anos.some(function(a) { return !tem[a]; });
-    if (temLacuna) return 2;
-  }
-  return 3;
-}
-
-// Indicadores SEM METAS (linha pintada) vêm SEMPRE no topo, qualquer que seja a ordenação escolhida; a ordenação do usuário
-// só decide a ordem dentro de cada grupo (sem metas, depois os demais).
-var IND_ORDEM_CASO = { semmeta: 0, '': 1 };
-function _indRankAtencao(p) {
-  return IND_ORDEM_CASO[_indCasoLinha(p, !p.metas || p.metas.length === 0)];
 }
 function _indSortLista(lista) {
   var sort = estadoIndicadores.sort || { col: 'prioridade', dir: 'asc' };
@@ -917,31 +1827,6 @@ function indDefinirDirecaoOrdenacao(dir) {
   estadoIndicadores.paginaAtual = 1;
   _indRenderCorpo();
 }
-
-function _indAnosVigencia(metas) {
-  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano) || {};
-  var ini = parseInt(pl.anoInicio, 10), fim = parseInt(pl.anoFim, 10);
-  if (ini && fim && fim >= ini && fim - ini < 15) {
-    var a = []; for (var y = ini; y <= fim; y++) a.push(y); return a;
-  }
-  var s = {}; (metas || []).forEach(function(m) { if (m.ano) s[m.ano] = true; });
-  return Object.keys(s).map(Number).sort();
-}
-
-function _indPerOrdem(p) { var m = String(p || '').match(/^(\d)/); return m ? +m[1] : 0; }
-function _indCmpMeta(a, b) {
-  var ka = a.periodoInicioISO || '', kb = b.periodoInicioISO || '';
-  if (ka && kb) return ka < kb ? -1 : (ka > kb ? 1 : 0);
-  return _indPerOrdem(a.periodo) - _indPerOrdem(b.periodo);
-}
-function _indEhAnual(p) { return !p || /^anual$/i.test(String(p).trim()); }
-function _indNum(v) {
-  var n = Number(String(v).replace(',', '.'));
-  return isFinite(n) ? n.toLocaleString('pt-BR') : String(v);
-}
-function _indEhMonetario(unidade) {
-  return /^(R\$|\$|€|£|monetário)$/i.test(String(unidade || '').trim());
-}
 function _indValorUnidadeHTML(valor, unidade) {
   var numStr = escapeHtml(_indNum(valor));
   var uniStr = escapeHtml(unidade || '');
@@ -950,22 +1835,7 @@ function _indValorUnidadeHTML(valor, unidade) {
   }
   return '<strong>' + numStr + '</strong>' + (uniStr ? ' <span>' + uniStr + '</span>' : '');
 }
-function _indValorUnidadeTxt(valor, unidade) {
-  var numStr = _indNum(valor);
-  var u = String(unidade || '').trim();
-  if (_indEhMonetario(u)) {
-    return u + ' ' + numStr;
-  }
-  return numStr + (u ? ' ' + u : '');
-}
-function _indFreqTxt(p) {
-  return (p.frequencia === 'Contínuo' && p.intervaloQtd)
-    ? 'Contínuo (a cada ' + p.intervaloQtd + ' ' + String(p.intervaloUnidade || '').toLowerCase() + ')'
-    : (p.frequencia || '');
-}
-function _indMenorMelhor(p) { return /menor/i.test(String(p.interpretacao || '')); }
 function _indTemFiltro() { var e = estadoIndicadores; return !!(e.busca || e.filtroResp || e.filtroElem || e.filtroFreq); }
-function _indPorId(id) { var d = _indDados(); return d.com.concat(d.sem).find(function(p) { return String(p.id) === String(id); }) || null; }
 
 function indAbrirBusca() {
   var toggle = document.getElementById('ind-search-toggle');
@@ -981,17 +1851,6 @@ function indLimparBusca() {
   if (inp) { inp.value = ''; inp.focus(); }
   aplicarFiltrosIndicadores();
 }
-
-document.addEventListener('click', function(e) {
-  var wrap = document.getElementById('ind-search-wrap'), caixa = document.getElementById('ind-search-caixa');
-  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
-  var inp = document.getElementById('ind-filtro-busca');
-  if (inp && !inp.value.trim()) {
-    caixa.classList.add('hidden');
-    var toggle = document.getElementById('ind-search-toggle');
-    if (toggle) toggle.classList.remove('hidden');
-  }
-});
 
 function aplicarFiltrosIndicadores() {
   estadoIndicadores.busca = (document.getElementById('ind-filtro-busca') || {}).value || '';
@@ -1046,39 +1905,10 @@ function limparFiltrosIndicadores() {
   _indRenderCorpo();
 }
 
-function _indSyncBarra() {
-  var e = estadoIndicadores, todos = _indDados(); todos = todos.com.concat(todos.sem);
-  var bc = document.getElementById('ind-btn-clear'); if (bc) bc.classList.toggle('hidden', !e.busca);
-  var respTipo = {}, elNome = {};
-  todos.forEach(function(p) {
-    if (p.responsavel) respTipo[p.responsavel] = p.tipoResponsavel;
-    if (p.elemento) elNome[String(p.elemento.id)] = p.elemento.codigo || p.elemento.titulo;
-  });
-  var rot = {
-    resp: e.filtroResp ? nomeRespExibicao(e.filtroResp, respTipo[e.filtroResp]) : '',
-    elem: e.filtroElem ? (e.filtroElem === '—' ? 'sem vínculo' : (elNome[e.filtroElem] || '')) : '',
-    freq: e.filtroFreq
-  };
-  Object.keys(_indFiltrosDef).forEach(function(c) {
-    var v = rot[c];
-    var lb = document.getElementById('ind-filtro-label-' + c);
-    if (lb) lb.textContent = v ? _indFiltrosDef[c].label + ': ' + v : _indFiltrosDef[c].label;
-    var bt = document.getElementById('ind-filtro-btn-' + c); if (bt) bt.classList.toggle('el-filtro-btn--ativo', !!v);
-    var x = document.getElementById('ind-filtro-x-' + c); if (x) x.classList.toggle('hidden', !v);
-  });
-  var bl = document.getElementById('ind-btn-limpar'); if (bl) bl.classList.toggle('hidden', !_indTemFiltro());
-}
-
 function _indAtualizarPaginacao(total, start) {
   if (typeof _atualizarBarraPaginacao === 'function') {
     _atualizarBarraPaginacao('ind', estadoIndicadores, total, start);
   }
-}
-
-function indMudarTamanho(val) {
-  estadoIndicadores.itensPorPagina = parseInt(val, 10) || 10;
-  estadoIndicadores.paginaAtual = 1;
-  _indRenderCorpo();
 }
 
 function indMudarPagina(dir) {
@@ -1097,17 +1927,6 @@ function indIrParaPagina(pg) {
   var p = parseInt(pg, 10) || 1;
   estadoIndicadores.paginaAtual = Math.min(Math.max(1, p), totalPags);
   _indRenderCorpo();
-}
-
-function _urlFonteDados(valor) {
-  var v = String(valor || '').trim();
-  if (!v || /\s/.test(v)) return null;
-  var comProto = /^https?:\/\//i.test(v) ? v : 'https://' + v;
-  try {
-    var u = new URL(comProto);
-    if ((u.protocol === 'http:' || u.protocol === 'https:') && u.hostname.indexOf('.') > 0) return u.href;
-  } catch (err) {}
-  return null;
 }
 
 function _indCoberturaHTML(p, anos) {
@@ -1165,12 +1984,6 @@ function _indFaixaHTML(p, anos, podeEditar) {
 
 // Badges de vínculo superior: um por plano (link + qtd); desvinculado = triângulo, aguardando = relógio roxo; >3 planos vira "+N".
 // Sem plano superior: nenhum badge. Mesmo componente visual de chipsVinculoElementoHTML (aba Elementos).
-var IND_CHIPS_VINCULO_MAX = 3;
-function _indTipVinculoPlano(g) {
-  var t = (g.nome || 'Plano superior') + ': ' + (g.itens || []).filter(Boolean).join('; ');
-  if (g.semEfeito) t += g.pendente ? '  (aguardando aprovação do vínculo entre os planos)' : '  (plano desvinculado — vínculo sem efeito)';
-  return t;
-}
 function _indChipVinculoHTML(rotulo, semEfeito, pendente, tip) {
   // O ícone único do badge diz o estado: clipe = vínculo válido; relógio roxo = aguardando aprovação; clipe cortado vermelho = desvinculado
   var desv = semEfeito && !pendente, pend = semEfeito && pendente;
@@ -1432,10 +2245,6 @@ function renderizarSecaoIndicadores() {
   _indRenderCorpo();
 }
 
-function importarIndicadoresCSV() {
-  showMessage('info', 'Em Desenvolvimento', 'A importação de indicadores via CSV será liberada em breve.');
-}
-
 function indCliqueLinha(ev, id) {
   if (ev.target.tagName === 'INPUT' || ev.target.closest('.acoes-linha, .ind-decisao, button, .el-th-btn, .ds-icon-action, .el-toggle-btn, a')) return;
   var idStr = String(id);
@@ -1464,21 +2273,6 @@ function indDuploCliqueLinha(ev, id) {
   indAbrirPainel(id);
 }
 
-function indToggleExpand(id) {
-  var k = String(id);
-  estadoIndicadores.expandidos[k] = !estadoIndicadores.expandidos[k];
-  _indRenderCorpo();
-  if (estadoIndicadores.expandidos[k]) _indRolarFaixaAnoAtual(k);
-}
-function _indRolarFaixaAnoAtual(k) {
-  var tr = document.querySelector('tr.ind-linha[data-id="' + k.replace(/"/g, '\\"') + '"]');
-  var det = tr && tr.nextElementSibling;
-  var faixa = det && det.querySelector('.ind-faixa');
-  var atual = faixa && faixa.querySelector('.ind-ano.is-atual');
-  if (!atual || faixa.scrollWidth <= faixa.clientWidth) return;
-  faixa.scrollLeft = Math.max(0, atual.offsetLeft - (faixa.clientWidth - atual.offsetWidth) / 2);
-}
-
 function _indSelecionarIntervalo(idA, idB, pagina) {
   var rows = pagina || _indSortLista(_indFiltrar(_indListaAtiva()));
   var idxA = rows.findIndex(function(r) { return String(r.id) === String(idA); });
@@ -1505,15 +2299,6 @@ function _indAtualizarSelecaoVisual() {
   });
   var listaCompleta = _indSortLista(_indFiltrar(_indListaAtiva()));
   _indAtualizarSelecao(listaCompleta);
-}
-
-function indToggleExpandirTodos() {
-  var lista = _indSortLista(_indFiltrar(_indListaAtiva()));
-  var start = (estadoIndicadores.paginaAtual - 1) * estadoIndicadores.itensPorPagina;
-  var pagina = lista.slice(start, start + estadoIndicadores.itensPorPagina);
-  var todos = pagina.every(function(p) { return estadoIndicadores.expandidos[String(p.id)]; });
-  pagina.forEach(function(p) { estadoIndicadores.expandidos[String(p.id)] = !todos; });
-  _indRenderCorpo();
 }
 
 function indToggleSelecao(id, marcado) {
@@ -1571,32 +2356,6 @@ function _indAtualizarSelecao(listaVisivel) {
         + (podeEditar ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" data-on-click="ind.39" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>' : '');
     }
   }
-}
-
-function indExcluirSelecionados() {
-  var ids = Object.keys(estadoIndicadores.selecionados);
-  if (!ids.length) return;
-  showConfirm('Excluir indicadores?', 'Deseja excluir ' + ids.length + (ids.length === 1 ? ' indicador' : ' indicadores') + ' e suas metas? Esta ação não pode ser desfeita.', function() {
-    mostrarLoader();
-    var promises = ids.map(function(id) {
-      return _indicadoresSDK.chamar('apiExcluirIndicador', id);
-    });
-    Promise.allSettled(promises).then(function(results) {
-      esconderLoader();
-      if (ids.indexOf(estadoIndicadores.painelId) !== -1) {
-        estadoIndicadores.painelId = null;
-        if (typeof fecharPainelDetalhes === 'function') fecharPainelDetalhes();
-      }
-      estadoIndicadores.selecionados = {};
-      var erros = results.filter(function(r) { return r.status === 'rejected'; });
-      if (erros.length) {
-        showMessage('error', 'Alguns indicadores não foram excluídos', escapeHtml(erros[0].reason ? (erros[0].reason.message || String(erros[0].reason)) : 'Erro'));
-      } else {
-        showMessage('success', 'Excluídos', 'Indicadores excluídos com sucesso.');
-      }
-      carregarAbaIndicadores();
-    });
-  });
 }
 
 function _indRenderPainel(p) {
@@ -1657,73 +2416,6 @@ function _indRenderPainel(p) {
     + '</div>';
 }
 
-function indAbrirPainel(id) {
-  if (!_indCarregado) {
-    _indPainelPendenteId = id;
-    var view = document.getElementById('detp-view-detalhes');
-    if (view && typeof spinnerListaHTML === 'function') view.innerHTML = spinnerListaHTML();
-    if (typeof abrirPainelDetalhes === 'function') abrirPainelDetalhes('detalhes');
-    return;
-  }
-  var p = _indPorId(id);
-  if (!p) return;
-  if (typeof window._appNotificarPainelFechado === 'function') window._appNotificarPainelFechado(); // outros apps largam o painel
-  estadoIndicadores.painelId = String(id);
-  _indRenderPainel(p);
-  if (typeof abrirPainelDetalhes === 'function') abrirPainelDetalhes('detalhes');
-  _indRenderCorpo();
-}
-
-function confirmarExclusaoIndicador(id, nome) {
-  showConfirm(
-    'Excluir Indicador?',
-    'Deseja excluir o indicador <strong>' + escapeHtml(nome) + '</strong>?<br>Suas metas e resultados deixarão de ser exibidos no plano.',
-    function() {
-      mostrarLoader();
-      _indicadoresSDK.chamar('apiExcluirIndicador', id).then(function() {
-        esconderLoader();
-        carregarAbaIndicadores();
-      }, function(err) {
-        esconderLoader();
-        showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
-      });
-    }
-  );
-}
-
-function editarIndicador(id) {
-  abrirModalEdicaoIndicador(id);
-}
-
-function confirmarExclusaoMeta(id, label) {
-  showConfirm(
-    'Excluir Meta?',
-    'Deseja excluir a meta <strong>' + escapeHtml(label) + '</strong>?<br>Os resultados já lançados para ela deixarão de ser considerados na apuração.',
-    function() {
-      mostrarLoader();
-      _indicadoresSDK.chamar('apiExcluirMeta', id).then(function() {
-        esconderLoader();
-        carregarAbaIndicadores();
-      }, function(err) {
-        esconderLoader();
-        showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
-      });
-    }
-  );
-}
-
-function abrirModalListaIndicadores(idElemento, event) {
-  if (event) event.stopPropagation();
-  estadoIndicadores.filtroElem = String(idElemento);
-  estadoIndicadores.busca = '';
-  estadoIndicadores.filtroResp = '';
-  estadoIndicadores.filtroFreq = '';
-  estadoIndicadores.paginaAtual = 1;
-  _indSyncBarra();
-  _indRenderCorpo();
-  if (typeof mudarView === 'function') mudarView('metas');
-}
-
 function exportarIndicadoresMetasCSV() {
   var d = _indDados();
   var inds = d.todos;
@@ -1767,27 +2459,6 @@ function exportarIndicadoresMetasCSV() {
 
 // --- FUNÇÕES DOS MODAIS ---
 
-function _initSeletorRespInd() {
-  if (seletorRespInd) return;
-  if (typeof SeletorResponsaveis === 'undefined') return;
-  seletorRespInd = SeletorResponsaveis.criar({
-    containerId: 'ind-selresp',
-    label: 'Responsáveis pela coleta',
-    helpText: 'Unidades ou servidores que lançam os resultados deste indicador. Pode adicionar mais de um.',
-    getUnidades: function() { return unidadesContextoPermitidoInd; },
-    getUsuarios: function() { return cacheUsuariosInd; },
-    getLimite: function() { return _indConfig.respIndicadorLimite; },
-    textoLimite: function(l) { return 'Este plano permite até ' + l + ' responsáve' + (l === 1 ? 'l' : 'is') + ' pela coleta por indicador. Remova um para incluir outro.'; },
-    filtroUsuarios: function(lista) {
-      var setUnidadeIds = new Set(unidadesContextoPermitidoInd.map(function(u) { return String(u.id); }));
-      var setExclusivos = new Set(usuariosExclusivosContextoInd.map(String));
-      return (lista || []).filter(function(user) {
-        return setUnidadeIds.has(String(user.idUnidadeLotacao)) || setExclusivos.has(String(user.id));
-      });
-    }
-  });
-}
-
 function _respElementoParaListaInd(el) {
   if (!el || !el.quem) return [];
   return el.quem.filter(function(q) { return !q.colaborador; }).map(function(q) {
@@ -1795,33 +2466,85 @@ function _respElementoParaListaInd(el) {
   });
 }
 
-function _setContextoElemInd(idElemento) {
-  var box = document.getElementById('msg-contexto-elem-ind');
-  var lbl = document.getElementById('lbl-elem-ind');
-  var boxMob = document.getElementById('msg-contexto-elem-ind-mob');
-  var lblMob = document.getElementById('lbl-elem-ind-mob');
-  if (!box || !lbl) return;
-  var el = null;
-  if (idElemento) {
-    var elFromDet = (dadosDetalhados && dadosDetalhados.elementos || []).find(function(e) { return String(e.id) === String(idElemento); });
-    if (elFromDet) {
-      el = elFromDet;
-    } else {
-      var indComEl = _indIndicadores.find(function(i) { return String(i.idElemento) === String(idElemento) && i.nomeElemento; });
-      if (indComEl) {
-        el = { id: idElemento, titulo: indComEl.nomeElemento, codigo: indComEl.codigoElemento || '', tipo: '' };
-      }
+function selecionarElementoIndicador(idElemento) {
+  var inp = document.getElementById('input-ind-id-elemento');
+  if (inp) inp.value = idElemento || '';
+  idElementoAtualInd = idElemento || null;
+  definirContextoPermitidoInd();
+  if (seletorElemInd) seletorElemInd.setErro('');
+  _indAoMudarElementos();
+  if (idElemento && !_indwizEdicao) {
+    if (seletorRespInd) {
+      var el = (dadosDetalhados && dadosDetalhados.elementos || []).find(function(e) { return String(e.id) === String(idElemento); });
+      var respAuto = _respElementoParaListaInd(el);
+      if (respAuto.length) seletorRespInd.setLista(respAuto);
+      else seletorRespInd.limpar();
+    }
+  } else if (!idElemento) {
+    if (seletorRespInd) seletorRespInd.limpar();
+  }
+}
+
+function achatarArvoreInd(noRaiz) {
+  var resultado = []; var stack = [noRaiz]; var visitados = new Set();
+  while (stack.length > 0) {
+    var no = stack.pop();
+    if (visitados.has(no.id)) continue;
+    visitados.add(no.id);
+    resultado.push(no);
+    if (no.children && no.children.length > 0) {
+      var filhos = no.children.slice().sort(function(a, b) { return (a.sigla || '').localeCompare(b.sigla || ''); });
+      for (var i = filhos.length - 1; i >= 0; i--) stack.push(filhos[i]);
     }
   }
-  if (el) {
-    var txtEl = (el.codigo ? el.codigo + ' — ' : '') + (el.tipo ? el.tipo + ': ' : '') + el.titulo;
-    lbl.textContent = txtEl;
-    box.classList.remove('hidden');
-    if (boxMob && lblMob) { lblMob.textContent = txtEl; boxMob.classList.remove('hidden'); }
+  return resultado;
+}
+
+function _metaRenderGrade() {
+  var box = document.getElementById('meta-grade');
+  var fora = document.getElementById('meta-fora');
+  var g = _metaGrade;
+  if (!box || !g) return;
+  var ind = _indPorId(document.getElementById('input-meta-id-indicador').value) || {};
+
+  if (!g.periodos.length) {
+    box.innerHTML = '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">calendar_today</span><span>Nenhum período em ' + escapeHtml(String(g.ano)) + '.</span></div>';
   } else {
-    box.classList.add('hidden');
-    if (boxMob) boxMob.classList.add('hidden');
+    box.innerHTML = '<div class="meta-grade-rolagem"><table class="meta-grade"><thead><tr><th>Período</th><th>Meta' + (ind.unidade ? ' (' + escapeHtml(ind.unidade) + ')' : '') + '</th></tr></thead><tbody>'
+      + g.periodos.map(function(p) {
+        var trava = p.temResultados
+          ? '<span class="material-symbols-outlined" tabindex="0" data-title="Já há resultados lançados neste período. A meta pode ser alterada, não removida.">lock</span>' : '';
+        return '<tr><td class="meta-per">' + escapeHtml(p.rotulo) + trava + '</td>'
+          + '<td><input type="text" class="ds-input meta-valor" data-inicio="' + escapeHtml(p.inicioISO) + '" value="' + escapeHtml(p.valor) + '" aria-label="Meta de ' + escapeHtml(p.rotulo) + '" placeholder="Ex: 100"></td></tr>';
+      }).join('') + '</tbody></table></div>';
   }
+
+  if (fora) {
+    fora.innerHTML = (g.foraDosPeriodos && g.foraDosPeriodos.length)
+      ? '<div class="meta-aviso"><div class="meta-aviso-titulo"><span class="material-symbols-outlined">warning</span>Metas fora da frequência atual'
+        + '<span class="material-symbols-outlined ind-info" tabindex="0" data-title="Estas metas não correspondem a nenhum período da frequência atual. Exclua as que não servem mais.">info</span></div>'
+        + g.foraDosPeriodos.map(function(m) {
+          var lab = escapeJsAttr((m.periodo || '') + ' — ' + m.valor);
+          return '<div class="meta-aviso-item"><span>' + escapeHtml(m.periodo || 'Sem período') + '</span><strong>' + escapeHtml(String(m.valor)) + '</strong>'
+            + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Excluir meta" aria-label="Excluir meta" data-on-click="ind.18" data-aclick0="' + escapeHtml(String(m.id)) + '" data-aclick1="' + lab + '"><span class="material-symbols-outlined">delete</span></button></div>';
+        }).join('') + '</div>'
+      : '';
+  }
+  _metaSalvarHabilitado(g.periodos.length > 0);
+}
+
+// app_indicadores_modais — modais e wizards (abrir, validar, salvar)
+
+function abrirModalListaIndicadores(idElemento, event) {
+  if (event) event.stopPropagation();
+  estadoIndicadores.filtroElem = String(idElemento);
+  estadoIndicadores.busca = '';
+  estadoIndicadores.filtroResp = '';
+  estadoIndicadores.filtroFreq = '';
+  estadoIndicadores.paginaAtual = 1;
+  _indSyncBarra();
+  _indRenderCorpo();
+  if (typeof mudarView === 'function') mudarView('metas');
 }
 
 function abrirModalIndicador(idElemento) {
@@ -1982,25 +2705,6 @@ function abrirModalIndicadorGlobal() {
   if (modal) modal.classList.remove('hidden');
 }
 
-function selecionarElementoIndicador(idElemento) {
-  var inp = document.getElementById('input-ind-id-elemento');
-  if (inp) inp.value = idElemento || '';
-  idElementoAtualInd = idElemento || null;
-  definirContextoPermitidoInd();
-  if (seletorElemInd) seletorElemInd.setErro('');
-  _indAoMudarElementos();
-  if (idElemento && !_indwizEdicao) {
-    if (seletorRespInd) {
-      var el = (dadosDetalhados && dadosDetalhados.elementos || []).find(function(e) { return String(e.id) === String(idElemento); });
-      var respAuto = _respElementoParaListaInd(el);
-      if (respAuto.length) seletorRespInd.setLista(respAuto);
-      else seletorRespInd.limpar();
-    }
-  } else if (!idElemento) {
-    if (seletorRespInd) seletorRespInd.limpar();
-  }
-}
-
 function fecharModalIndicador() {
   var modal = document.getElementById('modal-novo-indicador');
   if (modal) modal.classList.add('hidden');
@@ -2008,361 +2712,6 @@ function fecharModalIndicador() {
 
 // ---- Vínculos do indicador: elemento principal, outros elementos do plano e indicadores superiores ----
 // Seletores com busca (components_seletor_lista.html). O servidor revalida tudo (indicador_vinculos.js).
-var seletorElemInd = null, seletorElemExtraInd = null, seletorSupInd = null;
-var _indConfig = { vinculoIndicadorLimite: null, elementosLimite: null }; // resolvido pelo servidor (null = sem limite)
-
-function _indOpcoesElementos(excluirId) {
-  var cores = (dadosDetalhados && dadosDetalhados.coresTipo) || {};
-  return ((dadosDetalhados && dadosDetalhados.elementos) || [])
-    .filter(function(e) { return String(e.id) !== String(excluirId || ''); })
-    .sort(function(a, b) { return (typeof compararCodigos === 'function') ? compararCodigos(a.codigo, b.codigo) : String(a.codigo || '').localeCompare(String(b.codigo || ''), 'pt-BR', { numeric: true }); })
-    .map(function(e) { return { id: e.id, titulo: e.titulo, codigo: e.codigo, tipo: e.tipo, cor: cores[e.tipo] || '' }; });
-}
-
-// Elementos em que o indicador é aferido agora (principal + outros escolhidos)
-function _indIdsElementosAtuais() {
-  var ids = idElementoAtualInd ? [String(idElementoAtualInd)] : [];
-  if (seletorElemExtraInd) seletorElemExtraInd.getIds().forEach(function(id) { if (ids.indexOf(id) < 0) ids.push(id); });
-  return ids;
-}
-
-// Elementos superiores (de planos superiores) de qualquer elemento do indicador
-function _indIdsElementosSuperiores() {
-  var meus = _indIdsElementosAtuais(), vistos = {}, lista = [];
-  ((dadosDetalhados && dadosDetalhados.elementos) || []).forEach(function(e) {
-    if (meus.indexOf(String(e.id)) < 0) return;
-    (e.idsElementoSuperior || (e.idElementoSuperior ? [e.idElementoSuperior] : [])).forEach(function(s) {
-      s = String(s); if (!vistos[s]) { vistos[s] = true; lista.push(s); }
-    });
-  });
-  return lista;
-}
-
-var _IND_GRUPO_MESMO_PLANO = '__mesmo_plano__';
-var _IND_ROTULO_LIGACAO = { PAI: 'Elemento pai', FILHO: 'Elemento filho', RELACIONADO: 'Relacionado' };
-
-function _indIdPropria() {
-  var i = document.getElementById('input-ind-id-edicao');
-  return i ? String(i.value || '') : '';
-}
-
-// Como os elementos de um indicador do mesmo plano se ligam aos deste indicador (espelha
-// _motivosLigacaoElementosIndicador do servidor): 'PAI' = B é pai de A, 'FILHO' = B é filho de A, 'RELACIONADO'.
-function _indMotivosLigacao(idsB) {
-  var mapa = {}, motivos = [];
-  ((dadosDetalhados && dadosDetalhados.elementos) || []).forEach(function(e) { mapa[String(e.id)] = e; });
-  function add(m) { if (motivos.indexOf(m) < 0) motivos.push(m); }
-  function rels(e) { return (e.idsElementoRelacionado || []).map(String); }
-  _indIdsElementosAtuais().forEach(function(a) {
-    var ea = mapa[a];
-    if (!ea) return;
-    idsB.forEach(function(b) {
-      var eb = mapa[b];
-      if (!eb || a === b) return;
-      if (String(eb.idPai || '') === a) add('FILHO');
-      if (String(ea.idPai || '') === b) add('PAI');
-      if (rels(ea).indexOf(b) > -1 || rels(eb).indexOf(a) > -1) add('RELACIONADO');
-    });
-  });
-  return motivos;
-}
-
-// Já é (direta ou indiretamente) subordinado a este indicador? Vincular criaria um ciclo.
-function _indCriaCiclo(idCandidato) {
-  var self = _indIdPropria();
-  if (!self) return false;
-  var supDe = {};
-  _indIndicadoresDoPlano().forEach(function(i) { supDe[String(i.id)] = (i.idsIndicadoresSuperiores || []).map(String); });
-  var pilha = [String(idCandidato)], vistos = {};
-  while (pilha.length) {
-    var x = pilha.pop();
-    if (x === self) return true;
-    if (vistos[x]) continue;
-    vistos[x] = true;
-    (supDe[x] || []).forEach(function(s) { pilha.push(s); });
-  }
-  return false;
-}
-
-function _indIndicadoresDoPlano() {
-  return _indIndicadores.length ? _indIndicadores : ((dadosDetalhados && dadosDetalhados.indicadores) || []);
-}
-
-function _indTodasMesmoPlano() {
-  var self = _indIdPropria();
-  return _indIndicadoresDoPlano().filter(function(i) { return String(i.id) !== self; }).map(function(i) {
-    var ids = [String(i.idElemento)].concat((i.idsElementosAdicionais || []).map(String));
-    var elem = ((i.codigoElemento ? i.codigoElemento + ' ' : '') + (i.nomeElemento || '')).trim();
-    var mot = _indMotivosLigacao(ids);
-    var rotulo = mot.map(function(m) { return _IND_ROTULO_LIGACAO[m]; }).join(', ');
-    return { id: i.id, titulo: i.nome, codigo: i.codigoElemento || '', tipo: '', cor: '',
-      meta: rotulo + (rotulo && elem ? ' · ' : '') + elem,
-      idPlanoOrigem: _IND_GRUPO_MESMO_PLANO, nomePlanoOrigem: 'Neste plano',
-      idsElementos: ids, aceitaVinculo: true, mesmoPlano: true, motivos: mot };
-  });
-}
-
-function _indTodasSuperiores() {
-  var sups = _indIndicadoresSuperiores.length ? _indIndicadoresSuperiores : ((dadosDetalhados && dadosDetalhados.indicadoresSuperiores) || []);
-  return sups.map(function(i) {
-    var elem = ((i.codigoElemento ? i.codigoElemento + ' ' : '') + (i.nomeElemento || '')).trim();
-    return { id: i.id, titulo: i.nome, codigo: i.codigoElemento || '', tipo: '', meta: elem + (i.unidade ? (elem ? ' · ' : '') + i.unidade : ''), cor: '',
-      idPlanoOrigem: i.idPlanoOrigem || '', nomePlanoOrigem: i.nomePlanoOrigem || 'Plano superior',
-      idsElementos: (i.idsElementos || [i.idElemento]).map(String), aceitaVinculo: i.aceitaVinculo !== false };
-  }).concat(_indTodasMesmoPlano());
-}
-function _indOpcoesSuperiores() {
-  var validos = {};
-  _indIdsElementosSuperiores().forEach(function(id) { validos[id] = true; });
-  var mesmoOk = _indConfig.mesmoPlanoPermitido !== false;
-  return _indTodasSuperiores().filter(function(o) {
-    if (o.mesmoPlano) return mesmoOk && o.motivos.length > 0 && !_indCriaCiclo(o.id);
-    return o.aceitaVinculo && o.idsElementos.some(function(e) { return validos[e]; });
-  });
-}
-
-function _initSeletoresVinculosInd() {
-  if (!seletorElemInd && document.getElementById('ind-selelem')) {
-    seletorElemInd = SeletorLista.criar({
-      containerId: 'ind-selelem', semGrupos: true, filtrosTipo: true, unico: true,
-      getOpcoes: function() { return _indOpcoesElementos(); },
-      getLimite: function() { return null; },
-      onChange: function() { selecionarElementoIndicador(seletorElemInd.getIds()[0] || ''); },
-      textos: {
-        rotulo: 'Elemento do plano', icone: 'category', obrigatorio: true, ajuda: '',
-        placeholder: 'Selecione o elemento', vazio: 'Nenhum elemento neste plano.', vazioBusca: ' neste plano',
-        chipsAria: 'Elemento do plano escolhido', telaTitulo: 'Elemento do plano', telaBusca: 'Buscar elementos deste plano', remover: 'Remover '
-      }
-    });
-  }
-  if (!seletorElemExtraInd && document.getElementById('ind-selelemextra')) {
-    seletorElemExtraInd = SeletorLista.criar({
-      containerId: 'ind-selelemextra', semGrupos: true, filtrosTipo: true,
-      getOpcoes: function() { return _indOpcoesElementos(idElementoAtualInd); },
-      getLimite: function() { var l = _indConfig.elementosLimite; return (l === null || l === undefined) ? null : Math.max(0, l - 1); },
-      onChange: _indAoMudarElementos,
-      textos: {
-        rotulo: 'Também aferido em', icone: 'category',
-        ajuda: 'Outros elementos deste plano em que este mesmo indicador também é aferido. O elemento do plano acima continua sendo o principal.',
-        vazio: 'Nenhum outro elemento neste plano.', vazioBusca: ' neste plano',
-        chipsAria: 'Outros elementos escolhidos', telaTitulo: 'Também aferido em', telaBusca: 'Buscar elementos deste plano', remover: 'Remover '
-      }
-    });
-  }
-  if (!seletorSupInd && document.getElementById('ind-selsup')) {
-    seletorSupInd = SeletorLista.criar({
-      containerId: 'ind-selsup',
-      getOpcoes: _indOpcoesSuperiores, getTodasOpcoes: _indTodasSuperiores,
-      getLimite: function() { return _indConfig.vinculoIndicadorLimite; },
-      onChange: function() {},
-      textos: {
-        rotulo: 'Contribui para indicador superior', icone: 'north_east',
-        ajuda: 'Indicadores que serão impactados pelos resultados deste indicador: os de elementos superiores (planos superiores) e os de elementos pai, filho ou relacionados neste plano.',
-        vazio: 'Nenhum indicador disponível: os elementos deste indicador não têm elementos superiores, pai, filho ou relacionados com indicadores.', vazioBusca: ' entre os indicadores disponíveis',
-        desativado: 'O vínculo com indicadores superiores está desativado neste plano.',
-        chipsAria: 'Indicadores superiores escolhidos', telaTitulo: 'Contribui para', telaBusca: 'Buscar indicadores', remover: 'Remover vínculo com '
-      }
-    });
-  }
-}
-
-// Mostra/esconde os grupos conforme os elementos escolhidos e os limites do plano
-function _indAtualizarGrupos() {
-  var gExtra = document.getElementById('group-ind-elementos-extra');
-  if (gExtra) {
-    var lim = _indConfig.elementosLimite;
-    var temOutros = _indOpcoesElementos(idElementoAtualInd).length > 0;
-    var temSel = !!(seletorElemExtraInd && seletorElemExtraInd.getQuantidade());
-    gExtra.classList.toggle('hidden', !idElementoAtualInd || ((lim === 1 || !temOutros) && !temSel));
-  }
-  var gSup = document.getElementById('group-ind-superior');
-  if (gSup) gSup.classList.toggle('hidden', _indOpcoesSuperiores().length === 0 && !(seletorSupInd && seletorSupInd.getQuantidade()));
-  if (seletorElemExtraInd) seletorElemExtraInd.atualizar();
-  if (seletorSupInd) seletorSupInd.atualizar();
-}
-
-// Elemento(s) mudou: tira o principal dos "outros" e os superiores que deixaram de valer
-function _indAoMudarElementos() {
-  _indAoMudarElementosBase();
-  definirContextoPermitidoInd();
-}
-function _indAoMudarElementosBase() {
-  if (seletorElemExtraInd) {
-    var op = _indOpcoesElementos(idElementoAtualInd);
-    var ids = seletorElemExtraInd.getIds();
-    var manter = ids.filter(function(id) { return String(id) !== String(idElementoAtualInd || ''); });
-    if (manter.length !== ids.length) {
-      seletorElemExtraInd.setLista(manter.map(function(id) { return op.find(function(o) { return String(o.id) === id; }) || { id: id }; }));
-    }
-  }
-  if (seletorSupInd) {
-    var atuais = seletorSupInd.getIds();
-    var ficam = _indOpcoesSuperiores().filter(function(o) { return atuais.indexOf(String(o.id)) > -1; });
-    if (ficam.length !== atuais.length) seletorSupInd.setLista(ficam);
-  }
-  _indAtualizarGrupos();
-}
-
-// Abertura do modal: escolhe os vínculos já gravados (idsAdic = outros elementos; idsSup = indicadores superiores)
-function _indPrepararVinculos(idsAdic, idsSup) {
-  _initSeletoresVinculosInd();
-  if (!seletorElemExtraInd || !seletorSupInd) return;
-  seletorElemExtraInd.limpar();
-  seletorSupInd.limpar();
-  var op = _indOpcoesElementos(idElementoAtualInd);
-  seletorElemExtraInd.setLista((idsAdic || []).map(function(id) { return op.find(function(o) { return String(o.id) === String(id); }) || { id: id }; }));
-  var todas = _indTodasSuperiores();
-  seletorSupInd.setLista((idsSup || []).map(function(id) {
-    return todas.find(function(o) { return String(o.id) === String(id); }) || { id: id, titulo: 'Indicador do plano superior', codigo: '', nomePlanoOrigem: '' };
-  }));
-  seletorSupInd.setCarregando(!_indCarregado);
-  if (!_indCarregado) _indFilaAposCarga.push(function() { seletorSupInd.setCarregando(false); _indAtualizarGrupos(); });
-  _indAtualizarGrupos();
-  definirContextoPermitidoInd();
-}
-
-function prepararDadosResponsavelInd() {
-  if (cacheUnidadesInd.length === 0) {
-    _indicadoresSDK.chamar('apiGetListaUnidades').then(function(lista) {
-      cacheUnidadesInd = (lista || []).map(function(u) {
-        return {
-          id: String(u.id).trim(), nome: u.nome, sigla: u.sigla,
-          idPai: u.idPai ? String(u.idPai).trim() : null
-        };
-      });
-      definirContextoPermitidoInd();
-      carregarUsuariosInd();
-    });
-  } else {
-    definirContextoPermitidoInd();
-    if (cacheUsuariosInd.length === 0) carregarUsuariosInd();
-  }
-}
-
-function carregarUsuariosInd() {
-  if (cacheUsuariosInd.length > 0) return;
-  _indicadoresSDK.chamar('apiGetListaUsuarios').then(function(lista) {
-    cacheUsuariosInd = lista || [];
-  });
-}
-
-function definirContextoPermitidoInd() {
-  usuariosExclusivosContextoInd = [];
-  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano);
-  if (!pl || pl.tipoResponsavel !== 'UNIDADE') {
-    unidadesContextoPermitidoInd = cacheUnidadesInd;
-    return;
-  }
-  // União dos responsáveis de TODOS os elementos do indicador (principal + "Também aferido em").
-  // Se algum elemento ainda não tem responsável (ou nenhum foi escolhido), vale o plano inteiro (espelha o servidor).
-  var elems = (dadosDetalhados && dadosDetalhados.elementos) || [];
-  var idsEl = _indIdsElementosAtuais();
-  var algumSemResp = idsEl.length === 0;
-  var unidadesHerdadas = [], usuariosHerdados = [];
-  idsEl.forEach(function(id) {
-    var el = elems.find(function(e) { return String(e.id) === String(id); });
-    var herdados = _respElementoParaListaInd(el);
-    if (!herdados.length) { algumSemResp = true; return; }
-    herdados.forEach(function(r) {
-      var alvo = r.tipo === 'USER' ? usuariosHerdados : unidadesHerdadas;
-      if (alvo.indexOf(String(r.id)) < 0) alvo.push(String(r.id));
-    });
-  });
-
-  if (algumSemResp) {
-    var idUnidadePlano = String(pl.idUnidade).trim();
-    var hier = processarHierarquiaInd(cacheUnidadesInd);
-    var mapa = hier.mapa, raizesGlobais = hier.raizesGlobais;
-    var listaPermitida = [];
-    if (mapa[idUnidadePlano]) listaPermitida = achatarArvoreInd(mapa[idUnidadePlano]);
-    else raizesGlobais.forEach(function(no) { listaPermitida = listaPermitida.concat(achatarArvoreInd(no)); });
-    unidadesContextoPermitidoInd = listaPermitida;
-    return;
-  }
-
-  usuariosExclusivosContextoInd = usuariosHerdados;
-  if (unidadesHerdadas.length === 0) {
-    unidadesContextoPermitidoInd = [];
-    return;
-  }
-  var hier2 = processarHierarquiaInd(cacheUnidadesInd);
-  var mapa2 = hier2.mapa;
-  var vistos = new Set();
-  var listaPermitida2 = [];
-  unidadesHerdadas.forEach(function(idUnidade) {
-    if (mapa2[idUnidade]) {
-      achatarArvoreInd(mapa2[idUnidade]).forEach(function(no) {
-        if (!vistos.has(no.id)) { vistos.add(no.id); listaPermitida2.push(no); }
-      });
-    }
-  });
-  unidadesContextoPermitidoInd = listaPermitida2;
-}
-
-function processarHierarquiaInd(lista) {
-  var mapa = {}; var raizesGlobais = [];
-  (lista || []).forEach(function(u) { u.children = []; mapa[u.id] = u; });
-  (lista || []).forEach(function(u) {
-    if (u.id === u.idPai) u.idPai = null;
-    if (u.idPai && mapa[u.idPai]) mapa[u.idPai].children.push(u);
-    else raizesGlobais.push(u);
-  });
-  return { mapa: mapa, raizesGlobais: raizesGlobais };
-}
-
-function achatarArvoreInd(noRaiz) {
-  var resultado = []; var stack = [noRaiz]; var visitados = new Set();
-  while (stack.length > 0) {
-    var no = stack.pop();
-    if (visitados.has(no.id)) continue;
-    visitados.add(no.id);
-    resultado.push(no);
-    if (no.children && no.children.length > 0) {
-      var filhos = no.children.slice().sort(function(a, b) { return (a.sigla || '').localeCompare(b.sigla || ''); });
-      for (var i = filhos.length - 1; i >= 0; i--) stack.push(filhos[i]);
-    }
-  }
-  return resultado;
-}
-
-function onMudarFrequenciaInd() {
-  var el = document.getElementById('ind-frequencia');
-  var v = el ? el.value : '';
-  var wrap = document.getElementById('ind-intervalo-wrap');
-  if (wrap) wrap.classList.toggle('hidden', v !== 'Contínuo');
-  ['ind-intervalo-qtd', 'ind-inicio-continuo'].forEach(function(id) {
-    var campo = document.getElementById(id);
-    if (campo) campo.required = (v === 'Contínuo');
-  });
-}
-
-// Travas da definição (frequência/intervalo/início/regra): só na EDIÇÃO e fora da janela de elaboração/revisão.
-// O servidor aplica a mesma regra (apiAtualizarIndicador) — aqui só evita o erro depois de preencher.
-function _indAplicarTravaDefinicao(edicao) {
-  var travar = !!edicao && !_indDefinicaoEditavel.editavel;
-  ['ind-frequencia', 'ind-regra-agregacao', 'ind-intervalo-qtd', 'ind-intervalo-unidade', 'ind-inicio-continuo'].forEach(function(id) {
-    var el = document.getElementById(id);
-    if (el) el.disabled = travar;
-  });
-  document.querySelectorAll('#modal-novo-indicador .ind-trava').forEach(function(ic) { ic.classList.toggle('hidden', !travar); });
-  var avisoTrava = document.getElementById('indwiz-aviso-trava');
-  if (avisoTrava) avisoTrava.classList.toggle('hidden', !travar);
-  // Elemento principal, outros elementos e indicadores superiores seguem a mesma janela estrutural (o servidor também recusa)
-  var motivoTrava = 'Travado durante a execução do plano. Para alterar, abra uma revisão.';
-  [seletorElemInd, seletorElemExtraInd, seletorSupInd].forEach(function(sl) { if (sl) sl.setDesabilitado(travar, motivoTrava); });
-}
-
-// ================================================================
-// WIZARD DO MODAL DE INDICADOR (_indwiz*) — mesmo padrão do wizard de Risco (_rwiz*)
-// ================================================================
-var _indwizEdicao = false;
-var estadoWizardInd = { atual: 1, passos: [1, 2, 3, 4], transicionando: false };
-var INDWIZ_TITULOS = [
-  { titulo: 'Identificação', desc: 'Nome e onde se encaixa' },
-  { titulo: 'Medição', desc: 'Como e quando medir' },
-  { titulo: 'Responsáveis', desc: 'Quem acompanha' },
-  { titulo: 'Referência', desc: 'Ponto de partida e fonte' }
-];
 
 function _indwizValorSel(id) {
   var el = document.getElementById(id);
@@ -2454,13 +2803,6 @@ function _indwizIrParaRail(n) {
   if (n > estadoWizardInd.atual && !_indwizValidarPassoAtual()) return;
   _indwizIrPara(n, n > estadoWizardInd.atual ? 'frente' : 'tras');
 }
-
-var INDWIZ_MSGS_CAMPO = {
-  'ind-nome': { valueMissing: 'Informe o nome do indicador.', tooShort: 'Use pelo menos 2 caracteres.' },
-  'ind-formula': { valueMissing: 'Informe a fórmula de cálculo.' },
-  'ind-intervalo-qtd': { valueMissing: 'Informe o intervalo (número maior que zero).', rangeUnderflow: 'Use um número maior que zero.' },
-  'ind-inicio-continuo': { valueMissing: 'Informe a data de início.' }
-};
 function _indwizMsgCampo(campo) {
   var v = campo.validity, o = INDWIZ_MSGS_CAMPO[campo.id] || {};
   if (v.valueMissing) return o.valueMissing || 'Preencha este campo.';
@@ -2571,87 +2913,6 @@ function _indwizIniciar(edicao) {
 }
 
 // Enter avança a etapa (e salva na última), como nos outros wizards
-(function () {
-  var form = document.getElementById('form-novo-indicador');
-  if (!form) return;
-  form.addEventListener('keydown', function (e) {
-    if (e.key !== 'Enter' || (e.target.closest && e.target.closest('#ind-selresp'))) return;
-    e.preventDefault();
-    if (estadoWizardInd.atual >= 3) _indwizSalvar(); else _indwizProximo();
-  });
-})();
-
-function handleSalvarIndicador(e) {
-  e.preventDefault();
-  if (!_indwizValidarTudoAntesDeSalvar()) return;
-  var responsaveis = seletorRespInd
-    ? seletorRespInd.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; })
-    : [];
-
-  var inputElem = document.getElementById('input-ind-id-elemento');
-  if (!inputElem || !inputElem.value) {
-    showMessage('warning', 'Atenção', 'Selecione o Elemento do Plano ao qual o indicador pertence.');
-    return;
-  }
-
-  if (responsaveis.length === 0) {
-    showMessage('warning', 'Atenção', 'Adicione ao menos um Responsável pela Coleta.');
-    return;
-  }
-
-  var form = e.target;
-  var fonteDados = form.fonteDados.value.trim();
-  if (fonteDados) {
-    var fonteUrl = _urlFonteDados(fonteDados);
-    if (!fonteUrl) {
-      showMessage('warning', 'Atenção', 'O campo <strong>Fonte de Dados</strong> deve ser um link web válido (ex.: https://sigaa.ufpa.br). Corrija o endereço ou deixe o campo em branco.');
-      return;
-    }
-    fonteDados = fonteUrl;
-  }
-
-  mostrarLoader();
-
-  var dados = {
-    nome: form.nome.value,
-    formula: form.formula.value,
-    unidade: form.unidade.value,
-    interpretacao: form.interpretacao.value,
-    frequencia: form.frequencia.value,
-    dataReferencia: form.dataReferencia.value,
-    intervaloQtd: form.intervaloQtd.value,
-    intervaloUnidade: form.intervaloUnidade.value,
-    inicioContinuo: form.inicioContinuo.value,
-    regraAgregacao: form.regraAgregacao.value,
-    indiceBase: form.indiceBase.value,
-    fonteDados: fonteDados,
-    idElementoVinculado: form.idElementoVinculado.value,
-    responsaveis: responsaveis
-  };
-  // Superiores: só segue quando o campo está visível (oculto = nenhum elemento do indicador tem elemento superior)
-  if (seletorSupInd && !document.getElementById('group-ind-superior').classList.contains('hidden')) dados.idsIndicadoresSuperiores = seletorSupInd.getIds();
-  // Outros elementos: só segue quando o campo está visível (oculto = limite 1 sem nada escolhido; não mexe no que já existe)
-  var gExtraSalvar = document.getElementById('group-ind-elementos-extra');
-  if (seletorElemExtraInd && gExtraSalvar && !gExtraSalvar.classList.contains('hidden')) dados.idsElementosAdicionais = seletorElemExtraInd.getIds();
-
-  var idEdicaoEl = document.getElementById('input-ind-id-edicao');
-  var idEdicao = idEdicaoEl ? idEdicaoEl.value : '';
-  var acao = idEdicao ? 'apiAtualizarIndicador' : 'apiSalvarIndicador';
-  if (idEdicao) dados.id = idEdicao;
-
-  _indicadoresSDK.chamar(acao, dados).then(function() {
-    esconderLoader();
-    fecharModalIndicador();
-    carregarAbaIndicadores();
-  }, function(err) {
-    esconderLoader();
-    showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
-  });
-}
-
-// ---- Metas por período: o modal mostra os períodos que a frequência do indicador gera para o ano ----
-var _metaGrade = null;   // resposta de apiGetPeriodosIndicador (períodos + meta de cada um)
-var _metaReq = 0;        // descarta respostas de anos já trocados
 
 function abrirModalMeta(idIndicador, anoSugerido) {
   var inpInd = document.getElementById('input-meta-id-indicador');
@@ -2695,254 +2956,7 @@ function _metaSalvarHabilitado(sim) {
   if (pre) pre.disabled = !sim;
 }
 
-function _metaCarregarGrade() {
-  var idInd = (document.getElementById('input-meta-id-indicador') || {}).value;
-  var ano = parseInt((document.getElementById('input-meta-ano') || {}).value, 10);
-  var box = document.getElementById('meta-grade');
-  var fora = document.getElementById('meta-fora');
-  if (!box) return;
-  _metaGrade = null;
-  _metaSalvarHabilitado(false);
-  if (fora) fora.innerHTML = '';
-  if (!idInd || !ano || ano < 1900 || ano > 9999) { box.innerHTML = ''; return; }
-  box.innerHTML = '<div class="indw-meta-carregando"><div class="lista-spinner"></div>Carregando períodos…</div>';
-  var req = ++_metaReq;
-  _indicadoresSDK.chamar('apiGetPeriodosIndicador', idInd, ano).then(function(res) {
-    if (req !== _metaReq) return;
-    _metaGrade = res;
-    _metaRenderGrade();
-  }, function(err) {
-    if (req !== _metaReq) return;
-    // ex.: indicador Contínuo sem data de início — a mensagem do servidor explica o que falta
-    box.innerHTML = '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">event_busy</span><span>' + escapeHtml((err && err.message) || String(err)) + '</span></div>';
-  });
-}
-
-function _metaRenderGrade() {
-  var box = document.getElementById('meta-grade');
-  var fora = document.getElementById('meta-fora');
-  var g = _metaGrade;
-  if (!box || !g) return;
-  var ind = _indPorId(document.getElementById('input-meta-id-indicador').value) || {};
-
-  if (!g.periodos.length) {
-    box.innerHTML = '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">calendar_today</span><span>Nenhum período em ' + escapeHtml(String(g.ano)) + '.</span></div>';
-  } else {
-    box.innerHTML = '<div class="meta-grade-rolagem"><table class="meta-grade"><thead><tr><th>Período</th><th>Meta' + (ind.unidade ? ' (' + escapeHtml(ind.unidade) + ')' : '') + '</th></tr></thead><tbody>'
-      + g.periodos.map(function(p) {
-        var trava = p.temResultados
-          ? '<span class="material-symbols-outlined" tabindex="0" data-title="Já há resultados lançados neste período. A meta pode ser alterada, não removida.">lock</span>' : '';
-        return '<tr><td class="meta-per">' + escapeHtml(p.rotulo) + trava + '</td>'
-          + '<td><input type="text" class="ds-input meta-valor" data-inicio="' + escapeHtml(p.inicioISO) + '" value="' + escapeHtml(p.valor) + '" aria-label="Meta de ' + escapeHtml(p.rotulo) + '" placeholder="Ex: 100"></td></tr>';
-      }).join('') + '</tbody></table></div>';
-  }
-
-  if (fora) {
-    fora.innerHTML = (g.foraDosPeriodos && g.foraDosPeriodos.length)
-      ? '<div class="meta-aviso"><div class="meta-aviso-titulo"><span class="material-symbols-outlined">warning</span>Metas fora da frequência atual'
-        + '<span class="material-symbols-outlined ind-info" tabindex="0" data-title="Estas metas não correspondem a nenhum período da frequência atual. Exclua as que não servem mais.">info</span></div>'
-        + g.foraDosPeriodos.map(function(m) {
-          var lab = escapeJsAttr((m.periodo || '') + ' — ' + m.valor);
-          return '<div class="meta-aviso-item"><span>' + escapeHtml(m.periodo || 'Sem período') + '</span><strong>' + escapeHtml(String(m.valor)) + '</strong>'
-            + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Excluir meta" aria-label="Excluir meta" data-on-click="ind.18" data-aclick0="' + escapeHtml(String(m.id)) + '" data-aclick1="' + lab + '"><span class="material-symbols-outlined">delete</span></button></div>';
-        }).join('') + '</div>'
-      : '';
-  }
-  _metaSalvarHabilitado(g.periodos.length > 0);
-}
-
-function _metaPreencherTodos() {
-  var v = (document.getElementById('input-meta-preencher') || {}).value;
-  if (v === undefined || String(v).trim() === '') return;
-  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) { inp.value = String(v).trim(); });
-}
-
-function handleSalvarMetas(e) {
-  e.preventDefault();
-  if (!_metaGrade) return;
-  var idInd = document.getElementById('input-meta-id-indicador').value;
-  var ano = parseInt(document.getElementById('input-meta-ano').value, 10);
-  var metas = [];
-  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) {
-    metas.push({ inicio: inp.getAttribute('data-inicio'), valor: inp.value });
-  });
-  mostrarLoader();
-  _indicadoresSDK.chamar('apiSalvarMetasPeriodo', { idIndicador: idInd, ano: ano, metas: metas }).then(function() {
-    esconderLoader();
-    fecharModalMeta();
-    carregarAbaIndicadores();
-  }, function(err) {
-    esconderLoader();
-    showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
-  });
-}
-
-// ================================================================
-// CICLO DE VIDA DO APP VIA SDK
-// ================================================================
-
-function _indIniciar() {
-  if (!_indCtx || !_indCtx.idPlano) return;
-  _indCarregando = true;
-  renderizarSecaoIndicadores();
-  var tbody = document.getElementById('ind-tbody');
-  if (tbody && !_indCarregado) {
-    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="7" style="padding:0">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner"></div>') + '</td></tr>';
-  }
-
-  _indicadoresSDK.chamar('apiGetAbaIndicadores', _indCtx.idPlano).then(function(res) {
-    _indIndicadores = (res && res.indicadores) || [];
-    _indIndicadoresSuperiores = (res && res.indicadoresSuperiores) || [];
-    _indMetas = (res && res.metas) || [];
-    _indDefinicaoEditavel = (res && res.definicaoEditavel) || { editavel: true, motivo: '' };
-    _indConfig = (res && res.configIndicadores) || { vinculoIndicadorLimite: null, elementosLimite: null };
-    if (seletorRespInd && seletorRespInd.atualizarLimite) seletorRespInd.atualizarLimite();
-    _indCarregado = true;
-    _indCarregando = false;
-
-    _indicadoresSDK.reportarDados({
-      indicadores: _indIndicadores,
-      indicadoresSuperiores: _indIndicadoresSuperiores,
-      metas: _indMetas
-    });
-    _indicadoresSDK.reportarContagem(_indIndicadores.length);
-
-    renderizarSecaoIndicadores();
-
-    // Quem pediu os dados (outras telas/abas) é atendido agora, já com tudo carregado.
-    var fila = _indFilaAposCarga; _indFilaAposCarga = [];
-    fila.forEach(function(cb) { try { cb(); } catch (e) { console.error(e); } });
-
-    if (_indPainelPendenteId) {
-      var pend = _indPainelPendenteId;
-      _indPainelPendenteId = null;
-      indAbrirPainel(pend);
-    } else if (estadoIndicadores.painelId) {
-      var ip = _indPorId(estadoIndicadores.painelId);
-      if (ip) _indRenderPainel(ip); else if (typeof fecharPainelDetalhes === 'function') fecharPainelDetalhes();
-    }
-  }, function(err) {
-    _indCarregando = false;
-    _indFilaAposCarga = [];
-    var tbodyErr = document.getElementById('ind-tbody');
-    if (tbodyErr) {
-      tbodyErr.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--ds-color-danger)">' + escapeHtml(err.message || String(err)) + '</td></tr>';
-    }
-  });
-}
-
-function carregarAbaIndicadores() {
-  _indIniciar();
-}
-
-// Recarrega só se a aba já foi carregada alguma vez; se nunca foi aberta, os dados
-// virão frescos quando for (carga sob demanda) — não vale gastar uma chamada agora.
-function atualizarAbaIndicadores() {
-  if (!_indCarregado && !_indCarregando) return;
-  _indIniciar();
-}
-
-// Garante os dados carregados antes de executar `cb` (síncrono se já carregado).
-// Usado por quem depende dos indicadores sem a aba estar aberta (aba Monitoramento,
-// exportação, painel/lista de indicadores abertos a partir de Elementos).
-function indGarantirCarregado(cb) {
-  if (_indCarregado) { if (cb) cb(); return; }
-  if (cb) _indFilaAposCarga.push(cb);
-  if (!_indCarregando) _indIniciar();
-}
-
-function _indComDados(fn) {
-  return function() {
-    var self = this, args = arguments;
-    indGarantirCarregado(function() { fn.apply(self, args); });
-  };
-}
-
-// Handshake de inicialização
-// Carga sob demanda: só busca os dados quando a aba fica visível (o SDK entrega
-// {pagina, aba}); o contador da aba vem do host (KPIs do cabeçalho) sem precisar disto.
-_indicadoresSDK.aoVisibilidade(function(v) {
-  _indVis = v;
-  if (v.aba && v.pagina && _indCtx && !_indCarregado && !_indCarregando) {
-    _indIniciar();
-  }
-});
-
-_indicadoresSDK.aoContexto(function(ctx) {
-  if (_indCtx && String(_indCtx.idPlano) === String(ctx.idPlano)) {
-    // Mesmo plano reaberto (ou trâmite): atualiza contexto e re-renderiza se já carregado
-    _indCtx = ctx;
-    if (_indCarregado) {
-      if (typeof _indRenderCorpo === 'function') _indRenderCorpo();
-      _indicadoresSDK.reportarDados({ indicadores: _indIndicadores, indicadoresSuperiores: _indIndicadoresSuperiores, metas: _indMetas });
-      _indicadoresSDK.reportarContagem(_indIndicadores.length);
-    }
-    return;
-  }
-  _indCtx = ctx;
-  _indCarregado = false;
-  _indIndicadores = [];
-  _indIndicadoresSuperiores = [];
-  _indMetas = [];
-  _indDefinicaoEditavel = { editavel: true, motivo: '' };
-  estadoIndicadores.busca = '';
-  estadoIndicadores.filtroResp = '';
-  estadoIndicadores.filtroFreq = '';
-  estadoIndicadores.filtroElem = '';
-  estadoIndicadores.sort = { col: 'prioridade', dir: 'asc' };
-  estadoIndicadores.paginaAtual = 1;
-  estadoIndicadores.expandidos = {};
-  estadoIndicadores.selecionados = {};
-  estadoIndicadores.painelId = null;
-  _indCarregando = false;
-  _indFilaAposCarga = [];
-  // Só carrega agora se a aba já estiver à vista; senão a notificação de
-  // visibilidade (mudarView) dispara a carga quando o usuário abri-la.
-  if (_indVis.aba && _indVis.pagina) _indIniciar();
-});
-
-_indicadoresSDK.aoPainelFechado(function() {
-  if (estadoIndicadores && estadoIndicadores.painelId) {
-    estadoIndicadores.painelId = null;
-    if (_indCarregado && typeof _indRenderCorpo === 'function') _indRenderCorpo();
-  }
-});
-
-_indicadoresSDK.aoTecla(function(evt) {
-  if (evt.key === 'Escape') {
-    if (typeof indCancelarSelecao === 'function' && Object.keys(estadoIndicadores.selecionados || {}).length > 0) {
-      indCancelarSelecao();
-      return true;
-    }
-  } else if ((evt.ctrlKey || evt.metaKey) && !evt.altKey && !evt.shiftKey && String(evt.key).toLowerCase() === 'a') {
-    if (typeof indToggleSelecionarTodos === 'function') {
-      indToggleSelecionarTodos(true);
-      return true;
-    }
-  }
-  return false;
-});
-
-// Exposição global das funções esperadas por outras partes do sistema
-window.abrirModalIndicador = abrirModalIndicador;
-window.abrirModalEdicaoIndicador = _indComDados(abrirModalEdicaoIndicador);
-window.abrirModalIndicadorGlobal = abrirModalIndicadorGlobal;
-window.abrirModalMeta = _indComDados(abrirModalMeta);
-window.abrirModalEdicaoMeta = _indComDados(abrirModalEdicaoMeta);
-window.abrirModalListaIndicadores = _indComDados(abrirModalListaIndicadores);
-window.indAbrirPainel = _indComDados(indAbrirPainel);
-window.exportarIndicadoresMetasCSV = _indComDados(exportarIndicadoresMetasCSV);
-window.confirmarExclusaoIndicador = _indComDados(confirmarExclusaoIndicador);
-window.confirmarExclusaoMeta = _indComDados(confirmarExclusaoMeta);
-window.editarIndicador = _indComDados(editarIndicador);
-window.atualizarAbaIndicadores = atualizarAbaIndicadores;
-window.carregarAbaIndicadores = carregarAbaIndicadores;
-window.indGarantirCarregado = indGarantirCarregado;
-window.renderizarSecaoIndicadores = renderizarSecaoIndicadores;
-window.estadoIndicadores = estadoIndicadores;
-window._indicadoresSDK = _indicadoresSDK;
-
-// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+// app_indicadores_eventos — registro das ações delegadas (uiRegistrarAcoes)
 uiRegistrarAcoes('ind', {
   '1': function (event) { if(event.target===this) window[this.dataset.fechar](); },
   '2': function (event) { fecharModalIndicador(); },
@@ -2997,4 +3011,6 @@ uiRegistrarAcoes('ind', {
   '51': function (event) { indMudarPagina('next'); },
   '52': function (event) { _indwizIrParaRail(uiArgLit(this.dataset.rclick0)); }
 });
+
+
 </script>
