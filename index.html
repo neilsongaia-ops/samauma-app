@@ -18090,7 +18090,7 @@ function _execCriarCard(t) {
 }
 
 // --- Drag-and-drop do Kanban: soltar um card noutra trilha persiste de
-// verdade (apiSalvarExecucao), com atualização otimista da UI. ---
+// verdade (apiSalvarExecucaoEResultado), com atualização otimista da UI. ---
 var _execDragTaskId = null;
 
 function _execAtivarDrag() {
@@ -18139,7 +18139,7 @@ function _execMoverTarefa(idTarefa, novoStatus) {
       if (typeof showMessage === 'function') showMessage('error', 'Erro ao mover tarefa', escapeHtml(err.message));
       else alert('Erro: ' + err.message);
     })
-    .apiSalvarExecucao(idTarefa, novoStatus, novoPct, '');
+    .apiSalvarExecucaoEResultado({ idElemento: idTarefa, status: novoStatus, percentual: novoPct });
 }
 
 // --- Ações compartilhadas com o modal de resultado ---
