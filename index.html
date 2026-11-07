@@ -6064,21 +6064,7 @@ function _mevSelecionar(idx) {
 function _mevAbrirItem(idx) {
   const a = _mevArquivos[idx];
   if (!a) return;
-  if (a.tipo === 'LINK') { window.open(a.url, '_blank'); return; }
-  axAbrirEvidenciaArquivo(a.id);
-}
-
-// Abre um arquivo do Drive em nova aba (concede acesso on-the-fly no backend).
-function axAbrirEvidenciaArquivo(idArquivo) {
-  mostrarLoader();
-  google.script.run
-    .withSuccessHandler(function(res) {
-      esconderLoader();
-      if (res && res.url) window.open(res.url, '_blank');
-      else showMessage('error', 'Evidência', 'Não foi possível abrir o arquivo.');
-    })
-    .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Evidência', escapeHtml(err.message)); })
-    .apiAbrirEvidenciaArquivo(String(idArquivo));
+  window.open(a.url, '_blank', 'noopener');
 }
 
 function _mevIconeArquivo(ext) {
