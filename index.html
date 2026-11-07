@@ -217,260 +217,13 @@
 </script>
 
 
-    <style>
-:root {
-  /* Variáveis Padrão */
-  --primary-color: #0c326f;
-  --secondary-color: #2670e8;
-  --accent-color: #fbbc04;
-  --bg-light: #f4f6f8;
-  --text-dark: #202124;
-  --text-light: #5f6368;
-  --white: #ffffff;
-  --border: #dadce0;
-  --success: #1e8e3e;
-  --warning: #f9ab00;
-  --danger: #d93025;
-  --header-height: 60px;
-}
-
-/* TEMA ALTO CONTRASTE */
-body.high-contrast {
-  --primary-color: #ffff00; /* Amarelo */
-  --secondary-color: #00ffff; /* Ciano */
-  --accent-color: #ffffff;
-  --bg-light: #000000; /* Fundo Preto */
-  --text-dark: #ffffff; /* Texto Branco */
-  --text-light: #dddddd;
-  --white: #121212; /* Fundo de cards quase preto */
-  --border: #ffffff; /* Bordas Brancas */
-  --success: #00ff00;
-  --warning: #ffcc00;
-  --danger: #ff5555;
-}
-
-/* Ajustes específicos para Alto Contraste */
-body.high-contrast .btn-primary {
-  background-color: #000;
-  border: 1px solid var(--secondary-color);
-  color: var(--secondary-color);
-  font-weight: bold;
-}
-body.high-contrast .card {
-  border: 1px solid var(--border);
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif; }
-
-/* body = altura travada na viewport (nunca cresce com o conteúdo); quem rola é o
-   próprio <main>, não mais a janela — ver docs/design_system.md "Área de conteúdo
-   com altura travada (estilo Google Drive)".
-   Prevenção global de seleção acidental de texto (padrão Google Drive / web apps). */
-body {
-  background-color: var(--bg-light);
-  color: var(--text-dark);
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  overflow-y: hidden;
-  transition: background-color 0.3s, color 0.3s;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Garante seleção e edição normais em campos de entrada, formulários e textos selecionáveis */
-input,
-textarea,
-[contenteditable="true"],
-[contenteditable=""],
-pre,
-code,
-.selectable,
-.user-select-text {
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-  user-select: text;
-}
-
-/* Evita arrasto fantasma de imagens ao clicar e mover */
-img {
-  -webkit-user-drag: none;
-  user-select: none;
-}
-
-/* UTILS */
-.hidden { display: none !important; }
-.btn { padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; font-weight: 500; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
-.btn-primary { background-color: var(--secondary-color); color: white; }
-.btn-primary:hover { background-color: #1a5bb8; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-.icon { font-size: 20px; }
-
-/* MAIN LAYOUT — painel de altura fixa com scroll próprio (estilo Google Drive): ocupa
-   toda a largura/altura disponível ao lado do sidebar/abaixo da topbar, sem max-width
-   central nem crescer com o conteúdo. min-height:0 é o que permite o flex:1 encolher e
-   o overflow-y:auto realmente rolar (sem isso o item de flex cresce e quem rola é o body). */
-/* Fundo branco (não mais o cinza-claro herdado do body via --bg-light): pedido explícito
-   do usuário — o main-content inteiro deve ser da mesma cor que os cards/tabelas
-   (--ds-color-surface), sem faixa cinza nenhuma nas bordas/padding. Aplica a TODAS as
-   telas (mudança global, não só à página de Planos). */
-/* Padding padrão: 40px nas laterais, 20px em cima/embaixo — pedido explícito do usuário
-   (2026-09). Páginas que "sangram" pra tocar as bordas reais de #main-content (ex.:
-   pages_planos_lista.html) usam margem negativa igual a este valor lateral — se este
-   número mudar de novo, ajustar aquelas também. */
-main { flex: 1; min-height: 0; padding: 20px 40px; width: 100%; margin-top: var(--header-height); overflow-y: auto; background: var(--ds-color-surface); }
-@media (max-width: 768px) {
-  /* No mobile mantém 20px também nas laterais — 40px de cada lado tomaria espaço
-     demais numa tela estreita. */
-  main { padding-left: 20px; padding-right: 20px; }
-}
-
-/* CARD STYLE */
-.card { background: var(--white); border-radius: 8px; box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15); padding: 20px; margin-bottom: 20px; }
-
-/* TABLE STYLE */
-.table-container { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); color: var(--text-light); font-size: 0.85rem; text-transform: uppercase; }
-td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; vertical-align: middle; }
-tr:hover td { background-color: #f8f9fa; }
-
-/* Ajuste de tabela para alto contraste */
-body.high-contrast tr:hover td { background-color: #333; color: #fff; }
-
-/* STATUS BADGES */
-.badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
-.status-ativo { background: #e6f4ea; color: var(--success); }
-.status-elaboracao { background: #feefc3; color: #b06000; }
-
-/* PAGINATION */
-.pagination { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 15px; }
-.pagination button { background: var(--white); border: 1px solid var(--border); padding: 5px 10px; border-radius: 4px; }
-.pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* SPINNER PADRÃO DE CARREGAMENTO DE LISTAS (usar em todas as listas do sistema) */
-.lista-spinner-wrap {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 10px; padding: 36px 16px;
-  color: var(--text-light); font-size: 0.85rem;
-}
-.lista-spinner {
-  width: 32px; height: 32px; border-radius: 50%;
-  border: 3px solid var(--border);
-  border-top-color: var(--secondary-color);
-  animation: lista-spin 0.8s linear infinite;
-}
-@keyframes lista-spin { to { transform: rotate(360deg); } }
-
-/* Overlay que cobre o conteúdo de um app instalável (aba Elementos/Fórum)
-   enquanto o plano é trocado, sem tocar no DOM interno do app (ver
-   limparTelaDetalhes/_appsRenderizarAbas em pages_plano_detalhe.html) —
-   por isso o container precisa de position:relative pra o overlay (position:
-   absolute) cobrir só a própria aba. */
-.view-section[data-app-tab="1"] { position: relative; }
-.app-tab-cobrir-anterior {
-  position: absolute; inset: 0; z-index: 5;
-  background: var(--white);
-  display: flex; align-items: center; justify-content: center;
-}
-
-/* CAMPOS OPCIONAIS COLAPSÁVEIS DOS MODAIS: o botão [+]/[−] é o próprio
-   título do campo, com o mesmo visual dos labels do formulário */
-.btn-campo-toggle {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: none; border: none; padding: 2px 0; margin-bottom: 6px;
-  color: var(--text-dark); font-size: 0.85rem; font-weight: 500; cursor: pointer;
-}
-.btn-campo-toggle:hover { color: var(--secondary-color); }
-.btn-campo-toggle .material-symbols-outlined { font-size: 16px; color: var(--text-light); }
-
-/* PADRÃO DE MODAL MULTIETAPAS (wizard): usar em todo modal de cadastro com
-   muitos campos — separa em passos curtos, com linguagem de assistente.
-   Marcação esperada: .wizard-dots + .wizard-step-contador no topo do body,
-   um <div class="wizard-step" data-step="N"> por etapa (alterna .hidden via JS),
-   e no footer os botões Voltar/Próximo/Salvar. */
-.wizard-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 6px; }
-.wizard-dot {
-  width: 8px; height: 8px; border-radius: 4px; background: var(--border); transition: all 0.15s;
-  border: none; padding: 0; cursor: pointer;
-}
-.wizard-dot:hover { background: var(--secondary-color); opacity: 0.6; }
-.wizard-dot.atual { width: 22px; background: var(--secondary-color); }
-.wizard-dot.atual:hover { opacity: 1; }
-.wizard-dot.concluido { background: var(--primary-color); }
-.wizard-step-contador {
-  text-align: center; font-size: 0.7rem; color: var(--text-light);
-  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;
-}
-.wizard-step-lead { font-size: 0.95rem; font-weight: 600; color: var(--text-dark); margin-bottom: 4px; }
-.wizard-step-help { font-size: 0.8rem; color: var(--text-light); margin-bottom: 14px; }
-.wizard-step-help:last-child { margin-bottom: 0; }
-.wizard-msg-vazio {
-  display: flex; align-items: center; gap: 10px; background: var(--bg-light);
-  border: 1px dashed var(--border); border-radius: 8px; padding: 16px;
-  color: var(--text-light); font-size: 0.85rem;
-}
-.wizard-msg-vazio .material-symbols-outlined { font-size: 22px; flex-shrink: 0; }
-.wizard-nav-info { font-size: 0.75rem; color: var(--text-light); }
-body.high-contrast .wizard-dot { background: #444; }
-body.high-contrast .wizard-msg-vazio { background: #111; }
-
-/* Variante de altura FIXA do wizard (padrão a reaproveitar em outros modais
-   multietapas — 1ª aplicação: components_modal_elemento.html): o modal não
-   "pula" de tamanho entre etapas de conteúdo desigual. Aplicar como classe
-   adicional em .modal-card (ex.: class="modal-card modal-lg modal-wizard-fixo").
-   O scroll fica no wrapper INTERNO .wizard-steps-viewport (que envolve só os
-   <div class="wizard-step">, não os dots/contador que ficam fixos no topo),
-   não no .modal-body inteiro — necessário para o efeito de slide (abaixo)
-   não conflitar com o overflow. Ver docs/design_system.md §3. */
-.modal-wizard-fixo { height: 640px; max-height: 90vh; }
-.modal-wizard-fixo .modal-body {
-  flex: 1; min-height: 0; overflow: hidden; padding: 0;
-  display: flex; flex-direction: column;
-}
-.modal-wizard-fixo .modal-body > .wizard-dots,
-.modal-wizard-fixo .modal-body > .wizard-step-contador { padding: 0 20px; flex-shrink: 0; }
-.modal-wizard-fixo .modal-body > .wizard-dots { margin-top: 20px; }
-.wizard-steps-viewport { position: relative; overflow-y: auto; padding: 0 20px 20px; flex: 1; min-height: 0; }
-
-/* Efeito de slide ao avançar/voltar entre etapas — ver _wizardElIrPara(n, direcao)
-   em components_modal_elemento.html para o JS que aplica/remove estas classes. */
-.wizard-step { transition: transform 200ms ease, opacity 200ms ease; }
-.wizard-step.wizard-slide-out-left  { transform: translateX(-24px); opacity: 0; }
-.wizard-step.wizard-slide-out-right { transform: translateX(24px);  opacity: 0; }
-@media (prefers-reduced-motion: reduce) {
-  .wizard-step { transition: none !important; }
-}
-
-/* TAGS DE TIPO DE ELEMENTO: carrossel em linha única (sem quebra) com setas < > */
-.el-tipo-tags-carousel { display: flex; align-items: center; gap: 2px; margin-top: 6px; }
-.el-tipo-tags-row {
-  display: flex; flex-wrap: nowrap; align-items: center; gap: 6px;
-  overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0;
-}
-.el-tipo-tags-row::-webkit-scrollbar { display: none; }
-.el-tipo-tag {
-  background: #f0f4ff; border: 1px solid #d0d8f0; color: var(--secondary-color);
-  font-size: 0.68rem; font-weight: 600; padding: 1px 8px; border-radius: 10px;
-  cursor: pointer; white-space: nowrap; width: fit-content;
-}
-.el-tipo-tag:hover { background: #e8f0fe; }
-.el-tags-nav {
-  background: none; border: none; padding: 0; cursor: pointer;
-  color: var(--text-light); display: flex; align-items: center; flex-shrink: 0;
-}
-.el-tags-nav:hover { color: var(--secondary-color); }
-.el-tags-nav:disabled { opacity: 0.3; cursor: default; }
-.el-tags-nav .material-symbols-outlined { font-size: 18px; }
-</style>
     <!-- ARQUIVO: styles_design_system.html -->
 <!-- ============================================================================
      DESIGN SYSTEM SAMAÚMA — Fundação de tokens + utilitários (camada ADITIVA)
      ----------------------------------------------------------------------------
-     • Só define nomes com prefixo --ds-* e classes .ds-*. Não altera nenhuma
-       variável nem classe legada (.btn, .card, .ax-secao, --primary-color…).
+     • Arquivo de estilo único do sistema. Seção "BASE" (logo abaixo): reset,
+       layout de body/main e classes globais (.btn, .card, tabelas, .badge…);
+       depois tokens --ds-* e componentes .ds-*.
      • UI nova (vidro + sidebar, claro/escuro): tokens portados de
        "Design system com sidebar expansível/tokens". Tema escuro via
        [data-ds-theme="dark"] no <html>; alto contraste (body.high-contrast)
@@ -484,6 +237,111 @@ body.high-contrast .wizard-msg-vazio { background: #111; }
        (ganho de acessibilidade; não afeta o usuário de mouse).
      ============================================================================ -->
 <style>
+/* ===================== BASE (migrada do antigo styles_css.html) =====================
+   Fica ANTES de tudo para preservar a ordem da cascata (o arquivo antigo era incluído
+   antes deste); a camada "PASSO 3 — SKIN" mais abaixo reveste estas classes. */
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+/* body = altura travada na viewport; quem rola é o <main> — ver docs/design_system.md
+   "Área de conteúdo com altura travada (estilo Google Drive)". Sem seleção acidental de texto. */
+body {
+  background-color: var(--ds-color-bg-subtle);
+  color: var(--ds-color-text-ui);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: hidden;
+  transition: background-color 0.3s, color 0.3s;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+[contenteditable="true"],
+[contenteditable=""],
+pre,
+code,
+.selectable,
+.user-select-text {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+img { -webkit-user-drag: none; user-select: none; }
+
+.hidden { display: none !important; }
+.btn { padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; font-weight: 500; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+.btn-primary { background-color: var(--ds-color-action); color: white; }
+.btn-primary:hover { background-color: #1a5bb8; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.icon { font-size: 20px; }
+
+/* <main>: painel de altura fixa com scroll próprio, fundo = superfície. Padding 20px/40px
+   (20px nas laterais no mobile); páginas que "sangram" (pages_planos_lista.html) usam
+   margem negativa igual ao valor lateral. */
+main { flex: 1; min-height: 0; padding: 20px 40px; width: 100%; margin-top: var(--ds-header-height); overflow-y: auto; background: var(--ds-color-surface); }
+@media (max-width: 768px) {
+  main { padding-left: 20px; padding-right: 20px; }
+}
+
+.card { background: var(--ds-color-surface); border-radius: 8px; box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15); padding: 20px; margin-bottom: 20px; }
+
+.table-container { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+th { text-align: left; padding: 12px; border-bottom: 2px solid var(--ds-color-border-ui); color: var(--ds-color-text-ui-muted); font-size: 0.85rem; text-transform: uppercase; }
+td { padding: 12px; border-bottom: 1px solid var(--ds-color-border-ui); font-size: 0.9rem; vertical-align: middle; }
+tr:hover td { background-color: #f8f9fa; }
+body.high-contrast tr:hover td { background-color: #333; color: #fff; }
+
+.badge { padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
+
+.pagination { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 15px; }
+.pagination button { background: var(--ds-color-surface); border: 1px solid var(--ds-color-border-ui); padding: 5px 10px; border-radius: 4px; }
+.pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Spinner padrão de carregamento de listas (usar em todas as listas do sistema) */
+.lista-spinner-wrap {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 36px 16px;
+  color: var(--ds-color-text-ui-muted); font-size: 0.85rem;
+}
+.lista-spinner {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 3px solid var(--ds-color-border-ui);
+  border-top-color: var(--ds-color-action);
+  animation: lista-spin 0.8s linear infinite;
+}
+@keyframes lista-spin { to { transform: rotate(360deg); } }
+
+/* Overlay que cobre um app instalável enquanto o plano é trocado (limparTelaDetalhes/
+   _appsRenderizarAbas em pages_plano_detalhe.html) */
+.view-section[data-app-tab="1"] { position: relative; }
+.app-tab-cobrir-anterior {
+  position: absolute; inset: 0; z-index: 5;
+  background: var(--ds-color-surface);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Modal multietapas: viewport rolável + etapas (.wizard-step data-step="N", alterna .hidden)
+   com slide ao avançar/voltar. Usado por components_modal_plano.html e pelos apps
+   Elementos/Indicadores/Riscos (cada um ajusta o espaçamento no próprio arquivo). */
+.wizard-msg-vazio {
+  display: flex; align-items: center; gap: 10px; background: var(--ds-color-bg-subtle);
+  border: 1px dashed var(--ds-color-border-ui); border-radius: 8px; padding: 16px;
+  color: var(--ds-color-text-ui-muted); font-size: 0.85rem;
+}
+.wizard-msg-vazio .material-symbols-outlined { font-size: 22px; flex-shrink: 0; }
+body.high-contrast .wizard-msg-vazio { background: #111; }
+.wizard-steps-viewport { position: relative; overflow-y: auto; padding: 0 20px 20px; flex: 1; min-height: 0; }
+.wizard-step { transition: transform 200ms ease, opacity 200ms ease; }
+.wizard-step.wizard-slide-out-left  { transform: translateX(-24px); opacity: 0; }
+.wizard-step.wizard-slide-out-right { transform: translateX(24px);  opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .wizard-step { transition: none !important; }
+}
+
 /* ===================== TOKENS (tema padrão) ===================== */
 :root {
   /* -- Marca: rampa PRIMARY (navy institucional, base 700 = #0c326f) -- */
@@ -527,6 +385,17 @@ body.high-contrast .wizard-msg-vazio { background: #111; }
   --ds-color-border:      #d7dee8;
   --ds-color-border-strong: #bcc6d4;
   --ds-color-heading:     var(--ds-primary-700);  /* títulos/marca; clareia no tema escuro */
+  /* Tons de UI das telas de base (body, tabelas, modais clássicos). Valores herdados do
+     antigo styles_css.html, mantidos à parte de --ds-color-bg/text/border para não mudar
+     a aparência; unificar com os tokens acima é decisão visual futura. */
+  --ds-color-bg-subtle:     #f4f6f8;
+  --ds-color-text-ui:       #202124;
+  --ds-color-text-ui-muted: #5f6368;
+  --ds-color-border-ui:     #dadce0;
+  /* Feedback sólido (ícones/texto de status) — NÃO muda no tema escuro, como antes */
+  --ds-color-success-solid: #1e8e3e;
+  --ds-color-warning-solid: #f9ab00;
+  --ds-color-danger-solid:  #d93025;
   --ds-risk-alto-bg: #fff3e0; --ds-risk-alto-fg: #bf360c;  /* nível de risco Alto (laranja) */
 
   /* -- Semânticos: ação e feedback -- */
@@ -718,18 +587,10 @@ body.high-contrast .wizard-msg-vazio { background: #111; }
   --ds-sidebar-item-hover: rgba(255,255,255,0.06);
   --ds-sidebar-item-active: rgba(91,155,255,0.18);
 
-  /* PONTE PROVISÓRIA p/ variáveis LEGADAS (styles_css.html): páginas ainda não
-     migradas leem --text-dark/--white/--border etc.; sem isto o texto ficaria
-     escuro sobre fundo escuro. Cores fixas (#fff) em páginas não migradas seguem
-     claras até a migração de cada página (Passo 5). body.high-contrast (definido
-     em styles_css.html no <body>) continua vencendo esta ponte (definida no <html>). */
-  --primary-color: #8ab4ff;
-  --secondary-color: #5b9bff;
-  --bg-light: #0a0a0a;
-  --text-dark: #ededed;
-  --text-light: #a3a3a3;
-  --white: #161616;
-  --border: #333333;
+  --ds-color-bg-subtle: #0a0a0a;
+  --ds-color-text-ui: #ededed;
+  --ds-color-text-ui-muted: #a3a3a3;
+  --ds-color-border-ui: #333333;
 }
 
 /* ===================== TOKENS (alto contraste) ===================== */
@@ -746,8 +607,15 @@ body.high-contrast {
   --ds-color-action-hover:  #66ffff;
   --ds-color-on-action:     #000000;
 
-  /* Marca (navy): sem contraste suficiente em fundo preto — reusa o amarelo
-     de --primary-color no tema de alto contraste original (styles_css.html). */
+  --ds-color-bg-subtle: #000000;
+  --ds-color-text-ui: #ffffff;
+  --ds-color-text-ui-muted: #dddddd;
+  --ds-color-border-ui: #ffffff;
+  --ds-color-success-solid: #00ff00;
+  --ds-color-warning-solid: #ffcc00;
+  --ds-color-danger-solid:  #ff5555;
+
+  /* Marca (navy): sem contraste suficiente em fundo preto — amarelo do tema original. */
   --ds-primary-700: #ffff00;
   --ds-primary-800: #cccc00;
   --ds-color-success: #00ff00; --ds-color-success-bg: #001a00; --ds-color-success-fg: #00ff00;
@@ -1123,6 +991,9 @@ body .modal-footer { background: transparent; border-top: 1px solid var(--ds-gla
 body .btn-icon-close { width: 32px; height: 32px; border-radius: var(--ds-r-sm); display: inline-flex; align-items: center; justify-content: center; color: var(--ds-color-text-muted); }
 body .btn-icon-close:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text); }
 body.high-contrast .modal-card { background: #121212; }
+/* Alto contraste: botão primário e card (vindos da antiga base; vencem a skin por especificidade) */
+body.high-contrast .btn-primary { background-color: #000; border: 1px solid var(--ds-color-action); color: var(--ds-color-action); font-weight: bold; }
+body.high-contrast .card { border: 1px solid var(--ds-color-border-ui); }
 body .form-control { border-radius: var(--ds-r-md); background: var(--ds-color-surface); }
 body .form-control:focus { border-color: var(--ds-color-action); box-shadow: var(--ds-shadow-focus); }
 /* ---- Faixa de KPIs (padrão de página: hero → KPIs → abas → conteúdo) ---- */
@@ -1187,7 +1058,7 @@ body .form-control:focus { border-color: var(--ds-color-action); box-shadow: var
 body.high-contrast .ds-pasta { --pasta-line: #fff; --pasta-strip: #000; --pasta-fill: #000; --pasta-veil: transparent; --pasta-veil-hover: #222; }
 
 /* Barra de abas: sticky no topo do <main> (que agora rola por si só e já começa
-   abaixo da topbar fixa — top:0, não mais var(--header-height)), faixa da pasta */
+   abaixo da topbar fixa — top:0, não mais var(--ds-header-height)), faixa da pasta */
 .ds-pasta > .view-tabs-container {
   position: sticky; top: 0; z-index: 40; margin: 0; padding: 10px var(--pasta-pad-x) 0;
   background: var(--pasta-strip); border: none; box-shadow: none;   /* a linha da faixa é desenhada dentro de .view-tabs (ver abaixo) */
@@ -1469,10 +1340,6 @@ body.high-contrast .ds-pasta { --pasta-line: #fff; --pasta-strip: #000; --pasta-
           </div>
         </div>
 
-        <button type="button" class="nav-item" data-nav-rota="teste" aria-label="Teste" data-title="Teste" onclick="carregarPaginaTeste(); fecharMenuMobile()">
-          <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">science</span>
-          <span class="nav-item-label">Teste</span>
-        </button>
         <button type="button" class="nav-item" data-nav-rota="ajuda" aria-label="Ajuda" data-title="Ajuda" onclick="_navPlaceholder('Ajuda'); fecharMenuMobile()">
           <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">help</span>
           <span class="nav-item-label">Ajuda</span>
@@ -1644,7 +1511,7 @@ body {
 html.ds-sb-collapsed .ds-sidebar { width: var(--ds-sidebar-width-collapsed); }
 
 .brand {
-  display: flex; align-items: center; height: var(--header-height); flex-shrink: 0;
+  display: flex; align-items: center; height: var(--ds-header-height); flex-shrink: 0;
   padding: 0 16px; color: var(--ds-color-heading);
 }
 .brand-logo { height: 26px; width: auto; max-width: 100%; }
@@ -1778,7 +1645,7 @@ html.ds-sb-collapsed .ds-sidebar { width: var(--ds-sidebar-width-collapsed); }
    ============================================================================ */
 .ds-topbar {
   position: fixed; top: 0; left: var(--ds-sb-w); right: 0; z-index: var(--ds-z-header);
-  height: var(--header-height); display: flex; align-items: center; gap: 12px; padding: 0 24px;
+  height: var(--ds-header-height); display: flex; align-items: center; gap: 12px; padding: 0 24px;
   font-family: var(--ds-font-sans);
   border: none; border-bottom: 1px solid var(--ds-glass-border); border-radius: 0; box-shadow: none;
   transition: left var(--ds-duration-slow) var(--ds-ease-standard);
@@ -2047,7 +1914,7 @@ function navAposEscolherSubmenu() { if (_navModoFlyout()) fecharNavSubmenus(); }
 function _fecharNavSubmenusClickFora(e) { if (!e.target.closest('.nav-item-group')) fecharNavSubmenus(); }
 
 // Marca o item da página atual (aria-current) e garante o grupo dele aberto.
-// chave = data-nav-rota: 'planos', 'mensagens:enviadas'... Chamado por navigate() (index.html) e carregarPaginaTeste().
+// chave = data-nav-rota: 'planos', 'mensagens:enviadas'... Chamado por navigate() (index.html).
 function hdrNavSincronizarAtivo(chave) {
   var nav = document.getElementById('nav-menu');
   if (!nav || !chave) return;
@@ -3383,37 +3250,37 @@ var SeletorOpcao = (function () {
 <style>
 .autocomplete-list {
   position: absolute; top: 100%; left: 0; right: 0;
-  background: var(--white);
-  border: 1px solid var(--border); border-top: none;
+  background: var(--ds-color-surface);
+  border: 1px solid var(--ds-color-border-ui); border-top: none;
   border-radius: 0 0 4px 4px; max-height: 200px; overflow-y: auto; z-index: 100;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 .autocomplete-item {
   padding: 8px 10px; cursor: pointer;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.9rem; color: var(--text-dark);
+  border-bottom: 1px solid var(--ds-color-border-ui);
+  font-size: 0.9rem; color: var(--ds-color-text-ui);
 }
-.autocomplete-item:hover { background-color: var(--bg-light); }
-.autocomplete-item strong { color: var(--primary-color); }
-.autocomplete-sub { display: block; font-size: 0.75rem; color: var(--text-light); }
+.autocomplete-item:hover { background-color: var(--ds-color-bg-subtle); }
+.autocomplete-item strong { color: var(--ds-primary-700); }
+.autocomplete-sub { display: block; font-size: 0.75rem; color: var(--ds-color-text-ui-muted); }
 
-.input-icon-right { position: absolute; right: 10px; top: 35px; font-size: 18px; color: var(--text-light); cursor: pointer; }
+.input-icon-right { position: absolute; right: 10px; top: 35px; font-size: 18px; color: var(--ds-color-text-ui-muted); cursor: pointer; }
 
-.icon-help { font-size: 18px; color: var(--text-light); cursor: help; }
-.icon-help:hover { color: var(--secondary-color); }
+.icon-help { font-size: 18px; color: var(--ds-color-text-ui-muted); cursor: help; }
+.icon-help:hover { color: var(--ds-color-action); }
 
 .toggle-resp-container {
-  display: flex; background: var(--bg-light);
+  display: flex; background: var(--ds-color-bg-subtle);
   border-radius: 4px; padding: 2px; border: 1px solid transparent;
 }
 .toggle-resp-btn {
   border: none; background: none; padding: 2px 8px; font-size: 0.75rem;
-  cursor: pointer; border-radius: 3px; color: var(--text-light);
+  cursor: pointer; border-radius: 3px; color: var(--ds-color-text-ui-muted);
   display: flex; align-items: center; gap: 4px;
 }
 .toggle-resp-btn.active {
-  background: var(--white);
-  color: var(--primary-color); font-weight: bold;
+  background: var(--ds-color-surface);
+  color: var(--ds-primary-700); font-weight: bold;
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
@@ -3424,52 +3291,52 @@ var SeletorOpcao = (function () {
   backdrop-filter: blur(3px); animation: fadeIn 0.2s;
 }
 .modal-card {
-  background: var(--white); width: 100%; max-width: 600px;
+  background: var(--ds-color-surface); width: 100%; max-width: 600px;
   border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
   display: flex; flex-direction: column; max-height: 90vh;
   border: 1px solid transparent;
 }
-.modal-header { padding: 15px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { color: var(--primary-color); font-size: 1.1rem; }
+.modal-header { padding: 15px 20px; border-bottom: 1px solid var(--ds-color-border-ui); display: flex; justify-content: space-between; align-items: center; }
+.modal-header h3 { color: var(--ds-primary-700); font-size: 1.1rem; }
 .modal-body { padding: 20px; overflow-y: auto; }
 
 .modal-footer {
-  padding: 15px 20px; border-top: 1px solid var(--border);
+  padding: 15px 20px; border-top: 1px solid var(--ds-color-border-ui);
   display: flex; justify-content: flex-end; gap: 10px;
-  background: var(--bg-light);
+  background: var(--ds-color-bg-subtle);
   border-radius: 0 0 8px 8px;
 }
 
 .form-row { display: flex; gap: 15px; margin-bottom: 15px; }
 .form-group { flex: 1; display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
-.form-group label { font-size: 0.85rem; font-weight: 500; color: var(--text-dark); }
+.form-group label { font-size: 0.85rem; font-weight: 500; color: var(--ds-color-text-ui); }
 
 .form-control {
-  width: 100%; padding: 8px 10px; border: 1px solid var(--border);
-  border-radius: 4px; font-size: 0.9rem; background-color: var(--white); color: var(--text-dark);
+  width: 100%; padding: 8px 10px; border: 1px solid var(--ds-color-border-ui);
+  border-radius: 4px; font-size: 0.9rem; background-color: var(--ds-color-surface); color: var(--ds-color-text-ui);
 }
-.form-control:focus { outline: none; border-color: var(--secondary-color); }
+.form-control:focus { outline: none; border-color: var(--ds-color-action); }
 
-.btn-icon-close { background: none; border: none; cursor: pointer; color: var(--text-light); }
-.btn-icon-close:hover { color: var(--danger); }
+.btn-icon-close { background: none; border: none; cursor: pointer; color: var(--ds-color-text-ui-muted); }
+.btn-icon-close:hover { color: var(--ds-color-danger-solid); }
 
-.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-dark); }
-.btn-outline:hover { background: var(--bg-light); }
+.btn-outline { background: transparent; border: 1px solid var(--ds-color-border-ui); color: var(--ds-color-text-ui); }
+.btn-outline:hover { background: var(--ds-color-bg-subtle); }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-body.high-contrast .modal-card { border: 2px solid var(--white); box-shadow: none; }
+body.high-contrast .modal-card { border: 2px solid var(--ds-color-surface); box-shadow: none; }
 body.high-contrast .form-control { background-color: #000000 !important; color: #ffffff !important; border: 1px solid #ffffff !important; }
-body.high-contrast .form-control:focus { border-color: var(--secondary-color) !important; box-shadow: 0 0 0 1px var(--secondary-color); }
+body.high-contrast .form-control:focus { border-color: var(--ds-color-action) !important; box-shadow: 0 0 0 1px var(--ds-color-action); }
 body.high-contrast .autocomplete-list { background-color: #000000 !important; border: 1px solid #ffffff !important; }
 body.high-contrast .autocomplete-item { background-color: #000000 !important; color: #ffffff !important; border-bottom: 1px solid #333 !important; }
 body.high-contrast .autocomplete-item:hover { background-color: #333333 !important; }
-body.high-contrast .autocomplete-item strong { color: var(--secondary-color) !important; }
+body.high-contrast .autocomplete-item strong { color: var(--ds-color-action) !important; }
 body.high-contrast .autocomplete-sub { color: #cccccc !important; }
-body.high-contrast .toggle-resp-container { border: 1px solid var(--border); }
-body.high-contrast .toggle-resp-btn.active { background-color: #000; border: 1px solid var(--primary-color); color: var(--primary-color); }
-body.high-contrast .modal-footer { background-color: #000; border-top: 1px solid var(--white); }
-body.high-contrast .btn-outline { border-color: var(--white); color: var(--white); }
+body.high-contrast .toggle-resp-container { border: 1px solid var(--ds-color-border-ui); }
+body.high-contrast .toggle-resp-btn.active { background-color: #000; border: 1px solid var(--ds-primary-700); color: var(--ds-primary-700); }
+body.high-contrast .modal-footer { background-color: #000; border-top: 1px solid var(--ds-color-surface); }
+body.high-contrast .btn-outline { border-color: var(--ds-color-surface); color: var(--ds-color-surface); }
 body.high-contrast .btn-outline:hover { background-color: #333; }
 </style>
 
@@ -4524,7 +4391,7 @@ function handleSalvarPlano(e) {
 .section-title {
   font-size: 0.9rem;
   font-weight: bold;
-  color: var(--primary-color);
+  color: var(--ds-primary-700);
   margin-bottom: 10px;
   border-bottom: 2px solid var(--ds-color-border);
   padding-bottom: 5px;
@@ -4548,7 +4415,7 @@ function handleSalvarPlano(e) {
   width: 70px;
   text-align: center;
   font-weight: bold;
-  border: 1px solid var(--border);
+  border: 1px solid var(--ds-color-border-ui);
   border-radius: 4px;
   padding: 5px;
 }
@@ -4562,7 +4429,7 @@ function handleSalvarPlano(e) {
 .evidence-btn {
   flex: 1;
   padding: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--ds-color-border-ui);
   background: var(--ds-color-surface);
   cursor: pointer;
   text-align: center;
@@ -4570,9 +4437,9 @@ function handleSalvarPlano(e) {
   font-size: 0.85rem;
 }
 .evidence-btn.active {
-  background: var(--secondary-color);
+  background: var(--ds-color-action);
   color: white;
-  border-color: var(--secondary-color);
+  border-color: var(--ds-color-action);
 }
 
 /* Área de Dropzone */
@@ -4586,7 +4453,7 @@ function handleSalvarPlano(e) {
   background: var(--ds-color-surface-2);
 }
 .drop-zone:hover, .drop-zone.dragover {
-  border-color: var(--secondary-color);
+  border-color: var(--ds-color-action);
   background: var(--ds-color-info-bg);
 }
 .file-list {
@@ -4605,7 +4472,7 @@ function handleSalvarPlano(e) {
   font-size: 0.8rem;
 }
 .btn-remove-file {
-  color: var(--danger);
+  color: var(--ds-color-danger-solid);
   cursor: pointer;
   font-weight: bold;
 }
@@ -4616,7 +4483,7 @@ function handleSalvarPlano(e) {
     <div class="modal-header">
       <div>
         <h3>Atualizar Execução</h3>
-        <p style="font-size:0.8rem; color:var(--text-light); margin:0" id="lbl-res-titulo-elemento">Carregando...</p>
+        <p style="font-size:0.8rem; color:var(--ds-color-text-ui-muted); margin:0" id="lbl-res-titulo-elemento">Carregando...</p>
       </div>
       <button class="btn-icon-close" onclick="fecharModalResultado()">
         <span class="material-symbols-outlined">close</span>
@@ -4660,8 +4527,8 @@ function handleSalvarPlano(e) {
         <div id="wrapper-indicador" class="hidden">
           <div class="section-title">2. Apuração de Resultado</div>
           
-          <div class="form-group" style="background: var(--ds-color-surface-2); padding: 10px; border-radius: 4px; border-left: 4px solid var(--secondary-color);">
-            <label style="font-weight:bold; color:var(--primary-color);">Indicador Vinculado:</label>
+          <div class="form-group" style="background: var(--ds-color-surface-2); padding: 10px; border-radius: 4px; border-left: 4px solid var(--ds-color-action);">
+            <label style="font-weight:bold; color:var(--ds-primary-700);">Indicador Vinculado:</label>
             <span id="lbl-res-nome-indicador">Nome do Indicador</span>
           </div>
 
@@ -5032,7 +4899,7 @@ function lerArquivoParaBase64(file) {
     <div class="modal-header">
       <div>
         <h3 id="modal-usuario-titulo">Novo Usuário</h3>
-        <p id="modal-usuario-subtitulo" style="font-size:0.8rem; color:var(--text-light); margin:0">Cadastrar servidor, lotação e permissões de acesso.</p>
+        <p id="modal-usuario-subtitulo" style="font-size:0.8rem; color:var(--ds-color-text-ui-muted); margin:0">Cadastrar servidor, lotação e permissões de acesso.</p>
       </div>
       <button class="btn-icon-close" onclick="fecharModalUsuario()">
         <span class="material-symbols-outlined">close</span>
@@ -5049,7 +4916,7 @@ function lerArquivoParaBase64(file) {
           <div class="photo-preview-container" onclick="document.getElementById('input-foto-file').click()">
             <img id="preview-foto-user" src="" alt="Sem foto" class="hidden">
             <div id="placeholder-foto-user">
-              <span class="material-symbols-outlined" style="font-size: 40px; color: var(--text-light);">add_a_photo</span>
+              <span class="material-symbols-outlined" style="font-size: 40px; color: var(--ds-color-text-ui-muted);">add_a_photo</span>
             </div>
             <input type="file" id="input-foto-file" accept="image/*" style="display:none" onchange="carregarImagemParaCrop(this)">
           </div>
@@ -5110,7 +4977,7 @@ function lerArquivoParaBase64(file) {
           <div id="container-papeis" class="roles-container">
             <div style="padding:10px; color: var(--ds-color-text-muted); font-size:0.9rem">Carregando papéis...</div>
           </div>
-          <small style="color:var(--text-light); font-size:0.75rem; margin-top:5px;">
+          <small style="color:var(--ds-color-text-ui-muted); font-size:0.75rem; margin-top:5px;">
             Selecione um ou mais papéis. Se definir validade, o acesso expira na data informada.
           </small>
         </div>
@@ -5157,52 +5024,52 @@ function lerArquivoParaBase64(file) {
 }
 .photo-preview-container {
   width: 110px; height: 110px; border-radius: 50%;
-  border: 2px dashed var(--border); background: var(--bg-light);
+  border: 2px dashed var(--ds-color-border-ui); background: var(--ds-color-bg-subtle);
   overflow: hidden; position: relative; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: border-color 0.2s;
 }
-.photo-preview-container:hover { border-color: var(--secondary-color); }
+.photo-preview-container:hover { border-color: var(--ds-color-action); }
 #preview-foto-user { width: 100%; height: 100%; object-fit: cover; }
-.photo-hint { font-size: 0.75rem; color: var(--text-light); text-align: center; margin-top: 8px; }
+.photo-hint { font-size: 0.75rem; color: var(--ds-color-text-ui-muted); text-align: center; margin-top: 8px; }
 
 /* Erro Texto */
-.error-text { color: var(--danger); font-size: 0.75rem; margin-top: 2px; display: block; font-weight: 500; }
-.input-error { border-color: var(--danger) !important; }
+.error-text { color: var(--ds-color-danger-solid); font-size: 0.75rem; margin-top: 2px; display: block; font-weight: 500; }
+.input-error { border-color: var(--ds-color-danger-solid) !important; }
 
 /* Lista de Papéis */
 .roles-container {
-  border: 1px solid var(--border); border-radius: 4px;
-  background: var(--bg-light); max-height: 150px; overflow-y: auto;
+  border: 1px solid var(--ds-color-border-ui); border-radius: 4px;
+  background: var(--ds-color-bg-subtle); max-height: 150px; overflow-y: auto;
 }
 .role-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; background: var(--white);
-  border-bottom: 1px solid var(--border);
+  padding: 8px 10px; background: var(--ds-color-surface);
+  border-bottom: 1px solid var(--ds-color-border-ui);
 }
 .role-item:last-child { border-bottom: none; }
 .role-info { flex: 1; }
-.role-name { font-weight: 500; font-size: 0.9rem; display: block; color: var(--text-dark); }
-.role-desc { font-size: 0.75rem; color: var(--text-light); display: block; }
+.role-name { font-weight: 500; font-size: 0.9rem; display: block; color: var(--ds-color-text-ui); }
+.role-desc { font-size: 0.75rem; color: var(--ds-color-text-ui-muted); display: block; }
 .role-date-input {
   width: 130px; font-size: 0.8rem; padding: 4px;
-  border: 1px solid var(--border); border-radius: 4px;
-  color: var(--text-dark); background: var(--white);
+  border: 1px solid var(--ds-color-border-ui); border-radius: 4px;
+  color: var(--ds-color-text-ui); background: var(--ds-color-surface);
 }
 .role-date-input:disabled { background: var(--ds-color-border); color: #aaa; cursor: not-allowed; }
 
 /* Autocomplete (Estilo compartilhado) */
 .autocomplete-list {
   position: absolute; top: 100%; left: 0; right: 0;
-  background: var(--white); border: 1px solid var(--border);
+  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border-ui);
   border-top: none; border-radius: 0 0 4px 4px;
   max-height: 150px; overflow-y: auto; z-index: 100;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
-.autocomplete-item { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-.autocomplete-item:hover { background-color: var(--bg-light); }
-.autocomplete-item strong { color: var(--primary-color); }
-.autocomplete-sub { display: block; font-size: 0.75rem; color: var(--text-light); }
+.autocomplete-item { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--ds-color-border-ui); font-size: 0.9rem; }
+.autocomplete-item:hover { background-color: var(--ds-color-bg-subtle); }
+.autocomplete-item strong { color: var(--ds-primary-700); }
+.autocomplete-sub { display: block; font-size: 0.75rem; color: var(--ds-color-text-ui-muted); }
 .input-icon-right { position: absolute; right: 10px; top: 35px; }
 
 /* Alto Contraste */
@@ -5688,7 +5555,7 @@ function handleSalvarNovoUsuario(e) {
     <div class="modal-header">
       <div>
         <h3>Prorrogar Vigência</h3>
-        <p style="font-size:0.8rem; color:var(--text-light); margin:0">Estende o prazo do plano, preservando a vigência original.</p>
+        <p style="font-size:0.8rem; color:var(--ds-color-text-ui-muted); margin:0">Estende o prazo do plano, preservando a vigência original.</p>
       </div>
       <button class="btn-icon-close" onclick="fecharModalProrrogar()">
         <span class="material-symbols-outlined">close</span>
@@ -5719,7 +5586,7 @@ function handleSalvarNovoUsuario(e) {
     <div class="modal-header">
       <div>
         <h3 id="responder-solicitacao-titulo">Responder Solicitação</h3>
-        <p id="responder-solicitacao-desc" style="font-size:0.8rem; color:var(--text-light); margin:0"></p>
+        <p id="responder-solicitacao-desc" style="font-size:0.8rem; color:var(--ds-color-text-ui-muted); margin:0"></p>
       </div>
       <button class="btn-icon-close" onclick="fecharModalResponderSolicitacao()">
         <span class="material-symbols-outlined">close</span>
@@ -5748,7 +5615,7 @@ function handleSalvarNovoUsuario(e) {
     <div class="modal-header">
       <div>
         <h3>Solicitar revisão</h3>
-        <p style="font-size:0.8rem; color:var(--text-light); margin:0" id="solicitar-revisao-plano-nome"></p>
+        <p style="font-size:0.8rem; color:var(--ds-color-text-ui-muted); margin:0" id="solicitar-revisao-plano-nome"></p>
       </div>
       <button class="btn-icon-close" onclick="fecharModalSolicitarRevisao()">
         <span class="material-symbols-outlined">close</span>
@@ -5775,7 +5642,7 @@ function handleSalvarNovoUsuario(e) {
     <div class="modal-header">
       <div>
         <h3>Recorrer da Avaliação</h3>
-        <p id="rec-modal-subtitulo" style="font-size:0.8rem; color:var(--text-light); margin:0"></p>
+        <p id="rec-modal-subtitulo" style="font-size:0.8rem; color:var(--ds-color-text-ui-muted); margin:0"></p>
       </div>
       <button class="btn-icon-close" onclick="fecharModalRecurso()">
         <span class="material-symbols-outlined">close</span>
@@ -5791,8 +5658,8 @@ function handleSalvarNovoUsuario(e) {
 </div>
 
 <style>
-.rec-bloco-leitura { background:var(--bg-light); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:14px; }
-.rec-bl-titulo { font-size:0.75rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.3px; margin-bottom:6px; }
+.rec-bloco-leitura { background:var(--ds-color-bg-subtle); border:1px solid var(--ds-color-border-ui); border-radius:8px; padding:12px 14px; margin-bottom:14px; }
+.rec-bl-titulo { font-size:0.75rem; color:var(--ds-color-text-ui-muted); text-transform:uppercase; letter-spacing:0.3px; margin-bottom:6px; }
 body.high-contrast .rec-bloco-leitura { background:#000; border-color:#fff; }
 </style>
 
@@ -5837,7 +5704,7 @@ function _recRender(subs) {
       '<span class="av-conceito-chip" style="background:' + av.cor + '">' + escapeHtml(av.conceito) + '</span></div>' +
       (av.justificativa ? '<p style="margin:8px 0 0;font-size:0.88rem">' + escapeHtml(av.justificativa) + '</p>' : '') + '</div>';
   }
-  html += '<p style="font-size:0.82rem;color:var(--text-light)">O recurso pode ser interposto uma única vez, dentro do prazo de ' +
+  html += '<p style="font-size:0.82rem;color:var(--ds-color-text-ui-muted)">O recurso pode ser interposto uma única vez, dentro do prazo de ' +
     ((subs.config && subs.config.PRAZO_RECURSO_DIAS) || 10) + ' dias. Será encaminhado ao avaliador.</p>' +
     '<div class="form-group"><label>Razões do recurso</label>' +
     '<textarea id="rec-texto" class="form-control" rows="4" placeholder="Descreva os motivos para revisão da nota…"></textarea></div>';
@@ -5878,7 +5745,7 @@ function _recEnviar() {
     <div class="modal-header">
       <div>
         <h3 id="mev-titulo" style="font-size:1rem">Evidências</h3>
-        <p id="mev-contador" style="font-size:0.78rem;color:var(--text-light);margin:2px 0 0"></p>
+        <p id="mev-contador" style="font-size:0.78rem;color:var(--ds-color-text-ui-muted);margin:2px 0 0"></p>
       </div>
       <button class="btn-icon-close" onclick="fecharModalEvidenciasIndicador()">
         <span class="material-symbols-outlined">close</span>
@@ -5911,10 +5778,10 @@ function _recEnviar() {
 .mev-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:10px; overflow-y:auto; padding:4px 2px; flex:1; align-content:flex-start; }
 .mev-card .el-empty-state { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
 .mev-item { display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 6px; border-radius:8px; cursor:pointer; border:1px solid transparent; text-align:center; user-select:none; }
-.mev-item:hover { background:var(--bg-light); }
-.mev-item.mev-selecionado { background: var(--ds-color-info-bg); border-color:var(--primary-color); }
-.mev-item-icone { font-size:34px; color:var(--primary-color); }
-.mev-item-nome { font-size:0.72rem; color:var(--text-dark); word-break:break-word; line-height:1.2; max-height:2.4em; overflow:hidden; }
+.mev-item:hover { background:var(--ds-color-bg-subtle); }
+.mev-item.mev-selecionado { background: var(--ds-color-info-bg); border-color:var(--ds-primary-700); }
+.mev-item-icone { font-size:34px; color:var(--ds-primary-700); }
+.mev-item-nome { font-size:0.72rem; color:var(--ds-color-text-ui); word-break:break-word; line-height:1.2; max-height:2.4em; overflow:hidden; }
 body.high-contrast .mev-item.mev-selecionado { background:#001a1a; border-color:#00ffff; }
 </style>
 
@@ -6028,7 +5895,7 @@ function _mdiRenderTabela(ind) {
   const resultados = (ind && ind.resultados) || [];
   const cont = document.getElementById('mdi-tabela');
   if (!resultados.length) {
-    cont.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem">Nenhum resultado lançado para este indicador.</p>';
+    cont.innerHTML = '<p style="color:var(--ds-color-text-ui-muted);font-size:0.85rem">Nenhum resultado lançado para este indicador.</p>';
     return;
   }
   let rows = '';
@@ -6038,7 +5905,7 @@ function _mdiRenderTabela(ind) {
       '<td>' + escapeHtml(r.data || '') + '</td>' +
       '<td>' + escapeHtml(String(r.valor)) + '</td>' +
       '<td>' + (stt ? '<span class="ax-badge-status ax-badge-' + escapeHtml(stt) + '">' + escapeHtml(stt) + '</span>' : '—') + '</td>' +
-      '<td>' + (r.analise ? escapeHtml(r.analise) : '<span style="color:var(--text-light)">—</span>') + '</td>' +
+      '<td>' + (r.analise ? escapeHtml(r.analise) : '<span style="color:var(--ds-color-text-ui-muted)">—</span>') + '</td>' +
       '</tr>';
   });
   cont.innerHTML = '<table class="av-el-tabela"><thead><tr><th>Data</th><th>Valor</th><th>Status</th><th>Análise</th></tr></thead><tbody>' + rows + '</tbody></table>';
@@ -6051,13 +5918,13 @@ function _mdiDesenharGrafico(ind) {
   const apuracoes = (ind && ind.apuracoes) || [];
   const box = document.getElementById('mdi-grafico');
   if (!apuracoes.length) {
-    box.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem">Sem histórico de metas para montar o gráfico.</p>';
+    box.innerHTML = '<p style="color:var(--ds-color-text-ui-muted);font-size:0.85rem">Sem histórico de metas para montar o gráfico.</p>';
     return;
   }
   box.innerHTML = spinnerListaHTML('Carregando gráfico…');
   const desenhar = function() {
     if (typeof google === 'undefined' || !google.visualization) {
-      box.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem">Gráfico indisponível no momento.</p>';
+      box.innerHTML = '<p style="color:var(--ds-color-text-ui-muted);font-size:0.85rem">Gráfico indisponível no momento.</p>';
       return;
     }
     const dt = new google.visualization.DataTable();
@@ -6074,7 +5941,7 @@ function _mdiDesenharGrafico(ind) {
   };
   if (typeof chartsLoaded !== 'undefined' && chartsLoaded) setTimeout(desenhar, 50);
   else if (typeof google !== 'undefined' && google.charts) google.charts.setOnLoadCallback(desenhar);
-  else box.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem">Gráfico indisponível no momento.</p>';
+  else box.innerHTML = '<p style="color:var(--ds-color-text-ui-muted);font-size:0.85rem">Gráfico indisponível no momento.</p>';
 }
 </script>
 
@@ -6100,7 +5967,7 @@ function _mdiDesenharGrafico(ind) {
       </button>
     </div>
     <div class="modal-body">
-      <p style="font-size:0.85rem;color:var(--text-light);margin:0 0 12px">
+      <p style="font-size:0.85rem;color:var(--ds-color-text-ui-muted);margin:0 0 12px">
         Indique servidores dentro do escopo das unidades relacionadas a este plano.
         A indicação é imediata — o indicado passa a poder avaliar o plano como par.
       </p>
@@ -6114,7 +5981,7 @@ function _mdiDesenharGrafico(ind) {
 </div>
 
 <style>
-.mpa-item { display:flex; align-items:center; justify-content:space-between; gap:8px; border:1px solid var(--border); border-radius:8px; padding:8px 10px; }
+.mpa-item { display:flex; align-items:center; justify-content:space-between; gap:8px; border:1px solid var(--ds-color-border-ui); border-radius:8px; padding:8px 10px; }
 .mpa-item-nome { display:flex; align-items:center; gap:8px; font-size:0.88rem; }
 body.high-contrast .mpa-item { border-color:#fff; }
 </style>
@@ -6163,13 +6030,13 @@ function _mpaCarregarIndicados() {
 
 function _mpaFalha(err) {
   esconderLoader();
-  document.getElementById('mpa-lista').innerHTML = '<p style="color:var(--danger);font-size:0.85rem">' + escapeHtml(err.message) + '</p>';
+  document.getElementById('mpa-lista').innerHTML = '<p style="color:var(--ds-color-danger-solid);font-size:0.85rem">' + escapeHtml(err.message) + '</p>';
 }
 
 function _mpaRenderLista() {
   const cont = document.getElementById('mpa-lista');
   if (!_mpaEstado.indicados.length) {
-    cont.innerHTML = '<p style="font-size:0.85rem;color:var(--text-light);margin:0">Nenhum par indicado ainda.</p>';
+    cont.innerHTML = '<p style="font-size:0.85rem;color:var(--ds-color-text-ui-muted);margin:0">Nenhum par indicado ainda.</p>';
     return;
   }
   cont.innerHTML = _mpaEstado.indicados.map(function(p) {
@@ -6264,24 +6131,24 @@ document.addEventListener('click', function(e) {
 
         <div class="form-row">
           <div class="form-group" style="flex:1">
-            <label>Código SIORG <span style="font-weight:400;color:var(--text-light)">(opcional)</span></label>
+            <label>Código SIORG <span style="font-weight:400;color:var(--ds-color-text-ui-muted)">(opcional)</span></label>
             <input type="text" id="unidade-input-codigo-siorg" class="form-control" maxlength="30" placeholder="Código na estrutura organizacional (SIORG)">
           </div>
           <div class="form-group" style="flex:1">
-            <label>Código UGR <span style="font-weight:400;color:var(--text-light)">(opcional)</span></label>
+            <label>Código UGR <span style="font-weight:400;color:var(--ds-color-text-ui-muted)">(opcional)</span></label>
             <input type="text" id="unidade-input-codigo-siafi" class="form-control" maxlength="30" placeholder="Código orçamentário (SIAFI)">
           </div>
         </div>
         <div class="form-row">
           <div class="form-group" style="flex:1">
-            <label>Código UORG <span style="font-weight:400;color:var(--text-light)">(opcional)</span></label>
+            <label>Código UORG <span style="font-weight:400;color:var(--ds-color-text-ui-muted)">(opcional)</span></label>
             <input type="text" id="unidade-input-codigo-uorg" class="form-control" maxlength="30" placeholder="Código de lotação (SIAPE)">
           </div>
         </div>
-        <p style="font-size:0.78rem;color:var(--text-light);margin:-8px 0 12px">Preencha um, outro(s), todos ou nenhum: SIORG identifica a unidade na estrutura organizacional oficial; UGR identifica quem executa orçamento (nem toda unidade orçamentária faz parte da estrutura organizacional, ex.: uma unidade de gestão de contratos); UORG identifica a unidade para fins de lotação/folha de pagamento no SIAPE (setor de pessoal) — mais granular que o SIORG, registra inclusive unidades que o SIORG não permite (ex.: a própria Reitoria).</p>
+        <p style="font-size:0.78rem;color:var(--ds-color-text-ui-muted);margin:-8px 0 12px">Preencha um, outro(s), todos ou nenhum: SIORG identifica a unidade na estrutura organizacional oficial; UGR identifica quem executa orçamento (nem toda unidade orçamentária faz parte da estrutura organizacional, ex.: uma unidade de gestão de contratos); UORG identifica a unidade para fins de lotação/folha de pagamento no SIAPE (setor de pessoal) — mais granular que o SIORG, registra inclusive unidades que o SIORG não permite (ex.: a própria Reitoria).</p>
 
         <div class="form-group">
-          <label>Unidade Pai <span style="font-weight:400;color:var(--text-light)">(hierarquia)</span></label>
+          <label>Unidade Pai <span style="font-weight:400;color:var(--ds-color-text-ui-muted)">(hierarquia)</span></label>
           <div style="position:relative">
             <input type="text" id="unidade-input-pai" class="form-control" autocomplete="off" placeholder="Digite sigla ou nome…">
             <input type="hidden" id="unidade-id-pai">
@@ -6293,7 +6160,7 @@ document.addEventListener('click', function(e) {
         </div>
 
         <div class="form-group">
-          <label>Dirigente <span style="font-weight:400;color:var(--text-light)">(opcional)</span></label>
+          <label>Dirigente <span style="font-weight:400;color:var(--ds-color-text-ui-muted)">(opcional)</span></label>
           <div style="position:relative">
             <input type="text" id="unidade-input-dirigente" class="form-control" autocomplete="off" placeholder="Digite nome ou SIAPE…">
             <input type="hidden" id="unidade-id-dirigente">
@@ -6306,11 +6173,11 @@ document.addEventListener('click', function(e) {
 
         <div class="form-row">
           <div class="form-group" style="flex:1">
-            <label>Telefone <span style="font-weight:400;color:var(--text-light)">(opcional)</span></label>
+            <label>Telefone <span style="font-weight:400;color:var(--ds-color-text-ui-muted)">(opcional)</span></label>
             <input type="text" id="unidade-input-telefone" class="form-control" maxlength="30" placeholder="(91) 0000-0000">
           </div>
           <div class="form-group" style="flex:1">
-            <label>Email <span style="font-weight:400;color:var(--text-light)">(opcional)</span></label>
+            <label>Email <span style="font-weight:400;color:var(--ds-color-text-ui-muted)">(opcional)</span></label>
             <input type="email" id="unidade-input-email" class="form-control" maxlength="120" placeholder="contato@ufpa.br">
           </div>
         </div>
@@ -6320,7 +6187,7 @@ document.addEventListener('click', function(e) {
             <input type="checkbox" id="unidade-input-ativa" checked>
             <span class="el-switch-track"><span class="el-switch-thumb"></span></span>
           </label>
-          <span style="margin-left:8px;font-size:0.85rem;color:var(--text-dark)">Unidade ativa</span>
+          <span style="margin-left:8px;font-size:0.85rem;color:var(--ds-color-text-ui)">Unidade ativa</span>
         </div>
       </form>
     </div>
@@ -6610,7 +6477,7 @@ function handleSalvarUnidade(event) {
     <div class="modal-header">
       <div>
         <h3 id="modal-mkt-app-titulo">Adicionar App ao Plano</h3>
-        <p id="modal-mkt-app-subtitulo" style="font-size:0.8rem; color:var(--text-light); margin:0">Selecione uma extensão disponível para adicionar à barra de abas deste plano.</p>
+        <p id="modal-mkt-app-subtitulo" style="font-size:0.8rem; color:var(--ds-color-text-ui-muted); margin:0">Selecione uma extensão disponível para adicionar à barra de abas deste plano.</p>
       </div>
       <button class="btn-icon-close" onclick="fecharModalAdicionarApp()">
         <span class="material-symbols-outlined">close</span>
@@ -6652,7 +6519,7 @@ function abrirModalAdicionarApp() {
     })
     .withFailureHandler(function(err) {
       if (container) {
-        container.innerHTML = '<div style="color:var(--danger); padding:16px 0; text-align:center;">Erro ao carregar catálogo: ' + escapeHtml(err.message) + '</div>';
+        container.innerHTML = '<div style="color:var(--ds-color-danger-solid); padding:16px 0; text-align:center;">Erro ao carregar catálogo: ' + escapeHtml(err.message) + '</div>';
       }
     })
     .apiGetCatalogoApps();
@@ -6678,8 +6545,8 @@ function _mktAppRenderizarLista(catalogo) {
 
   if (!disponiveis.length) {
     container.innerHTML =
-      '<div style="text-align:center; padding:24px 12px; color:var(--text-light);">' +
-        '<span class="material-symbols-outlined" style="font-size:36px; color:var(--text-light); margin-bottom:8px;">check_circle</span>' +
+      '<div style="text-align:center; padding:24px 12px; color:var(--ds-color-text-ui-muted);">' +
+        '<span class="material-symbols-outlined" style="font-size:36px; color:var(--ds-color-text-ui-muted); margin-bottom:8px;">check_circle</span>' +
         '<div style="font-weight:500; font-size:0.95rem; margin-bottom:4px;">Tudo instalado!</div>' +
         '<div style="font-size:0.85rem;">Todos os apps ativos do catálogo já estão instalados neste plano.</div>' +
       '</div>';
@@ -6692,17 +6559,17 @@ function _mktAppRenderizarLista(catalogo) {
     var tagTipo = app.tipo === 'CORE' ? '<span class="ds-badge" style="font-size:0.7rem; margin-left:6px;">Sistema</span>' : '';
 
     html +=
-      '<div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:var(--bg-hover, #f8f9fa); border-radius:8px; border:1px solid var(--border);">' +
+      '<div style="display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:var(--bg-hover, #f8f9fa); border-radius:8px; border:1px solid var(--ds-color-border-ui);">' +
         '<div style="display:flex; align-items:center; gap:12px; min-width:0;">' +
-          '<div style="width:36px; height:36px; border-radius:8px; background:var(--surface, #fff); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0;">' +
-            '<span class="material-symbols-outlined" style="font-size:20px; color:var(--primary-color);">' + escapeHtml(icone) + '</span>' +
+          '<div style="width:36px; height:36px; border-radius:8px; background:var(--surface, #fff); border:1px solid var(--ds-color-border-ui); display:flex; align-items:center; justify-content:center; flex-shrink:0;">' +
+            '<span class="material-symbols-outlined" style="font-size:20px; color:var(--ds-primary-700);">' + escapeHtml(icone) + '</span>' +
           '</div>' +
           '<div style="min-width:0;">' +
             '<div style="font-weight:600; font-size:0.9rem; color:var(--text); display:flex; align-items:center;">' +
               '<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + escapeHtml(app.nome) + '</span>' +
               tagTipo +
             '</div>' +
-            '<div style="font-size:0.75rem; color:var(--text-light);">ID: ' + escapeHtml(app.id) + '</div>' +
+            '<div style="font-size:0.75rem; color:var(--ds-color-text-ui-muted);">ID: ' + escapeHtml(app.id) + '</div>' +
           '</div>' +
         '</div>' +
         '<button type="button" class="btn btn-primary btn-sm" id="btn-instalar-app-' + escapeHtml(app.id) + '" onclick="_mktAppInstalar(\'' + escapeHtml(app.id) + '\', this)">' +
@@ -8200,14 +8067,14 @@ window.addEventListener('resize', function() { acoesLinhaFechar(); fecharMenuSel
 }
 
 .sys-card {
-  background: var(--white); /* Variável global */
+  background: var(--ds-color-surface); /* Variável global */
   width: 90%; max-width: 400px;
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   display: flex; flex-direction: column;
   overflow: hidden;
   animation: sysSlideUp 0.3s ease-out;
-  border: 1px solid var(--border); /* Adicionado borda sutil para HC */
+  border: 1px solid var(--ds-color-border-ui); /* Adicionado borda sutil para HC */
 }
 
 .sys-header {
@@ -8216,13 +8083,13 @@ window.addEventListener('resize', function() { acoesLinhaFechar(); fecharMenuSel
 }
 
 .sys-title-tag {
-  font-size: 0.7rem; font-weight: bold; letter-spacing: 1px; color: var(--text-light); text-transform: uppercase;
+  font-size: 0.7rem; font-weight: bold; letter-spacing: 1px; color: var(--ds-color-text-ui-muted); text-transform: uppercase;
 }
 
 .sys-close-btn {
-  background: none; border: none; cursor: pointer; color: var(--text-light); display: flex;
+  background: none; border: none; cursor: pointer; color: var(--ds-color-text-ui-muted); display: flex;
 }
-.sys-close-btn:hover { color: var(--text-dark); }
+.sys-close-btn:hover { color: var(--ds-color-text-ui); }
 
 .sys-body {
   padding: 0 25px 25px 25px;
@@ -8237,16 +8104,16 @@ window.addEventListener('resize', function() { acoesLinhaFechar(); fecharMenuSel
 }
 
 .sys-body h3 {
-  margin-bottom: 10px; color: var(--text-dark); font-size: 1.2rem;
+  margin-bottom: 10px; color: var(--ds-color-text-ui); font-size: 1.2rem;
 }
 .sys-body p {
-  color: var(--text-light); font-size: 0.95rem; line-height: 1.5; margin: 0;
+  color: var(--ds-color-text-ui-muted); font-size: 0.95rem; line-height: 1.5; margin: 0;
 }
 
 .sys-footer {
   padding: 15px 20px;
-  background: var(--bg-light); /* Usa a variável para ficar preto no HC */
-  border-top: 1px solid var(--border);
+  background: var(--ds-color-bg-subtle); /* Usa a variável para ficar preto no HC */
+  border-top: 1px solid var(--ds-color-border-ui);
   display: flex; justify-content: flex-end; gap: 10px;
 }
 
@@ -8254,18 +8121,18 @@ window.addEventListener('resize', function() { acoesLinhaFechar(); fecharMenuSel
 .btn { padding: 8px 16px; border-radius: 4px; border: none; cursor: pointer; font-weight: 500; font-size: 0.9rem; }
 
 /* Botão Primário (Herda do global, mas reforçado aqui) */
-.btn-primary { background: var(--secondary-color); color: #fff; }
+.btn-primary { background: var(--ds-color-action); color: #fff; }
 .btn-primary:hover { filter: brightness(0.9); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 
 /* Botão Outline (Ajustado para HC) */
-.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-dark); }
-.btn-outline:hover { background: var(--bg-light); }
+.btn-outline { background: transparent; border: 1px solid var(--ds-color-border-ui); color: var(--ds-color-text-ui); }
+.btn-outline:hover { background: var(--ds-color-bg-subtle); }
 
 /* VARIAÇÕES DE ESTILO (Cores dos Ícones) */
-.sys-type-success #sys-icon { color: var(--success); }
-.sys-type-error #sys-icon { color: var(--danger); }
-.sys-type-warning #sys-icon { color: var(--warning); }
-.sys-type-info #sys-icon { color: var(--secondary-color); }
+.sys-type-success #sys-icon { color: var(--ds-color-success-solid); }
+.sys-type-error #sys-icon { color: var(--ds-color-danger-solid); }
+.sys-type-warning #sys-icon { color: var(--ds-color-warning-solid); }
+.sys-type-info #sys-icon { color: var(--ds-color-action); }
 
 /* Animações */
 @keyframes sysFadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -8322,7 +8189,7 @@ function showMessage(tipo, titulo, texto, callback = null) {
   btnConfirm.className = "btn btn-primary"; // Restaura estilo padrão
   
   // Se for erro, botão fica vermelho
-  if(tipo === 'error') btnConfirm.style.backgroundColor = 'var(--danger)';
+  if(tipo === 'error') btnConfirm.style.backgroundColor = 'var(--ds-color-danger-solid)';
   else btnConfirm.style.backgroundColor = ''; // Remove inline para usar CSS class
 
   sysOnConfirm = callback; // No modo message, o confirm roda o callback de fechamento
@@ -8743,7 +8610,7 @@ function uiEscopoRespIdsUnidades(unidades, chave) {
 
 /* Itens clicáveis (não são o último) */
 .bc-item {
-  color: var(--text-light);
+  color: var(--ds-color-text-ui-muted);
   cursor: pointer;
   padding: 3px 6px;
   border-radius: 4px;
@@ -8755,14 +8622,14 @@ function uiEscopoRespIdsUnidades(unidades, chave) {
   transition: color 0.15s, background 0.15s;
   outline-offset: 2px;
 }
-.bc-item:hover { color: var(--primary-color); background: rgba(38, 112, 232, 0.07); }
-.bc-item:focus-visible { outline: 2px solid var(--secondary-color); }
+.bc-item:hover { color: var(--ds-primary-700); background: rgba(38, 112, 232, 0.07); }
+.bc-item:focus-visible { outline: 2px solid var(--ds-color-action); }
 
 /* Rótulo de categoria sem destino próprio (ex.: "Planejamento" antes de
    "Planejamento Institucional" — sem hub pra onde voltar, menu em cascata
    assumiu esse papel). Mesma pegada visual de .bc-item, mas inerte. */
 .bc-label {
-  color: var(--text-light);
+  color: var(--ds-color-text-ui-muted);
   padding: 3px 6px;
   white-space: nowrap;
   flex-shrink: 1;
@@ -8773,7 +8640,7 @@ function uiEscopoRespIdsUnidades(unidades, chave) {
 
 /* Separador */
 .bc-sep {
-  color: var(--border);
+  color: var(--ds-color-border-ui);
   display: flex;
   align-items: center;
   flex-shrink: 0;
@@ -8782,7 +8649,7 @@ function uiEscopoRespIdsUnidades(unidades, chave) {
 
 /* Página atual (último item, sem link) */
 .bc-current {
-  color: var(--text-dark);
+  color: var(--ds-color-text-ui);
   font-weight: 500;
   padding: 3px 6px;
   white-space: nowrap;
@@ -8793,9 +8660,9 @@ function uiEscopoRespIdsUnidades(unidades, chave) {
 }
 
 /* Alto contraste */
-body.high-contrast .bc-item:hover { color: var(--secondary-color); background: rgba(0, 255, 255, 0.1); }
-body.high-contrast .bc-current { color: var(--text-dark); }
-body.high-contrast .bc-sep { color: var(--border); }
+body.high-contrast .bc-item:hover { color: var(--ds-color-action); background: rgba(0, 255, 255, 0.1); }
+body.high-contrast .bc-current { color: var(--ds-color-text-ui); }
+body.high-contrast .bc-sep { color: var(--ds-color-border-ui); }
 
 /* Mobile: reduz padding para economizar espaço */
 @media (max-width: 600px) {
@@ -9843,22 +9710,22 @@ function _hmRenderPanorama() {
   flex-wrap: wrap; gap: 10px; padding: 10px 16px;
   background: var(--ds-color-info-bg); border-bottom: 1px solid #c5d8fb;
 }
-.barra-selecao-info { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--primary-color); }
+.barra-selecao-info { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--ds-primary-700); }
 .barra-selecao-acoes { display: flex; align-items: center; gap: 8px; }
-body.high-contrast .barra-selecao { background: #000; border-color: var(--secondary-color); }
+body.high-contrast .barra-selecao { background: #000; border-color: var(--ds-color-action); }
 
 /* --- Tabela --- */
 .table-full { width: 100%; border-collapse: collapse; }
 .table-full thead th {
   padding: 10px 14px; text-align: left; font-size: 0.8rem;
-  font-weight: 600; color: var(--text-light); background: var(--bg-light);
-  border-bottom: 1px solid var(--border);
+  font-weight: 600; color: var(--ds-color-text-ui-muted); background: var(--ds-color-bg-subtle);
+  border-bottom: 1px solid var(--ds-color-border-ui);
 }
 .table-full tbody td {
-  padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle;
+  padding: 10px 14px; border-bottom: 1px solid var(--ds-color-border-ui); vertical-align: middle;
 }
 .table-full tbody tr:last-child td { border-bottom: none; }
-.table-full tbody tr:hover { background: var(--bg-light); }
+.table-full tbody tr:hover { background: var(--ds-color-bg-subtle); }
 .table-full tbody tr.selecionada { background: var(--ds-color-surface-2); }
 body.high-contrast .table-full tbody tr.selecionada { background: #1a1a2e; }
 
@@ -9873,7 +9740,7 @@ body.high-contrast .table-full tbody tr.selecionada { background: #1a1a2e; }
 /* Estado vazio */
 .planos-vazio {
   display: flex; flex-direction: column; align-items: center;
-  gap: 10px; padding: 40px 16px; color: var(--text-light);
+  gap: 10px; padding: 40px 16px; color: var(--ds-color-text-ui-muted);
 }
 .planos-vazio .material-symbols-outlined { font-size: 54px; opacity: 0.35; }
 .planos-vazio p { font-size: 0.88rem; margin: 0; }
@@ -9884,11 +9751,11 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
 /* Colunas ordenáveis: cabeçalho continua clicável (convenção do sistema), mas só a coluna
    ativa mostra a seta — o menu "Ordenar" (coluna de ações) é a via alternativa/descoberta. */
 .th-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
-.th-sortable:hover { color: var(--primary-color); }
+.th-sortable:hover { color: var(--ds-primary-700); }
 .sort-icon {
   display: inline-flex; align-items: center; vertical-align: middle;
   font-family: 'Material Symbols Outlined'; font-size: 14px;
-  font-weight: 300; margin-left: 3px; color: var(--primary-color);
+  font-weight: 300; margin-left: 3px; color: var(--ds-primary-700);
   font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
 }
 .sort-icon:empty { display: none; }
@@ -11511,7 +11378,7 @@ function solicitarExclusao(id, nomePlano) {
 /* --- ABAS (Sticky logic) --- */
 .view-tabs-container {
   position: sticky;
-  /* top:0, não var(--header-height): o <main> agora rola por si só e já começa
+  /* top:0, não var(--ds-header-height): o <main> agora rola por si só e já começa
      abaixo da topbar fixa (ver docs/design_system.md). */
   top: 0;
   background: var(--ds-color-surface); /* Alterado de #fff */
@@ -11684,7 +11551,7 @@ body.high-contrast .mode-btn.active { background: #333; color: #ffff00; }
 /* Tela cheia (estilo Gmail preview contido no #main-content) */
 .org-fs-only { display: none !important; }
 .org-root.org-fullscreen {
-  position: fixed; top: var(--header-height, 60px); left: var(--ds-sb-w, 240px); right: 0; bottom: 0;
+  position: fixed; top: var(--ds-header-height, 60px); left: var(--ds-sb-w, 240px); right: 0; bottom: 0;
   z-index: 70; background: var(--ds-color-surface); border-top: none; padding: 12px 20px;
   display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
   transition: left var(--ds-duration-slow) var(--ds-ease-standard);
@@ -13324,7 +13191,7 @@ body.high-contrast .el-chip-meta {
    adição das abas (proposta original tinha um único painel sem abas).
    ============================================================================ */
 .detp-panel {
-  position: fixed; top: var(--header-height); right: 0; bottom: 0; width: 380px; max-width: 92vw;
+  position: fixed; top: var(--ds-header-height); right: 0; bottom: 0; width: 380px; max-width: 92vw;
   background: var(--ds-color-surface); border-left: 1px solid var(--ds-color-border);
   box-shadow: var(--ds-shadow-3); z-index: var(--ds-z-drawer, 500);
   display: flex; flex-direction: column;
@@ -15718,7 +15585,7 @@ function _appsRenderizarAbas(appsInstalados) {
     const icone = app.icone || 'extension';
     let descontinuadoHtml = '';
     if (app.status === 'Descontinuado') {
-      descontinuadoHtml = ' <span class="material-symbols-outlined icon-sm tab-app-descontinuado" style="font-size:15px; color:var(--text-light, #888); vertical-align:middle; margin-left:2px;" data-title="App descontinuado">warning</span>';
+      descontinuadoHtml = ' <span class="material-symbols-outlined icon-sm tab-app-descontinuado" style="font-size:15px; color:var(--ds-color-text-ui-muted, #888); vertical-align:middle; margin-left:2px;" data-title="App descontinuado">warning</span>';
     }
 
     btn.innerHTML =
@@ -15877,13 +15744,13 @@ function _appRenderizarDescontinuado(pageParam, app, permissoes) {
   container.innerHTML =
     '<div class="ds-card" style="margin: 32px auto; max-width: 540px; text-align: center; padding: 32px 24px;">' +
       '<div style="width: 56px; height: 56px; border-radius: 50%; background: var(--bg-hover, #f1f3f4); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">' +
-        '<span class="material-symbols-outlined" style="font-size: 32px; color: var(--text-light, #5f6368);">info</span>' +
+        '<span class="material-symbols-outlined" style="font-size: 32px; color: var(--ds-color-text-ui-muted, #5f6368);">info</span>' +
       '</div>' +
       '<h3 style="margin: 0 0 8px; font-size: 1.15rem; font-weight: 600;">App Descontinuado</h3>' +
-      '<p style="margin: 0 0 12px; color: var(--text-light, #5f6368); font-size: 0.9rem;">' +
+      '<p style="margin: 0 0 12px; color: var(--ds-color-text-ui-muted, #5f6368); font-size: 0.9rem;">' +
         'O app <strong>' + escapeHtml(app.nome) + '</strong> foi descontinuado e não está mais ativo no sistema.' +
       '</p>' +
-      (app.nomeAppSubstituto ? '<p style="margin: 0; font-size: 0.85rem; color: var(--text-light, #5f6368);">Recomendamos utilizar o app <strong>' + escapeHtml(app.nomeAppSubstituto) + '</strong> como substituto.</p>' : '') +
+      (app.nomeAppSubstituto ? '<p style="margin: 0; font-size: 0.85rem; color: var(--ds-color-text-ui-muted, #5f6368);">Recomendamos utilizar o app <strong>' + escapeHtml(app.nomeAppSubstituto) + '</strong> como substituto.</p>' : '') +
       botaoSubstituto +
     '</div>';
 }
@@ -20625,7 +20492,7 @@ function _axpRenderAtividade() {
     <div class="modal-header">
       <div>
         <h3>Gestão de Revisões</h3>
-        <p style="font-size:0.8rem; color:var(--text-light); margin:0">Abra uma janela para os responsáveis revisarem seus planos em execução.</p>
+        <p style="font-size:0.8rem; color:var(--ds-color-text-ui-muted); margin:0">Abra uma janela para os responsáveis revisarem seus planos em execução.</p>
       </div>
       <button class="btn-icon-close" onclick="fecharGestaoRevisoes()">
         <span class="material-symbols-outlined">close</span>
@@ -20660,7 +20527,7 @@ function _axpRenderAtividade() {
       </div>
       <button type="button" class="btn btn-primary" onclick="confirmarAbrirJanelaRevisao()">Abrir janela</button>
 
-      <hr style="margin:18px 0; border:none; border-top:1px solid var(--border);">
+      <hr style="margin:18px 0; border:none; border-top:1px solid var(--ds-color-border-ui);">
 
       <h4 style="margin:0 0 10px; font-size:0.95rem;">Janelas abertas</h4>
       <div id="rev-lista-janelas" style="font-size:0.85rem;">Carregando...</div>
@@ -20719,7 +20586,7 @@ function fecharGestaoRevisoes() {
 }
 
 function _revLinhaGestao(texto, botao) {
-  return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--border);">'
+  return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--ds-color-border-ui);">'
     + '<span>' + texto + '</span>' + (botao || '') + '</div>';
 }
 
@@ -20733,21 +20600,21 @@ function carregarGestaoRevisoes() {
       const janelas = (res && res.janelas) || [], revisoes = (res && res.revisoes) || [], sols = (res && res.solicitacoes) || [];
       divJ.innerHTML = janelas.length ? janelas.map(j => _revLinhaGestao(
         (j.escopo === 'PLANO' ? escapeHtml(j.nomePlano) : 'Todos os planos em execução')
-          + ' <small style="color:var(--text-light)">— até ' + escapeHtml(j.dataFechamento) + (j.origem === 'SOLICITACAO' ? ' (a pedido do responsável)' : '') + '</small>',
+          + ' <small style="color:var(--ds-color-text-ui-muted)">— até ' + escapeHtml(j.dataFechamento) + (j.origem === 'SOLICITACAO' ? ' (a pedido do responsável)' : '') + '</small>',
         '<button class="btn btn-outline btn-sm" onclick="confirmarFecharJanelaRevisao(\'' + j.id + '\')">Fechar</button>'
-      )).join('') : '<em style="color:var(--text-light)">Nenhuma janela aberta.</em>';
+      )).join('') : '<em style="color:var(--ds-color-text-ui-muted)">Nenhuma janela aberta.</em>';
 
       divR.innerHTML = revisoes.length ? revisoes.map(r => _revLinhaGestao(
-        escapeHtml(r.nomePlano) + ' <small style="color:var(--text-light)">— ' + (r.status === 'EmAnalise' ? 'em análise' : 'em revisão') + (r.dataFechamento ? ', prazo ' + escapeHtml(r.dataFechamento) : '') + '</small>',
+        escapeHtml(r.nomePlano) + ' <small style="color:var(--ds-color-text-ui-muted)">— ' + (r.status === 'EmAnalise' ? 'em análise' : 'em revisão') + (r.dataFechamento ? ', prazo ' + escapeHtml(r.dataFechamento) : '') + '</small>',
         '<button class="btn btn-outline btn-sm" onclick="confirmarEncerrarRevisao(\'' + r.id + '\')">Encerrar</button>'
-      )).join('') : '<em style="color:var(--text-light)">Nenhum plano em revisão.</em>';
+      )).join('') : '<em style="color:var(--ds-color-text-ui-muted)">Nenhum plano em revisão.</em>';
 
       document.getElementById('rev-bloco-solicitacoes').classList.toggle('hidden', !sols.length);
       document.getElementById('rev-lista-solicitacoes').innerHTML = sols.map(s => _revLinhaGestao(
-        escapeHtml(s.nomePlano) + ' <small style="color:var(--text-light)">— pedido em ' + escapeHtml(s.criadoEm) + ': ' + escapeHtml(s.justificativa) + '</small>'
-      )).join('') + (sols.length ? '<div style="margin-top:6px; color:var(--text-light);">Abra o plano para aprovar (definindo o prazo) ou recusar.</div>' : '');
+        escapeHtml(s.nomePlano) + ' <small style="color:var(--ds-color-text-ui-muted)">— pedido em ' + escapeHtml(s.criadoEm) + ': ' + escapeHtml(s.justificativa) + '</small>'
+      )).join('') + (sols.length ? '<div style="margin-top:6px; color:var(--ds-color-text-ui-muted);">Abra o plano para aprovar (definindo o prazo) ou recusar.</div>' : '');
     })
-    .withFailureHandler(function(err) { divJ.innerHTML = '<span style="color:var(--danger)">' + escapeHtml(err.message) + '</span>'; })
+    .withFailureHandler(function(err) { divJ.innerHTML = '<span style="color:var(--ds-color-danger-solid)">' + escapeHtml(err.message) + '</span>'; })
     .apiListarJanelasRevisao();
 }
 
@@ -22706,7 +22573,7 @@ function msePublicar() {
       <label>Buscar</label>
       <div style="position:relative">
         <input type="text" id="user-busca" class="form-control" placeholder="Nome, SIAPE, Email ou Telefone..." onkeyup="if(event.key === 'Enter') carregarUsuarios()">
-        <span class="material-symbols-outlined" style="position:absolute; right:8px; top:8px; font-size:18px; color:var(--text-light); cursor:pointer" onclick="carregarUsuarios()">search</span>
+        <span class="material-symbols-outlined" style="position:absolute; right:8px; top:8px; font-size:18px; color:var(--ds-color-text-ui-muted); cursor:pointer" onclick="carregarUsuarios()">search</span>
       </div>
     </div>
 
@@ -22850,13 +22717,13 @@ function msePublicar() {
     <div class="fab-options" id="fab-options-list-usuarios">
       <div class="fab-item">
         <span class="fab-label">Importar</span>
-        <button class="fab-btn-mini" style="background-color: var(--text-light)" onclick="toggleFabUsuarios(); abrirModalImportarUsuarios()">
+        <button class="fab-btn-mini" style="background-color: var(--ds-color-text-ui-muted)" onclick="toggleFabUsuarios(); abrirModalImportarUsuarios()">
           <span class="material-symbols-outlined">upload_file</span>
         </button>
       </div>
       <div class="fab-item">
         <span class="fab-label">Novo Usuário</span>
-        <button class="fab-btn-mini" style="background-color: var(--secondary-color)" onclick="toggleFabUsuarios(); abrirModalUsuario()">
+        <button class="fab-btn-mini" style="background-color: var(--ds-color-action)" onclick="toggleFabUsuarios(); abrirModalUsuario()">
           <span class="material-symbols-outlined">person_add</span>
         </button>
       </div>
@@ -22872,35 +22739,35 @@ function msePublicar() {
 .user-avatar-small { 
   width: 36px; height: 36px; 
   border-radius: 50%; 
-  background: var(--primary-color); color: #fff;
+  background: var(--ds-primary-700); color: #fff;
   display: flex; align-items: center; justify-content: center;
   font-size: 0.9rem; font-weight: bold;
   flex-shrink: 0;
 }
 .user-avatar-small img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 
-.user-name { font-weight: 500; color: var(--text-dark); display: block; }
-.user-cargo { font-size: 0.75rem; color: var(--text-light); }
+.user-name { font-weight: 500; color: var(--ds-color-text-ui); display: block; }
+.user-cargo { font-size: 0.75rem; color: var(--ds-color-text-ui-muted); }
 
 .contact-info { font-size: 0.85rem; }
-.contact-email { display: block; color: var(--text-dark); margin-bottom: 2px; }
-.contact-phone { display: block; color: var(--text-light); font-size: 0.75rem; }
+.contact-email { display: block; color: var(--ds-color-text-ui); margin-bottom: 2px; }
+.contact-phone { display: block; color: var(--ds-color-text-ui-muted); font-size: 0.75rem; }
 
 .badge-papel { 
-  background: var(--bg-light); border: 1px solid var(--border); 
-  color: var(--text-dark); padding: 2px 6px; border-radius: 4px; 
+  background: var(--ds-color-bg-subtle); border: 1px solid var(--ds-color-border-ui); 
+  color: var(--ds-color-text-ui); padding: 2px 6px; border-radius: 4px; 
   font-size: 0.7rem; display: inline-block; margin-right: 3px; margin-bottom: 3px;
 }
 
 .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-.status-active { background-color: var(--success); }
-.status-inactive { background-color: var(--danger); }
+.status-active { background-color: var(--ds-color-success-solid); }
+.status-inactive { background-color: var(--ds-color-danger-solid); }
 
 /* Barra de seleção (ações em lote) */
-.barra-selecao { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 20px; background: var(--ds-color-info-bg); border: 1px solid var(--secondary-color); }
-.barra-selecao-info { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--primary-color); }
+.barra-selecao { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 20px; background: var(--ds-color-info-bg); border: 1px solid var(--ds-color-action); }
+.barra-selecao-info { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--ds-primary-700); }
 .barra-selecao-acoes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-body.high-contrast .barra-selecao { background: #000; border-color: var(--secondary-color); }
+body.high-contrast .barra-selecao { background: #000; border-color: var(--ds-color-action); }
 
 /* Filtros extras (ocultos por padrão no mobile) */
 #filtros-extra-usuarios .filter-actions { gap: 8px; }
@@ -23439,7 +23306,7 @@ function mudarTamanhoPaginaUsuarios(val) {
     <div class="fab-options">
       <div class="fab-item">
         <span class="fab-label">Nova Unidade</span>
-        <button class="fab-btn-mini" style="background-color:var(--secondary-color)" onclick="toggleFabUnidades(); abrirModalUnidade()">
+        <button class="fab-btn-mini" style="background-color:var(--ds-color-action)" onclick="toggleFabUnidades(); abrirModalUnidade()">
           <span class="material-symbols-outlined">add_business</span>
         </button>
       </div>
@@ -23804,7 +23671,7 @@ function toggleFabUnidades() {
     <div class="modal-header">
       <div>
         <h3>Detalhes da Auditoria</h3>
-        <p style="font-size:0.8rem; color:var(--text-light); margin:0">Histórico de alterações e dados do registro.</p>
+        <p style="font-size:0.8rem; color:var(--ds-color-text-ui-muted); margin:0">Histórico de alterações e dados do registro.</p>
       </div>
       <button class="btn-icon-close" onclick="fecharModalLog()">
         <span class="material-symbols-outlined">close</span>
@@ -23839,7 +23706,7 @@ function toggleFabUnidades() {
 /* --- LAYOUT GERAL --- */
 .logs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .header-left { display: flex; align-items: center; gap: 15px; }
-.header-title { display: flex; align-items: center; gap: 10px; color: var(--primary-color); }
+.header-title { display: flex; align-items: center; gap: 10px; color: var(--ds-primary-700); }
 .icon-title { font-size: 28px; }
 
 /* --- FILTROS (Corrigido sobreposição) --- */
@@ -23849,7 +23716,7 @@ function toggleFabUnidades() {
   gap: 15px; /* Espaço entre itens */
   align-items: flex-end; 
   padding: 15px; 
-  background: var(--white); 
+  background: var(--ds-color-surface); 
   margin-bottom: 20px;
   /* Garante que o conteúdo não vaze */
   position: relative; 
@@ -23866,17 +23733,17 @@ function toggleFabUnidades() {
 /* Força largura mínima para datas não quebrarem layout */
 .group-date { min-width: 260px; }
 
-.filter-group label { font-size: 0.8rem; font-weight: 600; color: var(--text-light); }
+.filter-group label { font-size: 0.8rem; font-weight: 600; color: var(--ds-color-text-ui-muted); }
 .date-range { display: flex; gap: 5px; align-items: center; }
 
 .form-control { 
   padding: 8px; 
-  border: 1px solid var(--border); 
+  border: 1px solid var(--ds-color-border-ui); 
   border-radius: 4px; 
   font-size: 0.9rem; 
   width: 100%; 
-  background: var(--bg-light); 
-  color: var(--text-dark); 
+  background: var(--ds-color-bg-subtle); 
+  color: var(--ds-color-text-ui); 
 }
 
 .filter-actions { 
@@ -23893,20 +23760,20 @@ function toggleFabUnidades() {
 }
 
 .log-acao-badge { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
-.acao-CRIAR { background: var(--ds-color-success-bg); color: var(--success); }
-.acao-EDITAR { background: var(--ds-color-info-bg); color: var(--secondary-color); }
-.acao-EXCLUIR { background: var(--ds-color-danger-bg); color: var(--danger); }
-.acao-TRAMITE { background: var(--ds-color-warning-bg); color: var(--warning); }
-.acao-LOGIN { background: var(--ds-color-surface-2); color: var(--text-light); }
+.acao-CRIAR { background: var(--ds-color-success-bg); color: var(--ds-color-success-solid); }
+.acao-EDITAR { background: var(--ds-color-info-bg); color: var(--ds-color-action); }
+.acao-EXCLUIR { background: var(--ds-color-danger-bg); color: var(--ds-color-danger-solid); }
+.acao-TRAMITE { background: var(--ds-color-warning-bg); color: var(--ds-color-warning-solid); }
+.acao-LOGIN { background: var(--ds-color-surface-2); color: var(--ds-color-text-ui-muted); }
 
 /* --- PAGINAÇÃO (NOVO) --- */
 .pagination-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--white);
+  background: var(--ds-color-surface);
   padding: 10px 15px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--ds-color-border-ui);
   border-top: none; /* Cola na tabela */
   border-radius: 0 0 8px 8px;
   margin-top: -20px; /* Ajuste visual para colar no card de cima */
@@ -23920,12 +23787,12 @@ function toggleFabUnidades() {
   align-items: center;
   gap: 8px;
   font-size: 0.85rem;
-  color: var(--text-light);
+  color: var(--ds-color-text-ui-muted);
 }
 
 .btn-pag {
-  background: var(--bg-light);
-  border: 1px solid var(--border);
+  background: var(--ds-color-bg-subtle);
+  border: 1px solid var(--ds-color-border-ui);
   border-radius: 4px;
   width: 32px;
   height: 32px;
@@ -23933,10 +23800,10 @@ function toggleFabUnidades() {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--text-dark);
+  color: var(--ds-color-text-ui);
   transition: all 0.2s;
 }
-.btn-pag:hover:not(:disabled) { background: var(--border); }
+.btn-pag:hover:not(:disabled) { background: var(--ds-color-border-ui); }
 .btn-pag:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .pag-selector {
@@ -23950,25 +23817,25 @@ function toggleFabUnidades() {
 
 /* --- MODAL DETALHES --- */
 .log-meta-info {
-  background-color: var(--bg-light); padding: 15px; border-radius: 6px;
-  border: 1px solid var(--border); margin-bottom: 20px;
+  background-color: var(--ds-color-bg-subtle); padding: 15px; border-radius: 6px;
+  border: 1px solid var(--ds-color-border-ui); margin-bottom: 20px;
   display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
 }
-.log-meta-info p { margin: 0; font-size: 0.9rem; color: var(--text-dark); line-height: 1.5; }
-.log-meta-info strong { color: var(--primary-color); margin-right: 5px; }
+.log-meta-info p { margin: 0; font-size: 0.9rem; color: var(--ds-color-text-ui); line-height: 1.5; }
+.log-meta-info strong { color: var(--ds-primary-700); margin-right: 5px; }
 
 .diff-container { display: flex; gap: 20px; }
 .diff-box { flex: 1; display: flex; flex-direction: column; }
 .diff-box h4 { 
-  font-size: 0.85rem; margin-bottom: 8px; color: var(--text-light); 
-  border-bottom: 1px solid var(--border); padding-bottom: 5px; 
+  font-size: 0.85rem; margin-bottom: 8px; color: var(--ds-color-text-ui-muted); 
+  border-bottom: 1px solid var(--ds-color-border-ui); padding-bottom: 5px; 
   display: flex; align-items: center; gap: 6px; text-transform: uppercase; font-weight: 700;
 }
 .diff-box pre { 
-  background: var(--bg-light); border: 1px solid var(--border); 
+  background: var(--ds-color-bg-subtle); border: 1px solid var(--ds-color-border-ui); 
   border-radius: 6px; padding: 12px; max-height: 350px; overflow: auto; 
   white-space: pre-wrap; word-wrap: break-word; 
-  font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: var(--text-dark);
+  font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; color: var(--ds-color-text-ui);
   flex: 1;
 }
 
@@ -23985,8 +23852,8 @@ function toggleFabUnidades() {
 
 /* --- ALTO CONTRASTE --- */
 body.high-contrast .log-acao-badge { background: #000 !important; border: 1px solid #fff; color: #fff !important; }
-body.high-contrast .acao-EXCLUIR { border-color: var(--danger) !important; color: var(--danger) !important; }
-body.high-contrast .acao-CRIAR { border-color: var(--success) !important; color: var(--success) !important; }
+body.high-contrast .acao-EXCLUIR { border-color: var(--ds-color-danger-solid) !important; color: var(--ds-color-danger-solid) !important; }
+body.high-contrast .acao-CRIAR { border-color: var(--ds-color-success-solid) !important; color: var(--ds-color-success-solid) !important; }
 body.high-contrast .diff-box pre { background: #000; color: #fff; border: 1px solid #fff; }
 body.high-contrast .log-meta-info { background: #000; border: 1px solid #fff; }
 body.high-contrast .pagination-bar { background: #000; border-color: #fff; }
@@ -24095,7 +23962,7 @@ function atualizarTabelaPaginada() {
       <td style="font-size:0.85rem">${log.data}</td>
       <td>
         <div style="font-weight:500">${escapeHtml(log.usuario)}</div>
-        <div style="font-size:0.75rem; color:var(--text-light)">${escapeHtml(log.email)}</div>
+        <div style="font-size:0.75rem; color:var(--ds-color-text-ui-muted)">${escapeHtml(log.email)}</div>
       </td>
       <td><span class="log-acao-badge ${acaoClass}">${escapeHtml(log.acao)}</span></td>
       <td style="font-size:0.85rem">${escapeHtml(log.entidade)}</td>
@@ -24183,288 +24050,6 @@ function fecharModalLog() {
   document.getElementById('modal-log-detalhe').classList.add('hidden');
 }
 </script>
-       <div id="page-teste" class="page-content hidden">
-  <div class="card" style="margin: 20px; padding: 20px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px">
-      <h2 style="color:var(--primary-color)">Ambiente de Teste: Progresso e Resultados</h2>
-      <button class="btn btn-outline" onclick="navigate('planos')">Voltar ao Sistema</button>
-    </div>
-
-    <p style="color:#666; margin-bottom:20px">
-      Selecione um plano, reporte o progresso dos elementos e lance resultados para as metas —
-      dados para verificar o comportamento da aba <strong>Monitoramento</strong>.
-    </p>
-
-    <div class="form-group" style="max-width:520px">
-      <label>Plano</label>
-      <select id="teste-select-plano" class="form-control" onchange="carregarDadosTeste()">
-        <option value="">-- Selecione um plano --</option>
-      </select>
-    </div>
-
-    <div id="teste-conteudo" class="hidden">
-
-      <!-- SEÇÃO 1: PROGRESSO DOS ELEMENTOS -->
-      <h3 style="color:var(--primary-color); margin:24px 0 6px">1. Reportar progresso dos elementos</h3>
-      <p style="color:#666; font-size:0.85rem; margin-bottom:12px">
-        Ajuste o status e o % de conclusão de cada elemento. "Concluído" preenche 100% e "Não Iniciado" zera automaticamente.
-      </p>
-      <div class="table-container">
-        <table class="table-full">
-          <thead>
-            <tr>
-              <th width="10%">Código</th>
-              <th>Elemento</th>
-              <th width="12%">Tipo</th>
-              <th width="18%">Status</th>
-              <th width="12%">% Conclusão</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-teste-elementos">
-            <tr><td colspan="5">Carregando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div style="margin:12px 0 6px; text-align:right">
-        <button class="btn btn-primary" id="btn-teste-progresso" onclick="handleSalvarProgressoTeste()">
-          Salvar progresso de todos
-        </button>
-      </div>
-
-      <!-- SEÇÃO 2: RESULTADOS DOS INDICADORES -->
-      <h3 style="color:var(--primary-color); margin:28px 0 6px">2. Lançar resultados dos indicadores</h3>
-      <p style="color:#666; font-size:0.85rem; margin-bottom:12px">
-        Preencha o valor apenas das linhas que deseja lançar — as demais são ignoradas.
-        Somente resultados <strong>Validados</strong> e vinculados a uma meta entram na apuração do desempenho.
-      </p>
-      <div class="table-container">
-        <table class="table-full">
-          <thead>
-            <tr>
-              <th>Indicador</th>
-              <th width="24%">Meta</th>
-              <th width="14%">Data</th>
-              <th width="12%">Valor</th>
-              <th width="12%">Validação</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-teste-resultados">
-            <tr><td colspan="5">Carregando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div style="margin:12px 0 6px; text-align:right">
-        <button class="btn btn-primary" id="btn-teste-resultados" onclick="handleSalvarResultadosTeste()">
-          Salvar resultados preenchidos
-        </button>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<script>
-const STATUS_ELEMENTO_TESTE = ['Não Iniciado', 'Em Andamento', 'Concluído', 'Cancelado'];
-
-function carregarPaginaTeste() {
-  // Esconde outras páginas e mostra a de teste
-  document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
-  document.getElementById('page-teste').classList.remove('hidden');
-  hdrNavSincronizarAtivo('teste');
-  document.getElementById('teste-conteudo').classList.add('hidden');
-
-  mostrarLoader();
-  google.script.run
-    .withSuccessHandler(res => {
-      esconderLoader();
-      const sel = document.getElementById('teste-select-plano');
-      const valorAtual = sel.value;
-      sel.innerHTML = '<option value="">-- Selecione um plano --</option>';
-      res.planos.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.text = p.nome + ' (' + p.status + ')';
-        sel.appendChild(opt);
-      });
-      sel.value = valorAtual;
-      if (sel.value) carregarDadosTeste();
-    })
-    .withFailureHandler(err => {
-      esconderLoader();
-      showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
-    })
-    .apiGetDadosTeste(null);
-}
-
-function carregarDadosTeste() {
-  const idPlano = document.getElementById('teste-select-plano').value;
-  if (!idPlano) {
-    document.getElementById('teste-conteudo').classList.add('hidden');
-    return;
-  }
-
-  mostrarLoader();
-  google.script.run
-    .withSuccessHandler(res => {
-      esconderLoader();
-      renderizarElementosTeste(res.elementos);
-      renderizarResultadosTeste(res.indicadores, res.metas);
-      document.getElementById('teste-conteudo').classList.remove('hidden');
-    })
-    .withFailureHandler(err => {
-      esconderLoader();
-      showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
-    })
-    .apiGetDadosTeste(idPlano);
-}
-
-// --- SEÇÃO 1: PROGRESSO ---
-
-function renderizarElementosTeste(lista) {
-  const tbody = document.getElementById('tbody-teste-elementos');
-  tbody.innerHTML = '';
-
-  if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Nenhum elemento neste plano. Cadastre na aba Elementos primeiro.</td></tr>';
-    return;
-  }
-
-  lista.forEach(el => {
-    const tr = document.createElement('tr');
-    tr.dataset.id = el.id;
-    const opts = STATUS_ELEMENTO_TESTE
-      .map(s => `<option value="${s}" ${s === el.status ? 'selected' : ''}>${s}</option>`)
-      .join('');
-    tr.innerHTML = `
-      <td style="white-space:nowrap"><strong>${escapeHtml(el.codigo || '—')}</strong></td>
-      <td>${escapeHtml(el.titulo)}</td>
-      <td>${escapeHtml(el.tipo || '—')}</td>
-      <td><select class="form-control teste-el-status" onchange="ajustarPctTeste(this)">${opts}</select></td>
-      <td><input type="number" class="form-control teste-el-pct" min="0" max="100" step="1" value="${Number(el.percentual) || 0}" style="width:90px"></td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-function ajustarPctTeste(sel) {
-  const inp = sel.closest('tr').querySelector('.teste-el-pct');
-  if (sel.value === 'Concluído') inp.value = 100;
-  else if (sel.value === 'Não Iniciado') inp.value = 0;
-}
-
-function handleSalvarProgressoTeste() {
-  const linhas = document.querySelectorAll('#tbody-teste-elementos tr[data-id]');
-  if (!linhas.length) return;
-
-  const lista = Array.from(linhas).map(tr => ({
-    id: tr.dataset.id,
-    status: tr.querySelector('.teste-el-status').value,
-    percentual: Number(tr.querySelector('.teste-el-pct').value) || 0
-  }));
-
-  const btn = document.getElementById('btn-teste-progresso');
-  btn.disabled = true;
-  mostrarLoader();
-  google.script.run
-    .withSuccessHandler(res => {
-      esconderLoader();
-      btn.disabled = false;
-      showMessage('success', 'Sucesso', 'Progresso salvo em ' + res.atualizados + ' elemento(s).');
-      carregarDadosTeste();
-    })
-    .withFailureHandler(err => {
-      esconderLoader();
-      btn.disabled = false;
-      showMessage('error', 'Erro ao salvar', escapeHtml(err.message || String(err)));
-    })
-    .apiSalvarProgressoTesteLote(lista);
-}
-
-// --- SEÇÃO 2: RESULTADOS ---
-
-function renderizarResultadosTeste(indicadores, metas) {
-  const tbody = document.getElementById('tbody-teste-resultados');
-  tbody.innerHTML = '';
-
-  const hoje = new Date().toISOString().slice(0, 10);
-  const linhas = [];
-  indicadores.forEach(ind => {
-    const metasDoInd = metas.filter(m => m.idIndicador === ind.id);
-    if (metasDoInd.length) {
-      metasDoInd.forEach(m => linhas.push({ ind: ind, meta: m }));
-    } else {
-      linhas.push({ ind: ind, meta: null });
-    }
-  });
-
-  if (!linhas.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Nenhum indicador neste plano. Cadastre na aba Indicadores primeiro.</td></tr>';
-    return;
-  }
-
-  linhas.forEach(l => {
-    const tr = document.createElement('tr');
-    tr.dataset.idIndicador = l.ind.id;
-    tr.dataset.idMeta = l.meta ? l.meta.id : '';
-    const metaTxt = l.meta
-      ? `${l.meta.periodo}/${l.meta.ano} — Alvo: ${l.meta.valor} (${l.meta.regra})`
-      : 'Sem meta (monitoramento)';
-    const dataPadrao = (l.meta && l.meta.dataLimite) ? l.meta.dataLimite : hoje;
-    tr.innerHTML = `
-      <td><strong>${escapeHtml(l.ind.nome)}</strong>
-        <div style="font-size:0.75rem;color:#666">${escapeHtml(l.ind.elemLabel)} · ${escapeHtml(l.ind.interpretacao)}</div></td>
-      <td>${escapeHtml(metaTxt)}</td>
-      <td><input type="date" class="form-control teste-res-data" value="${dataPadrao}"></td>
-      <td><input type="number" class="form-control teste-res-valor" step="any" placeholder="—" style="width:110px"></td>
-      <td><select class="form-control teste-res-status">
-        <option value="Validado" selected>Validado</option>
-        <option value="Pendente">Pendente</option>
-      </select></td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-function handleSalvarResultadosTeste() {
-  const linhas = document.querySelectorAll('#tbody-teste-resultados tr[data-id-indicador]');
-  const lista = [];
-
-  linhas.forEach(tr => {
-    const valor = tr.querySelector('.teste-res-valor').value;
-    if (valor === '') return; // linha não preenchida — ignora
-    lista.push({
-      idIndicador: tr.dataset.idIndicador,
-      idMeta: tr.dataset.idMeta,
-      dataAfericao: tr.querySelector('.teste-res-data').value,
-      valor: valor,
-      statusValidacao: tr.querySelector('.teste-res-status').value
-    });
-  });
-
-  if (!lista.length) {
-    showMessage('info', 'Nada a salvar', 'Preencha o valor de pelo menos um indicador.');
-    return;
-  }
-
-  const btn = document.getElementById('btn-teste-resultados');
-  btn.disabled = true;
-  mostrarLoader();
-  google.script.run
-    .withSuccessHandler(res => {
-      esconderLoader();
-      btn.disabled = false;
-      showMessage('success', 'Sucesso', res.salvos + ' resultado(s) salvo(s).');
-      carregarDadosTeste();
-    })
-    .withFailureHandler(err => {
-      esconderLoader();
-      btn.disabled = false;
-      showMessage('error', 'Erro ao salvar', escapeHtml(err.message || String(err)));
-    })
-    .apiSalvarResultadosTesteLote(lista);
-}
-</script>
-
     </main>
 
     <script>
@@ -24806,16 +24391,6 @@ function _appNotificarTecla(evt) {
       // escapeHtml, escapeJsAttr, spinnerListaHTML, nomeRespExibicao e demais helpers de UI
       // vivem em app_ui_utils.html (incluído acima) — fonte única.
 
-      // --- Campos opcionais colapsáveis dos modais ("[+] Nome do campo") ---
-      // Alterna a visibilidade do wrapper e o ícone add/remove do botão
-      function toggleCampoOpcional(idWrap, btn) {
-        const wrap = document.getElementById(idWrap);
-        if (!wrap) return;
-        const aberto = wrap.classList.toggle('hidden') === false;
-        const ico = btn ? btn.querySelector('.material-symbols-outlined') : null;
-        if (ico) ico.textContent = aberto ? 'remove' : 'add';
-      }
-
       // Renderiza 5 estrelas estáticas (preenchidas até 'nota') — usado nas
       // listas/badges do módulo de Avaliação. 'nota' pode ser decimal (arredonda).
       function avEstrelasStatic(nota) {
@@ -24825,16 +24400,6 @@ function _appNotificarTecla(evt) {
           s += '<span class="material-symbols-outlined av-estrela-i' + (i <= n ? ' cheia' : '') + '">star</span>';
         }
         return s + '</span>';
-      }
-
-      // Define o estado do campo opcional (usado ao abrir modais: expande se houver conteúdo)
-      function _setCampoOpcional(idWrap, aberto) {
-        const wrap = document.getElementById(idWrap);
-        if (!wrap) return;
-        wrap.classList.toggle('hidden', !aberto);
-        const btn = document.querySelector('.btn-campo-toggle[data-wrap="' + idWrap + '"]');
-        const ico = btn ? btn.querySelector('.material-symbols-outlined') : null;
-        if (ico) ico.textContent = aberto ? 'remove' : 'add';
       }
 
       // Inicialização: tenta restaurar a tela em que o usuário estava antes

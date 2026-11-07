@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<!-- Sem include('styles_css')/include('styles_design_system') aqui: este
+<!-- Sem include('styles_design_system') aqui: este
      app é injetado no MESMO documento do host (index.html), que já carrega
      os dois — reincluir duplicaria toda a folha de estilo do design system
      no <head>. Só o CSS específico de Elementos abaixo precisa ser injetado.
@@ -29,7 +29,7 @@
 
 /* ============================================================================
    MODAL COM TRILHA LATERAL (wiz-rail): variante mais rica do wizard multietapas
-   documentado em styles_css.html (dots) — usar quando as etapas se beneficiam
+   da seção Base de styles_design_system.html — usar quando as etapas se beneficiam
    de contexto visível (o que falta, resumo do que já foi preenchido). Fonte:
    Claude Design (ui_kits/samauma/elemento-wizard.html). 1ª aplicação: este modal.
    ============================================================================ */
@@ -84,7 +84,7 @@
 .wiz-mobile-progress span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 
 .wiz-content { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; max-height: 90vh; }
-/* .wizard-steps-viewport (styles_css.html) nasceu para o wizard de dots, onde os dots/contador
+/* .wizard-steps-viewport (styles_design_system.html, Base) nasceu para o wizard de dots, onde os dots/contador
    davam a margem superior antes dela; aqui não existe mais esse cabeçalho, então o topo do
    título da etapa encostava na borda do modal — soma um respiro só aqui (não mexe no padrão
    global, que outros wizards de dots continuam usando como está). */
@@ -129,6 +129,7 @@ body.high-contrast .wiz-rail-item.wiz-rail-atual { background: #222; }
 .elwiz-tags-row .el-tipo-tag {
   padding: 4px 12px; border-radius: var(--ds-radius-pill); background: var(--ds-color-surface-2); color: var(--ds-color-text);
   font-size: var(--ds-text-xs); cursor: pointer; white-space: nowrap;
+  border: 1px solid #d0d8f0; font-weight: 600; width: fit-content; /* herdados da antiga regra global .el-tipo-tag */
 }
 .elwiz-tags-row .el-tipo-tag:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
 .elwiz-tags-row .el-tipo-tag.el-tipo-tag-ativo { background: var(--ds-color-action); color: var(--ds-color-on-action); }
@@ -201,7 +202,7 @@ body.high-contrast .el-peso-bola.cheia { background: var(--ds-color-action); bor
 /* Tela cheia (estilo Gmail preview contido no #main-content) */
 .org-fs-only { display: none !important; }
 .org-root.org-fullscreen {
-  position: fixed; top: var(--header-height, 60px); left: var(--ds-sb-w, 240px); right: 0; bottom: 0;
+  position: fixed; top: var(--ds-header-height, 60px); left: var(--ds-sb-w, 240px); right: 0; bottom: 0;
   z-index: 70; background: var(--ds-color-surface); border-top: none; padding: 12px 20px;
   display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
   transition: left var(--ds-duration-slow) var(--ds-ease-standard);

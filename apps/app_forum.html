@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<!-- Sem include('styles_css')/include('styles_design_system') aqui: este
+<!-- Sem include('styles_design_system') aqui: este
      app é injetado no MESMO documento do host (index.html), que já carrega
      os dois — reincluir duplicaria toda a folha de estilo do design system
      no <head>. Só o CSS específico do Fórum abaixo precisa ser injetado. -->
@@ -13,7 +13,7 @@
    (não criado por este arquivo). Tamanho igual ao layout original embutido. */
 .forum-shell {
   display: flex; min-height: 420px; border-radius: var(--ds-r-2xl); overflow: hidden;
-  height: max(460px, calc(100vh - var(--header-height, 60px) - 240px));
+  height: max(460px, calc(100vh - var(--ds-header-height, 60px) - 240px));
   margin-top: 16px;
   background: var(--ds-color-surface);
   border: 1px solid var(--ds-color-border);
@@ -151,7 +151,7 @@
 .forum-reply-preview .frp-texto { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 @media (max-width: 768px) {
-  .forum-shell { height: calc(100vh - var(--header-height, 60px) - 170px); border-radius: var(--ds-r-xl); }
+  .forum-shell { height: calc(100vh - var(--ds-header-height, 60px) - 170px); border-radius: var(--ds-r-xl); }
   .forum-feed { padding: 14px 12px 8px; }
   .forum-msg-col { max-width: 85%; }
   .forum-msg-acoes { opacity: 1; }
@@ -245,7 +245,7 @@ body.high-contrast .forum-bolha { border-color: #fff; }
 
 body.high-contrast .forum-sidebar { border-color: #fff; }
 body.high-contrast .ft-topico-item.ativo { background: #222; outline: 1px solid #fff; }
-body.high-contrast .ft-badge { background: var(--secondary-color); color: #000; }
+body.high-contrast .ft-badge { background: var(--ds-color-action); color: #000; }
 </style>
 </head>
 <body>
