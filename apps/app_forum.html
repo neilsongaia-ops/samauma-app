@@ -316,154 +316,7 @@ body.high-contrast .ft-badge { background: var(--ds-color-action); color: #000; 
   </div>
 </div>
 
-<!-- Sem include('app_ui_utils') aqui: escapeHtml/spinnerListaHTML/
-     nomeRespExibicao/bloquearFundo/desbloquearFundo já existem globalmente
-     no host (index.html/components_modal_plano.html). app_ui_utils.html
-     continua no repo pra quando um app precisar rodar sem esse contexto
-     (ex. a rota de teste doGet(?app=forum) direto no navegador). -->
-<script>
-/**
- * Fábrica do contrato entre um app "instalável" e o host que o carrega
- * (ver docs/arquitetura_apps_modulares.md). Cada app cria a PRÓPRIA
- * instância — `var _forumSDK = criarSamaumaSDK();` — e nunca guarda num
- * global genérico (`SamaumaSDK`): o app é entregue por injeção dinâmica de
- * HTML/JS no DOM do host (`apiObterHtmlApp` + `<script>` recriado em
- * runtime), não em <iframe> (testado e bloqueado pelo Google — todo Apps
- * Script já roda dentro de um iframe de sandbox do próprio Google, e um
- * segundo nível pra outro app quebra a autenticação). Sem <iframe>, todo
- * app injetado divide o mesmo escopo global da página — um único objeto
- * `SamaumaSDK` compartilhado colidiria entre dois apps montados ao mesmo
- * tempo (Fase 3). Cada instância guarda seu próprio nome com o PRÓPRIO
- * prefixo de arquivo (`_forumSDK`, `_elementosSDK`, ...), mesma convenção
- * de "todo global leva o prefixo do arquivo" já usada em todo o projeto
- * (ver CLAUDE.md).
- *
- * Regra de ouro: um app nunca chama google.script.run direto nem calcula
- * permissão no cliente — só através da instância do SDK que criar.
- */
-function criarSamaumaSDK() {
-  var _contexto = null;
-  var _visibilidade = { pagina: true, aba: true };
-  var _callbacksContexto = [];
-  var _callbacksVisibilidade = [];
-  var _callbacksPainelFechado = [];
-  var _callbackTecla = null;
-  var _callbacksTema = [];
-  var _aoBadge = null;
-  var _aoContagem = null;
-  var _aoAlerta = null;
-  var _aoDados = null;
-
-  return {
-    // Chamado pelo host logo depois de injetar/montar o app, e de novo toda
-    // vez que o contexto muda (ex.: usuário trocou de plano).
-    iniciar: function (ctx) {
-      _contexto = {
-        idPlano: ctx.idPlano, permissoes: ctx.permissoes || {},
-        usuario: ctx.usuario || {}, plano: ctx.plano || {}
-      };
-      _callbacksContexto.forEach(function (cb) { cb(_contexto); });
-    },
-
-    // Chamado pelo host sempre que a visibilidade da aba do app ou da
-    // tela-mãe muda (troca de aba, navegação pra outra tela da SPA).
-    notificarVisibilidade: function (v) {
-      _visibilidade = { pagina: !!v.pagina, aba: !!v.aba };
-      _callbacksVisibilidade.forEach(function (cb) { cb(_visibilidade); });
-    },
-
-    // Registra callback para quando o contexto chegar/mudar. Se já tiver
-    // chegado antes do registro, dispara imediatamente.
-    aoContexto: function (cb) {
-      _callbacksContexto.push(cb);
-      if (_contexto) cb(_contexto);
-    },
-
-    aoVisibilidade: function (cb) {
-      _callbacksVisibilidade.push(cb);
-      cb(_visibilidade);
-    },
-
-    contexto: function () { return _contexto; },
-    visibilidade: function () { return _visibilidade; },
-
-    // Notificação de painel lateral fechado pelo host
-    notificarPainelFechado: function () {
-      _callbacksPainelFechado.forEach(function (cb) { cb(); });
-    },
-    aoPainelFechado: function (cb) {
-      _callbacksPainelFechado.push(cb);
-    },
-
-    // Repasse de teclas de atalho (Escape, Ctrl+A) da aba ativa
-    notificarTecla: function (evt) {
-      if (_callbackTecla) return _callbackTecla(evt);
-      return false;
-    },
-    aoTecla: function (cb) {
-      _callbackTecla = cb;
-    },
-
-    // Notificação de alternância de tema visual (claro/escuro)
-    notificarTema: function (tema) {
-      _callbacksTema.forEach(function (cb) { cb(tema); });
-    },
-    aoTema: function (cb) {
-      _callbacksTema.push(cb);
-    },
-
-    // O HOST registra aqui como quer reagir ao badge deste app (ex.:
-    // atualizar o selo vermelho da própria aba) — o app só reporta o valor.
-    aoBadge: function (cb) { _aoBadge = cb; },
-    reportarBadge: function (valor) { if (_aoBadge) _aoBadge(valor); },
-
-    // Contagem total do app na própria aba (estilo "141" — diferente de
-    // aoBadge/reportarBadge, que é notificação/não-lida, estilo bolinha).
-    // PADRÃO DOS CONTADORES DA ABA (vale para todo app, atual ou futuro):
-    //  - contagem = TOTAL de itens do app (chip neutro, ex.: 141 elementos);
-    //  - alerta   = itens que exigem ação (chip âmbar + tooltip, ex.: "2 vínculos
-    //    aguardam sua decisão").
-    // Um app pode reportar um, o outro ou os dois. Para aparecerem já na abertura
-    // do plano, o app registra um provedor em CONTADORES_APPS (code.js).
-    aoContagem: function (cb) { _aoContagem = cb; },
-    reportarContagem: function (valor) { if (_aoContagem) _aoContagem(valor); },
-    aoAlerta: function (cb) { _aoAlerta = cb; },
-    reportarAlerta: function (valor, titulo) { if (_aoAlerta) _aoAlerta(valor, titulo); },
-
-    // Genérico: qualquer app pode publicar um retorno de dados pro host
-    // reagir (ex.: Elementos publica a lista atualizada pro host recalcular
-    // KPIs do header sem o app precisar conhecer essas outras telas).
-    aoDados: function (cb) { _aoDados = cb; },
-    reportarDados: function (valor) { if (_aoDados) _aoDados(valor); },
-
-    // Barra lateral de detalhes (#detp-panel — ver docs/arquitetura_apps_modulares.md):
-    // "substituição total" — o app manda o HTML pronto e é dono de 100% da
-    // marcação dentro do drawer (inclusive de suas próprias tabs/cabeçalho/
-    // botão de fechar, se quiser; CSS compartilhado do host — .detp-secao,
-    // .detp-linha, .detp-subsecao, .detp-tabs/.detp-tab etc. — já está
-    // disponível globalmente pra manter a mesma linguagem visual, mas o app
-    // não é obrigado a usá-lo). A casca só garante a moldura do drawer
-    // (posição/animação) e o Esc como fallback de fechamento. Único ponto
-    // que muda na migração pra um componente de verdade (Angular): a
-    // implementação interna, nunca essa assinatura.
-    abrirPainel: function (html) { if (typeof window.abrirPainelApp === 'function') window.abrirPainelApp(html); },
-    fecharPainel: function () { if (typeof window.fecharPainelDetalhes === 'function') window.fecharPainelDetalhes(); },
-
-    // Embrulha google.script.run.withSuccessHandler/withFailureHandler numa
-    // Promise. Único ponto que muda na migração para o backend Node/Express.
-    chamar: function (nomeFuncao) {
-      var args = Array.prototype.slice.call(arguments, 1);
-      return new Promise(function (resolve, reject) {
-        var runner = google.script.run
-          .withSuccessHandler(resolve)
-          .withFailureHandler(function (erro) { reject(erro); });
-        runner[nomeFuncao].apply(runner, args);
-      });
-    }
-  };
-}
-</script>
-
+<!-- escapeHtml/spinnerListaHTML/nomeRespExibicao/bloquearFundo/desbloquearFundo e o criarSamaumaSDK já existem globalmente no host (index.html). -->
 <script>
 // Dividido por responsabilidade (fase d — docs/refatoracao_frontend.md). Mesmo <script>, mesmo escopo global;
 // instruções de topo ficam em _estado na ordem original; funções são içadas, então a ordem entre arquivos não importa.
@@ -568,10 +421,6 @@ _forumSDK.aoContexto(function(ctx) {
 // Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
 
 // app_forum_api — chamadas ao servidor (SDK / google.script.run / apiX)
-
-function _apiDisponivel(nome) {
-  try { return typeof google.script.run[nome] === 'function'; } catch (e) { return false; }
-}
 
 // Tons suaves (fundo claro + texto escuro), estáveis por id/e-mail via hash.
 
@@ -777,7 +626,7 @@ function forumListaConfirmarExcluir(id, nome) {
 // ================================================================
 
 function _forumAtualizarBadge() {
-  if (!_ctx || !_apiDisponivel('apiGetForumStatus')) return;
+  if (!_ctx) return;
   _forumSDK.chamar('apiGetForumStatus', _ctx.idPlano).then(function(res) {
     if (_vis.aba) return; // usuário abriu esta aba nesse meio-tempo
     _forumSDK.reportarBadge(Number(res.total) || 0);
@@ -786,7 +635,6 @@ function _forumAtualizarBadge() {
 
 function _forumVerificarNovidades() {
   if (!_forumPollAtivo()) { _forumPararPolling(); return; }
-  if (!_apiDisponivel('apiGetForumRev')) { _forumPararPolling(); return; }
   _forumSDK.chamar('apiGetForumRev', _ctx.idPlano).then(function(rev) {
     if (!_forumPollAtivo()) return;
     if (rev && !_forumRev) {
@@ -839,9 +687,7 @@ function _forumSincronizar() {
 
 function _forumMarcarTopicoAtualLido() {
   if (!_forumTopicoAtualId) return;
-  if (_apiDisponivel('apiMarcarTopicoLido')) {
-    _forumSDK.chamar('apiMarcarTopicoLido', _forumTopicoAtualId).then(function() {}, function() {});
-  }
+  _forumSDK.chamar('apiMarcarTopicoLido', _forumTopicoAtualId).then(function() {}, function() {});
   forumSidebarZerarNaoLidas(_forumTopicoAtualId);
 }
 
