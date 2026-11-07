@@ -1011,7 +1011,7 @@ function _monitLegendaHTML(itens, selecionado, fnNome) {
   return '<div class="mon-legenda">' + itens.map(function(i) {
     var sel = selecionado === i.chave;
     return '<button type="button" class="mon-legenda-item' + (sel ? ' is-sel' : '') + (selecionado && !sel ? ' is-apagado' : '') + '" aria-pressed="' + sel + '"'
-      + ' onclick="' + fnNome + '(\'' + escapeJsAttr(i.chave) + '\')">'
+      + ' ' + uiAtributosAcao(fnNome + '(\'' + escapeJsAttr(i.chave) + '\')') + '>'
       + '<span class="mon-legenda-dot" style="background:' + i.cor + '"></span>'
       + '<span class="mon-legenda-rot">' + escapeHtml(i.rot) + '</span><span class="mon-legenda-n">' + i.n + '</span></button>';
   }).join('') + '</div>';
@@ -1093,7 +1093,7 @@ function _monitResumoHTML(dados) {
     if (infoBarras.tiposDisponiveis && infoBarras.tiposDisponiveis.length > 1) {
       headerBarrasHTML = '<div class="mon-card-header">'
         + '<h3>Execução por Elemento</h3>'
-        + '<button type="button" class="mon-tipo-btn" onclick="monitAbrirMenuTipos(this, event)" aria-haspopup="menu" aria-label="Filtrar por tipo de elemento no gráfico">'
+        + '<button type="button" class="mon-tipo-btn" data-on-click="mon.1" aria-haspopup="menu" aria-label="Filtrar por tipo de elemento no gráfico">'
         + '<span>' + escapeHtml(infoBarras.tipo || 'Elemento') + '</span>'
         + '<span class="material-symbols-outlined">expand_more</span>'
         + '</button>'
@@ -1260,33 +1260,33 @@ function _monitFiltrosHTML(modo) {
   var temFiltro = estadoMonit.busca || campos.some(function(c) { return estadoMonit[_monitFiltrosDef[c].chave]; });
   return '<div id="monit-filtros" class="el-filtros">'
     + '<div class="el-search" id="monit-search-wrap">'
-    +   '<button type="button" class="ds-icon-action' + (estadoMonit.busca ? ' hidden' : '') + '" id="monit-search-toggle" onclick="monitAbrirBusca()" data-title="Buscar" aria-label="Buscar">'
+    +   '<button type="button" class="ds-icon-action' + (estadoMonit.busca ? ' hidden' : '') + '" id="monit-search-toggle" data-on-click="mon.2" data-title="Buscar" aria-label="Buscar">'
     +     '<span class="material-symbols-outlined">search</span></button>'
     +   '<div class="el-search-caixa' + (estadoMonit.busca ? '' : ' hidden') + '" id="monit-search-caixa">'
     +     '<span class="material-symbols-outlined el-search-icon" aria-hidden="true">search</span>'
-    +     '<input type="text" class="ds-input el-search-input" id="monit-filtro-busca" oninput="aplicarFiltrosMonit()" value="' + escapeHtml(estadoMonit.busca) + '"'
+    +     '<input type="text" class="ds-input el-search-input" id="monit-filtro-busca" data-on-input="mon.3" value="' + escapeHtml(estadoMonit.busca) + '"'
     +       ' placeholder="' + (modo === 'progresso' ? 'Buscar elemento ou responsável…' : 'Buscar indicador ou elemento…') + '" aria-label="Buscar">'
-    +     '<button type="button" class="el-search-clear' + (estadoMonit.busca ? '' : ' hidden') + '" id="monit-btn-clear" onclick="limparFiltroMonitBusca()" data-title="Limpar busca" aria-label="Limpar busca">'
+    +     '<button type="button" class="el-search-clear' + (estadoMonit.busca ? '' : ' hidden') + '" id="monit-btn-clear" data-on-click="mon.4" data-title="Limpar busca" aria-label="Limpar busca">'
     +       '<span class="material-symbols-outlined">close</span></button>'
     +   '</div>'
     + '</div>'
     + campos.map(function(c) {
         var rot = _monitRotuloFiltro(c), def = _monitFiltrosDef[c];
         return '<div class="el-filtro">'
-          + '<button type="button" class="el-filtro-btn' + (rot ? ' el-filtro-btn--ativo' : '') + '" onclick="monitAbrirFiltro(\'' + c + '\', event)">'
+          + '<button type="button" class="el-filtro-btn' + (rot ? ' el-filtro-btn--ativo' : '') + '" data-on-click="mon.5" data-aclick0="' + c + '">'
           +   '<span>' + escapeHtml(rot ? def.label + ': ' + rot : def.label) + '</span>'
           +   '<span class="material-symbols-outlined" style="font-size:18px">expand_more</span></button>'
-          + '<button type="button" class="el-filtro-x' + (rot ? '' : ' hidden') + '" onclick="monitLimparUmFiltro(\'' + c + '\')" aria-label="Limpar filtro ' + def.label.toLowerCase() + '">'
+          + '<button type="button" class="el-filtro-x' + (rot ? '' : ' hidden') + '" data-on-click="mon.6" data-aclick0="' + c + '" aria-label="Limpar filtro ' + def.label.toLowerCase() + '">'
           +   '<span class="material-symbols-outlined" style="font-size:15px">close</span></button>'
           + '</div>';
       }).join('')
-    + '<button type="button" class="el-limpar-link' + (temFiltro ? '' : ' hidden') + '" onclick="limparFiltrosMonit()" aria-label="Limpar filtros">Limpar filtros</button>'
+    + '<button type="button" class="el-limpar-link' + (temFiltro ? '' : ' hidden') + '" data-on-click="mon.7" aria-label="Limpar filtros">Limpar filtros</button>'
     + '<div style="flex:1"></div>'
     + '<div class="det-modos" role="group" aria-label="Modo de visualização">'
-    +   '<button type="button" class="det-modo' + (modo === 'progresso' ? ' ativo' : '') + '" onclick="monitMudarModo(\'progresso\')"'
+    +   '<button type="button" class="det-modo' + (modo === 'progresso' ? ' ativo' : '') + '" data-on-click="mon.8"'
     +     ' data-title="Progresso — andamento dos elementos" aria-label="Progresso" aria-pressed="' + (modo === 'progresso') + '">'
     +     '<span class="material-symbols-outlined">engineering</span></button>'
-    +   '<button type="button" class="det-modo' + (modo === 'desempenho' ? ' ativo' : '') + '" onclick="monitMudarModo(\'desempenho\')"'
+    +   '<button type="button" class="det-modo' + (modo === 'desempenho' ? ' ativo' : '') + '" data-on-click="mon.9"'
     +     ' data-title="Desempenho — eficácia das metas" aria-label="Desempenho" aria-pressed="' + (modo === 'desempenho') + '">'
     +     '<span class="material-symbols-outlined">military_tech</span></button>'
     + '</div>'
@@ -1389,14 +1389,14 @@ function renderizarMonitoramento(dados) {
     + '</div>'
     + '<div id="monit-pagination" class="pagination-bar rsc-pag">'
     +   '<div class="pag-left"><span>Exibir:</span>'
-    +     '<select id="monit-pag-size" onchange="monitMudarTamanho(this.value)" class="form-control form-control-sm">'
+    +     '<select id="monit-pag-size" data-on-change="mon.10" class="form-control form-control-sm">'
     +       '<option value="10">10</option><option value="20">20</option><option value="50">50</option>'
     +     '</select></div>'
     +   '<div class="pag-center"><span id="monit-pag-counter">0–0 de 0</span></div>'
     +   '<div class="pag-right">'
-    +     '<button class="btn-pag" onclick="monitMudarPagina(\'prev\')" data-title="Anterior" aria-label="Página anterior"><span class="material-symbols-outlined">chevron_left</span></button>'
-    +     '<select id="monit-pag-selector" onchange="monitIrParaPagina(this.value)" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>'
-    +     '<button class="btn-pag" onclick="monitMudarPagina(\'next\')" data-title="Próximo" aria-label="Próxima página"><span class="material-symbols-outlined">chevron_right</span></button>'
+    +     '<button class="btn-pag" data-on-click="mon.11" data-title="Anterior" aria-label="Página anterior"><span class="material-symbols-outlined">chevron_left</span></button>'
+    +     '<select id="monit-pag-selector" data-on-change="mon.12" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>'
+    +     '<button class="btn-pag" data-on-click="mon.13" data-title="Próximo" aria-label="Próxima página"><span class="material-symbols-outlined">chevron_right</span></button>'
     +   '</div>'
     + '</div>';
 
@@ -1421,18 +1421,18 @@ function _monitRenderCorpo() {
 
   thead.innerHTML = '<tr>' + cols.map(function(c) {
     var ativo = sort.col === c.col;
-    return '<th class="th-sortable' + (ativo ? ' is-sort' : '') + (c.cls ? ' ' + c.cls : '') + '" onclick="monitOrdenar(\'' + c.col + '\')">' + escapeHtml(c.label)
+    return '<th class="th-sortable' + (ativo ? ' is-sort' : '') + (c.cls ? ' ' + c.cls : '') + '" data-on-click="mon.14" data-aclick0="' + c.col + '">' + escapeHtml(c.label)
       + '<span class="sort-icon">' + (ativo ? (sort.dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '') + '</span></th>';
   }).join('')
     + '<th class="mon-col-acoes el-col-acoes"><div class="el-th-acoes">'
-    +   '<button type="button" class="el-th-btn" onclick="atualizarMonitoramento()" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
+    +   '<button type="button" class="el-th-btn" data-on-click="mon.15" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
     +   (modo === 'desempenho'
-          ? '<button type="button" class="el-th-btn" id="btn-expandir-monit" onclick="monitToggleExpandirTudo()" data-title="' + (monitTudoExpandido ? 'Recolher todos' : 'Expandir todos') + '"'
+          ? '<button type="button" class="el-th-btn" id="btn-expandir-monit" data-on-click="mon.16" data-title="' + (monitTudoExpandido ? 'Recolher todos' : 'Expandir todos') + '"'
             + ' aria-label="' + (monitTudoExpandido ? 'Recolher todos' : 'Expandir todos') + '"><span class="material-symbols-outlined">' + (monitTudoExpandido ? 'unfold_less' : 'unfold_more') + '</span></button>'
           : '')
-    +   '<button type="button" class="el-th-btn" onclick="imprimirMonitoramento()" data-title="Imprimir" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>'
-    +   '<button type="button" class="el-th-btn" onclick="exportarMonitoramento()" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
-    +   '<button type="button" class="el-th-btn" onclick="monitAbrirMenuOrdenar(event)" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
+    +   '<button type="button" class="el-th-btn" data-on-click="mon.17" data-title="Imprimir" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>'
+    +   '<button type="button" class="el-th-btn" data-on-click="mon.18" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
+    +   '<button type="button" class="el-th-btn" data-on-click="mon.19" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
     + '</div></th></tr>';
 
   if (modo === 'desempenho' && !_perfDados) {
@@ -1487,7 +1487,7 @@ function _monitRenderCorpo() {
       var acoes = (typeof acoesLinhaHTML === 'function') ? acoesLinhaHTML('mon-el-' + l.id, [
         { icone: 'right_panel_open', rotulo: 'Detalhes do elemento', onclick: "abrirDetalhesElementoPainel('" + escapeHtml(l.id) + "')", principal: true }
       ]) : '';
-      return '<tr ondblclick="abrirDetalhesElementoPainel(\'' + escapeHtml(l.id) + '\')">'
+      return '<tr data-on-dblclick="mon.20" data-adblclick0="' + escapeHtml(l.id) + '">'
         + '<td><div class="mon-elem"><span class="el-codigo">' + escapeHtml(l.codigo || '—') + '</span>'
         +   '<span class="mon-elem-titulo' + (raiz ? ' is-raiz' : '') + '" data-title="' + escapeHtml(l.titulo) + '">' + escapeHtml(l.titulo) + '</span></div></td>'
         + '<td class="mon-col-status"><span class="mon-status" style="background:' + c.bg + ';color:' + c.cor + '"><span class="mon-status-dot"></span>' + escapeHtml(l.status) + '</span></td>'
@@ -1513,7 +1513,7 @@ function _monitRenderCorpo() {
       var acoes = (typeof acoesLinhaHTML === 'function') ? acoesLinhaHTML('mon-ind-' + id, [
         { icone: 'right_panel_open', rotulo: 'Detalhes do indicador', onclick: "monitAbrirPainelIndicador('" + id + "')", principal: true }
       ]) : '';
-      var linha = '<tr class="mon-linha-ind' + (aberto ? ' is-open' : '') + '" onclick="perfToggleExpand(\'' + id + '\', event)" ondblclick="monitAbrirPainelIndicador(\'' + id + '\'); event.stopPropagation();" aria-expanded="' + aberto + '">'
+      var linha = '<tr class="mon-linha-ind' + (aberto ? ' is-open' : '') + '" data-on-click="mon.21" data-aclick0="' + id + '" data-on-dblclick="mon.22" data-adblclick0="' + id + '" aria-expanded="' + aberto + '">'
         + '<td><div class="mon-ind"><span class="material-symbols-outlined mon-seta" aria-hidden="true">chevron_right</span>'
         +   '<span class="mon-ind-nome" data-title="' + escapeHtml(ind.nome) + '">' + escapeHtml(ind.nome) + '</span>' + pol + '</div></td>'
         + '<td class="mon-col-alc"><div class="mon-barra-wrap" data-title="' + (tem ? 'Alcance ' + _fmtNumBR(ind.alcance) + '% da meta (traço = 100%)' : (ind.temMeta ? 'Sem resultados validados' : 'Sem meta cadastrada')) + '">'
@@ -1546,7 +1546,7 @@ function _monitRenderCorpo() {
         +   (ind.responsavel ? _monitDetLinha('Responsável', escapeHtml(ind.responsavel)) : '')
         +   ((ind.resultadosPendentes || 0) > 0 ? _monitDetLinha('Pendentes de validação', String(ind.resultadosPendentes)) : '')
         +   '<div class="mon-det-acoes-painel" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--ds-color-border)">'
-        +     '<button type="button" class="rsc-link" onclick="monitAbrirPainelIndicador(\'' + id + '\')">'
+        +     '<button type="button" class="rsc-link" data-on-click="mon.23" data-aclick0="' + id + '">'
         +       '<span class="material-symbols-outlined">right_panel_open</span>Abrir detalhes no painel lateral</button>'
         +   '</div>'
         + '</div>'
@@ -1729,5 +1729,32 @@ _monitoramentoSDK.aoTecla(function(ev) {
     }
   }
   return false;
+});
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+uiRegistrarAcoes('mon', {
+  '1': function (event) { monitAbrirMenuTipos(this, event); },
+  '2': function (event) { monitAbrirBusca(); },
+  '3': function (event) { aplicarFiltrosMonit(); },
+  '4': function (event) { limparFiltroMonitBusca(); },
+  '5': function (event) { monitAbrirFiltro(uiArgJs(this.dataset.aclick0), event); },
+  '6': function (event) { monitLimparUmFiltro(uiArgJs(this.dataset.aclick0)); },
+  '7': function (event) { limparFiltrosMonit(); },
+  '8': function (event) { monitMudarModo('progresso'); },
+  '9': function (event) { monitMudarModo('desempenho'); },
+  '10': function (event) { monitMudarTamanho(this.value); },
+  '11': function (event) { monitMudarPagina('prev'); },
+  '12': function (event) { monitIrParaPagina(this.value); },
+  '13': function (event) { monitMudarPagina('next'); },
+  '14': function (event) { monitOrdenar(uiArgJs(this.dataset.aclick0)); },
+  '15': function (event) { atualizarMonitoramento(); },
+  '16': function (event) { monitToggleExpandirTudo(); },
+  '17': function (event) { imprimirMonitoramento(); },
+  '18': function (event) { exportarMonitoramento(); },
+  '19': function (event) { monitAbrirMenuOrdenar(event); },
+  '20': function (event) { abrirDetalhesElementoPainel(uiArgJs(this.dataset.adblclick0)); },
+  '21': function (event) { perfToggleExpand(uiArgJs(this.dataset.aclick0), event); },
+  '22': function (event) { monitAbrirPainelIndicador(uiArgJs(this.dataset.adblclick0)); event.stopPropagation(); },
+  '23': function (event) { monitAbrirPainelIndicador(uiArgJs(this.dataset.aclick0)); }
 });
 </script>

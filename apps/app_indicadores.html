@@ -437,10 +437,10 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
 <!-- MODAL DE INDICADORES — wizard com trilha lateral (data-app-portal="1" envia direto para document.body).
      Migração do Claude Design (2026-10-03): ids, name e handlers preservados; etapas 1 Identificação · 2 Medição ·
      3 Responsáveis · 4 Referência (só campos não obrigatórios; "Adicionar referência" leva a ela). -->
-<div id="modal-novo-indicador" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalIndicador" onclick="if(event.target===this) window[this.dataset.fechar]()">
+<div id="modal-novo-indicador" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalIndicador" data-on-click="ind.1">
   <div class="modal-card modal-lg wiz-rail-modal" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-ind">
 
-    <button type="button" class="btn-icon-close wiz-rail-close" onclick="fecharModalIndicador()" data-title="Fechar" aria-label="Fechar">
+    <button type="button" class="btn-icon-close wiz-rail-close" data-on-click="ind.2" data-title="Fechar" aria-label="Fechar">
       <span class="material-symbols-outlined">close</span>
     </button>
 
@@ -475,7 +475,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
 
       <div class="wiz-content">
         <div class="wizard-steps-viewport">
-        <form id="form-novo-indicador" onsubmit="handleSalvarIndicador(event)" novalidate>
+        <form id="form-novo-indicador" data-on-submit="ind.3" novalidate>
           <!-- IDs ocultos -->
           <input type="hidden" name="idElementoVinculado" id="input-ind-id-elemento">
           <input type="hidden" id="input-ind-id-edicao">
@@ -496,7 +496,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
 
             <div class="ds-field">
               <label class="ds-label" for="ind-nome">Nome do indicador <span class="indw-obrig">obrigatório</span></label>
-              <input type="text" name="nome" id="ind-nome" class="ds-input" required minlength="2" placeholder="Ex: Taxa de Conclusão de Cursos" oninput="_indwizLimparErro(this); _indwizRenderRail()">
+              <input type="text" name="nome" id="ind-nome" class="ds-input" required minlength="2" placeholder="Ex: Taxa de Conclusão de Cursos" data-on-input="ind.4">
               <small class="ds-help ds-help--error hidden" id="ind-nome-erro"></small>
             </div>
 
@@ -520,7 +520,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
 
             <div class="ds-field">
               <label class="ds-label" for="ind-formula">Fórmula de cálculo <span class="indw-obrig">obrigatório</span></label>
-              <input type="text" name="formula" id="ind-formula" class="ds-input" required placeholder="Ex: (Alunos Formados / Total Ingressantes) * 100" oninput="_indwizLimparErro(this)">
+              <input type="text" name="formula" id="ind-formula" class="ds-input" required placeholder="Ex: (Alunos Formados / Total Ingressantes) * 100" data-on-input="ind.5">
               <small class="ds-help ds-help--error hidden" id="ind-formula-erro"></small>
             </div>
 
@@ -528,7 +528,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
               <div class="ds-field">
                 <label class="ds-label" for="ind-unidade">Unidade de medida <span class="indw-obrig">obrigatório</span></label>
                 <div class="indw-select">
-                  <select name="unidade" id="ind-unidade" class="ds-select" required onchange="_indwizRenderRail()">
+                  <select name="unidade" id="ind-unidade" class="ds-select" required data-on-change="ind.6">
                     <option value="%">% (Percentual)</option>
                     <option value="Qtd">Qtd (Absoluto)</option>
                     <option value="R$">R$ (Monetário)</option>
@@ -557,7 +557,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
             <div class="ds-field">
               <label class="ds-label" for="ind-frequencia">Frequência de aferição <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
               <div class="indw-select">
-                <select name="frequencia" id="ind-frequencia" class="ds-select" required onchange="onMudarFrequenciaInd(); _indwizRenderRail()">
+                <select name="frequencia" id="ind-frequencia" class="ds-select" required data-on-change="ind.7">
                   <option value="Anual">Anual</option>
                   <option value="Semestral">Semestral</option>
                   <option value="Quadrimestral">Quadrimestral</option>
@@ -574,7 +574,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
               <div class="ds-field">
                 <label class="ds-label" for="ind-intervalo-qtd">A cada <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Intervalo entre os períodos de aferição. Cada janela vira um período, com a sua própria meta.">info</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
                 <div class="indw-qtd-linha">
-                  <input type="number" id="ind-intervalo-qtd" name="intervaloQtd" class="ds-input" min="1" max="999" placeholder="Ex: 15" oninput="_indwizLimparErro(this)">
+                  <input type="number" id="ind-intervalo-qtd" name="intervaloQtd" class="ds-input" min="1" max="999" placeholder="Ex: 15" data-on-input="ind.5">
                   <div class="indw-select">
                     <select id="ind-intervalo-unidade" name="intervaloUnidade" class="ds-select">
                       <option value="Dias" selected>Dias</option>
@@ -587,7 +587,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
               </div>
               <div class="ds-field">
                 <label class="ds-label" for="ind-inicio-continuo">A partir de <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Data em que começa a contagem. A primeira janela começa nesta data e as seguintes vêm em sequência, sem lacunas.">info</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
-                <input type="date" id="ind-inicio-continuo" name="inicioContinuo" class="ds-input" oninput="_indwizLimparErro(this)">
+                <input type="date" id="ind-inicio-continuo" name="inicioContinuo" class="ds-input" data-on-input="ind.5">
                 <small class="ds-help ds-help--error hidden" id="ind-inicio-continuo-erro"></small>
               </div>
             </div>
@@ -595,7 +595,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
             <div class="ds-field" style="margin-bottom:0">
               <label class="ds-label" for="ind-regra-agregacao">Regra de agregação <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Como os lançamentos de um mesmo período viram o valor realizado. Último valor: vale o mais recente (ex.: taxa de evasão). Soma: acumula os lançamentos (ex.: nº de publicações). Média: média dos lançamentos (ex.: nota de satisfação).">info</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
               <div class="indw-select">
-                <select name="regraAgregacao" id="ind-regra-agregacao" class="ds-select" required onchange="_indwizRenderRail()">
+                <select name="regraAgregacao" id="ind-regra-agregacao" class="ds-select" required data-on-change="ind.6">
                   <option value="ULTIMO" selected>Último valor</option>
                   <option value="SOMA">Soma dos lançamentos</option>
                   <option value="MEDIA">Média dos lançamentos</option>
@@ -633,12 +633,12 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
         </div>
 
         <div class="indw-footer">
-          <button type="button" class="ds-btn ds-btn--ghost" style="border-color:transparent" onclick="fecharModalIndicador()">Cancelar</button>
+          <button type="button" class="ds-btn ds-btn--ghost" style="border-color:transparent" data-on-click="ind.2">Cancelar</button>
           <div class="indw-footer-dir">
-            <button type="button" class="ds-btn ds-btn--ghost hidden" style="border-color:transparent" id="indw-btn-voltar" onclick="_indwizVoltar()"><span class="material-symbols-outlined">arrow_back</span><span class="indw-txt-voltar">Voltar</span></button>
-            <button type="button" class="ds-btn ds-btn--ghost hidden" id="indw-btn-salvar-sec" onclick="_indwizSalvar()"><span class="material-symbols-outlined">save</span>Salvar</button>
-            <button type="button" class="ds-btn ds-btn--ghost hidden" style="border-color:transparent" id="indw-btn-referencia" onclick="_indwizIrPara(4, 'frente')">Adicionar referência</button>
-            <button type="button" class="ds-btn ds-btn--primary" id="indw-btn-continuar" onclick="_indwizProximo()">Continuar<span class="material-symbols-outlined">arrow_forward</span></button>
+            <button type="button" class="ds-btn ds-btn--ghost hidden" style="border-color:transparent" id="indw-btn-voltar" data-on-click="ind.8"><span class="material-symbols-outlined">arrow_back</span><span class="indw-txt-voltar">Voltar</span></button>
+            <button type="button" class="ds-btn ds-btn--ghost hidden" id="indw-btn-salvar-sec" data-on-click="ind.9"><span class="material-symbols-outlined">save</span>Salvar</button>
+            <button type="button" class="ds-btn ds-btn--ghost hidden" style="border-color:transparent" id="indw-btn-referencia" data-on-click="ind.10">Adicionar referência</button>
+            <button type="button" class="ds-btn ds-btn--primary" id="indw-btn-continuar" data-on-click="ind.11">Continuar<span class="material-symbols-outlined">arrow_forward</span></button>
             <button type="submit" form="form-novo-indicador" class="ds-btn ds-btn--primary hidden" id="btn-submit-ind"><span class="material-symbols-outlined">save</span>Salvar indicador</button>
           </div>
         </div>
@@ -649,31 +649,31 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
 
 <!-- MODAL DE METAS POR PERÍODO (data-app-portal="1" envia direto para document.body) — modal simples (uma tarefa só),
      migração do Claude Design 2026-10-03 -->
-<div id="modal-nova-meta" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalMeta" onclick="if(event.target===this) window[this.dataset.fechar]()">
+<div id="modal-nova-meta" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalMeta" data-on-click="ind.1">
   <div class="modal-card indw-meta-card" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-meta">
     <div class="indw-meta-cab">
       <div>
         <span class="indw-meta-eyebrow">DEFINIR METAS</span>
         <h3 id="titulo-modal-meta">Metas</h3>
       </div>
-      <button type="button" class="btn-icon-close" onclick="fecharModalMeta()" data-title="Fechar" aria-label="Fechar">
+      <button type="button" class="btn-icon-close" data-on-click="ind.12" data-title="Fechar" aria-label="Fechar">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
 
-    <form id="form-nova-meta" onsubmit="handleSalvarMetas(event)">
+    <form id="form-nova-meta" data-on-submit="ind.13">
       <input type="hidden" id="input-meta-id-indicador">
       <div class="indw-meta-corpo">
         <div class="indw-meta-topo">
           <div class="ds-field">
             <label class="ds-label" for="input-meta-ano">Ano de referência <span class="indw-obrig">obrigatório</span></label>
-            <input type="number" id="input-meta-ano" class="ds-input" min="1900" max="9999" required placeholder="Ex: 2026" onchange="_metaCarregarGrade()">
+            <input type="number" id="input-meta-ano" class="ds-input" min="1900" max="9999" required placeholder="Ex: 2026" data-on-change="ind.14">
           </div>
           <div class="ds-field">
             <label class="ds-label" for="input-meta-preencher">Mesmo valor em todos <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Preenche todos os períodos da lista com o valor digitado. Depois você ainda pode ajustar cada um.">info</span></label>
             <div class="indw-meta-fill">
-              <input type="text" id="input-meta-preencher" class="ds-input" placeholder="Ex: 100" onkeydown="if(event.key==='Enter'){event.preventDefault();_metaPreencherTodos();}">
-              <button type="button" class="ds-btn ds-btn--ghost" id="btn-meta-aplicar" onclick="_metaPreencherTodos()">Aplicar</button>
+              <input type="text" id="input-meta-preencher" class="ds-input" placeholder="Ex: 100" data-on-keydown="ind.15">
+              <button type="button" class="ds-btn ds-btn--ghost" id="btn-meta-aplicar" data-on-click="ind.16">Aplicar</button>
             </div>
           </div>
         </div>
@@ -683,7 +683,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
       </div>
 
       <div class="indw-meta-rodape">
-        <button type="button" class="ds-btn ds-btn--ghost" style="border-color:transparent" onclick="fecharModalMeta()">Cancelar</button>
+        <button type="button" class="ds-btn ds-btn--ghost" style="border-color:transparent" data-on-click="ind.12">Cancelar</button>
         <button type="submit" class="ds-btn ds-btn--primary" id="btn-submit-meta" disabled><span class="material-symbols-outlined">save</span>Salvar metas</button>
       </div>
     </form>
@@ -1144,15 +1144,15 @@ function _indFaixaHTML(p, anos, podeEditar) {
           + '<span class="ind-meta-barra' + (menor ? ' is-menor' : '') + '"><i style="width:' + pct + '%"></i></span>'
           + (podeEditar
               ? '<div class="ind-meta-acoes">'
-                + '<button type="button" onclick="abrirModalEdicaoMeta(\'' + mid + '\')" data-title="Editar meta" aria-label="Editar meta ' + escapeHtml(rotulo) + '"><span class="material-symbols-outlined">edit</span></button>'
-                + '<button type="button" class="perigo" onclick="confirmarExclusaoMeta(\'' + mid + '\',\'' + labelJs + '\')" data-title="Excluir meta" aria-label="Excluir meta ' + escapeHtml(rotulo) + '"><span class="material-symbols-outlined">delete</span></button>'
+                + '<button type="button" data-on-click="ind.17" data-aclick0="' + mid + '" data-title="Editar meta" aria-label="Editar meta ' + escapeHtml(rotulo) + '"><span class="material-symbols-outlined">edit</span></button>'
+                + '<button type="button" class="perigo" data-on-click="ind.18" data-aclick0="' + mid + '" data-aclick1="' + labelJs + '" data-title="Excluir meta" aria-label="Excluir meta ' + escapeHtml(rotulo) + '"><span class="material-symbols-outlined">delete</span></button>'
                 + '</div>'
               : '')
           + '</div>';
       }).join('');
     } else {
       corpo = podeEditar
-        ? '<button type="button" class="ind-meta-add" onclick="abrirModalMeta(\'' + idj + '\',' + ano + ')" aria-label="Definir meta para ' + ano + '"><span class="material-symbols-outlined">add</span>Meta</button>'
+        ? '<button type="button" class="ind-meta-add" data-on-click="ind.19" data-aclick0="' + idj + '" data-rclick1="' + ano + '" aria-label="Definir meta para ' + ano + '"><span class="material-symbols-outlined">add</span>Meta</button>'
         : '<span class="ind-meta-vazio">—</span>';
     }
     var atual = ano === anoAtual;
@@ -1218,7 +1218,7 @@ function _indLinhaHTML(p, anos, podeEditar) {
 
   var acoes;
   if (isPendente && podeEditar) {
-    var btnProativo = '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm ind-btn-proativo" onclick="event.stopPropagation(); abrirModalMeta(\'' + idj + '\')" aria-label="Definir metas">'
+    var btnProativo = '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm ind-btn-proativo" data-on-click="ind.20" data-aclick0="' + idj + '" aria-label="Definir metas">'
       + '<span class="material-symbols-outlined">add</span><span>Definir metas</span></button>';
     acoes = '<div class="ind-decisao">' + btnProativo + acoesLinhaHTML('ind-' + idj, [
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + idj + "')" },
@@ -1242,9 +1242,9 @@ function _indLinhaHTML(p, anos, podeEditar) {
     + (ativo ? ' ind-ativa' : '');
 
   var html = '<tr class="' + cls + '" data-id="' + idj + '" aria-expanded="' + aberto + '"'
-    + ' onclick="indCliqueLinha(event, \'' + idj + '\')" ondblclick="indDuploCliqueLinha(event, \'' + idj + '\')">'
-    + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="indToggleSelecao(\'' + idj + '\', this.checked)" aria-label="Selecionar indicador"></td>'
-    + '<td class="el-col-expand"><button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" onclick="event.stopPropagation(); indToggleExpand(\'' + idj + '\')" aria-label="Expandir"><span class="material-symbols-outlined ind-seta" aria-hidden="true">chevron_right</span></button></td>'
+    + ' data-on-click="ind.21" data-aclick0="' + idj + '" data-on-dblclick="ind.22" data-adblclick0="' + idj + '">'
+    + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' data-on-click="ind.23" data-on-change="ind.24" data-achange0="' + idj + '" aria-label="Selecionar indicador"></td>'
+    + '<td class="el-col-expand"><button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" data-on-click="ind.25" data-aclick0="' + idj + '" aria-label="Expandir"><span class="material-symbols-outlined ind-seta" aria-hidden="true">chevron_right</span></button></td>'
     + '<td class="ind-col-nome"><div class="ind-nome-cel"><div class="ind-titulo-cel"><span class="ind-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</span>' + sup + '</div>'
     + '</div></td>'
     + '<td class="ind-col-cob">' + (sup ? '<div class="ind-vinc-mob">' + sup + '</div>' : '') + _indCoberturaHTML(p, anos) + '</td>'
@@ -1262,7 +1262,7 @@ function _indLinhaHTML(p, anos, podeEditar) {
     el += visiveis.map(function(n) { return '<span data-title="' + escapeHtml(n) + '"><span class="material-symbols-outlined">category</span><span>' + escapeHtml(n) + '</span></span>'; }).join('');
     if (adic.length > visiveis.length) {
       var nResto = adic.length - visiveis.length;
-      el += '<button type="button" class="rsc-link" onclick="event.stopPropagation(); indAbrirPainel(\'' + idj + '\')" data-title="' + escapeHtml(adic.slice(visiveis.length).join('; ')) + '">mais ' + nResto + ' elemento' + (nResto > 1 ? 's' : '') + '</button>';
+      el += '<button type="button" class="rsc-link" data-on-click="ind.26" data-aclick0="' + idj + '" data-title="' + escapeHtml(adic.slice(visiveis.length).join('; ')) + '">mais ' + nResto + ' elemento' + (nResto > 1 ? 's' : '') + '</button>';
     }
     var formula = p.formula
       ? '<span data-title="' + escapeHtml(p.formula) + '"><span class="material-symbols-outlined">function</span><span>' + escapeHtml(p.formula) + '</span></span>' : '';
@@ -1273,15 +1273,15 @@ function _indLinhaHTML(p, anos, podeEditar) {
           ? _indFaixaHTML(p, anos, podeEditar)
             + '<div class="ind-det-rodape">'
             +   (p.interpretacao ? '<span class="ind-interp"><span class="material-symbols-outlined">' + (menor ? 'trending_down' : 'trending_up') + '</span>' + escapeHtml(p.interpretacao) + '</span>' : '<span class="ind-interp"></span>')
-            +   (podeEditar ? '<button type="button" class="rsc-link" onclick="abrirModalMeta(\'' + idj + '\')"><span class="material-symbols-outlined">add_chart</span>Nova meta</button>' : '')
-            +   '<button type="button" class="rsc-link" onclick="indAbrirPainel(\'' + idj + '\')">Ver configuração<span class="material-symbols-outlined">chevron_right</span></button>'
+            +   (podeEditar ? '<button type="button" class="rsc-link" data-on-click="ind.27" data-aclick0="' + idj + '"><span class="material-symbols-outlined">add_chart</span>Nova meta</button>' : '')
+            +   '<button type="button" class="rsc-link" data-on-click="ind.28" data-aclick0="' + idj + '">Ver configuração<span class="material-symbols-outlined">chevron_right</span></button>'
             + '</div>'
           : '<div class="ind-sem-metas">'
             + '<span class="material-symbols-outlined">flag</span>'
             + '<span class="ind-sem-metas-txt"><strong>Nenhuma meta definida</strong><span>'
             +   escapeHtml([anos.length ? 'Vigência do plano: ' + anos[0] + '–' + anos[anos.length - 1] : '', String(p.frequencia || '').toLowerCase() + (p.unidade ? ', em ' + p.unidade : '')].filter(Boolean).join(' · '))
             + '</span></span>'
-            + '<button type="button" class="rsc-link" onclick="indAbrirPainel(\'' + idj + '\')">Ver configuração<span class="material-symbols-outlined">chevron_right</span></button>'
+            + '<button type="button" class="rsc-link" data-on-click="ind.28" data-aclick0="' + idj + '">Ver configuração<span class="material-symbols-outlined">chevron_right</span></button>'
             + '</div>')
       + '</td></tr>';
   }
@@ -1351,46 +1351,46 @@ function renderizarSecaoIndicadores() {
   container.innerHTML =
     '<div id="ind-filtros" class="el-filtros">'
     +   '<div class="el-search" id="ind-search-wrap">'
-    +     '<button type="button" class="ds-icon-action' + (busca ? ' hidden' : '') + '" id="ind-search-toggle" onclick="indAbrirBusca()" data-title="Buscar" aria-label="Buscar">'
+    +     '<button type="button" class="ds-icon-action' + (busca ? ' hidden' : '') + '" id="ind-search-toggle" data-on-click="ind.29" data-title="Buscar" aria-label="Buscar">'
     +       '<span class="material-symbols-outlined">search</span></button>'
     +     '<div class="el-search-caixa' + (busca ? '' : ' hidden') + '" id="ind-search-caixa">'
     +       '<span class="material-symbols-outlined el-search-icon" aria-hidden="true">search</span>'
     +       '<input type="text" class="ds-input el-search-input" id="ind-filtro-busca" placeholder="Buscar por nome ou fórmula…" aria-label="Buscar por nome ou fórmula"'
-    +         ' oninput="aplicarFiltrosIndicadores()" value="' + escapeHtml(busca) + '">'
-    +       '<button type="button" class="el-search-clear hidden" id="ind-btn-clear" onclick="indLimparBusca()" data-title="Limpar busca" aria-label="Limpar busca">'
+    +         ' data-on-input="ind.30" value="' + escapeHtml(busca) + '">'
+    +       '<button type="button" class="el-search-clear hidden" id="ind-btn-clear" data-on-click="ind.31" data-title="Limpar busca" aria-label="Limpar busca">'
     +         '<span class="material-symbols-outlined">close</span></button>'
     +     '</div>'
     +   '</div>'
     +   ['resp', 'elem', 'freq'].map(function(c) {
           return '<div class="el-filtro">'
-            + '<button type="button" class="el-filtro-btn" id="ind-filtro-btn-' + c + '" onclick="indAbrirFiltro(\'' + c + '\', event)">'
+            + '<button type="button" class="el-filtro-btn" id="ind-filtro-btn-' + c + '" data-on-click="ind.32" data-aclick0="' + c + '">'
             +   '<span id="ind-filtro-label-' + c + '">' + _indFiltrosDef[c].label + '</span>'
             +   '<span class="material-symbols-outlined" style="font-size:18px">expand_more</span></button>'
-            + '<button type="button" class="el-filtro-x hidden" id="ind-filtro-x-' + c + '" onclick="indLimparUmFiltro(\'' + c + '\')" aria-label="Limpar filtro ' + _indFiltrosDef[c].label.toLowerCase() + '">'
+            + '<button type="button" class="el-filtro-x hidden" id="ind-filtro-x-' + c + '" data-on-click="ind.33" data-aclick0="' + c + '" aria-label="Limpar filtro ' + _indFiltrosDef[c].label.toLowerCase() + '">'
             +   '<span class="material-symbols-outlined" style="font-size:15px">close</span></button>'
             + '</div>';
         }).join('')
-    +   '<button type="button" class="el-limpar-link hidden" id="ind-btn-limpar" onclick="limparFiltrosIndicadores()">Limpar filtros</button>'
+    +   '<button type="button" class="el-limpar-link hidden" id="ind-btn-limpar" data-on-click="ind.34">Limpar filtros</button>'
     +   '<div style="flex:1"></div>'
     +   '<div class="det-split desktop-only-flex">'
     +     (podeEditar
-            ? '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-main" id="btn-novo-indicador" onclick="abrirModalIndicadorGlobal()">'
+            ? '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-main" id="btn-novo-indicador" data-on-click="ind.35">'
               + '<span class="material-symbols-outlined">add</span> Novo indicador</button>'
             : '')
-    +     '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-seta acoes-mais" onclick="abrirMenuIndicadoresMais(event)"'
+    +     '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-seta acoes-mais" data-on-click="ind.36"'
     +       ' data-title="Importar e exportar" aria-label="Mais opções de indicadores" aria-haspopup="menu" aria-expanded="false">'
     +       '<span class="material-symbols-outlined">expand_more</span></button>'
     +   '</div>'
     + '</div>'
 
     + '<div id="ind-filtros-selecao" class="el-filtros-selecao hidden">'
-    +   '<button type="button" class="ds-icon-action" onclick="indCancelarSelecao()" data-title="Cancelar seleção" aria-label="Cancelar seleção">'
+    +   '<button type="button" class="ds-icon-action" data-on-click="ind.37" data-title="Cancelar seleção" aria-label="Cancelar seleção">'
     +     '<span class="material-symbols-outlined">close</span></button>'
     +   '<span class="el-selecao-texto" id="ind-selecao-texto">0 selecionados</span>'
     +   '<div class="el-selecao-divisor"></div>'
     +   '<div class="el-selecao-acoes" id="ind-selecao-acoes">'
-    +     '<button type="button" class="ds-icon-action" onclick="exportarIndicadoresMetasCSV()" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
-    +     (podeEditar ? '<button type="button" class="ds-icon-action" onclick="indExcluirSelecionados()" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>' : '')
+    +     '<button type="button" class="ds-icon-action" data-on-click="ind.38" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
+    +     (podeEditar ? '<button type="button" class="ds-icon-action" data-on-click="ind.39" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>' : '')
     +   '</div>'
     + '</div>'
 
@@ -1398,17 +1398,17 @@ function renderizarSecaoIndicadores() {
     +   '<table class="el-tabela ind-tabela" id="ind-tabela">'
     +     '<colgroup><col class="el-col-check"><col class="el-col-expand"><col class="ind-col-nome"><col class="ind-col-cob"><col class="ind-col-freq"><col class="ind-col-resp"><col class="ind-col-acoes"></colgroup>'
     +     '<thead><tr>'
-    +       '<th class="el-col-check"><input type="checkbox" id="chk-select-all-ind" onchange="indToggleSelecionarTodos(this.checked)" aria-label="Selecionar todos"></th>'
+    +       '<th class="el-col-check"><input type="checkbox" id="chk-select-all-ind" data-on-change="ind.40" aria-label="Selecionar todos"></th>'
     +       '<th class="el-col-expand"></th>'
-    +       '<th class="th-sortable ind-col-nome" onclick="indOrdenarPorColuna(\'nome\')">Indicador<span class="sort-icon" id="ind-sort-icon-nome"></span></th>'
-    +       '<th class="th-sortable ind-col-cob" onclick="indOrdenarPorColuna(\'metas\')" data-title="Cobertura de metas por ano de vigência">Metas<span class="sort-icon" id="ind-sort-icon-metas"></span></th>'
-    +       '<th class="th-sortable ind-col-freq" onclick="indOrdenarPorColuna(\'frequencia\')">Frequência<span class="sort-icon" id="ind-sort-icon-frequencia"></span></th>'
-    +       '<th class="th-sortable ind-col-resp" onclick="indOrdenarPorColuna(\'responsavel\')">Responsável<span class="sort-icon" id="ind-sort-icon-responsavel"></span></th>'
+    +       '<th class="th-sortable ind-col-nome" data-on-click="ind.41">Indicador<span class="sort-icon" id="ind-sort-icon-nome"></span></th>'
+    +       '<th class="th-sortable ind-col-cob" data-on-click="ind.42" data-title="Cobertura de metas por ano de vigência">Metas<span class="sort-icon" id="ind-sort-icon-metas"></span></th>'
+    +       '<th class="th-sortable ind-col-freq" data-on-click="ind.43">Frequência<span class="sort-icon" id="ind-sort-icon-frequencia"></span></th>'
+    +       '<th class="th-sortable ind-col-resp" data-on-click="ind.44">Responsável<span class="sort-icon" id="ind-sort-icon-responsavel"></span></th>'
     +       '<th class="ind-col-acoes"><div class="el-th-acoes">'
-    +         '<button type="button" class="el-th-btn" onclick="atualizarAbaIndicadores()" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
-    +         '<button type="button" class="el-th-btn" id="ind-btn-expandir" onclick="indToggleExpandirTodos()" data-title="Expandir todos" aria-label="Expandir todos"><span class="material-symbols-outlined">unfold_more</span></button>'
-    +         '<button type="button" class="el-th-btn" onclick="exportarIndicadoresMetasCSV()" data-title="Exportar indicadores e metas" aria-label="Exportar indicadores e metas"><span class="material-symbols-outlined">download</span></button>'
-    +         '<button type="button" class="el-th-btn" onclick="indAbrirMenuOrdenar(event)" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
+    +         '<button type="button" class="el-th-btn" data-on-click="ind.45" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
+    +         '<button type="button" class="el-th-btn" id="ind-btn-expandir" data-on-click="ind.46" data-title="Expandir todos" aria-label="Expandir todos"><span class="material-symbols-outlined">unfold_more</span></button>'
+    +         '<button type="button" class="el-th-btn" data-on-click="ind.38" data-title="Exportar indicadores e metas" aria-label="Exportar indicadores e metas"><span class="material-symbols-outlined">download</span></button>'
+    +         '<button type="button" class="el-th-btn" data-on-click="ind.47" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
     +       '</div></th>'
     +     '</tr></thead>'
     +     '<tbody id="ind-tbody"></tbody>'
@@ -1416,15 +1416,15 @@ function renderizarSecaoIndicadores() {
     + '</div>'
     + '<div id="ind-pagination" class="pagination-bar rsc-pag">'
     +   '<div class="pag-left"><span>Exibir:</span>'
-    +     '<select id="ind-pag-size" onchange="indMudarTamanho(this.value)" class="form-control form-control-sm">'
+    +     '<select id="ind-pag-size" data-on-change="ind.48" class="form-control form-control-sm">'
     +       '<option value="10">10</option><option value="20">20</option><option value="50">50</option>'
     +     '</select>'
     +   '</div>'
     +   '<div class="pag-center"><span id="ind-pag-counter">0–0 de 0</span></div>'
     +   '<div class="pag-right">'
-    +     '<button class="btn-pag" onclick="indMudarPagina(\'prev\')" data-title="Anterior" aria-label="Página anterior"><span class="material-symbols-outlined">chevron_left</span></button>'
-    +     '<select id="ind-pag-selector" onchange="indIrParaPagina(this.value)" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>'
-    +     '<button class="btn-pag" onclick="indMudarPagina(\'next\')" data-title="Próximo" aria-label="Próxima página"><span class="material-symbols-outlined">chevron_right</span></button>'
+    +     '<button class="btn-pag" data-on-click="ind.49" data-title="Anterior" aria-label="Página anterior"><span class="material-symbols-outlined">chevron_left</span></button>'
+    +     '<select id="ind-pag-selector" data-on-change="ind.50" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>'
+    +     '<button class="btn-pag" data-on-click="ind.51" data-title="Próximo" aria-label="Próxima página"><span class="material-symbols-outlined">chevron_right</span></button>'
     +   '</div>'
     + '</div>';
 
@@ -1567,8 +1567,8 @@ function _indAtualizarSelecao(listaVisivel) {
         { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoIndicador('" + indId + "','" + escapeJsAttr(indObj ? indObj.nome : '') + "')", cor: 'var(--ds-color-danger-fg)', oculto: !podeEditar }
       ], { maxDireto: 5 });
     } else {
-      acoesCont.innerHTML = '<button type="button" class="ds-icon-action" onclick="exportarIndicadoresMetasCSV()" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
-        + (podeEditar ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" onclick="indExcluirSelecionados()" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>' : '');
+      acoesCont.innerHTML = '<button type="button" class="ds-icon-action" data-on-click="ind.38" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
+        + (podeEditar ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" data-on-click="ind.39" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>' : '');
     }
   }
 }
@@ -1651,7 +1651,7 @@ function _indRenderPainel(p) {
     + '</div>'
     + '<div class="detp-secao">'
     +   '<div class="detp-risco-sec-cab"><strong>Metas</strong><span>' + p.metas.length + (p.metas.length === 1 ? ' meta' : ' metas') + ' · ' + anosCom + ' de ' + anos.length + ' anos</span>'
-    +     (podeEditar ? '<button type="button" class="ds-icon-action ds-icon-action--sm" onclick="abrirModalMeta(\'' + idj + '\')" data-title="Nova meta" aria-label="Nova meta"><span class="material-symbols-outlined">add</span></button>' : '')
+    +     (podeEditar ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.27" data-aclick0="' + idj + '" data-title="Nova meta" aria-label="Nova meta"><span class="material-symbols-outlined">add</span></button>' : '')
     +   '</div>'
     +   (anos.length ? '<div class="detp-ind-metas">' + metas + '</div>' : '<p class="detp-texto-bloco" style="color:var(--ds-color-text-muted)">Nenhuma meta definida.</p>')
     + '</div>';
@@ -2399,7 +2399,7 @@ function _indwizRenderRail() {
     var info = INDWIZ_TITULOS[i];
     var resumo = (atual || concluido) ? _indwizResumoPasso(p) : '';
     var numHTML = concluido ? '<span class="material-symbols-outlined">check</span>' : String(i + 1);
-    return '<button type="button" class="' + cls + '" onclick="_indwizIrParaRail(' + p + ')">'
+    return '<button type="button" class="' + cls + '" data-on-click="ind.52" data-rclick0="' + p + '">'
       + '<span class="wiz-rail-num">' + numHTML + '</span>'
       + '<span style="min-width:0"><div class="wiz-rail-item-titulo">' + escapeHtml(info.titulo) + '</div>'
       + '<div class="wiz-rail-item-desc">' + escapeHtml(resumo || info.desc) + '</div></span>'
@@ -2744,7 +2744,7 @@ function _metaRenderGrade() {
         + g.foraDosPeriodos.map(function(m) {
           var lab = escapeJsAttr((m.periodo || '') + ' — ' + m.valor);
           return '<div class="meta-aviso-item"><span>' + escapeHtml(m.periodo || 'Sem período') + '</span><strong>' + escapeHtml(String(m.valor)) + '</strong>'
-            + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Excluir meta" aria-label="Excluir meta" onclick="confirmarExclusaoMeta(\'' + escapeHtml(String(m.id)) + '\',\'' + lab + '\')"><span class="material-symbols-outlined">delete</span></button></div>';
+            + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Excluir meta" aria-label="Excluir meta" data-on-click="ind.18" data-aclick0="' + escapeHtml(String(m.id)) + '" data-aclick1="' + lab + '"><span class="material-symbols-outlined">delete</span></button></div>';
         }).join('') + '</div>'
       : '';
   }
@@ -2941,4 +2941,60 @@ window.indGarantirCarregado = indGarantirCarregado;
 window.renderizarSecaoIndicadores = renderizarSecaoIndicadores;
 window.estadoIndicadores = estadoIndicadores;
 window._indicadoresSDK = _indicadoresSDK;
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+uiRegistrarAcoes('ind', {
+  '1': function (event) { if(event.target===this) window[this.dataset.fechar](); },
+  '2': function (event) { fecharModalIndicador(); },
+  '3': function (event) { handleSalvarIndicador(event); },
+  '4': function (event) { _indwizLimparErro(this); _indwizRenderRail(); },
+  '5': function (event) { _indwizLimparErro(this); },
+  '6': function (event) { _indwizRenderRail(); },
+  '7': function (event) { onMudarFrequenciaInd(); _indwizRenderRail(); },
+  '8': function (event) { _indwizVoltar(); },
+  '9': function (event) { _indwizSalvar(); },
+  '10': function (event) { _indwizIrPara(4, 'frente'); },
+  '11': function (event) { _indwizProximo(); },
+  '12': function (event) { fecharModalMeta(); },
+  '13': function (event) { handleSalvarMetas(event); },
+  '14': function (event) { _metaCarregarGrade(); },
+  '15': function (event) { if(event.key==='Enter'){event.preventDefault();_metaPreencherTodos();}; },
+  '16': function (event) { _metaPreencherTodos(); },
+  '17': function (event) { abrirModalEdicaoMeta(uiArgJs(this.dataset.aclick0)); },
+  '18': function (event) { confirmarExclusaoMeta(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); },
+  '19': function (event) { abrirModalMeta(uiArgJs(this.dataset.aclick0),uiArgLit(this.dataset.rclick1)); },
+  '20': function (event) { event.stopPropagation(); abrirModalMeta(uiArgJs(this.dataset.aclick0)); },
+  '21': function (event) { indCliqueLinha(event, uiArgJs(this.dataset.aclick0)); },
+  '22': function (event) { indDuploCliqueLinha(event, uiArgJs(this.dataset.adblclick0)); },
+  '23': function (event) { event.stopPropagation(); },
+  '24': function (event) { indToggleSelecao(uiArgJs(this.dataset.achange0), this.checked); },
+  '25': function (event) { event.stopPropagation(); indToggleExpand(uiArgJs(this.dataset.aclick0)); },
+  '26': function (event) { event.stopPropagation(); indAbrirPainel(uiArgJs(this.dataset.aclick0)); },
+  '27': function (event) { abrirModalMeta(uiArgJs(this.dataset.aclick0)); },
+  '28': function (event) { indAbrirPainel(uiArgJs(this.dataset.aclick0)); },
+  '29': function (event) { indAbrirBusca(); },
+  '30': function (event) { aplicarFiltrosIndicadores(); },
+  '31': function (event) { indLimparBusca(); },
+  '32': function (event) { indAbrirFiltro(uiArgJs(this.dataset.aclick0), event); },
+  '33': function (event) { indLimparUmFiltro(uiArgJs(this.dataset.aclick0)); },
+  '34': function (event) { limparFiltrosIndicadores(); },
+  '35': function (event) { abrirModalIndicadorGlobal(); },
+  '36': function (event) { abrirMenuIndicadoresMais(event); },
+  '37': function (event) { indCancelarSelecao(); },
+  '38': function (event) { exportarIndicadoresMetasCSV(); },
+  '39': function (event) { indExcluirSelecionados(); },
+  '40': function (event) { indToggleSelecionarTodos(this.checked); },
+  '41': function (event) { indOrdenarPorColuna('nome'); },
+  '42': function (event) { indOrdenarPorColuna('metas'); },
+  '43': function (event) { indOrdenarPorColuna('frequencia'); },
+  '44': function (event) { indOrdenarPorColuna('responsavel'); },
+  '45': function (event) { atualizarAbaIndicadores(); },
+  '46': function (event) { indToggleExpandirTodos(); },
+  '47': function (event) { indAbrirMenuOrdenar(event); },
+  '48': function (event) { indMudarTamanho(this.value); },
+  '49': function (event) { indMudarPagina('prev'); },
+  '50': function (event) { indIrParaPagina(this.value); },
+  '51': function (event) { indMudarPagina('next'); },
+  '52': function (event) { _indwizIrParaRail(uiArgLit(this.dataset.rclick0)); }
+});
 </script>

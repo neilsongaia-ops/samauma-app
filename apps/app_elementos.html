@@ -955,21 +955,21 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
      _appCarregarHtml('elementos', callback, 'elementos-conteudo'). -->
 
 <!-- MODAL: impacto da exclusão de elemento (docs/regras_negocio_planos.md §11.1). Tudo vai para a lixeira do plano. -->
-<div id="modal-el-impacto" class="modal-overlay hidden" data-app-portal data-fechar="elImpFechar" onclick="if(event.target===this) window[this.dataset.fechar]()">
+<div id="modal-el-impacto" class="modal-overlay hidden" data-app-portal data-fechar="elImpFechar" data-on-click="el.1">
   <div class="modal-card" style="max-width: 520px;" role="dialog" aria-modal="true" aria-labelledby="elimp-titulo">
     <div class="modal-header">
       <div style="min-width:0">
         <h3 id="elimp-titulo">Excluir elemento?<span class="material-symbols-outlined elwiz-info" data-title="Vai para a lixeira do plano e pode ser restaurado, junto com o que sair com ele.">info</span></h3>
         <p id="elimp-nome" class="elimp-nome"></p>
       </div>
-      <button class="btn-icon-close" onclick="elImpFechar()" data-title="Fechar" aria-label="Fechar">
+      <button class="btn-icon-close" data-on-click="el.2" data-title="Fechar" aria-label="Fechar">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
     <div class="modal-body" id="elimp-corpo"></div>
     <div class="modal-footer">
-      <button type="button" class="ds-btn ds-btn--ghost" onclick="elImpFechar()">Cancelar</button>
-      <button type="button" class="ds-btn ds-btn--danger" id="elimp-confirmar" onclick="elImpConfirmar()" disabled>
+      <button type="button" class="ds-btn ds-btn--ghost" data-on-click="el.2">Cancelar</button>
+      <button type="button" class="ds-btn ds-btn--danger" id="elimp-confirmar" data-on-click="el.3" disabled>
         <span class="material-symbols-outlined">delete</span>Excluir
       </button>
     </div>
@@ -994,10 +994,10 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 @media (max-width: 768px) { .elimp-opcao { min-height: 44px; } }
 </style>
 
-<div id="modal-novo-elemento" class="modal-overlay hidden" data-app-portal data-fechar="fecharModalElemento" onclick="if(event.target===this) window[this.dataset.fechar]()">
+<div id="modal-novo-elemento" class="modal-overlay hidden" data-app-portal data-fechar="fecharModalElemento" data-on-click="el.1">
   <div class="modal-card modal-lg wiz-rail-modal">
 
-    <button class="btn-icon-close wiz-rail-close" onclick="fecharModalElemento()" data-title="Fechar" aria-label="Fechar">
+    <button class="btn-icon-close wiz-rail-close" data-on-click="el.4" data-title="Fechar" aria-label="Fechar">
       <span class="material-symbols-outlined">close</span>
     </button>
 
@@ -1032,7 +1032,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
       <!-- CONTEÚDO DA ETAPA -->
       <div class="wiz-content">
         <div class="wizard-steps-viewport">
-        <form id="form-novo-elemento" onsubmit="handleSalvarElemento(event)" novalidate>
+        <form id="form-novo-elemento" data-on-submit="el.5" novalidate>
           <input type="hidden" name="idPlano" id="input-el-id-plano">
           <input type="hidden" id="input-el-id-edicao">
 
@@ -1047,7 +1047,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                  Nenhuma regra muda; o marcador fica salvo só para a edição abrir curta também. -->
             <div class="elwiz-toggle-linha elwiz-org-linha">
               <label class="elwiz-switch">
-                <input type="checkbox" id="elwiz-org-switch" onchange="_elwizOrgAlternar(this.checked)">
+                <input type="checkbox" id="elwiz-org-switch" data-on-change="el.6">
                 <span class="elwiz-switch-track"><span class="elwiz-switch-thumb"></span></span>
               </label>
               <div class="elwiz-toggle-titulo" id="elwiz-org-rotulo">Elemento organizador <span class="material-symbols-outlined elwiz-info" aria-hidden="true" data-title="Serve para agrupar outros elementos, como um eixo, uma perspectiva ou uma diretriz. Pula prazo, esforço e responsáveis e deixa o formulário mais curto.">info</span></div>
@@ -1059,8 +1059,8 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                 <div style="position:relative">
                   <input type="text" name="tipo" id="input-el-tipo" class="ds-input" required minlength="2" maxlength="80"
                          placeholder="Ex: Objetivo, Ação, Meta..." autocomplete="off"
-                         oninput="_autocompleteTipo(this.value); _elwizLimparErro(this)" onfocus="_autocompleteTipo(this.value)"
-                         onblur="_atualizarCorPeloTipo()">
+                         data-on-input="el.7" data-on-focus="el.8"
+                         data-on-blur="el.9">
                   <div id="el-tipo-suggestions" class="autocomplete-list hidden"></div>
                 </div>
                 <small class="ds-help ds-help--error hidden" id="input-el-tipo-erro"></small>
@@ -1071,7 +1071,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                   <span class="material-symbols-outlined" style="font-size:15px; color:var(--ds-color-text-muted)" data-title="A cor segue o tipo até você escolher manualmente.">info</span>
                 </label>
                 <input type="color" name="cor" id="input-el-cor" class="ds-input" value="#1967d2"
-                       style="width:48px; height:40px; padding:2px; cursor:pointer" onchange="_elwizCorManual=true">
+                       style="width:48px; height:40px; padding:2px; cursor:pointer" data-on-change="el.10">
               </div>
             </div>
 
@@ -1084,7 +1084,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
               <label class="ds-label" for="input-el-titulo">Título <span class="elwiz-obrig">obrigatório</span></label>
               <input type="text" name="titulo" id="input-el-titulo" class="ds-input" required minlength="5" maxlength="150"
                      placeholder="Ex: Implantar novo sistema de gestão documental" autocomplete="off"
-                     oninput="_elwizContador(this); _elwizLimparErro(this)">
+                     data-on-input="el.11">
               <div class="elwiz-contador-erro">
                 <span class="ds-help" id="input-el-titulo-contador">0/150</span>
                 <small class="ds-help ds-help--error hidden" id="input-el-titulo-erro"></small>
@@ -1126,7 +1126,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
             <div class="ds-field">
               <label class="ds-label">Vigência</label>
               <div style="margin-bottom:10px">
-                <button type="button" class="btn-herdar-datas" id="btn-herdar-datas" onclick="toggleHerdarDatas()">
+                <button type="button" class="btn-herdar-datas" id="btn-herdar-datas" data-on-click="el.12">
                   <span class="material-symbols-outlined" style="font-size:15px;vertical-align:middle">sync</span>
                   <span id="lbl-herdar-datas">Usar vigência do plano</span>
                 </button>
@@ -1146,7 +1146,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
             <div class="elwiz-row-2">
               <div class="ds-field">
                 <label class="ds-label">Custo estimado</label>
-                <input type="text" name="custo" id="input-el-custo" class="ds-input" placeholder="R$ 0,00" onkeyup="mascaraMoeda(this)">
+                <input type="text" name="custo" id="input-el-custo" class="ds-input" placeholder="R$ 0,00" data-on-keyup="el.13">
               </div>
               <div class="ds-field">
                 <label class="ds-label">Peso no desempenho do plano <span class="material-symbols-outlined elwiz-info" aria-hidden="true" data-title="Sem definição, assume peso 1 (muito baixa).">info</span></label>
@@ -1171,7 +1171,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
           <div class="elwiz-acordeon">
             <div class="elwiz-acordeon-item" id="wrap-el-localizacao">
-              <button type="button" class="elwiz-acordeon-cab" onclick="_elwizToggleAcordeon('wrap-el-localizacao')">
+              <button type="button" class="elwiz-acordeon-cab" data-on-click="el.14">
                 <span class="material-symbols-outlined">location_on</span>
                 <span class="elwiz-acordeon-titulo">Localização</span>
                 <span class="material-symbols-outlined elwiz-acordeon-seta">add</span>
@@ -1179,14 +1179,14 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
               <div class="elwiz-acordeon-corpo">
                 <div class="ds-field" style="margin:0 0 4px">
                   <input type="text" name="localizacao" id="input-el-localizacao" class="ds-input" minlength="3" maxlength="150"
-                         placeholder="Ex: Campus Sede" oninput="_elwizContador(this)">
+                         placeholder="Ex: Campus Sede" data-on-input="el.15">
                   <span class="ds-help" id="input-el-localizacao-contador">0/150</span>
                 </div>
               </div>
             </div>
 
             <div class="elwiz-acordeon-item" id="wrap-el-justificativa">
-              <button type="button" class="elwiz-acordeon-cab" onclick="_elwizToggleAcordeon('wrap-el-justificativa')">
+              <button type="button" class="elwiz-acordeon-cab" data-on-click="el.16">
                 <span class="material-symbols-outlined">balance</span>
                 <span class="elwiz-acordeon-titulo">Justificativa</span>
                 <span class="material-symbols-outlined elwiz-acordeon-seta">add</span>
@@ -1194,14 +1194,14 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
               <div class="elwiz-acordeon-corpo">
                 <div class="ds-field" style="margin:0 0 4px">
                   <textarea name="justificativa" id="input-el-justificativa" class="ds-textarea" rows="2" minlength="10" maxlength="200"
-                            oninput="_elwizContador(this)"></textarea>
+                            data-on-input="el.15"></textarea>
                   <span class="ds-help" id="input-el-justificativa-contador">0/200</span>
                 </div>
               </div>
             </div>
 
             <div class="elwiz-acordeon-item" id="wrap-el-comofazer">
-              <button type="button" class="elwiz-acordeon-cab" onclick="_elwizToggleAcordeon('wrap-el-comofazer')">
+              <button type="button" class="elwiz-acordeon-cab" data-on-click="el.17">
                 <span class="material-symbols-outlined">route</span>
                 <span class="elwiz-acordeon-titulo">Metodologia</span>
                 <span class="material-symbols-outlined elwiz-acordeon-seta">add</span>
@@ -1209,14 +1209,14 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
               <div class="elwiz-acordeon-corpo">
                 <div class="ds-field" style="margin:0 0 4px">
                   <textarea name="comoFazer" id="input-el-comofazer" class="ds-textarea" rows="2" minlength="10" maxlength="500"
-                            oninput="_elwizContador(this)"></textarea>
+                            data-on-input="el.15"></textarea>
                   <span class="ds-help" id="input-el-comofazer-contador">0/500</span>
                 </div>
               </div>
             </div>
 
             <div class="elwiz-acordeon-item" id="wrap-el-descricao">
-              <button type="button" class="elwiz-acordeon-cab" onclick="_elwizToggleAcordeon('wrap-el-descricao')">
+              <button type="button" class="elwiz-acordeon-cab" data-on-click="el.18">
                 <span class="material-symbols-outlined">subject</span>
                 <span class="elwiz-acordeon-titulo">Descrição complementar</span>
                 <span class="material-symbols-outlined elwiz-acordeon-seta">add</span>
@@ -1224,7 +1224,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
               <div class="elwiz-acordeon-corpo">
                 <div class="ds-field" style="margin:0 0 4px">
                   <textarea name="descricao" id="input-el-descricao" class="ds-textarea" rows="2" minlength="10" maxlength="200"
-                            oninput="_elwizContador(this)"></textarea>
+                            data-on-input="el.15"></textarea>
                   <span class="ds-help" id="input-el-descricao-contador">0/200</span>
                 </div>
               </div>
@@ -1243,7 +1243,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
           <div class="elwiz-secao-titulo">Colaboração externa <span class="material-symbols-outlined elwiz-info" aria-hidden="true" data-title="Permite que unidades e servidores fora do escopo deste plano participem deste elemento. As solicitações ficam sujeitas ao aceite de quem já é responsável.">info</span></div>
           <div class="elwiz-toggle-linha">
             <label class="elwiz-switch">
-              <input type="checkbox" id="input-el-aberto-colaboracao" onchange="_wizardElToggleColaboracao(this)">
+              <input type="checkbox" id="input-el-aberto-colaboracao" data-on-change="el.19">
               <span class="elwiz-switch-track"><span class="elwiz-switch-thumb"></span></span>
             </label>
             <div>
@@ -1262,12 +1262,12 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
         </div><!-- /.wizard-steps-viewport -->
 
         <div class="modal-footer">
-          <button type="button" class="ds-btn ds-btn--ghost" style="margin-right:auto" onclick="fecharModalElemento()">Cancelar</button>
-          <button type="button" class="ds-btn ds-btn--ghost hidden" id="btn-el-voltar" onclick="_wizardElVoltar()">
+          <button type="button" class="ds-btn ds-btn--ghost" style="margin-right:auto" data-on-click="el.4">Cancelar</button>
+          <button type="button" class="ds-btn ds-btn--ghost hidden" id="btn-el-voltar" data-on-click="el.20">
             <span class="material-symbols-outlined icon">arrow_back</span> Voltar
           </button>
-          <button type="button" class="ds-btn ds-btn--ghost hidden" id="btn-el-detalhes" onclick="_wizardElProximo()">Adicionar detalhes</button>
-          <button type="button" class="ds-btn ds-btn--primary" id="btn-el-proximo" onclick="_wizardElProximo()">
+          <button type="button" class="ds-btn ds-btn--ghost hidden" id="btn-el-detalhes" data-on-click="el.21">Adicionar detalhes</button>
+          <button type="button" class="ds-btn ds-btn--primary" id="btn-el-proximo" data-on-click="el.21">
             Continuar <span class="material-symbols-outlined icon">arrow_forward</span>
           </button>
           <button type="submit" form="form-novo-elemento" class="ds-btn ds-btn--primary hidden" id="btn-el-salvar">
@@ -1289,15 +1289,15 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
       <div id="el-filtros-normal" class="el-filtros">
         <!-- Busca expansível -->
         <div class="el-search" id="el-search-wrap">
-          <button type="button" class="ds-icon-action" id="el-search-toggle" onclick="elAbrirBusca()" data-title="Buscar" aria-label="Buscar">
+          <button type="button" class="ds-icon-action" id="el-search-toggle" data-on-click="el.22" data-title="Buscar" aria-label="Buscar">
             <span class="material-symbols-outlined">search</span>
           </button>
           <div class="el-search-caixa hidden" id="el-search-caixa">
             <span class="material-symbols-outlined el-search-icon" aria-hidden="true">search</span>
             <input type="text" class="ds-input el-search-input" id="filtro-texto" aria-label="Buscar por título ou código"
-                   placeholder="Buscar por título ou código…" oninput="aplicarFiltrosElementos()">
+                   placeholder="Buscar por título ou código…" data-on-input="el.23">
             <button type="button" class="el-search-clear hidden" id="btn-clear-filtro-texto"
-                    onclick="elLimparBusca()" data-title="Limpar busca" aria-label="Limpar busca">
+                    data-on-click="el.24" data-title="Limpar busca" aria-label="Limpar busca">
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
@@ -1305,29 +1305,29 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
         <!-- Filtro Tipo (chip-button) -->
         <div class="el-filtro">
-          <button type="button" class="el-filtro-btn" id="el-filtro-btn-tipo" onclick="elAbrirFiltro('tipo', event)">
+          <button type="button" class="el-filtro-btn" id="el-filtro-btn-tipo" data-on-click="el.25">
             <span id="el-filtro-label-tipo">Tipo</span>
             <span class="material-symbols-outlined" style="font-size:18px">expand_more</span>
           </button>
-          <button type="button" class="el-filtro-x hidden" id="el-filtro-x-tipo" onclick="elLimparUmFiltro('tipo')" aria-label="Limpar filtro tipo">
+          <button type="button" class="el-filtro-x hidden" id="el-filtro-x-tipo" data-on-click="el.26" aria-label="Limpar filtro tipo">
             <span class="material-symbols-outlined" style="font-size:15px">close</span>
           </button>
         </div>
 
         <!-- Filtro Responsável (chip-button) -->
         <div class="el-filtro">
-          <button type="button" class="el-filtro-btn" id="el-filtro-btn-resp" onclick="elAbrirFiltro('resp', event)">
+          <button type="button" class="el-filtro-btn" id="el-filtro-btn-resp" data-on-click="el.27">
             <span id="el-filtro-label-resp">Responsável</span>
             <span class="material-symbols-outlined" style="font-size:18px">expand_more</span>
           </button>
-          <button type="button" class="el-filtro-x hidden" id="el-filtro-x-resp" onclick="elLimparUmFiltro('resp')" aria-label="Limpar filtro responsável">
+          <button type="button" class="el-filtro-x hidden" id="el-filtro-x-resp" data-on-click="el.28" aria-label="Limpar filtro responsável">
             <span class="material-symbols-outlined" style="font-size:15px">close</span>
           </button>
         </div>
 
         <!-- Limpar filtros -->
         <button type="button" class="el-limpar-link hidden" id="btn-limpar-filtros-el"
-                onclick="limparFiltrosElementos()" aria-label="Limpar filtros">
+                data-on-click="el.29" aria-label="Limpar filtros">
           Limpar filtros
         </button>
 
@@ -1336,16 +1336,16 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
         <!-- Modos de visualização -->
         <div class="det-modos" role="group" aria-label="Modo de visualização">
-          <button type="button" class="det-modo ativo" id="btn-modo-arvore" onclick="mudarModoElementos('arvore')"
+          <button type="button" class="det-modo ativo" id="btn-modo-arvore" data-on-click="el.30"
                   data-title="Lista" aria-label="Lista" aria-pressed="true">
             <span class="material-symbols-outlined">view_list</span></button>
-          <button type="button" class="det-modo" id="btn-modo-organograma" onclick="mudarModoElementos('organograma')"
+          <button type="button" class="det-modo" id="btn-modo-organograma" data-on-click="el.31"
                   data-title="Organograma" aria-label="Organograma" aria-pressed="false">
             <span class="material-symbols-outlined">account_tree</span></button>
-          <button type="button" class="det-modo" id="btn-modo-tabela" onclick="mudarModoElementos('tabela')"
+          <button type="button" class="det-modo" id="btn-modo-tabela" data-on-click="el.32"
                   data-title="5W2H" aria-label="5W2H" aria-pressed="false">
             <span class="material-symbols-outlined">table_chart</span></button>
-          <button type="button" class="det-modo" id="btn-modo-gantt" onclick="mudarModoElementos('gantt')"
+          <button type="button" class="det-modo" id="btn-modo-gantt" data-on-click="el.33"
                   data-title="Gantt" aria-label="Gantt" aria-pressed="false">
             <span class="material-symbols-outlined">date_range</span></button>
         </div>
@@ -1353,8 +1353,8 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
         <!-- Botão dividido: "Novo elemento" (hierarquia secundária) + menu -->
         <div class="det-split desktop-only-flex">
           <button type="button" class="ds-btn ds-btn--glass-secondary det-split-main hidden" id="btn-novo-item"
-                  onclick="abrirModalNovoElemento()"><span class="material-symbols-outlined">add</span> Novo elemento</button>
-          <button type="button" class="ds-btn ds-btn--glass-secondary det-split-seta acoes-mais" onclick="abrirMenuElementosMais(event)"
+                  data-on-click="el.34"><span class="material-symbols-outlined">add</span> Novo elemento</button>
+          <button type="button" class="ds-btn ds-btn--glass-secondary det-split-seta acoes-mais" data-on-click="el.35"
                   data-title="Mais opções" aria-label="Mais opções de elementos" aria-haspopup="menu" aria-expanded="false">
             <span class="material-symbols-outlined">expand_more</span></button>
         </div>
@@ -1362,7 +1362,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
       <!-- Barra de seleção em lote (oculta por padrão) -->
       <div id="el-filtros-selecao" class="el-filtros-selecao hidden">
-        <button type="button" class="ds-icon-action" onclick="elCancelarSelecao()" data-title="Cancelar seleção" aria-label="Cancelar seleção">
+        <button type="button" class="ds-icon-action" data-on-click="el.36" data-title="Cancelar seleção" aria-label="Cancelar seleção">
           <span class="material-symbols-outlined">close</span>
         </button>
         <span class="el-selecao-texto" id="el-selecao-texto">0 selecionado(s)</span>
@@ -1383,25 +1383,25 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
             </colgroup>
             <thead>
               <tr id="el-th-normal">
-                <th class="el-col-check"><input type="checkbox" id="chk-select-all-el" onchange="elToggleSelectAll(this.checked)" aria-label="Selecionar todos"></th>
+                <th class="el-col-check"><input type="checkbox" id="chk-select-all-el" data-on-change="el.37" aria-label="Selecionar todos"></th>
                 <th class="el-col-expand"></th>
                 <th class="el-col-elem">Elemento</th>
                 <th class="el-col-resp">Responsável</th>
                 <th class="el-col-acoes">
                   <div class="el-th-acoes">
-                    <button type="button" class="el-th-btn" id="btn-atualizar-el" onclick="atualizarConteudoPlano()" data-title="Atualizar" aria-label="Atualizar">
+                    <button type="button" class="el-th-btn" id="btn-atualizar-el" data-on-click="el.38" data-title="Atualizar" aria-label="Atualizar">
                       <span class="material-symbols-outlined">refresh</span>
                     </button>
-                    <button type="button" class="el-th-btn" id="btn-reorganizar" onclick="toggleModoReorganizar()" data-title="Reorganizar" aria-label="Reorganizar">
+                    <button type="button" class="el-th-btn" id="btn-reorganizar" data-on-click="el.39" data-title="Reorganizar" aria-label="Reorganizar">
                       <span class="material-symbols-outlined">low_priority</span>
                     </button>
-                    <button type="button" class="el-th-btn" id="btn-expandir-arvore" onclick="toggleExpandirTudo()" data-title="Expandir Tudo" aria-label="Expandir Tudo">
+                    <button type="button" class="el-th-btn" id="btn-expandir-arvore" data-on-click="el.40" data-title="Expandir Tudo" aria-label="Expandir Tudo">
                       <span class="material-symbols-outlined">unfold_more</span>
                     </button>
-                    <button type="button" class="el-th-btn" id="btn-imprimir-elem" onclick="imprimirElementos()" data-title="Imprimir" aria-label="Imprimir">
+                    <button type="button" class="el-th-btn" id="btn-imprimir-elem" data-on-click="el.41" data-title="Imprimir" aria-label="Imprimir">
                       <span class="material-symbols-outlined">print</span>
                     </button>
-                    <button type="button" class="el-th-btn" id="btn-exportar-elem" onclick="exportarElementosCSV()" data-title="Exportar" aria-label="Exportar">
+                    <button type="button" class="el-th-btn" id="btn-exportar-elem" data-on-click="el.42" data-title="Exportar" aria-label="Exportar">
                       <span class="material-symbols-outlined">download</span>
                     </button>
                   </div>
@@ -1410,15 +1410,15 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
               <tr id="el-th-reorganizar" class="hidden">
                 <th colspan="5" class="el-th-reorg-th">
                   <div class="el-th-reorg-bar">
-                    <button type="button" class="ds-icon-action" id="btn-reorg-principal" onclick="_cliqueReorgPrincipal()" data-title="Cancelar reorganização" aria-label="Cancelar reorganização">
+                    <button type="button" class="ds-icon-action" id="btn-reorg-principal" data-on-click="el.43" data-title="Cancelar reorganização" aria-label="Cancelar reorganização">
                       <span class="material-symbols-outlined" id="ico-reorg-principal">close</span>
                     </button>
                     <span class="el-reorg-texto" id="el-reorg-texto">Arraste os elementos para reorganizar</span>
                     <div class="el-reorg-divisor hidden" id="el-reorg-divisor"></div>
-                    <button type="button" class="ds-icon-action hidden" id="btn-reorg-restaurar" onclick="_restaurarOrdemOriginal()" data-title="Restaurar ordem que estava antes" aria-label="Restaurar ordem que estava antes">
+                    <button type="button" class="ds-icon-action hidden" id="btn-reorg-restaurar" data-on-click="el.44" data-title="Restaurar ordem que estava antes" aria-label="Restaurar ordem que estava antes">
                       <span class="material-symbols-outlined">restart_alt</span>
                     </button>
-                    <button type="button" class="ds-icon-action hidden" id="btn-reorg-cancelar" onclick="_cancelarModoReorganizar()" data-title="Cancelar alterações e sair" aria-label="Cancelar alterações e sair">
+                    <button type="button" class="ds-icon-action hidden" id="btn-reorg-cancelar" data-on-click="el.45" data-title="Cancelar alterações e sair" aria-label="Cancelar alterações e sair">
                       <span class="material-symbols-outlined">close</span>
                     </button>
                   </div>
@@ -1444,7 +1444,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
           <div class="org-toolbar">
             <!-- Botão fechar tela cheia (lado esquerdo, antes do elemento que identifica o plano selecionado) -->
             <button type="button" class="el-th-btn org-fs-only" id="org-btn-close-fs"
-                    onclick="orgToggleFullscreen(false)" data-title="Fechar tela cheia (Esc)" aria-label="Fechar tela cheia">
+                    data-on-click="el.46" data-title="Fechar tela cheia (Esc)" aria-label="Fechar tela cheia">
               <span class="material-symbols-outlined">close</span></button>
 
             <!-- Em tela cheia: identificador do plano e contador total -->
@@ -1461,10 +1461,10 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
             <!-- Construtor do diagrama: hierarquia (modo explícito) e layout automático -->
             <div class="el-th-acoes hidden" id="org-edit-grupo">
-              <button type="button" class="el-th-btn" id="org-btn-hier" style="display:none" onclick="orgToggleHierarquia()"
+              <button type="button" class="el-th-btn" id="org-btn-hier" style="display:none" data-on-click="el.47"
                       data-title="Reorganizar hierarquia (arraste sobre outro elemento)" aria-label="Reorganizar hierarquia" aria-pressed="false">
                 <span class="material-symbols-outlined">move_down</span></button>
-              <button type="button" class="el-th-btn" id="org-btn-reset" style="display:none" onclick="orgRestaurarLayout()"
+              <button type="button" class="el-th-btn" id="org-btn-reset" style="display:none" data-on-click="el.48"
                       data-title="Restaurar layout automático" aria-label="Restaurar layout automático">
                 <span class="material-symbols-outlined">restart_alt</span></button>
             </div>
@@ -1472,7 +1472,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
             <!-- Relacionamentos: só aparece se o plano tiver algum -->
             <div class="el-th-acoes hidden" id="org-rel-grupo">
-              <button type="button" class="el-th-btn ativo" id="org-btn-rel" onclick="orgToggleRelacionamentos()"
+              <button type="button" class="el-th-btn ativo" id="org-btn-rel" data-on-click="el.49"
                       data-title="Ocultar relacionamentos" aria-label="Mostrar relacionamentos" aria-pressed="true">
                 <span class="material-symbols-outlined">hub</span></button>
             </div>
@@ -1480,10 +1480,10 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
             <!-- Orientação: De cima para baixo / Da esquerda para a direita (estilo el-th-btn) -->
             <div class="el-th-acoes" role="group" aria-label="Orientação do organograma">
-              <button type="button" class="el-th-btn org-ori-btn ativo" id="org-btn-v" onclick="orgSetOrientacao(true)"
+              <button type="button" class="el-th-btn org-ori-btn ativo" id="org-btn-v" data-on-click="el.50"
                       data-title="De cima para baixo" aria-label="De cima para baixo" aria-pressed="true">
                 <span class="material-symbols-outlined">lan</span></button>
-              <button type="button" class="el-th-btn org-ori-btn" id="org-btn-h" onclick="orgSetOrientacao(false)"
+              <button type="button" class="el-th-btn org-ori-btn" id="org-btn-h" data-on-click="el.51"
                       data-title="Da esquerda para a direita" aria-label="Da esquerda para a direita" aria-pressed="false">
                 <span class="material-symbols-outlined">account_tree</span></button>
             </div>
@@ -1492,9 +1492,9 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
             <!-- Expandir / Recolher -->
             <div class="el-th-acoes">
-              <button type="button" class="el-th-btn" onclick="orgExpandirTudo()" data-title="Expandir tudo" aria-label="Expandir tudo">
+              <button type="button" class="el-th-btn" data-on-click="el.52" data-title="Expandir tudo" aria-label="Expandir tudo">
                 <span class="material-symbols-outlined">unfold_more</span></button>
-              <button type="button" class="el-th-btn" onclick="orgRecolherTudo()" data-title="Recolher até o 2º nível" aria-label="Recolher tudo">
+              <button type="button" class="el-th-btn" data-on-click="el.53" data-title="Recolher até o 2º nível" aria-label="Recolher tudo">
                 <span class="material-symbols-outlined">unfold_less</span></button>
             </div>
 
@@ -1502,14 +1502,14 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
             <!-- Zoom + Ajustar à tela + Tela cheia -->
             <div class="el-th-acoes" data-title="Zoom · Ctrl + roda do mouse">
-              <button type="button" class="el-th-btn" onclick="orgZoom(1 / 1.2)" aria-label="Diminuir zoom">
+              <button type="button" class="el-th-btn" data-on-click="el.54" aria-label="Diminuir zoom">
                 <span class="material-symbols-outlined">zoom_out</span></button>
               <span class="org-zoom-pct" id="org-zoom-pct">80%</span>
-              <button type="button" class="el-th-btn" onclick="orgZoom(1.2)" aria-label="Aumentar zoom">
+              <button type="button" class="el-th-btn" data-on-click="el.55" aria-label="Aumentar zoom">
                 <span class="material-symbols-outlined">zoom_in</span></button>
-              <button type="button" class="el-th-btn" onclick="orgZoomAjustar()" data-title="Ajustar à tela" aria-label="Ajustar à tela">
+              <button type="button" class="el-th-btn" data-on-click="el.56" data-title="Ajustar à tela" aria-label="Ajustar à tela">
                 <span class="material-symbols-outlined">fit_screen</span></button>
-              <button type="button" class="el-th-btn" id="org-btn-fullscreen" onclick="orgToggleFullscreen()" data-title="Tela cheia" aria-label="Alternar tela cheia">
+              <button type="button" class="el-th-btn" id="org-btn-fullscreen" data-on-click="el.57" data-title="Tela cheia" aria-label="Alternar tela cheia">
                 <span class="material-symbols-outlined" id="org-ico-fullscreen">fullscreen</span></button>
             </div>
 
@@ -1517,11 +1517,11 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
             <!-- Ações: Atualizar, Imprimir, Exportar -->
             <div class="el-th-acoes">
-              <button type="button" class="el-th-btn" onclick="atualizarConteudoPlano()" data-title="Atualizar" aria-label="Atualizar">
+              <button type="button" class="el-th-btn" data-on-click="el.38" data-title="Atualizar" aria-label="Atualizar">
                 <span class="material-symbols-outlined">refresh</span></button>
-              <button type="button" class="el-th-btn" onclick="imprimirElementos()" data-title="Imprimir" aria-label="Imprimir">
+              <button type="button" class="el-th-btn" data-on-click="el.41" data-title="Imprimir" aria-label="Imprimir">
                 <span class="material-symbols-outlined">print</span></button>
-              <button type="button" class="el-th-btn" onclick="exportarElementosCSV()" data-title="Exportar" aria-label="Exportar">
+              <button type="button" class="el-th-btn" data-on-click="el.42" data-title="Exportar" aria-label="Exportar">
                 <span class="material-symbols-outlined">download</span></button>
             </div>
           </div>
@@ -1542,10 +1542,10 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                 <span id="org-savebar-sub"></span>
               </div>
               <span class="org-savebar-sep"></span>
-              <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="orgDesfazer()" data-title="Desfazer (Ctrl + Z)">
+              <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="el.58" data-title="Desfazer (Ctrl + Z)">
                 <span class="material-symbols-outlined">undo</span> Desfazer</button>
-              <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="orgDescartar()">Descartar</button>
-              <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" id="org-btn-salvar" onclick="orgSalvar()">
+              <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="el.59">Descartar</button>
+              <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" id="org-btn-salvar" data-on-click="el.60">
                 <span class="material-symbols-outlined">check</span> Salvar estrutura</button>
             </div>
           </div>
@@ -1567,7 +1567,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
             </colgroup>
             <thead>
               <tr>
-                <th class="w5-col-check"><input type="checkbox" id="chk-select-all-w5" onchange="elToggleSelectAll(this.checked)" aria-label="Selecionar todos"></th>
+                <th class="w5-col-check"><input type="checkbox" id="chk-select-all-w5" data-on-change="el.37" aria-label="Selecionar todos"></th>
                 <th class="w5-col-cod">Código</th>
                 <th class="w5-col-item">Item (O Quê)</th>
                 <th class="w5-col-resp" data-title="Quem (Responsável)">Responsável</th>
@@ -1575,13 +1575,13 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                 <th class="w5-col-custo" data-title="Quanto (Custo)">Custo</th>
                 <th class="w5-col-acoes">
                   <div class="el-th-acoes">
-                    <button type="button" class="el-th-btn" onclick="atualizarConteudoPlano()" data-title="Atualizar" aria-label="Atualizar">
+                    <button type="button" class="el-th-btn" data-on-click="el.38" data-title="Atualizar" aria-label="Atualizar">
                       <span class="material-symbols-outlined">refresh</span>
                     </button>
-                    <button type="button" class="el-th-btn" id="btn-imprimir-w5" onclick="imprimirElementos()" data-title="Imprimir" aria-label="Imprimir">
+                    <button type="button" class="el-th-btn" id="btn-imprimir-w5" data-on-click="el.41" data-title="Imprimir" aria-label="Imprimir">
                       <span class="material-symbols-outlined">print</span>
                     </button>
-                    <button type="button" class="el-th-btn" id="btn-exportar-w5" onclick="exportarElementosCSV()" data-title="Exportar" aria-label="Exportar">
+                    <button type="button" class="el-th-btn" id="btn-exportar-w5" data-on-click="el.42" data-title="Exportar" aria-label="Exportar">
                       <span class="material-symbols-outlined">download</span>
                     </button>
                   </div>
@@ -1824,7 +1824,7 @@ function _elwizRenderRail() {
   if (wrap.children.length !== WIZARD_EL_TITULOS.length) {
     wrap.innerHTML = WIZARD_EL_TITULOS.map((info, i) =>
       '<div class="wiz-rail-item-wrap" data-passo="' + (i + 1) + '">'
-      + '<button type="button" class="wiz-rail-item" onclick="_elwizIrParaRail(' + (i + 1) + ')">'
+      + '<button type="button" class="wiz-rail-item" data-on-click="el.61" data-rclick0="' + (i + 1) + '">'
       + '<span class="wiz-rail-num"></span>'
       + '<span><div class="wiz-rail-item-titulo">' + escapeHtml(info.titulo) + '</div>'
       + '<div class="wiz-rail-item-desc"></div></span></button></div>').join('');
@@ -2597,7 +2597,7 @@ function _renderTagsTipo() {
     return;
   }
   div.innerHTML = tipos.map(t =>
-    `<span class="el-tipo-tag${t === tipoAtual ? ' el-tipo-tag-ativo' : ''}" onclick="_selecionarTagTipo('${escapeJsAttr(t)}')">${escapeHtml(t)}</span>`
+    `<span class="el-tipo-tag${t === tipoAtual ? ' el-tipo-tag-ativo' : ''}" data-on-click="el.62" data-aclick0="${escapeJsAttr(t)}">${escapeHtml(t)}</span>`
   ).join('');
   wrap.classList.remove('hidden');
 }
@@ -3267,7 +3267,7 @@ function _elAtualizarSelecaoVisual() {
       ], { maxDireto: 4 });
     } else {
       acoesCont.innerHTML = podeEditar
-        ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" onclick="elExcluirSelecionados()" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>'
+        ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" data-on-click="el.63" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>'
         : '';
     }
   }
@@ -4124,7 +4124,7 @@ function renderizarGantt() {
     ]) : '';
 
     // 1. Coluna Tarefa (Fixa à esquerda)
-    taskRowsHtml += '<div class="gantt-row gantt-task-row" data-id="' + el.id + '" onclick="elCliqueLinha(event, \'' + el.id + '\')" ondblclick="elDuploCliqueLinha(event, \'' + el.id + '\')" data-title="' + escapeHtml(el.titulo) + '">';
+    taskRowsHtml += '<div class="gantt-row gantt-task-row" data-id="' + el.id + '" data-on-click="el.64" data-aclick0="' + el.id + '" data-on-dblclick="el.65" data-adblclick0="' + el.id + '" data-title="' + escapeHtml(el.titulo) + '">';
     taskRowsHtml += '  <div class="el-elem-content">';
     taskRowsHtml += '    <span class="gantt-task-tipo" style="background:' + dotColor + '"></span>';
     if (el.codigo) taskRowsHtml += '<span class="el-codigo">' + escapeHtml(el.codigo) + '</span>';
@@ -4133,7 +4133,7 @@ function renderizarGantt() {
     taskRowsHtml += '</div>';
 
     // 2. Coluna Canvas (Linha do Tempo central)
-    canvasRowsHtml += '<div class="gantt-row gantt-canvas-row" data-id="' + el.id + '" onclick="elCliqueLinha(event, \'' + el.id + '\')" ondblclick="elDuploCliqueLinha(event, \'' + el.id + '\')">';
+    canvasRowsHtml += '<div class="gantt-row gantt-canvas-row" data-id="' + el.id + '" data-on-click="el.64" data-aclick0="' + el.id + '" data-on-dblclick="el.65" data-adblclick0="' + el.id + '">';
     canvasRowsHtml += gridLinesHtml;
     if (el.isMilestone) {
       var marcoLeftPct = Math.min(100, Math.max(0, ((el.dFim.getTime() - rangeStart.getTime()) / totalMs) * 100));
@@ -4147,7 +4147,7 @@ function renderizarGantt() {
     canvasRowsHtml += '</div>';
 
     // 3. Coluna Ações (Fixa à direita)
-    acoesRowsHtml += '<div class="gantt-row gantt-acoes-row" data-id="' + el.id + '" onclick="elCliqueLinha(event, \'' + el.id + '\')">';
+    acoesRowsHtml += '<div class="gantt-row gantt-acoes-row" data-id="' + el.id + '" data-on-click="el.64" data-aclick0="' + el.id + '">';
     acoesRowsHtml += acoes;
     acoesRowsHtml += '</div>';
   });
@@ -4164,14 +4164,14 @@ function renderizarGantt() {
   html += '  </div>';
   html += '  <div class="gantt-th gantt-th-acoes">';
   html += '    <div class="el-th-acoes gantt-zoom" data-title="Zoom · Ctrl + roda do mouse">';
-  html += '      <button type="button" class="el-th-btn" onclick="ganttZoom(1/1.4)" aria-label="Diminuir zoom" data-title="Diminuir zoom">';
+  html += '      <button type="button" class="el-th-btn" data-on-click="el.66" aria-label="Diminuir zoom" data-title="Diminuir zoom">';
   html += '        <span class="material-symbols-outlined">zoom_out</span>';
   html += '      </button>';
   html += '      <span class="gantt-zoom-pct">' + Math.round(_ganttZoomPxMes / 75 * 100) + '%</span>';
-  html += '      <button type="button" class="el-th-btn" onclick="ganttZoom(1.4)" aria-label="Aumentar zoom" data-title="Aumentar zoom">';
+  html += '      <button type="button" class="el-th-btn" data-on-click="el.67" aria-label="Aumentar zoom" data-title="Aumentar zoom">';
   html += '        <span class="material-symbols-outlined">zoom_in</span>';
   html += '      </button>';
-  html += '      <button type="button" class="el-th-btn btn-zoom-fit" onclick="ganttZoomAjustar()" aria-label="Ajustar à largura" data-title="Ajustar à largura">';
+  html += '      <button type="button" class="el-th-btn btn-zoom-fit" data-on-click="el.68" aria-label="Ajustar à largura" data-title="Ajustar à largura">';
   html += '        <span class="material-symbols-outlined">fit_screen</span>';
   html += '      </button>';
   html += '    </div>';
@@ -4303,8 +4303,8 @@ function renderizarTabelaEstrutura() {
     }
     if (sel && !_modoReorganizar) tr.classList.add('selecionada');
     if (!_modoReorganizar) {
-      tr.setAttribute('onclick', "elCliqueLinha(event, '" + id + "')");
-      tr.setAttribute('ondblclick', "elDuploCliqueLinha(event, '" + id + "')");
+      tr.setAttribute('data-on-click', 'ui.chamar'); tr.setAttribute('data-chamada-click', "elCliqueLinha(event, '" + id + "')");
+      tr.setAttribute('data-on-dblclick', 'ui.chamar'); tr.setAttribute('data-chamada-dblclick', "elDuploCliqueLinha(event, '" + id + "')");
     }
 
     // Checkbox ou Ícone de Reorganização
@@ -4312,14 +4312,14 @@ function renderizarTabelaEstrutura() {
     if (_modoReorganizar) {
       tdCheck = '<td class="el-col-check"><span class="material-symbols-outlined el-drag-handle" style="color:var(--ds-color-text-muted);font-size:20px" data-title="Arrastar para reorganizar">drag_indicator</span></td>';
     } else {
-      tdCheck = '<td class="el-col-check"><input type="checkbox" onchange="elToggleSelectItem(\'' + id + '\', this.checked)"' + (sel ? ' checked' : '') + ' aria-label="Selecionar"></td>';
+      tdCheck = '<td class="el-col-check"><input type="checkbox" data-on-change="el.69" data-achange0="' + id + '"' + (sel ? ' checked' : '') + ' aria-label="Selecionar"></td>';
     }
 
     // Expand button (no modo reorganizar, todos os filhos são expandidos)
     var tdExpand = '<td class="el-col-expand">';
     if (temFilhos) {
       var expanded = temFiltroAtivo || _modoReorganizar;
-      tdExpand += '<button type="button" class="el-toggle-btn' + (expanded ? ' expanded' : '') + '" onclick="elToggleFilhos(event, \'' + id + '\')" aria-label="Expandir">' +
+      tdExpand += '<button type="button" class="el-toggle-btn' + (expanded ? ' expanded' : '') + '" data-on-click="el.70" data-aclick0="' + id + '" aria-label="Expandir">' +
         '<span class="material-symbols-outlined">chevron_right</span></button>';
     }
     tdExpand += '</td>';
@@ -5676,7 +5676,7 @@ function criarNoDOM(item) {
   const qtdInd = Number(item.qtdIndicadores || 0);
   if (qtdInd > 0) {
     const label = qtdInd === 1 ? '1 indicador' : `${qtdInd} indicadores`;
-    indicadorTagHtml = `<span class="meta-tag tag-indicador" onclick="abrirModalListaIndicadores('${item.id}',event)">
+    indicadorTagHtml = `<span class="meta-tag tag-indicador" data-on-click="el.71" data-aclick0="${item.id}">
       <span class="material-symbols-outlined" style="font-size:13px">monitoring</span> ${label}</span>`;
   }
 
@@ -5695,7 +5695,7 @@ function criarNoDOM(item) {
   const temFilhos = item.children && item.children.length > 0;
   const childrenContainerId = `children-${item.id}`;
   const toggleButton = temFilhos
-    ? `<span class="material-symbols-outlined toggle-icon" onclick="toggleNode(this,'${childrenContainerId}')">chevron_right</span>`
+    ? `<span class="material-symbols-outlined toggle-icon" data-on-click="el.72" data-aclick0="${childrenContainerId}">chevron_right</span>`
     : `<div class="toggle-placeholder"></div>`;
 
   const corTipoNo = _corDoTipo(item.tipo);
@@ -5707,7 +5707,7 @@ function criarNoDOM(item) {
       ${toggleButton}
       <div class="item-main">
         <div class="item-header">
-          <div class="item-title-area" onclick="toggleNode(this.closest('.tree-content').querySelector('.toggle-icon'),'${childrenContainerId}')">
+          <div class="item-title-area" data-on-click="el.73" data-aclick0="${childrenContainerId}">
             ${parentLinkHtml}
             <div style="display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;margin-top:2px">
               <span class="item-code">${escapeHtml(item.codigo || '')}</span>
@@ -5727,7 +5727,7 @@ function criarNoDOM(item) {
           ${indicadorTagHtml}
           ${custoHtml}
           ${item.fim ? `<span class="meta-tag"><span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">event</span>Até ${item.fim}</span>` : ''}
-          ${(item.solicitacoesColaboracaoPendentes && item.solicitacoesColaboracaoPendentes.length) ? `<span class="meta-tag" style="background: var(--ds-color-warning-bg);color: var(--ds-color-warning-fg);border-color:color-mix(in srgb, var(--ds-color-warning-fg) 40%, transparent);cursor:pointer" onclick="abrirColaboracoesPendentes('${item.id}')"><span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">group_add</span>${item.solicitacoesColaboracaoPendentes.length} solicitação(ões) de colaboração</span>` : ''}
+          ${(item.solicitacoesColaboracaoPendentes && item.solicitacoesColaboracaoPendentes.length) ? `<span class="meta-tag" style="background: var(--ds-color-warning-bg);color: var(--ds-color-warning-fg);border-color:color-mix(in srgb, var(--ds-color-warning-fg) 40%, transparent);cursor:pointer" data-on-click="el.74" data-aclick0="${item.id}"><span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">group_add</span>${item.solicitacoesColaboracaoPendentes.length} solicitação(ões) de colaboração</span>` : ''}
         </div>
       </div>
     </div>`;
@@ -5785,11 +5785,11 @@ function renderizarTabelaDetalhes() {
     tr.dataset.level = String(item.nivel);
     tr.dataset.pai = item.idPai ? String(item.idPai) : '';
     if (sel) tr.classList.add('selecionada');
-    tr.setAttribute('onclick', "elCliqueLinha(event, '" + id + "')");
-    tr.setAttribute('ondblclick', "elDuploCliqueLinha(event, '" + id + "')");
+    tr.setAttribute('data-on-click', 'ui.chamar'); tr.setAttribute('data-chamada-click', "elCliqueLinha(event, '" + id + "')");
+    tr.setAttribute('data-on-dblclick', 'ui.chamar'); tr.setAttribute('data-chamada-dblclick', "elDuploCliqueLinha(event, '" + id + "')");
 
     // Checkbox de seleção
-    var tdCheck = '<td class="w5-col-check"><input type="checkbox" onchange="elToggleSelectItem(\'' + id + '\', this.checked)"' + (sel ? ' checked' : '') + ' aria-label="Selecionar"></td>';
+    var tdCheck = '<td class="w5-col-check"><input type="checkbox" data-on-change="el.69" data-achange0="' + id + '"' + (sel ? ' checked' : '') + ' aria-label="Selecionar"></td>';
 
     // Código
     var tdCod = '<td class="w5-col-cod"><span class="el-codigo" title="' + escapeHtml(item.codigo || '') + '">' + escapeHtml(item.codigo || '') + '</span></td>';
@@ -5942,14 +5942,14 @@ function _elImpRender() {
       var sel = _elImp.acao === acao;
       return '<label class="elimp-opcao' + (sel ? ' sel' : '') + '"' + (desab ? ' style="opacity:.5;cursor:not-allowed" data-title="Não há outro elemento ativo neste plano."' : '') + '>'
         + '<span class="elimp-opcao-linha"><input type="radio" name="elimp-acao" value="' + acao + '"' + (sel ? ' checked' : '') + (desab ? ' disabled' : '')
-        + ' onchange="elImpEscolher(\'' + acao + '\')"><span class="material-symbols-outlined" aria-hidden="true">' + icone + '</span>'
+        + ' data-on-change="el.75" data-achange0="' + acao + '"><span class="material-symbols-outlined" aria-hidden="true">' + icone + '</span>'
         + '<span>' + rotulo + '<span class="material-symbols-outlined elwiz-info" data-title="' + escapeHtml(dica) + '">info</span></span></span>'
         + (extra || '') + '</label>';
     };
     h += '<div class="elimp-secao">O que fazer com ' + (cont.DECIDIR === 1 ? 'o indicador com resultado' : 'os indicadores com resultado') + '</div>';
     h += '<div class="elimp-opcoes" role="radiogroup">'
       + opc('MOVER', 'drive_file_move', 'Mover para outro elemento', 'Passam a ser aferidos no elemento escolhido, com metas e resultados. Responsáveis fora do escopo dele saem.',
-          '<div class="elimp-destino' + (_elImp.acao === 'MOVER' ? '' : ' hidden') + '" onclick="event.stopPropagation()"><div id="elimp-selresp-destino"></div></div>', !destinos.length)
+          '<div class="elimp-destino' + (_elImp.acao === 'MOVER' ? '' : ' hidden') + '" data-on-click="el.76"><div id="elimp-selresp-destino"></div></div>', !destinos.length)
       + opc('SEM_VINCULO', 'link_off', 'Deixar sem vínculo', 'Continuam no plano, sem elemento e sem efeito no desempenho. Podem ser reanexados depois pela lixeira do plano.')
       + opc('ARQUIVAR', 'inventory_2', 'Arquivar', 'Vão para a lixeira com metas e resultados e voltam se o elemento for restaurado.')
       + '</div>';
@@ -6146,6 +6146,86 @@ _elementosSDK.aoTecla(function(evt) {
     }
   }
   return false;
+});
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+uiRegistrarAcoes('el', {
+  '1': function (event) { if(event.target===this) window[this.dataset.fechar](); },
+  '2': function (event) { elImpFechar(); },
+  '3': function (event) { elImpConfirmar(); },
+  '4': function (event) { fecharModalElemento(); },
+  '5': function (event) { handleSalvarElemento(event); },
+  '6': function (event) { _elwizOrgAlternar(this.checked); },
+  '7': function (event) { _autocompleteTipo(this.value); _elwizLimparErro(this); },
+  '8': function (event) { _autocompleteTipo(this.value); },
+  '9': function (event) { _atualizarCorPeloTipo(); },
+  '10': function (event) { _elwizCorManual=true; },
+  '11': function (event) { _elwizContador(this); _elwizLimparErro(this); },
+  '12': function (event) { toggleHerdarDatas(); },
+  '13': function (event) { mascaraMoeda(this); },
+  '14': function (event) { _elwizToggleAcordeon('wrap-el-localizacao'); },
+  '15': function (event) { _elwizContador(this); },
+  '16': function (event) { _elwizToggleAcordeon('wrap-el-justificativa'); },
+  '17': function (event) { _elwizToggleAcordeon('wrap-el-comofazer'); },
+  '18': function (event) { _elwizToggleAcordeon('wrap-el-descricao'); },
+  '19': function (event) { _wizardElToggleColaboracao(this); },
+  '20': function (event) { _wizardElVoltar(); },
+  '21': function (event) { _wizardElProximo(); },
+  '22': function (event) { elAbrirBusca(); },
+  '23': function (event) { aplicarFiltrosElementos(); },
+  '24': function (event) { elLimparBusca(); },
+  '25': function (event) { elAbrirFiltro('tipo', event); },
+  '26': function (event) { elLimparUmFiltro('tipo'); },
+  '27': function (event) { elAbrirFiltro('resp', event); },
+  '28': function (event) { elLimparUmFiltro('resp'); },
+  '29': function (event) { limparFiltrosElementos(); },
+  '30': function (event) { mudarModoElementos('arvore'); },
+  '31': function (event) { mudarModoElementos('organograma'); },
+  '32': function (event) { mudarModoElementos('tabela'); },
+  '33': function (event) { mudarModoElementos('gantt'); },
+  '34': function (event) { abrirModalNovoElemento(); },
+  '35': function (event) { abrirMenuElementosMais(event); },
+  '36': function (event) { elCancelarSelecao(); },
+  '37': function (event) { elToggleSelectAll(this.checked); },
+  '38': function (event) { atualizarConteudoPlano(); },
+  '39': function (event) { toggleModoReorganizar(); },
+  '40': function (event) { toggleExpandirTudo(); },
+  '41': function (event) { imprimirElementos(); },
+  '42': function (event) { exportarElementosCSV(); },
+  '43': function (event) { _cliqueReorgPrincipal(); },
+  '44': function (event) { _restaurarOrdemOriginal(); },
+  '45': function (event) { _cancelarModoReorganizar(); },
+  '46': function (event) { orgToggleFullscreen(false); },
+  '47': function (event) { orgToggleHierarquia(); },
+  '48': function (event) { orgRestaurarLayout(); },
+  '49': function (event) { orgToggleRelacionamentos(); },
+  '50': function (event) { orgSetOrientacao(true); },
+  '51': function (event) { orgSetOrientacao(false); },
+  '52': function (event) { orgExpandirTudo(); },
+  '53': function (event) { orgRecolherTudo(); },
+  '54': function (event) { orgZoom(1 / 1.2); },
+  '55': function (event) { orgZoom(1.2); },
+  '56': function (event) { orgZoomAjustar(); },
+  '57': function (event) { orgToggleFullscreen(); },
+  '58': function (event) { orgDesfazer(); },
+  '59': function (event) { orgDescartar(); },
+  '60': function (event) { orgSalvar(); },
+  '61': function (event) { _elwizIrParaRail(uiArgLit(this.dataset.rclick0)); },
+  '62': function (event) { _selecionarTagTipo(uiArgJs(this.dataset.aclick0)); },
+  '63': function (event) { elExcluirSelecionados(); },
+  '64': function (event) { elCliqueLinha(event, uiArgJs(this.dataset.aclick0)); },
+  '65': function (event) { elDuploCliqueLinha(event, uiArgJs(this.dataset.adblclick0)); },
+  '66': function (event) { ganttZoom(1/1.4); },
+  '67': function (event) { ganttZoom(1.4); },
+  '68': function (event) { ganttZoomAjustar(); },
+  '69': function (event) { elToggleSelectItem(uiArgJs(this.dataset.achange0), this.checked); },
+  '70': function (event) { elToggleFilhos(event, uiArgJs(this.dataset.aclick0)); },
+  '71': function (event) { abrirModalListaIndicadores(uiArgJs(this.dataset.aclick0),event); },
+  '72': function (event) { toggleNode(this,uiArgJs(this.dataset.aclick0)); },
+  '73': function (event) { toggleNode(this.closest('.tree-content').querySelector('.toggle-icon'),uiArgJs(this.dataset.aclick0)); },
+  '74': function (event) { abrirColaboracoesPendentes(uiArgJs(this.dataset.aclick0)); },
+  '75': function (event) { elImpEscolher(uiArgJs(this.dataset.achange0)); },
+  '76': function (event) { event.stopPropagation(); }
 });
 </script>
 </body>

@@ -260,58 +260,58 @@ body.high-contrast .ft-badge { background: var(--ds-color-action); color: #000; 
      acha o mount point por getElementById em tempo de execução. -->
 
 <!-- Modal: criar/renomear tópico -->
-<div id="modal-ft-topico" class="ext-mini-overlay hidden" data-fechar="fecharModalFtTopico" onclick="if(event.target===this) fecharModalFtTopico()">
+<div id="modal-ft-topico" class="ext-mini-overlay hidden" data-fechar="fecharModalFtTopico" data-on-click="forum.1">
   <div class="ext-mini-card">
     <div class="ext-mini-header">
       <h3 id="ft-topico-modal-titulo">Novo tópico</h3>
-      <button class="btn-icon-close" onclick="fecharModalFtTopico()"><span class="material-symbols-outlined">close</span></button>
+      <button class="btn-icon-close" data-on-click="forum.2"><span class="material-symbols-outlined">close</span></button>
     </div>
     <div class="ext-mini-body">
       <div class="ext-mini-field">
         <label>Nome do tópico</label>
-        <input type="text" id="ft-topico-nome-input" maxlength="60" placeholder="Ex.: Definição de indicadores" onkeydown="if(event.key==='Enter'){event.preventDefault();forumTopicoSalvar();}">
+        <input type="text" id="ft-topico-nome-input" maxlength="60" placeholder="Ex.: Definição de indicadores" data-on-keydown="forum.3">
       </div>
     </div>
     <div class="ext-mini-footer">
-      <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="fecharModalFtTopico()">Cancelar</button>
-      <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" onclick="forumTopicoSalvar()">Salvar</button>
+      <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="forum.2">Cancelar</button>
+      <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="forum.4">Salvar</button>
     </div>
   </div>
 </div>
 
 <!-- Modal: escolher em quais listas um tópico entra (com atalho para criar lista nova) -->
-<div id="modal-ft-listas-topico" class="ext-mini-overlay hidden" data-fechar="fecharModalFtListasTopico" onclick="if(event.target===this) fecharModalFtListasTopico()">
+<div id="modal-ft-listas-topico" class="ext-mini-overlay hidden" data-fechar="fecharModalFtListasTopico" data-on-click="forum.5">
   <div class="ext-mini-card">
     <div class="ext-mini-header">
       <h3>Adicionar à lista</h3>
-      <button class="btn-icon-close" onclick="fecharModalFtListasTopico()"><span class="material-symbols-outlined">close</span></button>
+      <button class="btn-icon-close" data-on-click="forum.6"><span class="material-symbols-outlined">close</span></button>
     </div>
     <div class="ext-mini-body" id="ft-listas-topico-body"></div>
     <div class="ext-mini-footer">
-      <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="forumListaAbrirModalCriar()">
+      <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="forum.7">
         <span class="material-symbols-outlined" style="font-size:16px;vertical-align:middle">add</span> Nova lista
       </button>
-      <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" onclick="fecharModalFtListasTopico()">Concluir</button>
+      <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="forum.6">Concluir</button>
     </div>
   </div>
 </div>
 
 <!-- Modal: criar lista (também acessível a partir do picker acima) -->
-<div id="modal-ft-lista" class="ext-mini-overlay hidden" data-fechar="fecharModalFtLista" onclick="if(event.target===this) fecharModalFtLista()">
+<div id="modal-ft-lista" class="ext-mini-overlay hidden" data-fechar="fecharModalFtLista" data-on-click="forum.8">
   <div class="ext-mini-card">
     <div class="ext-mini-header">
       <h3 id="ft-lista-modal-titulo">Nova lista</h3>
-      <button class="btn-icon-close" onclick="fecharModalFtLista()"><span class="material-symbols-outlined">close</span></button>
+      <button class="btn-icon-close" data-on-click="forum.9"><span class="material-symbols-outlined">close</span></button>
     </div>
     <div class="ext-mini-body">
       <div class="ext-mini-field">
         <label>Nome da lista</label>
-        <input type="text" id="ft-lista-nome-input" maxlength="40" placeholder="Ex.: Prioritárias" onkeydown="if(event.key==='Enter'){event.preventDefault();forumListaSalvar();}">
+        <input type="text" id="ft-lista-nome-input" maxlength="40" placeholder="Ex.: Prioritárias" data-on-keydown="forum.10">
       </div>
     </div>
     <div class="ext-mini-footer">
-      <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="fecharModalFtLista()">Cancelar</button>
-      <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" id="ft-lista-modal-btn-salvar" onclick="forumListaSalvar()">Criar</button>
+      <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="forum.9">Cancelar</button>
+      <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" id="ft-lista-modal-btn-salvar" data-on-click="forum.11">Criar</button>
     </div>
   </div>
 </div>
@@ -596,14 +596,14 @@ function forumSidebarRenderizarSecao() {
     +   '<aside class="forum-sidebar" id="forum-sidebar" aria-label="Tópicos">'
     +     '<div class="ft-sidebar-header">'
     +       '<h3>Tópicos</h3>'
-    +       '<button type="button" class="ds-icon-action ds-icon-action--sm" onclick="atualizarForum()" data-title="Atualizar" aria-label="Atualizar">'
+    +       '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="forum.12" data-title="Atualizar" aria-label="Atualizar">'
     +         '<span class="material-symbols-outlined">refresh</span></button>'
-    +       '<button type="button" class="ds-btn ds-btn--glass-secondary ft-btn-novo" onclick="forumTopicoAbrirModalCriar()">'
+    +       '<button type="button" class="ds-btn ds-btn--glass-secondary ft-btn-novo" data-on-click="forum.13">'
     +         '<span class="material-symbols-outlined">add</span> Novo</button>'
     +     '</div>'
     +     '<div class="ft-busca">'
     +       '<span class="material-symbols-outlined" aria-hidden="true">search</span>'
-    +       '<input type="text" id="ft-busca" placeholder="Buscar tópico…" aria-label="Buscar tópico" oninput="forumSidebarAplicarFiltros()">'
+    +       '<input type="text" id="ft-busca" placeholder="Buscar tópico…" aria-label="Buscar tópico" data-on-input="forum.14">'
     +     '</div>'
     +     '<div class="ft-filtros" id="ft-chips-bar" role="tablist" aria-label="Filtrar tópicos"></div>'
     +     '<div class="ft-lista-topicos" id="ft-lista-topicos" role="listbox" aria-label="Lista de tópicos">' + spinnerListaHTML() + '</div>'
@@ -680,7 +680,7 @@ function forumSidebarRenderChips() {
   bar.innerHTML = fixos.map(function(c) {
     var ativo = _ftFiltroAtivo === c.chave;
     return '<button type="button" role="tab" aria-selected="' + ativo + '" class="ft-filtro' + (ativo ? ' ativo' : '') + '"'
-      + ' onclick="forumTopicoToggleChip(this,\'' + c.chave + '\')">'
+      + ' data-on-click="forum.15" data-aclick0="' + c.chave + '">'
       + (c.icone ? '<span class="material-symbols-outlined">' + c.icone + '</span>' : '')
       + escapeHtml(c.label) + (c.n ? ' <span class="ft-filtro-n">' + c.n + '</span>' : '') + '</button>';
   }).join('') + _forumListasUsuario.map(_ftListaChipHTML).join('');
@@ -690,14 +690,14 @@ function _ftListaChipHTML(l) {
   var chave = 'LISTA:' + l.id, ativo = _ftFiltroAtivo === chave;
   var idj = escapeHtml(String(l.id)), nomeJs = escapeJsAttr(l.nome);
   return '<span class="ft-lista-chip-wrap">'
-    + '<button type="button" role="tab" aria-selected="' + ativo + '" class="ft-filtro' + (ativo ? ' ativo' : '') + '" onclick="forumTopicoToggleChip(this,\'' + chave + '\')">'
+    + '<button type="button" role="tab" aria-selected="' + ativo + '" class="ft-filtro' + (ativo ? ' ativo' : '') + '" data-on-click="forum.15" data-aclick0="' + chave + '">'
     +   '<span class="material-symbols-outlined">label</span>' + escapeHtml(l.nome)
-    +   '<span class="material-symbols-outlined ft-filtro-caret" onclick="event.stopPropagation();toggleListaChipMenu(\'' + idj + '\',event)" data-title="Opções da lista">expand_more</span>'
+    +   '<span class="material-symbols-outlined ft-filtro-caret" data-on-click="forum.16" data-aclick0="' + idj + '" data-title="Opções da lista">expand_more</span>'
     + '</button>'
     + '<div id="flm-' + idj + '" class="dropdown-menu ft-lista-chip-menu">'
-    +   '<button class="dropdown-item" onclick="forumListaAbrirModalRenomear(\'' + idj + '\')"><span class="material-symbols-outlined">edit</span> Renomear</button>'
+    +   '<button class="dropdown-item" data-on-click="forum.17" data-aclick0="' + idj + '"><span class="material-symbols-outlined">edit</span> Renomear</button>'
     +   '<div class="dropdown-divider"></div>'
-    +   '<button class="dropdown-item text-danger" onclick="forumListaConfirmarExcluir(\'' + idj + '\',\'' + nomeJs + '\')"><span class="material-symbols-outlined">delete</span> Excluir</button>'
+    +   '<button class="dropdown-item text-danger" data-on-click="forum.18" data-aclick0="' + idj + '" data-aclick1="' + nomeJs + '"><span class="material-symbols-outlined">delete</span> Excluir</button>'
     + '</div></span>';
 }
 
@@ -784,7 +784,7 @@ function _ftTopicoItemHTML(t) {
     hora = dh.substring(0, 10) === hojeStr ? dh.substring(11, 16) : dh.substring(0, 5);
   }
   return '<div class="ft-topico-item' + (ativo ? ' ativo' : '') + (naoLida ? ' nao-lida' : '') + '" role="option" aria-selected="' + ativo + '"'
-    + ' data-id="' + escapeHtml(idStr) + '" onclick="forumTopicoAbrir(\'' + escapeHtml(idStr) + '\')">'
+    + ' data-id="' + escapeHtml(idStr) + '" data-on-click="forum.19" data-aclick0="' + escapeHtml(idStr) + '">'
     + _ftAvatarTopicoHTML(t)
     + '<div class="ft-info">'
     +   '<div class="ft-linha1">'
@@ -825,7 +825,7 @@ function _ftDetToolbarHTML(t, prefixo) {
 }
 
 function forumChatHeaderHTML(topico, idTopico) {
-  var voltar = '<button type="button" class="ft-chat-voltar ds-icon-action ds-icon-action--sm" onclick="forumSidebarVoltar()" data-title="Voltar" aria-label="Voltar">'
+  var voltar = '<button type="button" class="ft-chat-voltar ds-icon-action ds-icon-action--sm" data-on-click="forum.20" data-title="Voltar" aria-label="Voltar">'
     + '<span class="material-symbols-outlined">arrow_back</span></button>';
   if (!topico) return '<div class="ft-chat-header">' + voltar + '<div class="ft-chat-info"><span class="ft-chat-titulo">Carregando…</span></div></div>';
 
@@ -846,11 +846,11 @@ function forumChatHeaderHTML(topico, idTopico) {
     + '<div class="ft-chat-info"><span class="ft-chat-titulo">' + escapeHtml(topico.nome) + '</span>'
     +   '<span class="ft-chat-meta" id="ft-chat-meta">' + escapeHtml(meta) + '</span></div>'
     + '<button type="button" class="ds-icon-action ds-icon-action--sm ft-chat-acao' + (topico.favorito ? ' is-on is-fav' : '') + '"'
-    +   ' onclick="forumTopicoFavoritar(\'' + id + '\',' + (!topico.favorito) + ')" aria-pressed="' + !!topico.favorito + '"'
+    +   ' data-on-click="forum.21" data-aclick0="' + id + '" data-rclick1="' + (!topico.favorito) + '" aria-pressed="' + !!topico.favorito + '"'
     +   ' data-title="' + (topico.favorito ? 'Desfavoritar' : 'Favoritar') + '" aria-label="' + (topico.favorito ? 'Desfavoritar' : 'Favoritar') + '">'
     +   '<span class="material-symbols-outlined">star</span></button>'
     + '<button type="button" class="ds-icon-action ds-icon-action--sm ft-chat-acao' + (topico.fixado ? ' is-on is-fix' : '') + '"'
-    +   ' onclick="forumTopicoFixar(\'' + id + '\',' + (!topico.fixado) + ')" aria-pressed="' + !!topico.fixado + '"'
+    +   ' data-on-click="forum.22" data-aclick0="' + id + '" data-rclick1="' + (!topico.fixado) + '" aria-pressed="' + !!topico.fixado + '"'
     +   ' data-title="' + (topico.fixado ? 'Desafixar' : 'Fixar') + '" aria-label="' + (topico.fixado ? 'Desafixar' : 'Fixar') + '">'
     +   '<span class="material-symbols-outlined">push_pin</span></button>'
     + acoesLinhaHTML('ft-tbh-' + id, resto)
@@ -1021,7 +1021,7 @@ function forumListaRenderPicker() {
   body.innerHTML = _forumListasUsuario.map(function(l) {
     var marcado = listasDoTopico.indexOf(String(l.id)) > -1;
     return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">'
-      + '<input type="checkbox" ' + (marcado ? 'checked' : '') + ' onchange="forumListaToggleTopico(\'' + l.id + '\',this.checked)">'
+      + '<input type="checkbox" ' + (marcado ? 'checked' : '') + ' data-on-change="forum.23" data-achange0="' + l.id + '">'
       + '<span>' + escapeHtml(l.nome) + '</span>'
       + '</label>';
   }).join('');
@@ -1345,14 +1345,14 @@ function _forumMontarChatPane(idTopico) {
     +   '<div class="forum-composer">'
     +     '<div id="forum-reply-preview"></div>'
     +     '<textarea id="forum-texto" rows="1" placeholder="Escreva uma mensagem…" aria-label="Mensagem"'
-    +       ' onkeydown="_forumKeydown(event)" oninput="_forumAjustarAltura(this);_forumSyncEnviar()"></textarea>'
+    +       ' data-on-keydown="forum.24" data-on-input="forum.25"></textarea>'
     +     '<div class="forum-composer-toolbar">'
-    +       '<button type="button" class="fct-fmt" onmousedown="event.preventDefault();forumComposerAplicarMarcador(\'*\');_forumSyncEnviar()" data-title="Negrito (*texto*)" aria-label="Negrito"><span class="material-symbols-outlined">format_bold</span></button>'
-    +       '<button type="button" class="fct-fmt" onmousedown="event.preventDefault();forumComposerAplicarMarcador(\'_\');_forumSyncEnviar()" data-title="Itálico (_texto_)" aria-label="Itálico"><span class="material-symbols-outlined">format_italic</span></button>'
-    +       '<button type="button" class="fct-fmt" onmousedown="event.preventDefault();forumComposerAplicarMarcador(\'~\');_forumSyncEnviar()" data-title="Tachado (~texto~)" aria-label="Tachado"><span class="material-symbols-outlined">format_strikethrough</span></button>'
-    +       '<button type="button" class="fct-fmt" onmousedown="event.preventDefault();forumComposerAplicarMarcador(\'```\');_forumSyncEnviar()" data-title="Código (```texto```)" aria-label="Código"><span class="material-symbols-outlined">code</span></button>'
+    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.26" data-title="Negrito (*texto*)" aria-label="Negrito"><span class="material-symbols-outlined">format_bold</span></button>'
+    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.27" data-title="Itálico (_texto_)" aria-label="Itálico"><span class="material-symbols-outlined">format_italic</span></button>'
+    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.28" data-title="Tachado (~texto~)" aria-label="Tachado"><span class="material-symbols-outlined">format_strikethrough</span></button>'
+    +       '<button type="button" class="fct-fmt" data-on-mousedown="forum.29" data-title="Código (```texto```)" aria-label="Código"><span class="material-symbols-outlined">code</span></button>'
     +       '<span class="forum-composer-dica">Enter envia · Shift+Enter quebra linha</span>'
-    +       '<button type="button" class="forum-btn-enviar is-vazio" id="forum-btn-enviar" onclick="enviarMensagemForum()" data-title="Enviar (Enter)" aria-label="Enviar">'
+    +       '<button type="button" class="forum-btn-enviar is-vazio" id="forum-btn-enviar" data-on-click="forum.30" data-title="Enviar (Enter)" aria-label="Enviar">'
     +         '<span class="material-symbols-outlined">send</span></button>'
     +     '</div>'
     +   '</div>'
@@ -1425,7 +1425,7 @@ function _forumRenderFeed() {
   var html = '';
   if (_forumTemMais) {
     html += '<div class="forum-carregar-antigas">'
-      + '<button class="ds-btn ds-btn--glass-secondary ds-btn--sm" id="forum-btn-antigas" onclick="carregarMensagensAntigas()">'
+      + '<button class="ds-btn ds-btn--glass-secondary ds-btn--sm" id="forum-btn-antigas" data-on-click="forum.31">'
       + '<span class="material-symbols-outlined" style="font-size:15px;vertical-align:middle">history</span> Carregar mensagens anteriores</button>'
       + '</div>';
   }
@@ -1451,7 +1451,7 @@ function _forumRenderFeed() {
 
     var quote = '';
     if (m.respostaA) {
-      quote = '<div class="forum-quote" onclick="_forumIrParaMensagem(\'' + escapeHtml(String(m.respostaA.id)) + '\')" data-title="Ir para a mensagem original">'
+      quote = '<div class="forum-quote" data-on-click="forum.32" data-aclick0="' + escapeHtml(String(m.respostaA.id)) + '" data-title="Ir para a mensagem original">'
         + '<span class="material-symbols-outlined">reply</span>'
         + '<div class="forum-quote-corpo">'
         +   '<span class="forum-quote-nome">' + escapeHtml(m.respostaA.autorNome || '') + '</span>'
@@ -1459,7 +1459,7 @@ function _forumRenderFeed() {
         + '</div></div>';
     }
 
-    var avatarFoto = m.autorFoto ? '<img src="' + escapeHtml(m.autorFoto) + '" alt="" onerror="this.remove()">' : '';
+    var avatarFoto = m.autorFoto ? '<img src="' + escapeHtml(m.autorFoto) + '" alt="" data-on-error="forum.33">' : '';
 
     var rodape;
     if (m.pendente) rodape = '<span class="material-symbols-outlined" style="font-size:12px;vertical-align:middle" data-title="Enviando…">schedule</span>';
@@ -1468,15 +1468,15 @@ function _forumRenderFeed() {
 
     var acoesMsg = '';
     if (m.erro) {
-      acoesMsg = '<button type="button" class="forum-btn-responder is-perigo" style="color:var(--ds-color-danger)" onclick="reenviarMensagemForum(\'' + midj + '\')" data-title="Falha ao enviar — clique para reenviar" aria-label="Reenviar">'
+      acoesMsg = '<button type="button" class="forum-btn-responder is-perigo" style="color:var(--ds-color-danger)" data-on-click="forum.34" data-aclick0="' + midj + '" data-title="Falha ao enviar — clique para reenviar" aria-label="Reenviar">'
         + '<span class="material-symbols-outlined">error</span></button>';
     } else if (!m.pendente) {
-      acoesMsg = '<button type="button" class="forum-btn-responder" onclick="responderMensagemForum(\'' + midj + '\')" data-title="Responder" aria-label="Responder">'
+      acoesMsg = '<button type="button" class="forum-btn-responder" data-on-click="forum.35" data-aclick0="' + midj + '" data-title="Responder" aria-label="Responder">'
         + '<span class="material-symbols-outlined">reply</span></button>';
       if (_forumPodeGerenciar(m)) {
-        acoesMsg += '<button type="button" class="forum-btn-responder" onclick="editarMensagemForum(\'' + midj + '\')" data-title="Editar (até 5 min)" aria-label="Editar">'
+        acoesMsg += '<button type="button" class="forum-btn-responder" data-on-click="forum.36" data-aclick0="' + midj + '" data-title="Editar (até 5 min)" aria-label="Editar">'
           + '<span class="material-symbols-outlined">edit</span></button>'
-          + '<button type="button" class="forum-btn-responder is-perigo" onclick="excluirMensagemForum(\'' + midj + '\')" data-title="Excluir (até 5 min)" aria-label="Excluir">'
+          + '<button type="button" class="forum-btn-responder is-perigo" data-on-click="forum.37" data-aclick0="' + midj + '" data-title="Excluir (até 5 min)" aria-label="Excluir">'
           + '<span class="material-symbols-outlined">delete</span></button>';
       }
     }
@@ -1536,7 +1536,7 @@ function _forumRenderReplyPreview() {
       +   '<div class="frp-nome">Editando mensagem</div>'
       +   '<div class="frp-texto">Enter salva a alteração · Esc ou X cancela</div>'
       + '</div>'
-      + '<button type="button" class="ds-icon-action ds-icon-action--sm" onclick="cancelarEdicaoForum()" data-title="Cancelar edição" aria-label="Cancelar edição" style="flex-shrink:0">'
+      + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="forum.38" data-title="Cancelar edição" aria-label="Cancelar edição" style="flex-shrink:0">'
       +   '<span class="material-symbols-outlined" style="font-size:18px">close</span>'
       + '</button>'
       + '</div>';
@@ -1549,7 +1549,7 @@ function _forumRenderReplyPreview() {
     +   '<div class="frp-nome">Respondendo a ' + escapeHtml(nomeRespExibicao(_forumRespondendo.autorNome, 'USER')) + '</div>'
     +   '<div class="frp-texto">' + forumFormatarTexto(_forumRespondendo.texto) + '</div>'
     + '</div>'
-    + '<button type="button" class="ds-icon-action ds-icon-action--sm" onclick="cancelarRespostaForum()" data-title="Cancelar resposta" aria-label="Cancelar resposta" style="flex-shrink:0">'
+    + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="forum.39" data-title="Cancelar resposta" aria-label="Cancelar resposta" style="flex-shrink:0">'
     +   '<span class="material-symbols-outlined" style="font-size:18px">close</span>'
     + '</button>'
     + '</div>';
@@ -1719,6 +1719,49 @@ _forumSDK.aoContexto(function(ctx) {
   }
   _ctx = ctx;
   _forumIniciar();
+});
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+uiRegistrarAcoes('forum', {
+  '1': function (event) { if(event.target===this) fecharModalFtTopico(); },
+  '2': function (event) { fecharModalFtTopico(); },
+  '3': function (event) { if(event.key==='Enter'){event.preventDefault();forumTopicoSalvar();}; },
+  '4': function (event) { forumTopicoSalvar(); },
+  '5': function (event) { if(event.target===this) fecharModalFtListasTopico(); },
+  '6': function (event) { fecharModalFtListasTopico(); },
+  '7': function (event) { forumListaAbrirModalCriar(); },
+  '8': function (event) { if(event.target===this) fecharModalFtLista(); },
+  '9': function (event) { fecharModalFtLista(); },
+  '10': function (event) { if(event.key==='Enter'){event.preventDefault();forumListaSalvar();}; },
+  '11': function (event) { forumListaSalvar(); },
+  '12': function (event) { atualizarForum(); },
+  '13': function (event) { forumTopicoAbrirModalCriar(); },
+  '14': function (event) { forumSidebarAplicarFiltros(); },
+  '15': function (event) { forumTopicoToggleChip(this,uiArgJs(this.dataset.aclick0)); },
+  '16': function (event) { event.stopPropagation();toggleListaChipMenu(uiArgJs(this.dataset.aclick0),event); },
+  '17': function (event) { forumListaAbrirModalRenomear(uiArgJs(this.dataset.aclick0)); },
+  '18': function (event) { forumListaConfirmarExcluir(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); },
+  '19': function (event) { forumTopicoAbrir(uiArgJs(this.dataset.aclick0)); },
+  '20': function (event) { forumSidebarVoltar(); },
+  '21': function (event) { forumTopicoFavoritar(uiArgJs(this.dataset.aclick0),uiArgLit(this.dataset.rclick1)); },
+  '22': function (event) { forumTopicoFixar(uiArgJs(this.dataset.aclick0),uiArgLit(this.dataset.rclick1)); },
+  '23': function (event) { forumListaToggleTopico(uiArgJs(this.dataset.achange0),this.checked); },
+  '24': function (event) { _forumKeydown(event); },
+  '25': function (event) { _forumAjustarAltura(this);_forumSyncEnviar(); },
+  '26': function (event) { event.preventDefault();forumComposerAplicarMarcador('*');_forumSyncEnviar(); },
+  '27': function (event) { event.preventDefault();forumComposerAplicarMarcador('_');_forumSyncEnviar(); },
+  '28': function (event) { event.preventDefault();forumComposerAplicarMarcador('~');_forumSyncEnviar(); },
+  '29': function (event) { event.preventDefault();forumComposerAplicarMarcador('```');_forumSyncEnviar(); },
+  '30': function (event) { enviarMensagemForum(); },
+  '31': function (event) { carregarMensagensAntigas(); },
+  '32': function (event) { _forumIrParaMensagem(uiArgJs(this.dataset.aclick0)); },
+  '33': function (event) { this.remove(); },
+  '34': function (event) { reenviarMensagemForum(uiArgJs(this.dataset.aclick0)); },
+  '35': function (event) { responderMensagemForum(uiArgJs(this.dataset.aclick0)); },
+  '36': function (event) { editarMensagemForum(uiArgJs(this.dataset.aclick0)); },
+  '37': function (event) { excluirMensagemForum(uiArgJs(this.dataset.aclick0)); },
+  '38': function (event) { cancelarEdicaoForum(); },
+  '39': function (event) { cancelarRespostaForum(); }
 });
 </script>
 </body>

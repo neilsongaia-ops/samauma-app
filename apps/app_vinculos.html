@@ -293,20 +293,20 @@ body.high-contrast .vinc-nivel { border-color: currentColor; }
 <div id="vinc-corpo-wrap"></div>
 
 <!-- Modal "Vincular Plano" marcado como portal para document.body -->
-<div id="modal-vincular-plano" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalVincularPlano" onclick="if(event.target===this) fecharModalVincularPlano()">
+<div id="modal-vincular-plano" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalVincularPlano" data-on-click="vinc.1">
   <div class="modal-card" style="max-width:640px">
     <div class="modal-header">
       <h3>Vincular Plano</h3>
-      <button class="btn-icon-close" onclick="fecharModalVincularPlano()">
+      <button class="btn-icon-close" data-on-click="vinc.2">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
     <div class="modal-body">
       <div class="view-mode-toggle" style="margin-bottom:14px">
-        <button class="mode-btn active" id="vp-toggle-superior" onclick="vpMudarAba('superior')">
+        <button class="mode-btn active" id="vp-toggle-superior" data-on-click="vinc.3">
           <span class="material-symbols-outlined icon-sm">arrow_upward</span> Subordinante
         </button>
-        <button class="mode-btn" id="vp-toggle-subordinado" onclick="vpMudarAba('subordinado')">
+        <button class="mode-btn" id="vp-toggle-subordinado" data-on-click="vinc.4">
           <span class="material-symbols-outlined icon-sm">arrow_downward</span> Subordinado
         </button>
       </div>
@@ -314,12 +314,12 @@ body.high-contrast .vinc-nivel { border-color: currentColor; }
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <div class="filtro-busca-wrap" style="flex:1;min-width:160px">
           <span class="material-symbols-outlined filtro-search-icon">search</span>
-          <input type="text" class="filtro-input" id="vp-filtro-busca" placeholder="Buscar por nome…" oninput="vpAplicarFiltros()">
-          <button class="filtro-clear-btn" id="vp-btn-clear" onclick="vpLimparFiltroBusca()" style="display:none">
+          <input type="text" class="filtro-input" id="vp-filtro-busca" placeholder="Buscar por nome…" data-on-input="vinc.5">
+          <button class="filtro-clear-btn" id="vp-btn-clear" data-on-click="vinc.6" style="display:none">
             <span class="material-symbols-outlined" style="font-size:15px">close</span>
           </button>
         </div>
-        <select class="filtro-select" id="vp-filtro-resp" onchange="vpAplicarFiltros()">
+        <select class="filtro-select" id="vp-filtro-resp" data-on-change="vinc.7">
           <option value="">Todos os responsáveis</option>
         </select>
       </div>
@@ -340,10 +340,10 @@ body.high-contrast .vinc-nivel { border-color: currentColor; }
       <div id="vp-pagination" class="pagination-bar hidden" style="margin-top:0;border-radius:0 0 7px 7px;border:none;border-top:1px solid var(--ds-color-border);box-shadow:none">
         <div class="pag-center"><span id="vp-pag-counter">0–0 de 0</span></div>
         <div class="pag-right">
-          <button class="btn-pag" onclick="vpMudarPagina('prev')" data-title="Anterior">
+          <button class="btn-pag" data-on-click="vinc.8" data-title="Anterior">
             <span class="material-symbols-outlined">chevron_left</span></button>
-          <select id="vp-pag-selector" onchange="vpIrParaPagina(this.value)" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>
-          <button class="btn-pag" onclick="vpMudarPagina('next')" data-title="Próximo">
+          <select id="vp-pag-selector" data-on-change="vinc.9" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>
+          <button class="btn-pag" data-on-click="vinc.10" data-title="Próximo">
             <span class="material-symbols-outlined">chevron_right</span></button>
         </div>
       </div>
@@ -758,40 +758,40 @@ function renderizarTabelaVinculos() {
   container.innerHTML =
     '<div id="vinc-filtros" class="el-filtros">'
     +   '<div class="el-search" id="vinc-search-wrap">'
-    +     '<button type="button" class="ds-icon-action' + (busca ? ' hidden' : '') + '" id="vinc-search-toggle" onclick="vincAbrirBusca()" data-title="Buscar" aria-label="Buscar">'
+    +     '<button type="button" class="ds-icon-action' + (busca ? ' hidden' : '') + '" id="vinc-search-toggle" data-on-click="vinc.11" data-title="Buscar" aria-label="Buscar">'
     +       '<span class="material-symbols-outlined">search</span></button>'
     +     '<div class="el-search-caixa' + (busca ? '' : ' hidden') + '" id="vinc-search-caixa">'
     +       '<span class="material-symbols-outlined el-search-icon" aria-hidden="true">search</span>'
     +       '<input type="text" class="ds-input el-search-input" id="vinc-filtro-busca" placeholder="Buscar plano…" aria-label="Buscar plano"'
-    +         ' oninput="aplicarFiltrosVinculos()" value="' + escapeHtml(busca) + '">'
-    +       '<button type="button" class="el-search-clear hidden" id="vinc-btn-clear" onclick="vincLimparBusca()" data-title="Limpar busca" aria-label="Limpar busca">'
+    +         ' data-on-input="vinc.12" value="' + escapeHtml(busca) + '">'
+    +       '<button type="button" class="el-search-clear hidden" id="vinc-btn-clear" data-on-click="vinc.13" data-title="Limpar busca" aria-label="Limpar busca">'
     +         '<span class="material-symbols-outlined">close</span></button>'
     +     '</div>'
     +   '</div>'
     +   ['vinc', 'status', 'resp', 'tipo'].map(function(c) {
           return '<div class="el-filtro">'
-            + '<button type="button" class="el-filtro-btn" id="vinc-filtro-btn-' + c + '" onclick="vincAbrirFiltro(\'' + c + '\', event)">'
+            + '<button type="button" class="el-filtro-btn" id="vinc-filtro-btn-' + c + '" data-on-click="vinc.14" data-aclick0="' + c + '">'
             +   '<span id="vinc-filtro-label-' + c + '">' + _vincFiltrosDef[c].label + '</span>'
             +   '<span class="material-symbols-outlined" style="font-size:18px">expand_more</span></button>'
-            + '<button type="button" class="el-filtro-x hidden" id="vinc-filtro-x-' + c + '" onclick="vincLimparUmFiltro(\'' + c + '\')" aria-label="Limpar filtro ' + _vincFiltrosDef[c].label.toLowerCase() + '">'
+            + '<button type="button" class="el-filtro-x hidden" id="vinc-filtro-x-' + c + '" data-on-click="vinc.15" data-aclick0="' + c + '" aria-label="Limpar filtro ' + _vincFiltrosDef[c].label.toLowerCase() + '">'
             +   '<span class="material-symbols-outlined" style="font-size:15px">close</span></button>'
             + '</div>';
         }).join('')
-    +   '<button type="button" class="el-limpar-link hidden" id="vinc-btn-limpar" onclick="limparFiltrosVinculos()">Limpar filtros</button>'
+    +   '<button type="button" class="el-limpar-link hidden" id="vinc-btn-limpar" data-on-click="vinc.16">Limpar filtros</button>'
     +   '<div style="flex:1"></div>'
     +   '<div class="det-split desktop-only-flex">'
     +     (podeEditar
-            ? '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-main" id="btn-vincular-plano" onclick="abrirModalVincularPlano()">'
+            ? '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-main" id="btn-vincular-plano" data-on-click="vinc.17">'
               + '<span class="material-symbols-outlined">add_link</span> Vincular plano</button>'
             : '')
-    +     '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-seta acoes-mais" onclick="abrirMenuVinculosMais(event)"'
+    +     '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-seta acoes-mais" data-on-click="vinc.18"'
     +       ' data-title="Outras formas de vincular e exportar" aria-label="Mais opções de vínculos" aria-haspopup="menu" aria-expanded="false">'
     +       '<span class="material-symbols-outlined">expand_more</span></button>'
     +   '</div>'
     + '</div>'
 
     + '<div id="vinc-filtros-selecao" class="el-filtros-selecao hidden">'
-    +   '<button type="button" class="ds-icon-action" onclick="vincCancelarSelecao()" data-title="Cancelar seleção" aria-label="Cancelar seleção">'
+    +   '<button type="button" class="ds-icon-action" data-on-click="vinc.19" data-title="Cancelar seleção" aria-label="Cancelar seleção">'
     +     '<span class="material-symbols-outlined">close</span></button>'
     +   '<span class="el-selecao-texto" id="vinc-selecao-texto">0 selecionados</span>'
     +   '<div class="el-selecao-divisor"></div>'
@@ -802,17 +802,17 @@ function renderizarTabelaVinculos() {
     +   '<table class="el-tabela vinc-lista" id="vinc-tabela">'
     +     '<colgroup><col class="el-col-check"><col class="el-col-expand"><col class="vinc-c-sit"><col class="vinc-c-nome"><col class="vinc-c-resp"><col class="vinc-c-status"><col class="vinc-c-prog"><col class="vinc-c-acoes"></colgroup>'
     +     '<thead><tr>'
-    +       '<th class="el-col-check"><input type="checkbox" id="chk-select-all-vinc" onchange="vincToggleSelecionarTodos(this.checked)" aria-label="Selecionar todos"></th>'
+    +       '<th class="el-col-check"><input type="checkbox" id="chk-select-all-vinc" data-on-change="vinc.20" aria-label="Selecionar todos"></th>'
     +       '<th class="el-col-expand" aria-hidden="true"></th>'
-    +       '<th class="th-sortable vinc-c-sit" onclick="vincOrdenarPorColuna(\'tipo\')">Vínculo<span class="sort-icon" id="vinc-sort-icon-tipo"></span></th>'
-    +       '<th class="th-sortable vinc-c-nome" onclick="vincOrdenarPorColuna(\'nome\')">Plano<span class="sort-icon" id="vinc-sort-icon-nome"></span></th>'
-    +       '<th class="th-sortable vinc-c-resp" onclick="vincOrdenarPorColuna(\'responsavel\')"><span>Responsável</span><span class="sort-icon" id="vinc-sort-icon-responsavel"></span></th>'
-    +       '<th class="th-sortable vinc-c-status" onclick="vincOrdenarPorColuna(\'status\')"><span>Status</span><span class="sort-icon" id="vinc-sort-icon-status"></span></th>'
-    +       '<th class="th-sortable vinc-c-prog" onclick="vincOrdenarPorColuna(\'progresso\')"><span>Progresso</span><span class="sort-icon" id="vinc-sort-icon-progresso"></span></th>'
+    +       '<th class="th-sortable vinc-c-sit" data-on-click="vinc.21">Vínculo<span class="sort-icon" id="vinc-sort-icon-tipo"></span></th>'
+    +       '<th class="th-sortable vinc-c-nome" data-on-click="vinc.22">Plano<span class="sort-icon" id="vinc-sort-icon-nome"></span></th>'
+    +       '<th class="th-sortable vinc-c-resp" data-on-click="vinc.23"><span>Responsável</span><span class="sort-icon" id="vinc-sort-icon-responsavel"></span></th>'
+    +       '<th class="th-sortable vinc-c-status" data-on-click="vinc.24"><span>Status</span><span class="sort-icon" id="vinc-sort-icon-status"></span></th>'
+    +       '<th class="th-sortable vinc-c-prog" data-on-click="vinc.25"><span>Progresso</span><span class="sort-icon" id="vinc-sort-icon-progresso"></span></th>'
     +       '<th class="vinc-c-acoes"><div class="el-th-acoes">'
-    +         '<button type="button" class="el-th-btn" onclick="atualizarAbaVinculos()" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
-    +         '<button type="button" class="el-th-btn" onclick="exportarVinculosCSV()" data-title="Exportar vínculos" aria-label="Exportar vínculos"><span class="material-symbols-outlined">download</span></button>'
-    +         '<button type="button" class="el-th-btn" onclick="vincAbrirMenuOrdenar(event)" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
+    +         '<button type="button" class="el-th-btn" data-on-click="vinc.26" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
+    +         '<button type="button" class="el-th-btn" data-on-click="vinc.27" data-title="Exportar vínculos" aria-label="Exportar vínculos"><span class="material-symbols-outlined">download</span></button>'
+    +         '<button type="button" class="el-th-btn" data-on-click="vinc.28" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
     +       '</div></th>'
     +     '</tr></thead>'
     +     '<tbody id="vinc-tbody"></tbody>'
@@ -820,15 +820,15 @@ function renderizarTabelaVinculos() {
     + '</div>'
     + '<div id="vinc-pagination" class="pagination-bar rsc-pag">'
     +   '<div class="pag-left"><span>Exibir:</span>'
-    +     '<select id="vinc-pag-size" onchange="vincMudarTamanho(this.value)" class="form-control form-control-sm">'
+    +     '<select id="vinc-pag-size" data-on-change="vinc.29" class="form-control form-control-sm">'
     +       '<option value="10">10</option><option value="20">20</option><option value="50">50</option>'
     +     '</select>'
     +   '</div>'
     +   '<div class="pag-center"><span id="vinc-pag-counter">0–0 de 0</span></div>'
     +   '<div class="pag-right">'
-    +     '<button class="btn-pag" onclick="vincMudarPagina(\'prev\')" data-title="Anterior" aria-label="Página anterior"><span class="material-symbols-outlined">chevron_left</span></button>'
-    +     '<select id="vinc-pag-selector" onchange="vincIrParaPagina(this.value)" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>'
-    +     '<button class="btn-pag" onclick="vincMudarPagina(\'next\')" data-title="Próximo" aria-label="Próxima página"><span class="material-symbols-outlined">chevron_right</span></button>'
+    +     '<button class="btn-pag" data-on-click="vinc.30" data-title="Anterior" aria-label="Página anterior"><span class="material-symbols-outlined">chevron_left</span></button>'
+    +     '<select id="vinc-pag-selector" data-on-change="vinc.31" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>'
+    +     '<button class="btn-pag" data-on-click="vinc.32" data-title="Próximo" aria-label="Próxima página"><span class="material-symbols-outlined">chevron_right</span></button>'
     +   '</div>'
     + '</div>';
 
@@ -870,9 +870,9 @@ function _vincLinhaHTML(p, podeEditar) {
     ], { maxDireto: 0 });
     if (_acoesLinhaReg[idAcoes]) _acoesLinhaReg[idAcoes].menu = _acoesLinhaReg[idAcoes].menu.slice(2);
     acoes = '<div class="vinc-decisao">'
-      + '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm vinc-btn-recusar" onclick="event.stopPropagation(); ' + recusar + '" data-title="Recusar" aria-label="Recusar">'
+      + '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm vinc-btn-recusar" ' + uiAtributosAcao('event.stopPropagation(); ' + recusar) + ' data-title="Recusar" aria-label="Recusar">'
       +   '<span class="material-symbols-outlined">close</span><span class="vinc-btn-txt">Recusar</span></button>'
-      + '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm" onclick="event.stopPropagation(); ' + aceitar + '" data-title="' + rotAceitar + '" aria-label="' + rotAceitar + '">'
+      + '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm" ' + uiAtributosAcao('event.stopPropagation(); ' + aceitar) + ' data-title="' + rotAceitar + '" aria-label="' + rotAceitar + '">'
       +   '<span class="material-symbols-outlined">check</span><span class="vinc-btn-txt">' + rotAceitar + '</span></button>'
       + menu + '</div>';
   } else {
@@ -914,10 +914,10 @@ function _vincLinhaHTML(p, podeEditar) {
   var nivel = p.tipo ? '<span class="vinc-nivel" data-title="' + escapeHtml(p.tipo) + '">' + escapeHtml(p.tipo) + '</span>' : '<span class="vinc-nivel vinc-nivel--vazio" aria-hidden="true"></span>';
 
   return '<tr class="vinc-row vinc-row--' + p.vtipo + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"' + (desv ? ' data-orf="' + idj + '"' : '')
-    + ' onclick="vincCliqueLinha(event, \'' + chj + '\')" ondblclick="' + abrirDet + '">'
-    + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="vincToggleSelecao(\'' + chj + '\', this.checked)" aria-label="Selecionar ' + escapeHtml(p.nome || '') + '"></td>'
+    + ' data-on-click="vinc.33" data-aclick0="' + chj + '" ' + uiAtributosAcao(abrirDet, 'dblclick') + '>'
+    + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' data-on-click="vinc.34" data-on-change="vinc.35" data-achange0="' + chj + '" aria-label="Selecionar ' + escapeHtml(p.nome || '') + '"></td>'
     + '<td class="el-col-expand">' + (desv
-        ? '<button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" onclick="event.stopPropagation(); vincOrfToggle(\'' + idj + '\')" aria-expanded="' + aberto + '" aria-label="Vínculos guardados">'
+        ? '<button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" data-on-click="vinc.36" data-aclick0="' + idj + '" aria-expanded="' + aberto + '" aria-label="Vínculos guardados">'
           + '<span class="material-symbols-outlined">chevron_right</span></button>' : '') + '</td>'
     + '<td class="vinc-c-sit"><span class="vinc-sit" tabindex="0" role="img" data-title="' + tip + '" aria-label="' + escapeHtml(T.rot) + ': ' + tip + '"><span class="material-symbols-outlined" aria-hidden="true">' + T.ico + '</span></span></td>'
     + '<td class="vinc-c-nome"><div class="vinc-plano">' + nivel + '<span class="vinc-nome" data-title="' + escapeHtml(p.nome || '') + '">' + escapeHtml(p.nome || '(sem nome)') + '</span>'
@@ -1146,7 +1146,7 @@ function _vincAcoesLoteHTML(selecionados) {
   return _VINC_ACOES.filter(function(a) {
     return (!a.unico || n === 1) && (!a.edita || podeEditar) && selecionados.every(a.ok);
   }).map(function(a) {
-    return '<button type="button" class="ds-icon-action" onclick="vincAcaoLote(\'' + a.id + '\')" data-title="' + escapeHtml(a.rot) + '" aria-label="' + escapeHtml(a.rot) + '"'
+    return '<button type="button" class="ds-icon-action" data-on-click="vinc.37" data-aclick0="' + a.id + '" data-title="' + escapeHtml(a.rot) + '" aria-label="' + escapeHtml(a.rot) + '"'
       + (a.perigo ? ' style="color:var(--ds-color-danger-fg)"' : '') + '><span class="material-symbols-outlined">' + a.ico + '</span></button>';
   }).join('');
 }
@@ -1258,7 +1258,7 @@ function vincAbrirDetalhesPlano(chave) {
     { titulo: 'Vínculos guardados', html: guardados },
     { titulo: 'Sobre o plano', html: _detpLinha('Status', statusBadge) + _detpLinha('Vigência', escapeHtml(vig)) + _detpLinha('Progresso', pct) },
     { titulo: 'Responsáveis', html: resp },
-    { titulo: '', html: '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" onclick="carregarDetalhesPlano(\'' + escapeHtml(String(p.id)) + '\')"><span class="material-symbols-outlined">open_in_new</span> Abrir plano</button>' }
+    { titulo: '', html: '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" data-on-click="vinc.38" data-aclick0="' + escapeHtml(String(p.id)) + '"><span class="material-symbols-outlined">open_in_new</span> Abrir plano</button>' }
   ];
   view.innerHTML = cab + secoes.filter(function(x) { return x.html; })
     .map(function(x) { return '<div class="detp-secao">' + (x.titulo ? '<div class="detp-secao-titulo">' + x.titulo + '</div>' : '') + x.html + '</div>'; }).join('');
@@ -1542,8 +1542,8 @@ function vpRenderLista() {
     var nomeJs = escapeJsAttr(p.nome);
     var vigencia = p.anoInicio && p.anoFim ? p.anoInicio + '–' + p.anoFim : (p.anoInicio || p.anoFim || '—');
     var acao = estadoVincModal.aba === 'superior'
-      ? '<button class="btn btn-primary btn-sm" onclick="vpVincularSuperior(\'' + idj + '\',\'' + nomeJs + '\')">Vincular</button>'
-      : '<button class="btn btn-outline btn-sm" onclick="vpSolicitarSubordinado(\'' + idj + '\',\'' + nomeJs + '\')">Solicitar Vínculo</button>';
+      ? '<button class="btn btn-primary btn-sm" data-on-click="vinc.39" data-aclick0="' + idj + '" data-aclick1="' + nomeJs + '">Vincular</button>'
+      : '<button class="btn btn-outline btn-sm" data-on-click="vinc.40" data-aclick0="' + idj + '" data-aclick1="' + nomeJs + '">Solicitar Vínculo</button>';
     return '<tr>'
       + '<td>' + escapeHtml(p.tipo || '—') + '</td>'
       + '<td>' + escapeHtml(p.nome) + '</td>'
@@ -1568,8 +1568,8 @@ function vpRenderLista() {
       sel.appendChild(opt);
     }
   }
-  var btnPrev = pag.querySelector('.btn-pag[onclick*="prev"]');
-  var btnNext = pag.querySelector('.btn-pag[onclick*="next"]');
+  var btnPrev = pag.querySelector('.btn-pag[data-on-click="vinc.8"], .btn-pag[data-on-click="vinc.30"]');
+  var btnNext = pag.querySelector('.btn-pag[data-on-click="vinc.10"], .btn-pag[data-on-click="vinc.32"]');
   if (btnPrev) btnPrev.disabled = (estadoVincModal.paginaAtual === 1);
   if (btnNext) btnNext.disabled = (estadoVincModal.paginaAtual >= totalPags);
 }
@@ -1718,4 +1718,48 @@ window.vincAcaoLote = vincAcaoLote;
 window.vincAbrirDetalhesPlano = vincAbrirDetalhesPlano;
 window.estadoVinculos = estadoVinculos;
 window._vinculosSDK = _vinculosSDK;
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+uiRegistrarAcoes('vinc', {
+  '1': function (event) { if(event.target===this) fecharModalVincularPlano(); },
+  '2': function (event) { fecharModalVincularPlano(); },
+  '3': function (event) { vpMudarAba('superior'); },
+  '4': function (event) { vpMudarAba('subordinado'); },
+  '5': function (event) { vpAplicarFiltros(); },
+  '6': function (event) { vpLimparFiltroBusca(); },
+  '7': function (event) { vpAplicarFiltros(); },
+  '8': function (event) { vpMudarPagina('prev'); },
+  '9': function (event) { vpIrParaPagina(this.value); },
+  '10': function (event) { vpMudarPagina('next'); },
+  '11': function (event) { vincAbrirBusca(); },
+  '12': function (event) { aplicarFiltrosVinculos(); },
+  '13': function (event) { vincLimparBusca(); },
+  '14': function (event) { vincAbrirFiltro(uiArgJs(this.dataset.aclick0), event); },
+  '15': function (event) { vincLimparUmFiltro(uiArgJs(this.dataset.aclick0)); },
+  '16': function (event) { limparFiltrosVinculos(); },
+  '17': function (event) { abrirModalVincularPlano(); },
+  '18': function (event) { abrirMenuVinculosMais(event); },
+  '19': function (event) { vincCancelarSelecao(); },
+  '20': function (event) { vincToggleSelecionarTodos(this.checked); },
+  '21': function (event) { vincOrdenarPorColuna('tipo'); },
+  '22': function (event) { vincOrdenarPorColuna('nome'); },
+  '23': function (event) { vincOrdenarPorColuna('responsavel'); },
+  '24': function (event) { vincOrdenarPorColuna('status'); },
+  '25': function (event) { vincOrdenarPorColuna('progresso'); },
+  '26': function (event) { atualizarAbaVinculos(); },
+  '27': function (event) { exportarVinculosCSV(); },
+  '28': function (event) { vincAbrirMenuOrdenar(event); },
+  '29': function (event) { vincMudarTamanho(this.value); },
+  '30': function (event) { vincMudarPagina('prev'); },
+  '31': function (event) { vincIrParaPagina(this.value); },
+  '32': function (event) { vincMudarPagina('next'); },
+  '33': function (event) { vincCliqueLinha(event, uiArgJs(this.dataset.aclick0)); },
+  '34': function (event) { event.stopPropagation(); },
+  '35': function (event) { vincToggleSelecao(uiArgJs(this.dataset.achange0), this.checked); },
+  '36': function (event) { event.stopPropagation(); vincOrfToggle(uiArgJs(this.dataset.aclick0)); },
+  '37': function (event) { vincAcaoLote(uiArgJs(this.dataset.aclick0)); },
+  '38': function (event) { carregarDetalhesPlano(uiArgJs(this.dataset.aclick0)); },
+  '39': function (event) { vpVincularSuperior(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); },
+  '40': function (event) { vpSolicitarSubordinado(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); }
+});
 </script>

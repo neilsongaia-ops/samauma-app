@@ -152,10 +152,10 @@ function criarSamaumaSDK() {
      ================================================================ -->
 
 <!-- MODAL DE RISCO — wizard com trilha lateral -->
-<div id="modal-risco" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalRisco" onclick="if(event.target===this) window[this.dataset.fechar]()">
+<div id="modal-risco" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalRisco" data-on-click="risco.1">
   <div class="modal-card modal-lg wiz-rail-modal">
 
-    <button class="btn-icon-close wiz-rail-close" onclick="fecharModalRisco()" data-title="Fechar" aria-label="Fechar">
+    <button class="btn-icon-close wiz-rail-close" data-on-click="risco.2" data-title="Fechar" aria-label="Fechar">
       <span class="material-symbols-outlined">close</span>
     </button>
 
@@ -181,7 +181,7 @@ function criarSamaumaSDK() {
 
       <div class="wiz-content">
         <div class="wizard-steps-viewport">
-        <form id="form-risco" onsubmit="salvarRisco(event)" novalidate>
+        <form id="form-risco" data-on-submit="risco.3" novalidate>
           <input type="hidden" id="risco-id-edicao">
           <input type="hidden" id="risco-id-elemento">
 
@@ -192,7 +192,7 @@ function criarSamaumaSDK() {
 
             <div class="ds-field">
               <label class="ds-label" for="risco-objeto-select">Objeto analisado <span class="rwiz-obrig">obrigatório</span></label>
-              <select id="risco-objeto-select" class="ds-select" required onchange="_rwizSelecionarObjeto()">
+              <select id="risco-objeto-select" class="ds-select" required data-on-change="risco.4">
                 <option value="">— Selecione um elemento —</option>
               </select>
               <small class="ds-help ds-help--error hidden" id="risco-objeto-select-erro"></small>
@@ -202,7 +202,7 @@ function criarSamaumaSDK() {
               <label class="ds-label" for="risco-descricao">Descrição do risco / evento <span class="rwiz-obrig">obrigatório</span></label>
               <textarea id="risco-descricao" class="ds-textarea" rows="3" required minlength="10" maxlength="400"
                         placeholder="Que evento pode impactar o objetivo? Ex: indisponibilidade dos sistemas durante a migração."
-                        oninput="_rwizContador(this); _rwizLimparErro(this)"></textarea>
+                        data-on-input="risco.5"></textarea>
               <span class="ds-help" id="risco-descricao-contador">0/400</span>
               <small class="ds-help ds-help--error hidden" id="risco-descricao-erro"></small>
             </div>
@@ -222,14 +222,14 @@ function criarSamaumaSDK() {
             <div class="rwiz-row-2">
               <div class="ds-field" style="margin-bottom:0">
                 <input type="text" id="risco-causa-input" class="ds-input" placeholder="Causa..."
-                       onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarCausaConsequenciaRisco();}">
+                       data-on-keydown="risco.6">
               </div>
               <div class="ds-field" style="margin-bottom:0">
                 <input type="text" id="risco-consequencia-input" class="ds-input" placeholder="Consequência correspondente..."
-                       onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarCausaConsequenciaRisco();}">
+                       data-on-keydown="risco.6">
               </div>
             </div>
-            <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" style="margin:8px 0 12px" onclick="adicionarCausaConsequenciaRisco()">
+            <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" style="margin:8px 0 12px" data-on-click="risco.7">
               <span class="material-symbols-outlined icon-sm">add</span> Inserir par
             </button>
             <div id="risco-causas-lista" class="risco-causas-lista"></div>
@@ -243,7 +243,7 @@ function criarSamaumaSDK() {
             <div class="rwiz-row-2">
               <div class="ds-field">
                 <label class="ds-label" for="risco-probabilidade">Probabilidade <span class="rwiz-obrig">obrigatório</span></label>
-                <select id="risco-probabilidade" class="ds-select" required onchange="atualizarNivelRisco(); _rwizLimparErro(this)">
+                <select id="risco-probabilidade" class="ds-select" required data-on-change="risco.8">
                   <option value="" disabled selected>Selecione...</option>
                   <option value="Muito Baixa">Muito Baixa (peso 1)</option>
                   <option value="Baixa">Baixa (peso 2)</option>
@@ -255,7 +255,7 @@ function criarSamaumaSDK() {
               </div>
               <div class="ds-field">
                 <label class="ds-label" for="risco-impacto">Impacto <span class="rwiz-obrig">obrigatório</span></label>
-                <select id="risco-impacto" class="ds-select" required onchange="atualizarNivelRisco(); _rwizLimparErro(this)">
+                <select id="risco-impacto" class="ds-select" required data-on-change="risco.8">
                   <option value="" disabled selected>Selecione...</option>
                   <option value="Muito Baixo">Muito Baixo (peso 1)</option>
                   <option value="Baixo">Baixo (peso 2)</option>
@@ -296,11 +296,11 @@ function criarSamaumaSDK() {
         </div><!-- /.wizard-steps-viewport -->
 
         <div class="modal-footer">
-          <button type="button" class="ds-btn ds-btn--ghost" style="margin-right:auto" onclick="fecharModalRisco()">Cancelar</button>
-          <button type="button" class="ds-btn ds-btn--ghost hidden" id="btn-risco-voltar" onclick="_rwizVoltar()">
+          <button type="button" class="ds-btn ds-btn--ghost" style="margin-right:auto" data-on-click="risco.2">Cancelar</button>
+          <button type="button" class="ds-btn ds-btn--ghost hidden" id="btn-risco-voltar" data-on-click="risco.9">
             <span class="material-symbols-outlined icon">arrow_back</span> Voltar
           </button>
-          <button type="button" class="ds-btn ds-btn--primary" id="btn-risco-proximo" onclick="_rwizProximo()">
+          <button type="button" class="ds-btn ds-btn--primary" id="btn-risco-proximo" data-on-click="risco.10">
             Continuar <span class="material-symbols-outlined icon">arrow_forward</span>
           </button>
           <button type="submit" form="form-risco" class="ds-btn ds-btn--primary hidden" id="btn-risco-salvar">
@@ -314,19 +314,19 @@ function criarSamaumaSDK() {
 </div>
 
 <!-- MODAL: AÇÃO DE TRATAMENTO -->
-<div id="modal-tratamento-form" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalTratamentoForm" onclick="if(event.target===this) fecharModalTratamentoForm()">
+<div id="modal-tratamento-form" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalTratamentoForm" data-on-click="risco.11">
   <div class="modal-card" style="max-width:560px">
     <div class="modal-header">
       <div>
         <h3 id="modal-trat-form-titulo">Nova Ação de Tratamento</h3>
         <p id="modal-trat-form-risco-desc" style="font-size:0.82rem;color:var(--ds-color-text-ui-muted);margin:2px 0 0;max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></p>
       </div>
-      <button class="btn-icon-close" onclick="fecharModalTratamentoForm()">
+      <button class="btn-icon-close" data-on-click="risco.12">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
     <div class="modal-body">
-      <form id="form-tratamento" onsubmit="handleSalvarTratamento(event)">
+      <form id="form-tratamento" data-on-submit="risco.13">
         <input type="hidden" id="trat-id-edicao">
         <input type="hidden" id="trat-id-risco">
 
@@ -341,7 +341,7 @@ function criarSamaumaSDK() {
         <div class="form-row" style="margin-bottom:10px">
           <div class="form-group" style="flex:1;margin-bottom:0">
             <label style="font-size:0.82rem;font-weight:600">Periodicidade *</label>
-            <select id="trat-periodicidade" class="form-control" onchange="onMudarPeriodicidadeTrat()">
+            <select id="trat-periodicidade" class="form-control" data-on-change="risco.14">
               <option value="" disabled selected>Selecione...</option>
               <option value="Pontual">Pontual (ação única)</option>
               <option value="Mensal">Mensal</option>
@@ -384,7 +384,7 @@ function criarSamaumaSDK() {
       </form>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-outline" onclick="fecharModalTratamentoForm()">Cancelar</button>
+      <button type="button" class="btn btn-outline" data-on-click="risco.12">Cancelar</button>
       <button type="submit" form="form-tratamento" class="btn btn-primary">
         <span class="material-symbols-outlined icon">save</span> <span id="trat-form-botao-texto">Salvar</span>
       </button>
@@ -393,16 +393,16 @@ function criarSamaumaSDK() {
 </div>
 
 <!-- MODAL: NOVA CAUSA/CONSEQUÊNCIA -->
-<div id="modal-causa-rapida" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalCausaRapida" onclick="if(event.target===this) fecharModalCausaRapida()">
+<div id="modal-causa-rapida" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalCausaRapida" data-on-click="risco.15">
   <div class="modal-card" style="max-width:480px">
     <div class="modal-header">
       <h3>Nova Causa e Consequência</h3>
-      <button class="btn-icon-close" onclick="fecharModalCausaRapida()">
+      <button class="btn-icon-close" data-on-click="risco.16">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
     <div class="modal-body">
-      <form id="form-causa-rapida" onsubmit="handleSalvarCausaRapida(event)">
+      <form id="form-causa-rapida" data-on-submit="risco.17">
         <input type="hidden" id="causa-rapida-id-risco">
         <div class="form-group">
           <label style="font-size:0.82rem;font-weight:600">Causa</label>
@@ -415,7 +415,7 @@ function criarSamaumaSDK() {
       </form>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-outline" onclick="fecharModalCausaRapida()">Cancelar</button>
+      <button type="button" class="btn btn-outline" data-on-click="risco.16">Cancelar</button>
       <button type="submit" form="form-causa-rapida" class="btn btn-primary">
         <span class="material-symbols-outlined icon">add</span> Adicionar
       </button>
@@ -898,7 +898,7 @@ function _rwizRenderRail() {
     var info = RWIZ_TITULOS[i] || { titulo: 'Etapa ' + p, desc: '' };
     var resumo = atual ? _rwizResumoPasso(p) : '';
     var numHTML = concluido ? '<span class="material-symbols-outlined">check</span>' : String(i + 1);
-    return '<button type="button" class="' + cls + '" onclick="_rwizIrParaRail(' + p + ')">'
+    return '<button type="button" class="' + cls + '" data-on-click="risco.18" data-rclick0="' + p + '">'
       + '<span class="wiz-rail-num">' + numHTML + '</span>'
       + '<span>'
       +   '<div class="wiz-rail-item-titulo">' + escapeHtml(info.titulo) + '</div>'
@@ -1128,7 +1128,7 @@ function _renderizarCausasConsequenciasRisco() {
       +   '<div><strong>Causa:</strong> ' + escapeHtml(p.causa || '—') + '</div>'
       +   '<div><strong>Consequência:</strong> ' + escapeHtml(p.consequencia || '—') + '</div>'
       + '</div>'
-      + '<button type="button" class="btn-icon-sm btn-icon-del" data-title="Remover" onclick="removerCausaConsequenciaRisco(' + i + ')"><span class="material-symbols-outlined icon-xs">delete</span></button>'
+      + '<button type="button" class="btn-icon-sm btn-icon-del" data-title="Remover" data-on-click="risco.19" data-rclick0="' + i + '"><span class="material-symbols-outlined icon-xs">delete</span></button>'
       + '</div>';
   }).join('');
 }
@@ -1173,7 +1173,7 @@ function _renderChipsNaturezaRisco(selecionadas) {
     return;
   }
   cont.innerHTML = _cacheNaturezasRisco.map(function(n) {
-    return '<button type="button" class="risco-nat-chip" data-valor="' + escapeJsAttr(n.valor) + '" onclick="toggleNaturezaRisco(this)">' + escapeHtml(n.valor) + '</button>';
+    return '<button type="button" class="risco-nat-chip" data-valor="' + escapeJsAttr(n.valor) + '" data-on-click="risco.20">' + escapeHtml(n.valor) + '</button>';
   }).join('');
   _setNaturezasSelecionadasRisco(selecionadas);
 }
@@ -2022,50 +2022,50 @@ function renderizarSecaoRiscos() {
 
     + '<div id="riscos-filtros" class="el-filtros">'
     +   '<div class="el-search" id="riscos-search-wrap">'
-    +     '<button type="button" class="ds-icon-action' + (estadoRiscos.busca ? ' hidden' : '') + '" id="riscos-search-toggle" onclick="riscosAbrirBusca()" data-title="Buscar" aria-label="Buscar">'
+    +     '<button type="button" class="ds-icon-action' + (estadoRiscos.busca ? ' hidden' : '') + '" id="riscos-search-toggle" data-on-click="risco.21" data-title="Buscar" aria-label="Buscar">'
     +       '<span class="material-symbols-outlined">search</span></button>'
     +     '<div class="el-search-caixa' + (estadoRiscos.busca ? '' : ' hidden') + '" id="riscos-search-caixa">'
     +       '<span class="material-symbols-outlined el-search-icon" aria-hidden="true">search</span>'
     +       '<input type="text" class="ds-input el-search-input" id="riscos-filtro-busca" placeholder="Buscar risco ou causa…" aria-label="Buscar risco ou causa"'
-    +         ' oninput="aplicarFiltrosRiscos()" value="' + escapeHtml(estadoRiscos.busca) + '">'
-    +       '<button type="button" class="el-search-clear hidden" id="riscos-btn-clear" onclick="riscosLimparBusca()" data-title="Limpar busca" aria-label="Limpar busca">'
+    +         ' data-on-input="risco.22" value="' + escapeHtml(estadoRiscos.busca) + '">'
+    +       '<button type="button" class="el-search-clear hidden" id="riscos-btn-clear" data-on-click="risco.23" data-title="Limpar busca" aria-label="Limpar busca">'
     +         '<span class="material-symbols-outlined">close</span></button>'
     +     '</div>'
     +   '</div>'
     +   ['nat', 'nivel', 'resp'].map(function(c) {
           return '<div class="el-filtro">'
-            + '<button type="button" class="el-filtro-btn" id="riscos-filtro-btn-' + c + '" onclick="riscosAbrirFiltro(\'' + c + '\', event)">'
+            + '<button type="button" class="el-filtro-btn" id="riscos-filtro-btn-' + c + '" data-on-click="risco.24" data-aclick0="' + c + '">'
             +   '<span id="riscos-filtro-label-' + c + '">' + _riscosFiltrosDef[c].label + '</span>'
             +   '<span class="material-symbols-outlined" style="font-size:18px">expand_more</span></button>'
-            + '<button type="button" class="el-filtro-x hidden" id="riscos-filtro-x-' + c + '" onclick="riscosLimparUmFiltro(\'' + c + '\')" aria-label="Limpar filtro ' + _riscosFiltrosDef[c].label.toLowerCase() + '">'
+            + '<button type="button" class="el-filtro-x hidden" id="riscos-filtro-x-' + c + '" data-on-click="risco.25" data-aclick0="' + c + '" aria-label="Limpar filtro ' + _riscosFiltrosDef[c].label.toLowerCase() + '">'
             +   '<span class="material-symbols-outlined" style="font-size:15px">close</span></button>'
             + '</div>';
         }).join('')
     +   '<div class="el-filtro hidden" id="riscos-filtro-cel">'
     +     '<span class="el-filtro-btn el-filtro-btn--ativo" style="cursor:default"><span id="riscos-filtro-label-cel"></span></span>'
-    +     '<button type="button" class="el-filtro-x" onclick="riscosLimparUmFiltro(\'cel\')" aria-label="Limpar filtro da matriz">'
+    +     '<button type="button" class="el-filtro-x" data-on-click="risco.26" aria-label="Limpar filtro da matriz">'
     +       '<span class="material-symbols-outlined" style="font-size:15px">close</span></button>'
     +   '</div>'
-    +   '<button type="button" class="el-limpar-link hidden" id="riscos-btn-limpar" onclick="limparFiltrosRiscos()" aria-label="Limpar filtros">Limpar filtros</button>'
+    +   '<button type="button" class="el-limpar-link hidden" id="riscos-btn-limpar" data-on-click="risco.27" aria-label="Limpar filtros">Limpar filtros</button>'
     +   '<div style="flex:1"></div>'
     +   '<div class="det-split desktop-only-flex">'
-    +     '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-main' + (podeEditar ? '' : ' hidden') + '" onclick="abrirModalRisco()">'
+    +     '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-main' + (podeEditar ? '' : ' hidden') + '" data-on-click="risco.28">'
     +       '<span class="material-symbols-outlined">add</span> Novo risco</button>'
-    +     '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-seta acoes-mais" onclick="acoesLinhaMenu(\'riscos-novo\', event)"'
+    +     '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-seta acoes-mais" data-on-click="risco.29"'
     +       ' data-title="Importar, exportar e modelo" aria-label="Mais opções de riscos" aria-haspopup="menu" aria-expanded="false">'
     +       '<span class="material-symbols-outlined">expand_more</span></button>'
     +   '</div>'
     + '</div>'
 
     + '<div id="riscos-filtros-selecao" class="el-filtros-selecao hidden">'
-    +   '<button type="button" class="ds-icon-action" onclick="riscosCancelarSelecao()" data-title="Cancelar seleção" aria-label="Cancelar seleção">'
+    +   '<button type="button" class="ds-icon-action" data-on-click="risco.30" data-title="Cancelar seleção" aria-label="Cancelar seleção">'
     +     '<span class="material-symbols-outlined">close</span></button>'
     +   '<span class="el-selecao-texto" id="riscos-selecao-texto">0 selecionados</span>'
     +   '<div class="el-selecao-divisor"></div>'
     +   '<div class="el-selecao-acoes" id="riscos-selecao-acoes">'
     +     '<button type="button" class="ds-icon-action" aria-disabled="true" data-title="Em breve" aria-label="Exportar (em breve)"><span class="material-symbols-outlined">download</span></button>'
     +     (podeEditar
-            ? '<button type="button" class="ds-icon-action" onclick="riscosExcluirSelecionados()" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>'
+            ? '<button type="button" class="ds-icon-action" data-on-click="risco.31" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>'
             : '')
     +   '</div>'
     + '</div>'
@@ -2074,18 +2074,18 @@ function renderizarSecaoRiscos() {
     +   '<table class="el-tabela rsc-tabela" id="riscos-tabela">'
     +     '<colgroup><col class="el-col-check"><col class="el-col-expand"><col class="rsc-col-risco"><col class="rsc-col-nivel"><col class="rsc-col-pi"><col class="rsc-col-resp"><col class="rsc-col-acoes"></colgroup>'
     +     '<thead><tr>'
-    +       '<th class="el-col-check"><input type="checkbox" id="chk-select-all-riscos" onchange="riscosToggleSelecionarTodos(this.checked)" aria-label="Selecionar todos"></th>'
+    +       '<th class="el-col-check"><input type="checkbox" id="chk-select-all-riscos" data-on-change="risco.32" aria-label="Selecionar todos"></th>'
     +       '<th class="el-col-expand"></th>'
-    +       '<th class="th-sortable rsc-col-risco" onclick="riscosOrdenarPorColuna(\'risco\')">Risco<span class="sort-icon" id="riscos-sort-icon-risco"></span></th>'
-    +       '<th class="th-sortable rsc-col-nivel" onclick="riscosOrdenarPorColuna(\'nivel\')">Nível<span class="sort-icon" id="riscos-sort-icon-nivel"></span></th>'
-    +       '<th class="th-sortable rsc-col-pi" onclick="riscosOrdenarPorColuna(\'probimpacto\')">Prob. × Impacto<span class="sort-icon" id="riscos-sort-icon-probimpacto"></span></th>'
-    +       '<th class="th-sortable rsc-col-resp" onclick="riscosOrdenarPorColuna(\'responsavel\')">Responsável<span class="sort-icon" id="riscos-sort-icon-responsavel"></span></th>'
+    +       '<th class="th-sortable rsc-col-risco" data-on-click="risco.33">Risco<span class="sort-icon" id="riscos-sort-icon-risco"></span></th>'
+    +       '<th class="th-sortable rsc-col-nivel" data-on-click="risco.34">Nível<span class="sort-icon" id="riscos-sort-icon-nivel"></span></th>'
+    +       '<th class="th-sortable rsc-col-pi" data-on-click="risco.35">Prob. × Impacto<span class="sort-icon" id="riscos-sort-icon-probimpacto"></span></th>'
+    +       '<th class="th-sortable rsc-col-resp" data-on-click="risco.36">Responsável<span class="sort-icon" id="riscos-sort-icon-responsavel"></span></th>'
     +       '<th class="rsc-col-acoes"><div class="el-th-acoes">'
-    +         '<button type="button" class="el-th-btn" onclick="atualizarRiscos()" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
-    +         '<button type="button" class="el-th-btn" id="riscos-btn-expandir" onclick="riscosToggleExpandirTodos()" data-title="Expandir todos" aria-label="Expandir todos"><span class="material-symbols-outlined">unfold_more</span></button>'
-    +         '<button type="button" class="el-th-btn" id="riscos-btn-imprimir" onclick="imprimirRiscos()" data-title="Imprimir" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>'
+    +         '<button type="button" class="el-th-btn" data-on-click="risco.37" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
+    +         '<button type="button" class="el-th-btn" id="riscos-btn-expandir" data-on-click="risco.38" data-title="Expandir todos" aria-label="Expandir todos"><span class="material-symbols-outlined">unfold_more</span></button>'
+    +         '<button type="button" class="el-th-btn" id="riscos-btn-imprimir" data-on-click="risco.39" data-title="Imprimir" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>'
     +         '<button type="button" class="el-th-btn" aria-disabled="true" data-title="Em breve" aria-label="Exportar (em breve)"><span class="material-symbols-outlined">download</span></button>'
-    +         '<button type="button" class="el-th-btn" onclick="riscosAbrirMenuOrdenar(event)" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
+    +         '<button type="button" class="el-th-btn" data-on-click="risco.40" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
     +       '</div></th>'
     +     '</tr></thead>'
     +     '<tbody id="riscos-lista"></tbody>'
@@ -2093,15 +2093,15 @@ function renderizarSecaoRiscos() {
     + '</div>'
     + '<div id="riscos-pagination" class="pagination-bar rsc-pag">'
     +   '<div class="pag-left"><span>Exibir:</span>'
-    +     '<select id="riscos-pag-size" onchange="riscosMudarTamanho(this.value)" class="form-control form-control-sm">'
+    +     '<select id="riscos-pag-size" data-on-change="risco.41" class="form-control form-control-sm">'
     +       '<option value="10">10</option><option value="20">20</option><option value="50">50</option>'
     +     '</select>'
     +   '</div>'
     +   '<div class="pag-center"><span id="riscos-pag-counter">0–0 de 0</span></div>'
     +   '<div class="pag-right">'
-    +     '<button class="btn-pag" onclick="riscosMudarPagina(\'prev\')" data-title="Anterior" aria-label="Página anterior"><span class="material-symbols-outlined">chevron_left</span></button>'
-    +     '<select id="riscos-pag-selector" onchange="riscosIrParaPagina(this.value)" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>'
-    +     '<button class="btn-pag" onclick="riscosMudarPagina(\'next\')" data-title="Próximo" aria-label="Próxima página"><span class="material-symbols-outlined">chevron_right</span></button>'
+    +     '<button class="btn-pag" data-on-click="risco.42" data-title="Anterior" aria-label="Página anterior"><span class="material-symbols-outlined">chevron_left</span></button>'
+    +     '<select id="riscos-pag-selector" data-on-change="risco.43" class="form-control form-control-sm pag-selector"><option value="1">1</option></select>'
+    +     '<button class="btn-pag" data-on-click="risco.44" data-title="Próximo" aria-label="Próxima página"><span class="material-symbols-outlined">chevron_right</span></button>'
     +   '</div>'
     + '</div>';
 
@@ -2126,7 +2126,7 @@ function _riscosRenderMatriz() {
       var sel = estadoRiscos.filtroProb === _RISCO_PROBS[pi] && estadoRiscos.filtroImp === _RISCO_IMPS[ii];
       var desc = 'Probabilidade ' + _RISCO_PROBS[pi] + ', impacto ' + _RISCO_IMPS[ii] + ': ' + n + ' risco' + (n === 1 ? '' : 's');
       html += '<button type="button" class="rsc-cel rsc-cel--' + nivel + (sel ? ' is-sel' : '') + '" aria-pressed="' + sel + '"'
-        + ' aria-label="' + desc + '" data-title="' + desc + '" onclick="riscosSelecionarCelula(' + pi + ',' + ii + ')">' + (n || '') + '</button>';
+        + ' aria-label="' + desc + '" data-title="' + desc + '" data-on-click="risco.45" data-rclick0="' + pi + '" data-rclick1="' + ii + '">' + (n || '') + '</button>';
     }
   }
   html += '<div></div>' + _RISCO_IMPS.map(function(l) { return '<div class="rsc-eixo-c">' + l + '</div>'; }).join('');
@@ -2144,7 +2144,7 @@ function _riscosRenderNiveis() {
     var c = _CORES_NIVEL_DET[n];
     var pct = total ? (cont[n] / total) * 100 : 0;
     var sel = estadoRiscos.filtroNivel === n;
-    return '<button type="button" class="rsc-nivel-linha' + (sel ? ' is-sel' : '') + '" aria-pressed="' + sel + '" onclick="riscosSelecionarNivel(\'' + n + '\')">'
+    return '<button type="button" class="rsc-nivel-linha' + (sel ? ' is-sel' : '') + '" aria-pressed="' + sel + '" data-on-click="risco.46" data-aclick0="' + n + '">'
       + '<span class="rsc-nivel-tag" style="background:' + c.bg + ';color:' + c.text + '">' + _RISCO_NIVEL_ROTULO[n] + '</span>'
       + '<span class="rsc-barra"><span class="rsc-barra-fill" style="width:' + pct.toFixed(0) + '%;background:' + c.text + '"></span></span>'
       + '<span class="rsc-nivel-n">' + cont[n] + '</span></button>';
@@ -2218,7 +2218,7 @@ function _riscoLinhaHTML(r, podeEditar) {
     var fnProativo = temCausas ? "riscosNovaAcaoTratamento('" + idj + "')" : "abrirModalCausaRapida('" + idj + "')";
     var rotuloProativo = temCausas ? 'Definir tratamento' : 'Definir causa';
     var nivelBtnCls = 'ds-btn--pendencia-' + nivelKey;
-    var btnProativo = '<button type="button" class="ds-btn ' + nivelBtnCls + ' ds-btn--sm rsc-btn-proativo" onclick="event.stopPropagation(); ' + fnProativo + '" aria-label="' + escapeHtml(rotuloProativo) + '">'
+    var btnProativo = '<button type="button" class="ds-btn ' + nivelBtnCls + ' ds-btn--sm rsc-btn-proativo" ' + uiAtributosAcao('event.stopPropagation(); ' + fnProativo) + ' aria-label="' + escapeHtml(rotuloProativo) + '">'
       + '<span class="material-symbols-outlined">add</span><span>' + rotuloProativo + '</span></button>';
 
     var itensMenu = [
@@ -2246,9 +2246,9 @@ function _riscoLinhaHTML(r, podeEditar) {
     + (aberto ? ' is-open' : '') + (sel ? ' selecionada' : '') + (ativo ? ' rsc-ativa' : '');
 
   var html = '<tr class="' + cls + '" data-id="' + idj + '" aria-expanded="' + aberto + '"'
-    + ' onclick="riscosCliqueLinha(event, \'' + idj + '\')" ondblclick="riscosDuploCliqueLinha(event, \'' + idj + '\')">'
-    + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' onclick="event.stopPropagation()" onchange="riscosToggleSelecao(\'' + idj + '\', this.checked)" aria-label="Selecionar risco"></td>'
-    + '<td class="el-col-expand"><button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" onclick="event.stopPropagation(); riscosToggleExpand(\'' + idj + '\')" aria-label="' + (aberto ? 'Recolher' : 'Expandir') + '"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button></td>'
+    + ' data-on-click="risco.47" data-aclick0="' + idj + '" data-on-dblclick="risco.48" data-adblclick0="' + idj + '">'
+    + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' data-on-click="risco.49" data-on-change="risco.50" data-achange0="' + idj + '" aria-label="Selecionar risco"></td>'
+    + '<td class="el-col-expand"><button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" data-on-click="risco.51" data-aclick0="' + idj + '" aria-label="' + (aberto ? 'Recolher' : 'Expandir') + '"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button></td>'
     + '<td class="rsc-col-risco"><div class="rsc-nome-cel"><div class="rsc-titulo-cel"><span class="rsc-titulo" data-title="' + escapeHtml(r.risco) + '">' + escapeHtml(r.risco) + '</span>' + alerta + '</div><span class="rsc-sub" data-title="' + escapeHtml(subTexto) + '">' + escapeHtml(subTexto) + '</span></div></td>'
     + '<td class="rsc-col-nivel"><span class="rsc-nivel-pill" style="background:' + c.bg + ';color:' + c.text + '">' + escapeHtml(_RISCO_NIVEL_ROTULO[r.nivelRisco] || '—') + '</span></td>'
     + '<td class="rsc-col-pi"><span class="rsc-pi" data-title="Probabilidade ' + escapeHtml(String(r.probabilidade || '—').toLowerCase()) + ', impacto ' + escapeHtml(String(r.impacto || '—').toLowerCase()) + '">' + escapeHtml(pi) + '</span></td>'
@@ -2259,7 +2259,7 @@ function _riscoLinhaHTML(r, podeEditar) {
   if (aberto) {
     var causas = (r.causasConsequencias || []).map(function(p) {
       var n = cob.porCausa[String(p.id)] || 0;
-      return '<div class="rsc-causa-linha" onclick="riscosAbrirPainel(\'' + idj + '\')" data-title="Ver no painel de detalhes">'
+      return '<div class="rsc-causa-linha" data-on-click="risco.52" data-aclick0="' + idj + '" data-title="Ver no painel de detalhes">'
         + '<span class="rsc-causa-dot"></span>'
         + '<span class="rsc-causa-txt" data-title="' + escapeHtml(p.causa || '') + '">' + escapeHtml(p.causa || '—') + '</span>'
         + '<span class="material-symbols-outlined rsc-causa-seta" aria-hidden="true">arrow_right_alt</span>'
@@ -2272,8 +2272,8 @@ function _riscoLinhaHTML(r, podeEditar) {
       + '<div class="rsc-vinculo"><span class="material-symbols-outlined">' + (r.tipoRisco === 'GERAL' ? 'flag' : 'category') + '</span><span>' + escapeHtml(_riscoVinculoTxt(r)) + '</span></div>'
       + causas
       + '<div class="rsc-det-acoes">'
-      +   (podeEditar ? '<button type="button" class="rsc-link" onclick="abrirModalCausaRapida(\'' + idj + '\')"><span class="material-symbols-outlined">add</span>Causa</button>' : '')
-      +   '<button type="button" class="rsc-link" onclick="riscosAbrirPainel(\'' + idj + '\')">Ver tratamento<span class="material-symbols-outlined">chevron_right</span></button>'
+      +   (podeEditar ? '<button type="button" class="rsc-link" data-on-click="risco.53" data-aclick0="' + idj + '"><span class="material-symbols-outlined">add</span>Causa</button>' : '')
+      +   '<button type="button" class="rsc-link" data-on-click="risco.52" data-aclick0="' + idj + '">Ver tratamento<span class="material-symbols-outlined">chevron_right</span></button>'
       + '</div>'
       + '</td></tr>';
   }
@@ -2460,7 +2460,7 @@ function _riscosAtualizarSelecao(listaCompleta) {
         ], { maxDireto: 4 });
       }
     } else {
-      htmlAcoes += (podeEditar ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" onclick="riscosExcluirSelecionados()" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>' : '');
+      htmlAcoes += (podeEditar ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" data-on-click="risco.31" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>' : '');
     }
     acoesCont.innerHTML = htmlAcoes;
   }
@@ -2549,7 +2549,7 @@ function _riscosRenderPainel(r) {
       +   (doGrupo.length
             ? doGrupo.map(function(t) { return _riscoTratItemHTML(t, idj, podeEditar); }).join('')
             : '<div class="detp-trat-vazio"><span class="material-symbols-outlined">error</span>Sem ação de tratamento</div>')
-      +   (podeEditar ? '<button type="button" class="rsc-link" onclick="riscosNovaAcaoTratamento(\'' + idj + '\',\'' + escapeHtml(String(p.id)) + '\')"><span class="material-symbols-outlined">add</span>Ação de tratamento</button>' : '')
+      +   (podeEditar ? '<button type="button" class="rsc-link" data-on-click="risco.54" data-aclick0="' + idj + '" data-aclick1="' + escapeHtml(String(p.id)) + '"><span class="material-symbols-outlined">add</span>Ação de tratamento</button>' : '')
       + '</div></div>';
   }).join('');
   var gerais = trats.filter(function(t) { return !t.idCausa || !ids[String(t.idCausa)]; });
@@ -2562,7 +2562,7 @@ function _riscosRenderPainel(r) {
   var painelHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;margin:-4px -4px 14px 0">'
     +   '<span class="detp-tab active" style="pointer-events:none">Detalhes do risco</span>'
-    +   '<button type="button" class="ds-icon-action ds-icon-action--sm" onclick="_riscosSDK.fecharPainel()" data-title="Fechar" aria-label="Fechar painel de detalhes"><span class="material-symbols-outlined">close</span></button>'
+    +   '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.55" data-title="Fechar" aria-label="Fechar painel de detalhes"><span class="material-symbols-outlined">close</span></button>'
     + '</div>'
     + '<div class="detp-secao">'
     +   '<h3 class="detp-risco-titulo">' + escapeHtml(r.risco || '') + '</h3>'
@@ -2579,7 +2579,7 @@ function _riscosRenderPainel(r) {
     + '<div class="detp-secao">'
     +   '<div class="detp-risco-sec-cab"><strong>Causas e tratamento</strong>'
     +     '<span>' + pares.length + (pares.length === 1 ? ' causa' : ' causas') + ' · ' + trats.length + (trats.length === 1 ? ' ação' : ' ações') + '</span>'
-    +     (podeEditar ? '<button type="button" class="ds-icon-action ds-icon-action--sm" onclick="abrirModalCausaRapida(\'' + idj + '\')" data-title="Adicionar causa e consequência" aria-label="Adicionar causa e consequência"><span class="material-symbols-outlined">add</span></button>' : '')
+    +     (podeEditar ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.53" data-aclick0="' + idj + '" data-title="Adicionar causa e consequência" aria-label="Adicionar causa e consequência"><span class="material-symbols-outlined">add</span></button>' : '')
     +   '</div>'
     +   cards
     + '</div>';
@@ -2771,4 +2771,63 @@ window.riscosToggleSelecionarTodos = riscosToggleSelecionarTodos;
 window.riscosCancelarSelecao = riscosCancelarSelecao;
 window.estadoRiscos = estadoRiscos;
 window._riscosSDK = _riscosSDK;
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+uiRegistrarAcoes('risco', {
+  '1': function (event) { if(event.target===this) window[this.dataset.fechar](); },
+  '2': function (event) { fecharModalRisco(); },
+  '3': function (event) { salvarRisco(event); },
+  '4': function (event) { _rwizSelecionarObjeto(); },
+  '5': function (event) { _rwizContador(this); _rwizLimparErro(this); },
+  '6': function (event) { if(event.key==='Enter'){event.preventDefault();adicionarCausaConsequenciaRisco();}; },
+  '7': function (event) { adicionarCausaConsequenciaRisco(); },
+  '8': function (event) { atualizarNivelRisco(); _rwizLimparErro(this); },
+  '9': function (event) { _rwizVoltar(); },
+  '10': function (event) { _rwizProximo(); },
+  '11': function (event) { if(event.target===this) fecharModalTratamentoForm(); },
+  '12': function (event) { fecharModalTratamentoForm(); },
+  '13': function (event) { handleSalvarTratamento(event); },
+  '14': function (event) { onMudarPeriodicidadeTrat(); },
+  '15': function (event) { if(event.target===this) fecharModalCausaRapida(); },
+  '16': function (event) { fecharModalCausaRapida(); },
+  '17': function (event) { handleSalvarCausaRapida(event); },
+  '18': function (event) { _rwizIrParaRail(uiArgLit(this.dataset.rclick0)); },
+  '19': function (event) { removerCausaConsequenciaRisco(uiArgLit(this.dataset.rclick0)); },
+  '20': function (event) { toggleNaturezaRisco(this); },
+  '21': function (event) { riscosAbrirBusca(); },
+  '22': function (event) { aplicarFiltrosRiscos(); },
+  '23': function (event) { riscosLimparBusca(); },
+  '24': function (event) { riscosAbrirFiltro(uiArgJs(this.dataset.aclick0), event); },
+  '25': function (event) { riscosLimparUmFiltro(uiArgJs(this.dataset.aclick0)); },
+  '26': function (event) { riscosLimparUmFiltro('cel'); },
+  '27': function (event) { limparFiltrosRiscos(); },
+  '28': function (event) { abrirModalRisco(); },
+  '29': function (event) { acoesLinhaMenu('riscos-novo', event); },
+  '30': function (event) { riscosCancelarSelecao(); },
+  '31': function (event) { riscosExcluirSelecionados(); },
+  '32': function (event) { riscosToggleSelecionarTodos(this.checked); },
+  '33': function (event) { riscosOrdenarPorColuna('risco'); },
+  '34': function (event) { riscosOrdenarPorColuna('nivel'); },
+  '35': function (event) { riscosOrdenarPorColuna('probimpacto'); },
+  '36': function (event) { riscosOrdenarPorColuna('responsavel'); },
+  '37': function (event) { atualizarRiscos(); },
+  '38': function (event) { riscosToggleExpandirTodos(); },
+  '39': function (event) { imprimirRiscos(); },
+  '40': function (event) { riscosAbrirMenuOrdenar(event); },
+  '41': function (event) { riscosMudarTamanho(this.value); },
+  '42': function (event) { riscosMudarPagina('prev'); },
+  '43': function (event) { riscosIrParaPagina(this.value); },
+  '44': function (event) { riscosMudarPagina('next'); },
+  '45': function (event) { riscosSelecionarCelula(uiArgLit(this.dataset.rclick0),uiArgLit(this.dataset.rclick1)); },
+  '46': function (event) { riscosSelecionarNivel(uiArgJs(this.dataset.aclick0)); },
+  '47': function (event) { riscosCliqueLinha(event, uiArgJs(this.dataset.aclick0)); },
+  '48': function (event) { riscosDuploCliqueLinha(event, uiArgJs(this.dataset.adblclick0)); },
+  '49': function (event) { event.stopPropagation(); },
+  '50': function (event) { riscosToggleSelecao(uiArgJs(this.dataset.achange0), this.checked); },
+  '51': function (event) { event.stopPropagation(); riscosToggleExpand(uiArgJs(this.dataset.aclick0)); },
+  '52': function (event) { riscosAbrirPainel(uiArgJs(this.dataset.aclick0)); },
+  '53': function (event) { abrirModalCausaRapida(uiArgJs(this.dataset.aclick0)); },
+  '54': function (event) { riscosNovaAcaoTratamento(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); },
+  '55': function (event) { _riscosSDK.fecharPainel(); }
+});
 </script>

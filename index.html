@@ -8588,6 +8588,98 @@ function uiEscopoRespIdsUnidades(unidades, chave) {
   while (pilha.length) (filhos[pilha.pop()] || []).forEach(function(f) { if (!ids.has(f)) { ids.add(f); pilha.push(f); } });
   return ids;
 }
+
+// --- Delegação de eventos (substitui onclick=/oninput=… inline; docs/refatoracao_frontend.md, fase c) ---
+// Marcação: data-on-<tipo>="<prefixo>.<n>" (+ data-a<tipo><i> / data-r<tipo><i> com os argumentos).
+// Cada arquivo registra as ações com uiRegistrarAcoes('<prefixo>', { n: function (event) { … } }),
+// chamadas com `this` = elemento, como o handler inline era. Retornar false = preventDefault.
+// Tipos que borbulham: um listener em <html> (antes dos listeners de document/window, como o inline:
+// event.stopPropagation() continua impedindo os "clique fora" registrados em document); percorre do
+// alvo para cima e para se a propagação for interrompida. Tipos que não borbulham (focus, blur, error…):
+// listener em captura, só para o próprio alvo.
+var uiAcoes = window.uiAcoes || {};
+window.uiAcoes = uiAcoes;
+function uiRegistrarAcoes(prefixo, mapa) {
+  Object.keys(mapa).forEach(function (k) { uiAcoes[prefixo + '.' + k] = mapa[k]; });
+}
+// Argumento string vindo de data-*: o texto é o literal JS original (com os escapes de escapeJsAttr); desfaz-os.
+function uiArgJs(s) {
+  return String(s == null ? '' : s).replace(/\\(u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[\s\S])/g, function (_, e) {
+    if (e[0] === 'u' && e.length === 5) return String.fromCharCode(parseInt(e.slice(1), 16));
+    if (e[0] === 'x' && e.length === 3) return String.fromCharCode(parseInt(e.slice(1), 16));
+    return ({ n: '\n', t: '\t', r: '\r', b: '\b', f: '\f', v: '\v', '0': '\0' })[e] || e;
+  });
+}
+// Argumento não-string (número, true/false, null) que ia cru no handler.
+function uiArgLit(s) {
+  var t = String(s == null ? '' : s).trim();
+  if (t === 'undefined') return undefined;
+  if (t === 'NaN') return NaN;
+  try { return JSON.parse(t); } catch (e) { return t; }
+}
+// Ação montada em tempo de execução a partir de um texto "fn('a', 1); outra()" (itens de menu,
+// botões de trâmite). Interpreta só chamadas com argumentos literais/event/this — sem eval.
+function uiAtributosAcao(codigo, tipo) {
+  tipo = tipo || 'click';
+  return ' data-on-' + tipo + '="ui.chamar" data-chamada-' + tipo + '="' + codigo + '"';
+}
+function _uiExecChamada(texto, el, ev) {
+  var s = String(texto || ''), i = 0, ret;
+  function ws() { while (i < s.length && /\s/.test(s[i])) i++; }
+  function ident() { var m = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*/.exec(s.slice(i)); if (!m) throw new Error('chamada inválida: ' + s); i += m[0].length; return m[0]; }
+  function resolver(caminho) {
+    var p = caminho.split('.'), base = p[0] === 'event' ? ev : p[0] === 'this' ? el : window[p[0]], dono = null;
+    for (var k = 1; k < p.length; k++) { dono = base; base = base == null ? undefined : base[p[k]]; }
+    return { v: base, dono: dono };
+  }
+  function arg() {
+    ws(); var c = s[i];
+    if (c === "'" || c === '"') {
+      var j = i + 1, raw = '';
+      while (j < s.length && s[j] !== c) { if (s[j] === '\\') { raw += s[j] + s[j + 1]; j += 2; } else raw += s[j++]; }
+      i = j + 1; return uiArgJs(raw);
+    }
+    var m = /^-?\d+(\.\d+)?/.exec(s.slice(i)); if (m) { i += m[0].length; return Number(m[0]); }
+    var id = ident();
+    if (id === 'true') return true; if (id === 'false') return false; if (id === 'null') return null; if (id === 'undefined') return undefined;
+    return resolver(id).v;
+  }
+  while (true) {
+    ws(); if (i >= s.length) break;
+    if (s[i] === ';') { i++; continue; }
+    var r = resolver(ident()); ws();
+    if (s[i] !== '(') throw new Error('chamada inválida: ' + s);
+    i++; var args = []; ws();
+    while (s[i] !== ')') { args.push(arg()); ws(); if (s[i] === ',') i++; else if (s[i] !== ')') throw new Error('chamada inválida: ' + s); }
+    i++;
+    ret = r.v.apply(r.dono, args);
+  }
+  return ret;
+}
+uiAcoes['ui.chamar'] = function (event) { return _uiExecChamada(this.getAttribute('data-chamada-' + event.type), this, event); };
+function _uiExecAcao(el, tipo, ev) {
+  var fn = uiAcoes[el.getAttribute('data-on-' + tipo)];
+  if (!fn) { console.error('Ação não registrada: ' + el.getAttribute('data-on-' + tipo)); return; }
+  if (fn.call(el, ev) === false) ev.preventDefault();
+}
+if (!window._uiDelegacaoAtiva) {
+  window._uiDelegacaoAtiva = true;
+  ['click', 'dblclick', 'input', 'change', 'submit', 'keydown', 'keyup', 'mousedown'].forEach(function (tipo) {
+    document.documentElement.addEventListener(tipo, function (ev) {
+      var el = ev.target && ev.target.nodeType === 1 ? ev.target : ev.target && ev.target.parentElement;
+      while (el && el !== document.documentElement) {
+        if (el.hasAttribute('data-on-' + tipo)) { _uiExecAcao(el, tipo, ev); if (ev.cancelBubble) return; }
+        el = el.parentElement;
+      }
+    });
+  });
+  ['focus', 'blur', 'error', 'load'].forEach(function (tipo) {
+    document.addEventListener(tipo, function (ev) {
+      var el = ev.target;
+      if (el && el.nodeType === 1 && el.hasAttribute('data-on-' + tipo)) _uiExecAcao(el, tipo, ev);
+    }, true);
+  });
+}
 </script>
 
 
@@ -11227,9 +11319,9 @@ function solicitarExclusao(id, nomePlano) {
       </div>
     </div>
     <div style="display:flex; gap:8px; flex-shrink:0">
-      <button id="btn-solicitacao-cancelar" class="btn btn-outline btn-sm hidden" onclick="cancelarSolicitacaoPendente()">Cancelar solicitação</button>
-      <button id="btn-solicitacao-recusar" class="btn btn-outline btn-sm text-danger hidden" onclick="abrirModalResponderSolicitacao('RECUSAR')">Recusar</button>
-      <button id="btn-solicitacao-confirmar" class="btn btn-primary btn-sm hidden" onclick="abrirModalResponderSolicitacao('CONFIRMAR')">Confirmar</button>
+      <button id="btn-solicitacao-cancelar" class="btn btn-outline btn-sm hidden" data-on-click="plano.1">Cancelar solicitação</button>
+      <button id="btn-solicitacao-recusar" class="btn btn-outline btn-sm text-danger hidden" data-on-click="plano.2">Recusar</button>
+      <button id="btn-solicitacao-confirmar" class="btn btn-primary btn-sm hidden" data-on-click="plano.3">Confirmar</button>
     </div>
   </div>
 
@@ -11257,14 +11349,14 @@ function solicitarExclusao(id, nomePlano) {
            preenchido por renderizarBotoesTramite. As demais ações (Devolver/Cancelar,
            Assistente de IA, Editar, Visibilidade, exportações, Excluir) vivem nesse menu. -->
       <div id="header-workflow-actions" style="display:contents"></div>
-      <button type="button" class="ds-btn ds-btn--primary det-split-seta" onclick="_detAbrirMenuAcoes(event)"
+      <button type="button" class="ds-btn ds-btn--primary det-split-seta" data-on-click="plano.4"
               data-title="Mais opções" aria-label="Mais opções do plano" aria-haspopup="menu" aria-expanded="false">
         <span class="material-symbols-outlined">expand_more</span>
       </button>
     </div>
     <!-- "Detalhes do plano" fica FORA do botão dividido/menu, sempre visível e acessível
          com 1 clique — abre o painel lateral (#detp-panel). -->
-    <button type="button" class="ds-icon-action" onclick="abrirDetalhesPlanoPainel()"
+    <button type="button" class="ds-icon-action" data-on-click="plano.5"
             data-title="Detalhes do plano" aria-label="Detalhes do plano">
       <span class="material-symbols-outlined">right_panel_open</span>
     </button>
@@ -11279,21 +11371,21 @@ function solicitarExclusao(id, nomePlano) {
 
         <!-- Auditoria saiu daqui: as informações relevantes agora vivem no painel de
              detalhes (#detp-panel), aba Atividade — ver docs/design_system.md. -->
-        <button class="tab-btn tab-btn-config hidden" id="btn-abas-add" onclick="abrirModalAdicionarApp()"
+        <button class="tab-btn tab-btn-config hidden" id="btn-abas-add" data-on-click="plano.6"
                 data-title="Adicionar app ao plano" aria-label="Adicionar app ao plano">
           <span class="material-symbols-outlined icon-sm">add</span>
         </button>
-        <button class="tab-btn tab-btn-config" id="btn-abas-restaurar" onclick="restaurarOrdemAbas()"
+        <button class="tab-btn tab-btn-config" id="btn-abas-restaurar" data-on-click="plano.7"
                 data-title="Arraste as abas para reordená-las como preferir · Clique aqui para restaurar a ordem padrão">
           <span class="material-symbols-outlined icon-sm">restart_alt</span>
         </button>
       </div>
       <button type="button" class="det-tabs-arrow det-tabs-arrow--start hidden" id="det-tabs-arrow-start"
-              onclick="detRolarTabs(-1)" data-title="Ver abas anteriores" aria-label="Ver abas anteriores">
+              data-on-click="plano.8" data-title="Ver abas anteriores" aria-label="Ver abas anteriores">
         <span class="material-symbols-outlined">chevron_left</span>
       </button>
       <button type="button" class="det-tabs-arrow det-tabs-arrow--end hidden" id="det-tabs-arrow-end"
-              onclick="detRolarTabs(1)" data-title="Ver mais abas" aria-label="Ver mais abas">
+              data-on-click="plano.9" data-title="Ver mais abas" aria-label="Ver mais abas">
         <span class="material-symbols-outlined">chevron_right</span>
       </button>
     </div>
@@ -11308,14 +11400,14 @@ function solicitarExclusao(id, nomePlano) {
        "Detalhes do plano" ao lado do botão dividido do cabeçalho. -->
   <aside class="detp-panel" id="detp-panel" aria-hidden="true">
     <div class="detp-tabs">
-      <button type="button" class="detp-tab active" id="detp-tab-detalhes" onclick="_detpMudarAba('detalhes')">Detalhes</button>
-      <button type="button" class="detp-tab" id="detp-tab-atividade" onclick="_detpMudarAba('atividade')">Atividade</button>
-      <button type="button" class="detp-tab" id="detp-tab-lixeira" onclick="_detpMudarAba('lixeira')">Lixeira</button>
-      <button type="button" class="ds-icon-action ds-icon-action--sm" onclick="abrirConfigPlanoCfg()"
+      <button type="button" class="detp-tab active" id="detp-tab-detalhes" data-on-click="plano.10">Detalhes</button>
+      <button type="button" class="detp-tab" id="detp-tab-atividade" data-on-click="plano.11">Atividade</button>
+      <button type="button" class="detp-tab" id="detp-tab-lixeira" data-on-click="plano.12">Lixeira</button>
+      <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="plano.13"
               data-title="Configurações do plano" aria-label="Configurações do plano" style="margin-left:auto">
         <span class="material-symbols-outlined">settings</span>
       </button>
-      <button type="button" class="ds-icon-action ds-icon-action--sm detp-fechar" onclick="fecharPainelDetalhes()"
+      <button type="button" class="ds-icon-action ds-icon-action--sm detp-fechar" data-on-click="plano.14"
               data-title="Fechar" aria-label="Fechar painel de detalhes">
         <span class="material-symbols-outlined">close</span>
       </button>
@@ -14497,7 +14589,7 @@ function _detPrepararListenersSticky() {
 // azul sólido. Quando não há trâmite disponível para o usuário, vira "Detalhes" (abre
 // #detp-panel) — mesma regra do menu (_detAbrirMenuAcoes), ver docs/design_system.md.
 function _botaoTramite(onclick, rotulo, icone, dica) {
-  return '<button type="button" class="ds-btn ds-btn--primary det-split-main" onclick="' + onclick + '"'
+  return '<button type="button" class="ds-btn ds-btn--primary det-split-main" ' + uiAtributosAcao(onclick) + ''
     + ' data-title="' + escapeHtml(dica) + '">'
     + '<span class="material-symbols-outlined">' + icone + '</span> ' + escapeHtml(rotulo) + '</button>';
 }
@@ -14648,7 +14740,7 @@ function _detMontarMenu(gatilho, grupos) {
     const sep = gi > 0 ? '<div class="acoes-menu-sep"></div>' : '';
     const itens = g.itens.map(function(it) {
       return '<button type="button" role="menuitem" class="acoes-menu-item' + (it.perigo ? ' perigo' : '') + '"'
-        + ' onclick="_detFecharMenuAcoes(); ' + it.onclick + '">'
+        + ' ' + uiAtributosAcao('_detFecharMenuAcoes(); ' + it.onclick) + '>'
         + '<span class="material-symbols-outlined" aria-hidden="true">' + it.icone + '</span>'
         + '<span class="acoes-menu-txt"><span>' + escapeHtml(it.label) + '</span></span></button>';
     }).join('');
@@ -15214,10 +15306,10 @@ function abrirDetalhesElementoPainel(id) {
   var htmlAcoes = '';
   if (podeEditar) {
     htmlAcoes = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">' +
-      '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" onclick="abrirModalEdicaoElemento(\'' + id + '\')"><span class="material-symbols-outlined">edit</span> Editar</button>' +
-      '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" onclick="prepararNovoFilho(\'' + id + '\')"><span class="material-symbols-outlined">add</span> Adicionar filho</button>' +
-      '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" onclick="abrirModalIndicador(\'' + id + '\')"><span class="material-symbols-outlined">monitoring</span> Indicadores</button>' +
-      '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" style="color:var(--ds-color-danger-fg)" onclick="confirmarExclusaoElemento(\'' + id + '\',\'' + escapeJsAttr(el.titulo) + '\')"><span class="material-symbols-outlined">delete</span> Excluir</button>' +
+      '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" data-on-click="plano.15" data-aclick0="' + id + '"><span class="material-symbols-outlined">edit</span> Editar</button>' +
+      '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" data-on-click="plano.16" data-aclick0="' + id + '"><span class="material-symbols-outlined">add</span> Adicionar filho</button>' +
+      '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" data-on-click="plano.17" data-aclick0="' + id + '"><span class="material-symbols-outlined">monitoring</span> Indicadores</button>' +
+      '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" style="color:var(--ds-color-danger-fg)" data-on-click="plano.18" data-aclick0="' + id + '" data-aclick1="' + escapeJsAttr(el.titulo) + '"><span class="material-symbols-outlined">delete</span> Excluir</button>' +
       '</div>';
   }
 
@@ -15306,8 +15398,8 @@ function _atualizarBarraPaginacao(prefix, estado, total, start) {
     sel.disabled = (totalPags <= 1 || total === 0);
   }
 
-  var btnPrev = pag.querySelector('.btn-pag[onclick*="prev"]');
-  var btnNext = pag.querySelector('.btn-pag[onclick*="next"]');
+  var btnPrev = pag.querySelector('.btn-pag[data-on-click="ind.49"], .btn-pag[data-on-click="mon.11"], .btn-pag[data-on-click="risco.42"], .btn-pag[data-on-click="vinc.8"], .btn-pag[data-on-click="vinc.30"]');
+  var btnNext = pag.querySelector('.btn-pag[data-on-click="ind.51"], .btn-pag[data-on-click="mon.13"], .btn-pag[data-on-click="risco.44"], .btn-pag[data-on-click="vinc.10"], .btn-pag[data-on-click="vinc.32"]');
   if (btnPrev) {
     btnPrev.disabled = (estado.paginaAtual <= 1 || total === 0);
     btnPrev.setAttribute('aria-disabled', String(btnPrev.disabled));
@@ -15735,7 +15827,7 @@ function _appRenderizarDescontinuado(pageParam, app, permissoes) {
   if (app.idAppSubstituto && app.nomeAppSubstituto && temPermissao) {
     botaoSubstituto =
       '<div style="margin-top: 18px;">' +
-        '<button type="button" class="btn btn-primary" onclick="_appInstalarSubstituto(\'' + app.idAppSubstituto + '\', \'' + escapeHtml(app.nomeAppSubstituto).replace(/'/g, "\\'") + '\')">' +
+        '<button type="button" class="btn btn-primary" data-on-click="plano.19" data-aclick0="' + app.idAppSubstituto + '" data-aclick1="' + escapeHtml(app.nomeAppSubstituto).replace(/'/g, "\\'") + '">' +
           '<span class="material-symbols-outlined icon-sm">add_circle</span> Instalar ' + escapeHtml(app.nomeAppSubstituto) +
         '</button>' +
       '</div>';
@@ -15834,8 +15926,8 @@ function abrirColaboracoesPendentes(idElemento) {
         ${s.justificativa ? `<p style="font-size:0.82rem;color:var(--ds-color-text-muted);margin:6px 0">${escapeHtml(s.justificativa)}</p>` : ''}
         <div style="font-size:0.75rem;color:var(--ds-color-text-muted);margin-bottom:8px">Solicitado em ${escapeHtml(s.criadoEm || '')}</div>
         <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="responderColaboracaoPendente('${s.id}','${idElemento}','RECUSAR')">Recusar</button>
-          <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" onclick="responderColaboracaoPendente('${s.id}','${idElemento}','ACEITAR')">Aceitar</button>
+          <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="plano.20" data-aclick0="${s.id}" data-aclick1="${idElemento}">Recusar</button>
+          <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="plano.21" data-aclick0="${s.id}" data-aclick1="${idElemento}">Aceitar</button>
         </div>
       </div>`).join('');
   }
@@ -15899,6 +15991,31 @@ if (document.readyState === 'loading') {
 } else {
   _detPrepararListenersSticky();
 }
+
+// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+uiRegistrarAcoes('plano', {
+  '1': function (event) { cancelarSolicitacaoPendente(); },
+  '2': function (event) { abrirModalResponderSolicitacao('RECUSAR'); },
+  '3': function (event) { abrirModalResponderSolicitacao('CONFIRMAR'); },
+  '4': function (event) { _detAbrirMenuAcoes(event); },
+  '5': function (event) { abrirDetalhesPlanoPainel(); },
+  '6': function (event) { abrirModalAdicionarApp(); },
+  '7': function (event) { restaurarOrdemAbas(); },
+  '8': function (event) { detRolarTabs(-1); },
+  '9': function (event) { detRolarTabs(1); },
+  '10': function (event) { _detpMudarAba('detalhes'); },
+  '11': function (event) { _detpMudarAba('atividade'); },
+  '12': function (event) { _detpMudarAba('lixeira'); },
+  '13': function (event) { abrirConfigPlanoCfg(); },
+  '14': function (event) { fecharPainelDetalhes(); },
+  '15': function (event) { abrirModalEdicaoElemento(uiArgJs(this.dataset.aclick0)); },
+  '16': function (event) { prepararNovoFilho(uiArgJs(this.dataset.aclick0)); },
+  '17': function (event) { abrirModalIndicador(uiArgJs(this.dataset.aclick0)); },
+  '18': function (event) { confirmarExclusaoElemento(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); },
+  '19': function (event) { _appInstalarSubstituto(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
+  '20': function (event) { responderColaboracaoPendente(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1),'RECUSAR'); },
+  '21': function (event) { responderColaboracaoPendente(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1),'ACEITAR'); }
+});
 </script>
 
        <!-- ARQUIVO: pages_execucao_planos.html -->
