@@ -33,7 +33,7 @@
   var CHAVE_TOKEN = 'samauma_token';
   var CHAVE_EMAIL = 'samauma_email';
   var tokenMemoria = '';
-  var ROTAS_PUBLICAS = { apiAuthSolicitarCodigo: 1, apiAuthVerificarCodigo: 1 };
+  var ROTAS_PUBLICAS = { apiAuthSolicitarCodigo: 1, apiAuthVerificarCodigo: 1, apiAuthPrimeiroAcesso: 1, apiAuthConfirmarPrimeiroAcesso: 1, apiAuthInfoPrimeiroAcesso: 1 };
 
   function lerToken() {
     try { return localStorage.getItem(CHAVE_TOKEN) || tokenMemoria; } catch (e) { return tokenMemoria; }
@@ -143,10 +143,26 @@
     var btnOutro = el('button', { type: 'button', 'class': 'sl-link', texto: 'Usar outro e-mail' });
     var btnJaTenho = el('button', { type: 'button', 'class': 'sl-link', texto: 'Já tenho um código' });
     var btnReenviar = el('button', { type: 'button', 'class': 'sl-link', texto: 'Reenviar código' });
+    var btnPrimeiro = el('button', { type: 'button', 'class': 'sl-link', style: 'display:none', texto: 'Primeiro acesso' });
 
-    var passo1 = el('div', {}, [el('label', { 'for': 'samauma-login-email', texto: 'E-mail cadastrado' }), inEmail, btnEnviar, btnJaTenho]);
+    // Primeiro acesso por identificação (e-mail + matrícula + CPF). O 2º passo é o mesmo campo de código do login.
+    var paEmail = el('input', { type: 'email', autocomplete: 'email', maxlength: '254', placeholder: 'seu.nome@ufpa.br', id: 'samauma-pa-email' });
+    var paMatricula = el('input', { type: 'text', autocomplete: 'off', maxlength: '20', id: 'samauma-pa-matricula' });
+    var paCpf = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', maxlength: '14', placeholder: '000.000.000-00', id: 'samauma-pa-cpf' });
+    var btnPaEnviar = el('button', { type: 'button', 'class': 'sl-primario', texto: 'Enviar código' });
+    var btnPaVoltar = el('button', { type: 'button', 'class': 'sl-link', texto: 'Voltar ao login' });
+    var btnFimVoltar = el('button', { type: 'button', 'class': 'sl-link', texto: 'Voltar ao login' });
+    var modoPa = false; // true: o passo do código confirma o primeiro acesso em vez do login
+
+    var passo1 = el('div', {}, [el('label', { 'for': 'samauma-login-email', texto: 'E-mail cadastrado' }), inEmail, btnEnviar, btnJaTenho, btnPrimeiro]);
+    var passoPa = el('div', { style: 'display:none' }, [
+      el('label', { 'for': 'samauma-pa-email', texto: 'E-mail *' }), paEmail,
+      el('label', { 'for': 'samauma-pa-matricula', texto: 'Matrícula *' }), paMatricula,
+      el('label', { 'for': 'samauma-pa-cpf', texto: 'CPF *' }), paCpf,
+      btnPaEnviar, btnPaVoltar]);
+    var passoFim = el('div', { style: 'display:none' }, [btnFimVoltar]);
     var passo2 = el('div', { style: 'display:none' }, [el('label', { 'for': 'samauma-login-codigo', texto: 'Código enviado ao seu e-mail' }), inCodigo, btnEntrar, btnReenviar, btnOutro]);
-    var card = el('div', { 'class': 'sl-card' }, [el('h1', { texto: 'Samaúma' }), el('p', { texto: 'Entre com o código enviado ao seu e-mail.' }), msg, passo1, passo2]);
+    var card = el('div', { 'class': 'sl-card' }, [el('h1', { texto: 'Samaúma' }), el('p', { texto: 'Entre com o código enviado ao seu e-mail.' }), msg, passo1, passoPa, passo2, passoFim]);
     overlay = el('div', { id: 'samauma-login' }, [estilo, card]);
     document.body.appendChild(overlay);
     inEmail.value = lerEmail();
@@ -178,7 +194,55 @@
       });
     }
 
+    function mostrarPasso(p) { [passo1, passoPa, passo2, passoFim].forEach(function (x) { x.style.display = x === p ? '' : 'none'; }); }
+
+    // O link só aparece quando o modo de cadastro usa a base (BASE / BASE_OU_AVULSO): rota pública informa.
+    enviar('apiAuthInfoPrimeiroAcesso', [], function (res) {
+      if (res && res.ok && res.dados && res.dados.disponivel === true) btnPrimeiro.style.display = '';
+    }, function () { /* sem a informação, o link fica oculto */ });
+
+    function abrirPrimeiroAcesso() {
+      modoPa = true; aviso_('');
+      if (!paEmail.value) paEmail.value = inEmail.value.trim();
+      mostrarPasso(passoPa); paEmail.focus();
+    }
+    function voltarLogin() {
+      modoPa = false; inCodigo.value = ''; aviso_('');
+      mostrarPasso(passo1); inEmail.focus();
+    }
+    function pedirPrimeiroAcesso() {
+      var email = paEmail.value.trim(), matricula = paMatricula.value.trim(), cpf = paCpf.value.trim();
+      if (!email || !matricula || !cpf) { aviso_('Informe e-mail, matrícula e CPF.'); return; }
+      ocupado(btnPaEnviar, true, 'Enviando...', 'Enviar código');
+      ocupado(btnReenviar, true, 'Enviando...', 'Reenviar código');
+      aviso_('');
+      enviar('apiAuthPrimeiroAcesso', [email, matricula, cpf], function (res) {
+        ocupado(btnPaEnviar, false, '', 'Enviar código');
+        ocupado(btnReenviar, false, '', 'Reenviar código');
+        if (res && res.ok) { inEmail.value = email; mostrarPasso(passo2); aviso_(res.dados && res.dados.mensagem, true); inCodigo.focus(); }
+        else aviso_((res && res.erro) || 'Não foi possível enviar o código.');
+      }, function (err) {
+        ocupado(btnPaEnviar, false, '', 'Enviar código');
+        ocupado(btnReenviar, false, '', 'Reenviar código');
+        aviso_(err.message);
+      });
+    }
+    function confirmarPrimeiroAcesso() {
+      var email = paEmail.value.trim(), codigo = inCodigo.value.trim();
+      if (codigo.replace(/\D/g, '').length !== 6) { aviso_('Digite o código de 6 dígitos.'); return; }
+      ocupado(btnEntrar, true, 'Entrando...', 'Entrar');
+      aviso_('');
+      enviar('apiAuthConfirmarPrimeiroAcesso', [email, codigo], function (res) {
+        ocupado(btnEntrar, false, '', 'Entrar');
+        var d = res && res.ok ? res.dados || {} : null;
+        if (d && d.token) { gravarToken(d.token); gravarEmail(d.email || email); window.location.reload(); return; }
+        if (d && d.pendente === true) { inCodigo.value = ''; mostrarPasso(passoFim); aviso_(d.mensagem, true); return; }
+        aviso_((res && res.erro) || 'Código inválido ou expirado.');
+      }, function (err) { ocupado(btnEntrar, false, '', 'Entrar'); aviso_(err.message); });
+    }
+
     function entrar() {
+      if (modoPa) { confirmarPrimeiroAcesso(); return; }
       var email = inEmail.value.trim(), codigo = inCodigo.value.trim();
       if (codigo.replace(/\D/g, '').length !== 6) { aviso_('Digite o código de 6 dígitos.'); return; }
       ocupado(btnEntrar, true, 'Entrando...', 'Entrar');
@@ -195,10 +259,15 @@
     }
 
     btnEnviar.addEventListener('click', pedirCodigo);
-    btnReenviar.addEventListener('click', pedirCodigo);
+    btnReenviar.addEventListener('click', function () { if (modoPa) pedirPrimeiroAcesso(); else pedirCodigo(); });
+    btnPrimeiro.addEventListener('click', abrirPrimeiroAcesso);
+    btnPaEnviar.addEventListener('click', pedirPrimeiroAcesso);
+    btnPaVoltar.addEventListener('click', voltarLogin);
+    btnFimVoltar.addEventListener('click', voltarLogin);
+    [paEmail, paMatricula, paCpf].forEach(function (x) { x.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') pedirPrimeiroAcesso(); }); });
     btnJaTenho.addEventListener('click', function () { if (!inEmail.value.trim()) { aviso_('Informe o e-mail.'); inEmail.focus(); return; } irParaCodigo(''); });
     btnEntrar.addEventListener('click', entrar);
-    btnOutro.addEventListener('click', function () { passo2.style.display = 'none'; passo1.style.display = ''; inCodigo.value = ''; aviso_(''); inEmail.focus(); });
+    btnOutro.addEventListener('click', function () { if (modoPa) { modoPa = true; inCodigo.value = ''; aviso_(''); mostrarPasso(passoPa); paEmail.focus(); return; } passo2.style.display = 'none'; passo1.style.display = ''; inCodigo.value = ''; aviso_(''); inEmail.focus(); });
     inEmail.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') pedirCodigo(); });
     inCodigo.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') entrar(); });
   }
@@ -1460,6 +1529,8 @@ if (!window._uiDelegacaoAtiva) {
           <span id="header-unidade-name">&nbsp;</span>
         </span>
       </button>
+      <!-- Seletor de vínculo: só com mais de um vínculo; fica sobre a linha da unidade (irmão do botão, não dentro dele) -->
+      <select class="hdr-vinc-sel hidden" id="hdr-vinc-sel" aria-label="Vínculo" data-on-change="components_header.90"></select>
       <button type="button" class="sidebar-collapse-btn" id="btn-sidebar-toggle" data-on-click="components_header.26"
         aria-label="Recolher menu lateral" aria-expanded="true" data-title="Recolher/expandir menu">
         <span class="material-symbols-outlined" id="ico-sidebar-toggle" aria-hidden="true">chevron_left</span>
@@ -1565,6 +1636,14 @@ if (!window._uiDelegacaoAtiva) {
         Para alterar essas informações, entre em contato com o administrador do sistema.
       </p>
     </div>
+  </div>
+</div>
+
+<!-- Escolha obrigatória de vínculo (VINCULO_UM_POR_VEZ ligada e precisaEscolherVinculo): tela intermediária antes do app -->
+<div id="hdr-vinc-escolha" class="hdr-vinc-escolha hidden" role="dialog" aria-modal="true" aria-labelledby="hdr-vinc-escolha-titulo">
+  <div class="hdr-vinc-card">
+    <h1 id="hdr-vinc-escolha-titulo">Com qual vínculo você vai atuar?</h1>
+    <div class="hdr-vinc-lista" id="hdr-vinc-lista"></div>
   </div>
 </div>
 
@@ -1698,6 +1777,25 @@ html.ds-sb-collapsed .ds-sidebar { width: var(--ds-sidebar-width-collapsed); }
 .sb-user-text { display: flex; flex-direction: column; min-width: 0; }
 .sb-user-text strong { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sb-user-text span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Seletor de vínculo (select compacto no lugar do texto da unidade) */
+.sidebar-footer .hdr-vinc-sel { position: absolute; left: 58px; bottom: 12px; max-width: calc(100% - 110px); height: 20px; padding: 0 2px; border: 1px solid transparent; border-radius: var(--ds-r-md);
+  background: var(--ds-sidebar-bg, var(--ds-color-surface)); color: var(--ds-color-text-muted); font-family: var(--ds-font-sans); font-size: var(--ds-text-xs); cursor: pointer; text-overflow: ellipsis; }
+.sidebar-footer .hdr-vinc-sel:hover { border-color: var(--ds-color-border); color: var(--ds-color-text); }
+.sidebar-footer .hdr-vinc-sel:focus-visible { outline: 2px solid var(--ds-color-action); outline-offset: 0; }
+.sidebar-footer .hdr-vinc-sel.hidden { display: none; }
+.sidebar-footer.hdr-tem-vinc #header-unidade-name { visibility: hidden; }
+/* Tela intermediária de escolha de vínculo */
+.hdr-vinc-escolha { position: fixed; inset: 0; z-index: 2147482000; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--ds-color-bg, var(--ds-color-surface)); font-family: var(--ds-font-sans); }
+.hdr-vinc-escolha.hidden { display: none; }
+.hdr-vinc-card { width: 100%; max-width: 420px; background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: 12px; padding: 28px 24px; box-shadow: var(--ds-shadow-2, 0 8px 30px rgba(0,0,0,.08)); }
+.hdr-vinc-card h1 { margin: 0 0 16px; font-size: 1.2rem; color: var(--ds-color-text); }
+.hdr-vinc-lista { display: flex; flex-direction: column; gap: 8px; }
+.hdr-vinc-opcao { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; min-height: 44px; padding: 10px 12px; text-align: left; cursor: pointer;
+  border: 1px solid var(--ds-color-border); border-radius: 8px; background: var(--ds-color-surface); color: var(--ds-color-text); font-family: inherit; font-size: var(--ds-text-sm); }
+.hdr-vinc-opcao:hover { background: var(--ds-sidebar-item-hover); border-color: var(--ds-color-action); }
+.hdr-vinc-opcao strong { font-weight: var(--ds-weight-semibold); }
+.hdr-vinc-opcao span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+body.high-contrast .hdr-vinc-escolha, body.high-contrast .hdr-vinc-card, body.high-contrast .hdr-vinc-opcao, body.high-contrast .sidebar-footer .hdr-vinc-sel { background: #000; color: #fff; border-color: #fff; }
 .sidebar-collapse-btn { width: 30px; height: 30px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: none;
   border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-md); cursor: pointer; color: var(--ds-color-text-muted);
   transition: color var(--ds-duration-fast) var(--ds-ease-standard), border-color var(--ds-duration-fast) var(--ds-ease-standard); }
@@ -1714,6 +1812,7 @@ html.ds-sb-collapsed .ds-sidebar { width: var(--ds-sidebar-width-collapsed); }
   html.ds-sb-collapsed .nav-item-label, html.ds-sb-collapsed .nav-caret, html.ds-sb-collapsed .sb-user-text { display: none; }
   html.ds-sb-collapsed .sidebar-footer { flex-direction: column; gap: 8px; }
   html.ds-sb-collapsed .sb-user { flex: none; justify-content: center; }
+  html.ds-sb-collapsed .sidebar-footer .hdr-vinc-sel { display: none; }
   /* contador vira selo sobre o ícone */
   html.ds-sb-collapsed .ntf-nav-badge { position: absolute; top: 4px; left: calc(50% + 4px); height: 16px; min-width: 16px; padding: 0 4px; font-size: 10px;
     box-shadow: 0 0 0 2px var(--ds-color-surface); }
@@ -1918,6 +2017,7 @@ function initHeader() {
       document.getElementById('user-menu-email').innerText = user.email;
 
       _headerRevelarItensAdmin(user);
+      hdrVincMontar(user);
       if (typeof ntfAposLogin === 'function') ntfAposLogin();
     })
     .apiGetHeaderInfo();
@@ -1930,6 +2030,41 @@ function _headerRevelarItensAdmin(user) {
   if (!isAdminDev) return;
   const itemCfgSistema = document.getElementById('nav-item-config-sistema');
   if (itemCfgSistema) itemCfgSistema.classList.remove('hidden');
+}
+
+// --- Vínculos do usuário (vários vínculos por pessoa) ---
+// vinculos[] = { id, matricula, cargo, unidade, idUnidade }; idVinculoAtivo '' = todos (união, padrão).
+// vinculoUmPorVez: não existe "todos". precisaEscolherVinculo: tela intermediária antes do app.
+function hdrVincRotulo(v) { return [v.unidade, v.matricula].filter(Boolean).join(' · ') || String(v.id); }
+function hdrVincMontar(user) {
+  var vs = user.vinculos || [];
+  var sel = document.getElementById('hdr-vinc-sel'), rodape = document.getElementById('user-menu-container');
+  if (user.precisaEscolherVinculo && vs.length) hdrVincPedirEscolha(vs);
+  if (vs.length <= 1) { sel.classList.add('hidden'); rodape.classList.remove('hdr-tem-vinc'); return; }
+  var ativo = String(user.idVinculoAtivo || '');
+  var ops = user.vinculoUmPorVez ? [] : ['<option value=""' + (ativo ? '' : ' selected') + '>' + escapeHtml(user.unidade || 'Todos os vínculos') + '</option>'];
+  vs.forEach(function (v) {
+    ops.push('<option value="' + escapeHtml(String(v.id)) + '"' + (String(v.id) === ativo ? ' selected' : '') + (v.cargo ? ' title="' + escapeHtml(v.cargo) + '"' : '') + '>' + escapeHtml(hdrVincRotulo(v)) + '</option>');
+  });
+  sel.innerHTML = ops.join('');
+  sel.setAttribute('data-title', 'Vínculo');
+  sel.classList.remove('hidden');
+  rodape.classList.add('hdr-tem-vinc');
+}
+function hdrVincPedirEscolha(vs) {
+  document.getElementById('hdr-vinc-lista').innerHTML = vs.map(function (v) {
+    return '<button type="button" class="hdr-vinc-opcao" data-on-click="components_header.91" data-aclick0="' + escapeJsAttr(String(v.id)) + '">'
+      + '<strong>' + escapeHtml(hdrVincRotulo(v)) + '</strong>' + (v.cargo ? '<span>' + escapeHtml(v.cargo) + '</span>' : '') + '</button>';
+  }).join('');
+  document.getElementById('hdr-vinc-escolha').classList.remove('hidden');
+  bloquearFundo();
+}
+function hdrVincEscolher(id) {
+  mostrarLoader();
+  google.script.run
+    .withSuccessHandler(function () { window.location.reload(); })
+    .withFailureHandler(function (err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
+    .apiEscolherVinculo(id || '');
 }
 
 window.addEventListener('load', initHeader);
@@ -2253,6 +2388,8 @@ _atualizarBotaoSidebar();
 
 // Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
 uiRegistrarAcoes('components_header', {
+  '90': function (event) { hdrVincEscolher(this.value); },
+  '91': function (event) { hdrVincEscolher(uiArgJs(this.dataset.aclick0)); },
   '1': function (event) { toggleMenu(); },
   '2': function (event) { navigate('home'); fecharMenuMobile(); },
   '3': function (event) { toggleNavSubmenu('mensagens', event); },
@@ -5130,11 +5267,17 @@ uiRegistrarAcoes('components_modal_resultado', {
           </div>
         </div>
 
+        <!-- Vínculos (leitura): usuário com mais de um vínculo — lotação, cargo e matrícula vêm de cada vínculo -->
+        <div class="form-group hidden" id="user-vinculos-leitura">
+          <label>Vínculos<span class="material-symbols-outlined user-info-ico" data-title="Vêm da base de servidores; não se editam aqui.">info</span></label>
+          <div class="user-vinculos-lista" id="user-vinculos-lista"></div>
+        </div>
+
         <!-- Linha 3: Siape e Cargo (autocomplete via tabela CARGOS) -->
-        <div class="form-row">
+        <div class="form-row" id="user-linha-siape-cargo">
           <div class="form-group">
-            <label>SIAPE (Matrícula) *</label>
-            <input type="text" name="siape" id="input-user-siape" class="form-control" required placeholder="Apenas números (Máx 7)" maxlength="7" data-on-input="components_modal_usuario.8" data-on-blur="components_modal_usuario.9">
+            <label>SIAPE (Matrícula)</label>
+            <input type="text" name="siape" id="input-user-siape" class="form-control" placeholder="Apenas números (Máx 7)" maxlength="7" data-on-input="components_modal_usuario.8" data-on-blur="components_modal_usuario.9">
             <small id="error-siape" class="error-text hidden">SIAPE já cadastrado.</small>
           </div>
           <div class="form-group" style="position: relative;">
@@ -5147,8 +5290,8 @@ uiRegistrarAcoes('components_modal_resultado', {
         </div>
 
         <!-- Linha 4: Lotação (Autocomplete Unidade) -->
-        <div class="form-group" style="position: relative;">
-          <label>Lotação (Unidade) *</label>
+        <div class="form-group" style="position: relative;" id="user-linha-lotacao">
+          <label>Lotação (Unidade) <span id="user-lotacao-obrig">*</span></label>
           <input type="text" id="input-user-unidade-search" class="form-control" placeholder="Digite Sigla ou Nome da Unidade..." autocomplete="off">
           <input type="hidden" name="idUnidade" id="input-user-unidade-value" required>
 
@@ -5260,6 +5403,17 @@ uiRegistrarAcoes('components_modal_resultado', {
 .autocomplete-sub { display: block; font-size: 0.75rem; color: var(--ds-color-text-ui-muted); }
 .input-icon-right { position: absolute; right: 10px; top: 35px; }
 
+/* Vínculos (leitura) */
+.user-info-ico { font-size: 16px; color: var(--ds-color-text-ui-muted); cursor: help; vertical-align: middle; margin-left: 4px; }
+.user-vinculos-lista { border: 1px solid var(--ds-color-border-ui); border-radius: 4px; background: var(--ds-color-bg-subtle); }
+.user-vinculo-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--ds-color-surface); border-bottom: 1px solid var(--ds-color-border-ui); }
+.user-vinculo-item:last-child { border-bottom: none; }
+.user-vinculo-txt { flex: 1; min-width: 0; }
+.user-vinculo-txt strong { display: block; font-weight: 500; font-size: 0.9rem; color: var(--ds-color-text-ui); }
+.user-vinculo-txt span { display: block; font-size: 0.75rem; color: var(--ds-color-text-ui-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.form-control[readonly], .form-control:disabled { background: var(--ds-color-bg-subtle); cursor: default; }
+body.high-contrast .user-vinculos-lista, body.high-contrast .user-vinculo-item { background: #000; border-color: #fff; }
+
 /* Alto Contraste */
 body.high-contrast .roles-container { border-color: #fff; background: #000; }
 body.high-contrast .role-item { background: #000; border-color: #fff; }
@@ -5274,6 +5428,7 @@ let fotoUserBase64 = null;
 let cacheUnidadesUser = [];
 let cachePapeisUser = [];
 let cacheCargosUser = [];
+let lotacaoEditavelUser = true; // false = usuário ligado à base: lotação, cargo e matrícula só leitura
 
 function abrirModalUsuario() {
   const form = document.getElementById('form-novo-usuario');
@@ -5299,6 +5454,7 @@ function abrirModalUsuario() {
 
   // Reseta erros
   resetarErros();
+  aplicarVinculosNoFormulario(true, []);
 
   document.getElementById('modal-novo-usuario').classList.remove('hidden');
 }
@@ -5324,6 +5480,7 @@ function abrirModalEdicaoUsuario(idUsuario) {
 
   // Reseta erros
   resetarErros();
+  aplicarVinculosNoFormulario(true, []);
 
   document.getElementById('modal-novo-usuario').classList.remove('hidden');
 
@@ -5364,6 +5521,7 @@ function preencherFormularioUsuario(dados) {
 
   if (dados.idUnidade) selecionarUnidadeUser(dados.idUnidade, dados.unidadeTexto || dados.idUnidade);
   if (dados.idCargo) selecionarCargoUser(dados.idCargo, dados.cargoNome || '');
+  aplicarVinculosNoFormulario(dados.lotacaoEditavel !== false, dados.vinculos || []);
 
   if (dados.fotoUrl) {
     const preview = document.getElementById('preview-foto-user');
@@ -5385,6 +5543,31 @@ function aplicarPermissoesNoFormulario(permissoes) {
       dateInput.value = p.validade || '';
     }
   });
+}
+
+// lotacaoEditavel=false: a base manda (só leitura). Mais de um vínculo: lista em leitura no lugar dos campos únicos.
+function aplicarVinculosNoFormulario(editavel, vinculos) {
+  lotacaoEditavelUser = editavel;
+  const varios = (vinculos || []).length > 1;
+  const lista = document.getElementById('user-vinculos-lista');
+  lista.innerHTML = varios ? vinculos.map(v => {
+    const sub = [v.cargo, v.ativo === false ? 'Inativo' : ''].filter(Boolean).join(' · ');
+    return '<div class="user-vinculo-item"><span class="material-symbols-outlined icon-sm">badge</span><div class="user-vinculo-txt">'
+      + '<strong>' + escapeHtml([v.unidade, v.matricula].filter(Boolean).join(' · ') || '—') + '</strong>'
+      + (sub ? '<span data-title="' + escapeHtml(sub) + '">' + escapeHtml(sub) + '</span>' : '') + '</div></div>';
+  }).join('') : '';
+  document.getElementById('user-vinculos-leitura').classList.toggle('hidden', !varios);
+  document.getElementById('user-linha-siape-cargo').classList.toggle('hidden', varios);
+  document.getElementById('user-linha-lotacao').classList.toggle('hidden', varios);
+
+  document.getElementById('input-user-siape').readOnly = !editavel;
+  document.getElementById('input-user-cargo-search').disabled = !editavel;
+  document.getElementById('input-user-unidade-search').disabled = !editavel;
+  document.getElementById('user-lotacao-obrig').classList.toggle('hidden', !editavel);
+  if (!editavel) {
+    document.getElementById('user-cargo-clear-btn').classList.add('hidden');
+    document.getElementById('user-unidade-clear-btn').classList.add('hidden');
+  }
 }
 
 function fecharModalUsuario() {
@@ -5615,6 +5798,7 @@ function validarEmailUnico(input) {
 }
 
 function validarSiapeUnico(input) {
+  if (input.readOnly) return;
   const siape = input.value;
   const errorMsg = document.getElementById('error-siape');
   const btn = document.getElementById('btn-salvar-user');
@@ -5683,7 +5867,7 @@ function handleSalvarNovoUsuario(e) {
   
   // Verifica se há Unidade selecionada (campo hidden)
   const idUnidade = document.getElementById('input-user-unidade-value').value;
-  if (!idUnidade) {
+  if (!idUnidade && lotacaoEditavelUser) {
     alert("Selecione uma Lotação (Unidade) válida.");
     return;
   }
@@ -21479,7 +21663,7 @@ function initConfigSistema() {
   try { var n = JSON.parse(sessionStorage.getItem(CSIS_NAV_KEY) || '{}'); _csis.mod = n.mod || ''; _csis.secPor = n.secPor || {}; } catch (e) {}
   if (_csis.estrutura) return csisRender(true);
   csisRaiz().innerHTML = '<div class="csis-cabecalho"><h1 class="csis-titulo">Configurações do sistema</h1></div><div class="csis-vazio"><span class="material-symbols-outlined" style="font-size:28px">progress_activity</span></div>';
-  csisChamar('apiGetConfigSistemaEstrutura', [], function (r) { _csis.estrutura = r || { modulos: [] }; csisRender(true); });
+  csisChamar('apiGetConfigSistemaEstrutura', [], function (r) { _csis.estrutura = r || { modulos: [] }; csisCadGarantirSecao(); csisRender(true); });
 }
 
 function csisModulo() {
@@ -21544,6 +21728,7 @@ function csisHtmlConteudo(mod, sec) {
   else if (sec.painel === 'lista') corpo = csisHtmlListas(sec, d);
   else if (sec.painel === 'tiposNotificacao') corpo = csisHtmlTipos(d);
   else if (sec.painel === 'apps') corpo = csisHtmlApps(d);
+  else if (sec.painel === 'cadastroUsuarios') corpo = csisHtmlCadastro(d);
   var rod = sec.salvaEmLote && csisSujo(mod, sec) ? '<div class="csis-rodape"><span class="csis-status">Alterações não salvas</span>'
     + '<button type="button" class="ds-btn ds-btn--ghost" data-on-click="pages_config_sistema.3">Descartar</button>'
     + '<button type="button" class="ds-btn ds-btn--primary" data-on-click="pages_config_sistema.4">Salvar</button></div>' : '';
@@ -21570,6 +21755,7 @@ function csisDescartar(semRender) {
 }
 function csisSalvar() {
   var mod = csisModulo(), sec = csisSecao(mod), k = csisChave(mod, sec), d = _csis.dados[k];
+  if (sec.painel === 'cadastroUsuarios') return csisCadSalvar(mod, sec, k, d);
   var payload = { valores: d.valores || {}, travas: d.travas || {} };
   var invalido = (sec.parametros || []).find(function (p) {
     var v = d.valores[p.chave], vazio = v === '' || v === null || v === undefined;
@@ -21781,6 +21967,58 @@ function csisSalvarApp(id, st, sub) {
   csisSalvarJa('salvar', [id, st, sub], antes);
 }
 
+// ---------- painel: cadastroUsuarios (política de cadastro; rotas próprias, salva em lote) ----------
+// d = { modo, modos, dominios (texto), exigeAprovacao, situacoesAtivas (texto) } — contrato de apiGetConfigCadastroUsuarios.
+var CSIS_CAD_MODOS = { BASE: 'Só a base de servidores', BASE_OU_AVULSO: 'Base ou usuário avulso', LIVRE: 'Livre' };
+var CSIS_CAD_INFO = 'Só a base: só quem está ativo na base de servidores pode ser cadastrado ou fazer o primeiro acesso. '
+  + 'Base ou avulso: além da base, quem tem permissão cadastra usuário avulso, fora da base. '
+  + 'Livre: o cadastro não consulta a base.';
+// A seção vive no mesmo módulo da chave VINCULO_UM_POR_VEZ (Acesso), logo depois dela; sem esse módulo, no primeiro.
+function csisCadGarantirSecao() {
+  var ms = (_csis.estrutura && _csis.estrutura.modulos) || [];
+  if (!ms.length || ms.some(function (m) { return (m.secoes || []).some(function (s) { return s.painel === 'cadastroUsuarios'; }); })) return;
+  var alvo = ms[0], pos = alvo.secoes.length;
+  ms.forEach(function (m) { (m.secoes || []).forEach(function (s, i) {
+    if ((s.parametros || []).some(function (p) { return p.chave === 'VINCULO_UM_POR_VEZ'; })) { alvo = m; pos = i + 1; }
+  }); });
+  alvo.secoes.splice(pos, 0, { id: 'cadastro_usuarios', rotulo: 'Cadastro de usuários', icone: 'how_to_reg', painel: 'cadastroUsuarios', salvaEmLote: true,
+    apis: { get: 'apiGetConfigCadastroUsuarios', salvar: 'apiSalvarConfigCadastroUsuarios' } });
+}
+function csisCadModos(d) {
+  var l = (d.modos && d.modos.length) ? d.modos : Object.keys(CSIS_CAD_MODOS);
+  return l.map(function (m) { var v = typeof m === 'object' ? (m.valor || m.id) : m; return { valor: v, rotulo: (typeof m === 'object' && m.rotulo) || CSIS_CAD_MODOS[v] || v }; });
+}
+function csisHtmlCadastro(d) {
+  var o = csisCadModos(d).find(function (x) { return x.valor === d.modo; });
+  var linha = function (rot, info, ctl, cls) { return '<div class="csis-linha"><span class="csis-rotulo">' + rot + csisInfo(info) + '</span><div class="csis-ctl">' + ctl + '</div></div>'; };
+  return linha('Modo de cadastro *', CSIS_CAD_INFO,
+      '<button type="button" class="csis-sel" aria-haspopup="menu" aria-expanded="false" data-on-click="pages_config_sistema.17"><span>' + escapeHtml(o ? o.rotulo : '—') + '</span><span class="material-symbols-outlined">arrow_drop_down</span></button>')
+    + linha('Domínios de e-mail permitidos', 'Separados por vírgula (ex.: ufpa.br). Vazio aceita qualquer e-mail.',
+      '<input class="csis-in csis-in-larga" aria-label="Domínios de e-mail permitidos" maxlength="500" value="' + escapeHtml(d.dominios || '') + '" data-on-input="pages_config_sistema.18">')
+    + linha('Exige aprovação do administrador', 'O primeiro acesso fica pendente até um administrador aprovar.',
+      csisSw(d.exigeAprovacao, false, 'csisCadAlternarAprovacao()', 'Exige aprovação do administrador'))
+    + linha('Situações funcionais ativas', 'Códigos de situação que contam como servidor ativo na carga, separados por vírgula.',
+      '<input class="csis-in csis-in-larga" aria-label="Situações funcionais ativas" maxlength="100" value="' + escapeHtml(d.situacoesAtivas || '') + '" data-on-input="pages_config_sistema.19">');
+}
+function csisCadAbrirModo(btn) {
+  var d = csisDados();
+  abrirMenuSelecao(btn, [{ itens: csisCadModos(d).map(function (o) {
+    return { label: o.rotulo, ativo: o.valor === d.modo, onclick: "csisCadEscolherModo('" + escapeJsAttr(String(o.valor)) + "')" };
+  }) }]);
+}
+function csisCadEscolherModo(v) { csisDados().modo = v; csisRenderConteudo(); }
+function csisCadAlternarAprovacao() { var d = csisDados(); d.exigeAprovacao = !d.exigeAprovacao; csisRenderConteudo(); }
+function csisCadDigitar(campo, v) { csisDados()[campo] = v; csisAtualizarRodape(); }
+function csisCadSalvar(mod, sec, k, d) {
+  var valores = { modo: d.modo, dominios: d.dominios || '', exigeAprovacao: d.exigeAprovacao === true, situacoesAtivas: d.situacoesAtivas || '' };
+  mostrarLoader();
+  csisApi(mod, sec, 'salvar', [valores], function (r) {
+    esconderLoader();
+    _csis.dados[k] = r && r.modo ? r : d; _csis.salvos[k] = JSON.stringify(_csis.dados[k]); _csis.erro[k] = '';
+    csisRenderConteudo(); showMessage('success', 'Configuração salva', '');
+  }, function (e) { esconderLoader(); _csis.erro[k] = (e && e.message) || String(e); csisRenderConteudo(); });
+}
+
 // Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
 uiRegistrarAcoes('pages_config_sistema', {
   '1': function (event) { csisMudarModulo(uiArgJs(this.dataset.aclick0)); },
@@ -21798,7 +22036,10 @@ uiRegistrarAcoes('pages_config_sistema', {
   '13': function (event) { if(event.key==='Enter'){csisAdicionar(uiArgJs(this.dataset.akeydown0))}; },
   '14': function (event) { csisAdicionar(uiArgJs(this.dataset.aclick0)); },
   '15': function (event) { csisMenuSubstituto(this, uiArgJs(this.dataset.aclick0), false); },
-  '16': function (event) { csisMenuApp(this, uiArgJs(this.dataset.aclick0)); }
+  '16': function (event) { csisMenuApp(this, uiArgJs(this.dataset.aclick0)); },
+  '17': function (event) { csisCadAbrirModo(this); },
+  '18': function (event) { csisCadDigitar('dominios', this.value); },
+  '19': function (event) { csisCadDigitar('situacoesAtivas', this.value); }
 });
 </script>
 
@@ -23319,17 +23560,32 @@ uiRegistrarAcoes('pages_mensagens_enviadas', {
         <span class="material-symbols-outlined">refresh</span>
         <span class="desktop-only-inline">Atualizar</span>
       </button>
-      <button class="btn btn-outline btn-sm desktop-only-flex" data-on-click="pages_usuarios.2">
+      <button class="btn btn-outline btn-sm desktop-only-flex usr-so-lista" data-on-click="pages_usuarios.2">
         <span class="material-symbols-outlined">upload_file</span>
         <span class="desktop-only-inline">Importar</span>
       </button>
-      <button class="btn btn-primary btn-sm desktop-only-flex" data-on-click="pages_usuarios.3">
+      <button class="btn btn-primary btn-sm desktop-only-flex usr-so-lista" data-on-click="pages_usuarios.3">
         <span class="material-symbols-outlined">person_add</span>
         <span class="desktop-only-inline">Novo Usuário</span>
       </button>
     </div>
   </div>
 
+  <!-- ABAS (só ADMIN/DEV): Usuários · Aprovações pendentes · Carga de servidores.
+       As views das outras abas vêm de pages_usuarios_pendentes.html e pages_servidores_carga.html. -->
+  <div class="usr-abas hidden" id="usr-abas" role="tablist">
+    <button type="button" class="usr-aba ativa" role="tab" aria-selected="true" data-usr-aba="lista" data-on-click="pages_usuarios.26" data-aclick0="lista">
+      <span class="material-symbols-outlined">group</span>Usuários
+    </button>
+    <button type="button" class="usr-aba" role="tab" aria-selected="false" data-usr-aba="pendentes" data-on-click="pages_usuarios.26" data-aclick0="pendentes">
+      <span class="material-symbols-outlined">how_to_reg</span>Aprovações pendentes
+    </button>
+    <button type="button" class="usr-aba" role="tab" aria-selected="false" data-usr-aba="carga" data-on-click="pages_usuarios.26" data-aclick0="carga">
+      <span class="material-symbols-outlined">badge</span>Carga de servidores
+    </button>
+  </div>
+
+  <div id="usr-view-lista" class="usr-view">
   <!-- FILTROS -->
   <div class="card filters-container">
 
@@ -23473,8 +23729,10 @@ uiRegistrarAcoes('pages_mensagens_enviadas', {
     </div>
   </div>
 
+  </div>
+
   <!-- FAB (Mobile Only): Novo Usuário / Importar -->
-  <div id="fab-container-usuarios" class="fab-container mobile-only-flex">
+  <div id="fab-container-usuarios" class="fab-container mobile-only-flex usr-so-lista">
     <div class="fab-backdrop" data-on-click="pages_usuarios.22"></div>
     <button class="fab-main" data-on-click="pages_usuarios.22">
       <span class="material-symbols-outlined">add</span>
@@ -23534,6 +23792,17 @@ uiRegistrarAcoes('pages_mensagens_enviadas', {
 .barra-selecao-acoes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 body.high-contrast .barra-selecao { background: #000; border-color: var(--ds-color-action); }
 
+/* Abas (ADMIN/DEV) — mesmo visual das abas de Configurações do sistema (.csis-aba) */
+.usr-abas { display: flex; gap: 4px; border-bottom: 1px solid var(--ds-color-border); overflow-x: auto; overflow-y: hidden; scrollbar-width: none; margin-bottom: 16px; }
+.usr-abas.hidden, .usr-view.hidden, .usr-so-lista.usr-oculto { display: none !important; }
+.usr-abas::-webkit-scrollbar { display: none; }
+.usr-aba { display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px; border: none; background: none; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit;
+  color: var(--ds-color-text-muted); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.usr-aba:hover { color: var(--ds-color-text); }
+.usr-aba.ativa { color: var(--ds-color-action); border-bottom-color: var(--ds-color-action); }
+.usr-aba .material-symbols-outlined { font-size: 18px; }
+@media (max-width: 768px) { .usr-aba { min-height: 44px; } }
+
 /* Filtros extras (ocultos por padrão no mobile) */
 #filtros-extra-usuarios .filter-actions { gap: 8px; }
 
@@ -23565,11 +23834,44 @@ let usuariosCurrentPage = 1;
 let usuariosItemsPerPage = 10;
 let usuariosSelecionados = new Set();
 let usuariosOrdenacao = { coluna: null, direcao: 'asc' };
+let usuariosSiglaUnidade = {}; // id da unidade → sigla (lotação exibe todas as unidades da pessoa: idsUnidades)
+let usuariosAba = 'lista';
 
 // Inicializador (pode ser chamado no Roteamento)
 function initUsuarios() {
+  usrAbaRevelar();
   carregarOpcoesAuxiliares();
-  carregarUsuarios();
+  usrAbaMudar(usuariosAba);
+}
+
+// Abas só para ADMIN/DEV (as rotas das outras abas também exigem o papel no servidor)
+function usrAbaRevelar(tentativa) {
+  var u = (typeof usuarioLogado !== 'undefined') ? usuarioLogado : null;
+  if (!u && (tentativa || 0) < 25) { setTimeout(function () { usrAbaRevelar((tentativa || 0) + 1); }, 200); return; } // F5: o cabeçalho ainda não respondeu
+  var admin = !!u && (u.papeis || []).some(function (p) { return p === 'ADMIN' || p === 'DEV'; });
+  document.getElementById('usr-abas').classList.toggle('hidden', !admin);
+  if (!admin) usuariosAba = 'lista';
+}
+
+function usrAbaMudar(aba) {
+  usuariosAba = aba;
+  document.querySelectorAll('#usr-abas .usr-aba').forEach(function (b) {
+    var on = b.getAttribute('data-usr-aba') === aba;
+    b.classList.toggle('ativa', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+  });
+  ['lista', 'pendentes', 'carga'].forEach(function (v) {
+    var el = document.getElementById('usr-view-' + v);
+    if (el) el.classList.toggle('hidden', v !== aba);
+  });
+  document.querySelectorAll('#page-usuarios .usr-so-lista').forEach(function (el) { el.classList.toggle('usr-oculto', aba !== 'lista'); });
+  usrAbaCarregar();
+}
+
+function usrAbaCarregar() {
+  if (usuariosAba === 'pendentes' && typeof updCarregar === 'function') updCarregar();
+  else if (usuariosAba === 'carga' && typeof srvIniciar === 'function') srvIniciar();
+  else carregarUsuarios();
 }
 
 function carregarOpcoesAuxiliares() {
@@ -23577,6 +23879,9 @@ function carregarOpcoesAuxiliares() {
     .withSuccessHandler(dados => {
       popularSelectUsuarios('user-filtro-papel', dados.papeis, 'id', 'nome');
       popularSelectUsuarios('user-filtro-unidade', dados.unidades, 'id', 'sigla');
+      usuariosSiglaUnidade = {};
+      (dados.unidades || []).forEach(function (x) { usuariosSiglaUnidade[String(x.id)] = x.sigla || x.nome || ''; });
+      if (usuariosCache && usuariosCache.length) atualizarTabelaUsuarios();
     })
     .withFailureHandler(err => console.error('Erro ao carregar filtros:', err))
     .apiGetDadosAuxiliaresUsuarios();
@@ -23665,7 +23970,7 @@ function _ordenarUsuarios(lista) {
     switch (col) {
       case 'nome':   va = (a.nome    || '').toLowerCase(); vb = (b.nome    || '').toLowerCase(); break;
       case 'email':  va = (a.email   || '').toLowerCase(); vb = (b.email   || '').toLowerCase(); break;
-      case 'unidade':    va = (a.unidadeNome || '').toLowerCase(); vb = (b.unidadeNome || '').toLowerCase(); break;
+      case 'unidade':    va = _usuariosLotacaoTexto(a).toLowerCase(); vb = _usuariosLotacaoTexto(b).toLowerCase(); break;
       case 'status': va = a.ativo ? 0 : 1;                 vb = b.ativo ? 0 : 1;                 break;
       default: return 0;
     }
@@ -23689,6 +23994,13 @@ function _atualizarIconesOrdenacaoUsuarios() {
       el.textContent = '';
     }
   });
+}
+
+// Todas as unidades da pessoa (idsUnidades); idUnidadeLotacao/unidadeNome ficam só como reserva
+function _usuariosLotacaoTexto(u) {
+  var ids = (u.idsUnidades && u.idsUnidades.length) ? u.idsUnidades : (u.idUnidadeLotacao ? [u.idUnidadeLotacao] : []);
+  var siglas = ids.map(function (id) { return usuariosSiglaUnidade[String(id)] || ''; }).filter(Boolean);
+  return siglas.length ? siglas.join(' · ') : (u.unidadeNome || '');
 }
 
 function atualizarTabelaUsuarios() {
@@ -23773,7 +24085,7 @@ function atualizarTabelaUsuarios() {
           <span class="contact-phone">${escapeHtml(u.telefone || '')}</span>
         </div>
       </td>
-      <td style="font-size:0.85rem">${escapeHtml(u.unidadeNome || '-')}</td>
+      <td style="font-size:0.85rem">${escapeHtml(_usuariosLotacaoTexto(u) || '-')}</td>
       <td>${papeisHtml}</td>
       <td>${badgeStatus}</td>
       <td style="text-align:center">${desktopActions}</td>
@@ -23990,7 +24302,7 @@ function mudarTamanhoPaginaUsuarios(val) {
 
 // Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
 uiRegistrarAcoes('pages_usuarios', {
-  '1': function (event) { carregarUsuarios(); },
+  '1': function (event) { usrAbaCarregar(); },
   '2': function (event) { abrirModalImportarUsuarios(); },
   '3': function (event) { abrirModalUsuario(); },
   '4': function (event) { if(event.key === 'Enter') carregarUsuarios(); },
@@ -24014,9 +24326,621 @@ uiRegistrarAcoes('pages_usuarios', {
   '22': function (event) { toggleFabUsuarios(); },
   '23': function (event) { toggleFabUsuarios(); abrirModalImportarUsuarios(); },
   '24': function (event) { toggleFabUsuarios(); abrirModalUsuario(); },
-  '25': function (event) { toggleSelecaoUsuario(uiArgJs(this.dataset.achange0), this.checked); }
+  '25': function (event) { toggleSelecaoUsuario(uiArgJs(this.dataset.achange0), this.checked); },
+  '26': function (event) { usrAbaMudar(uiArgJs(this.dataset.aclick0)); }
 });
 </script>
+       <!-- ARQUIVO: pages_usuarios_pendentes.html
+     Gerenciar Usuários → aba "Aprovações pendentes" (ADMIN/DEV). Primeiros acessos que aguardam o administrador.
+     Rotas: apiGetUsuariosPendentes, apiAprovarUsuarioPendente(id), apiRecusarUsuarioPendente(id).
+     A view é movida para dentro de #page-usuarios em runtime (ver updMontar). Prefixo de globais: upd.
+     Nome por extenso (o registro é a própria pessoa — nomeRespExibicao não se aplica). -->
+
+<div id="usr-view-pendentes" class="usr-view hidden">
+  <div class="upd-tabela-card">
+    <table class="table-full upd-tabela" id="tabela-pendentes">
+      <thead>
+        <tr>
+          <th class="upd-col-nome">Nome</th>
+          <th class="upd-col-email">E-mail</th>
+          <th class="upd-col-mat">Matrícula</th>
+          <th class="upd-col-em">Pedido em</th>
+          <th class="upd-col-acoes"></th>
+          <th class="upd-col-card" aria-hidden="true"></th>
+        </tr>
+      </thead>
+      <tbody id="tbody-pendentes">
+        <tr class="upd-linha-msg"><td colspan="6"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando…</span></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  #usr-view-pendentes .upd-tabela { margin: 0; border-collapse: separate; border-spacing: 0; }
+  #usr-view-pendentes .upd-tabela thead th { padding: 12px 16px; text-align: left; white-space: nowrap; font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
+    text-transform: uppercase; letter-spacing: 0.04em; color: var(--ds-color-text-muted); background: var(--ds-color-surface); border-bottom: 2px solid var(--ds-color-border); }
+  #usr-view-pendentes .upd-tabela tbody td { padding: 14px 16px; vertical-align: middle; border-bottom: 1px solid var(--ds-glass-border); font-size: var(--ds-text-base); color: var(--ds-color-text); }
+  #usr-view-pendentes .upd-tabela tbody tr:last-child td { border-bottom: none; }
+  #usr-view-pendentes .upd-tabela tbody tr:hover td { background: var(--ds-sidebar-item-hover); }
+  #usr-view-pendentes .upd-tabela tbody tr.upd-linha-msg:hover td { background: none; }
+  #usr-view-pendentes .upd-col-acoes { width: 1%; white-space: nowrap; text-align: right; }
+  #usr-view-pendentes .upd-col-card { display: none; }
+  #usr-view-pendentes .upd-nome { font-weight: var(--ds-weight-semibold); }
+  #usr-view-pendentes .upd-sec { color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); white-space: nowrap; }
+  #usr-view-pendentes .upd-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+  @media (max-width: 768px) {
+    #usr-view-pendentes .upd-tabela-card { background: none; border: none; box-shadow: none; }
+    #usr-view-pendentes .upd-tabela, #usr-view-pendentes .upd-tabela thead, #usr-view-pendentes .upd-tabela tbody { display: block; width: 100%; }
+    #usr-view-pendentes .upd-tabela thead { display: none; }
+    #usr-view-pendentes .upd-tabela tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+    #usr-view-pendentes .upd-tabela tbody tr {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "email acoes" "nome nome" "card card";
+      gap: 6px 8px; align-items: center; padding: 12px;
+      background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-shadow-1);
+    }
+    #usr-view-pendentes .upd-tabela tbody td { display: block; padding: 0; border: none; }
+    #usr-view-pendentes .upd-tabela tbody tr:hover td { background: none; }
+    #usr-view-pendentes .upd-tabela tbody .upd-col-email { grid-area: email; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+    #usr-view-pendentes .upd-tabela tbody .upd-col-nome { grid-area: nome; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--ds-text-md); }
+    #usr-view-pendentes .upd-tabela tbody .upd-col-acoes { grid-area: acoes; width: auto; }
+    #usr-view-pendentes .upd-tabela tbody .upd-col-card { grid-area: card; display: block; }
+    #usr-view-pendentes .upd-tabela tbody .upd-col-mat, #usr-view-pendentes .upd-tabela tbody .upd-col-em { display: none; }
+    #usr-view-pendentes .upd-tabela tbody tr.upd-linha-msg { display: block; grid-column: 1 / -1; background: none; border: none; box-shadow: none; padding: 0; }
+    #usr-view-pendentes .upd-tabela tbody tr.upd-linha-msg td { display: block; }
+  }
+</style>
+
+<script>
+var _upd = { lista: null };
+
+function updMontar() {
+  var view = document.getElementById('usr-view-pendentes'), pagina = document.getElementById('page-usuarios');
+  if (view && pagina && view.parentNode !== pagina) pagina.appendChild(view);
+}
+document.addEventListener('DOMContentLoaded', updMontar);
+
+function updCarregar() {
+  var tbody = document.getElementById('tbody-pendentes');
+  tbody.innerHTML = '<tr class="upd-linha-msg"><td colspan="6">' + spinnerListaHTML('Carregando…') + '</td></tr>';
+  google.script.run
+    .withSuccessHandler(function (lista) { _upd.lista = lista || []; updRender(); })
+    .withFailureHandler(function (err) {
+      tbody.innerHTML = '<tr class="upd-linha-msg"><td colspan="6"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">error</span><p class="el-esti">' + escapeHtml(err.message) + '</p></div></td></tr>';
+    })
+    .apiGetUsuariosPendentes();
+}
+
+function updRender() {
+  var tbody = document.getElementById('tbody-pendentes'), lista = _upd.lista || [];
+  if (!lista.length) {
+    tbody.innerHTML = '<tr class="upd-linha-msg"><td colspan="6"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">how_to_reg</span>'
+      + '<p class="el-esti">Nenhum pedido aguardando aprovação</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(function (p) {
+    var id = escapeJsAttr(String(p.id)), nome = escapeJsAttr(p.nome);
+    var acoes = acoesLinhaHTML('upd-' + p.id, [
+      { icone: 'check_circle', rotulo: 'Aprovar', onclick: "updAprovar('" + id + "')", principal: true },
+      { icone: 'person_remove', rotulo: 'Recusar', onclick: "updRecusar('" + id + "', '" + nome + "')", perigo: true }
+    ]);
+    var meta = [p.matricula, p.pedidoEm].filter(Boolean).map(function (x) { return '<span>' + escapeHtml(x) + '</span>'; }).join('');
+    return '<tr>'
+      + '<td class="upd-col-nome"><span class="upd-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</span></td>'
+      + '<td class="upd-col-email">' + escapeHtml(p.email) + '</td>'
+      + '<td class="upd-col-mat"><span class="upd-sec">' + escapeHtml(p.matricula || '—') + '</span></td>'
+      + '<td class="upd-col-em"><span class="upd-sec">' + escapeHtml(p.pedidoEm || '—') + '</span></td>'
+      + '<td class="upd-col-acoes">' + acoes + '</td>'
+      + '<td class="upd-col-card"><div class="upd-card-meta">' + meta + '</div></td></tr>';
+  }).join('');
+}
+
+function updAprovar(id) {
+  mostrarLoader();
+  google.script.run
+    .withSuccessHandler(function () { esconderLoader(); updCarregar(); })
+    .withFailureHandler(function (err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
+    .apiAprovarUsuarioPendente(id);
+}
+
+function updRecusar(id, nome) {
+  showConfirm('Recusar pedido?', 'Deseja recusar o pedido de "<strong>' + escapeHtml(nome) + '</strong>"? O pedido é apagado e a pessoa poderá pedir de novo.', function () {
+    mostrarLoader();
+    google.script.run
+      .withSuccessHandler(function () { esconderLoader(); updCarregar(); })
+      .withFailureHandler(function (err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
+      .apiRecusarUsuarioPendente(id);
+  });
+}
+</script>
+
+       <!-- ARQUIVO: pages_servidores_carga.html
+     Gerenciar Usuários → aba "Carga de servidores" (ADMIN/DEV): envio da carga, resultado, histórico e consulta da base.
+     Rotas: apiImportarServidores(dados), apiGetImportacoes(), apiGetServidores({ busca, ativo }).
+     Dados do envio: { formato: 'SIAPE'|'PLANILHA', ref, txt | matriz (1ª linha = cabeçalho), completa, arquivo }.
+     A consulta devolve no máximo 200 linhas ({ itens, truncado }); CPF já vem mascarado do servidor e é exibido como veio.
+     A view é movida para dentro de #page-usuarios em runtime (ver srvMontar). Prefixo de globais: srv.
+     Nome por extenso (cada registro é a própria pessoa). -->
+
+<div id="usr-view-carga" class="usr-view hidden">
+
+  <section class="srv-bloco">
+    <div class="srv-bloco-topo">Nova carga</div>
+    <div class="srv-linha">
+      <span class="srv-rotulo">Formato *</span>
+      <div class="srv-ctl">
+        <button type="button" class="srv-sel" id="srv-formato-btn" aria-haspopup="menu" aria-expanded="false" data-on-click="pages_servidores_carga.1">
+          <span id="srv-formato-label">Extrator SIAPE (.TXT + .REF)</span><span class="material-symbols-outlined">arrow_drop_down</span>
+        </button>
+      </div>
+    </div>
+    <div class="srv-linha" id="srv-linha-txt">
+      <label class="srv-rotulo" for="srv-arq-txt">Arquivo de dados (.TXT) *</label>
+      <div class="srv-ctl"><input type="file" id="srv-arq-txt" class="srv-arq" accept=".txt,.TXT" data-on-change="pages_servidores_carga.2"></div>
+    </div>
+    <div class="srv-linha" id="srv-linha-ref">
+      <label class="srv-rotulo" for="srv-arq-ref">Leiaute (.REF) *</label>
+      <div class="srv-ctl"><input type="file" id="srv-arq-ref" class="srv-arq" accept=".ref,.REF" data-on-change="pages_servidores_carga.2"></div>
+    </div>
+    <div class="srv-linha hidden" id="srv-linha-planilha">
+      <label class="srv-rotulo" for="srv-arq-planilha">Planilha (.CSV) *<span class="material-symbols-outlined srv-info" data-title="Primeira linha com os nomes dos campos; separador vírgula ou ponto e vírgula.">info</span></label>
+      <div class="srv-ctl"><input type="file" id="srv-arq-planilha" class="srv-arq" accept=".csv,text/csv" data-on-change="pages_servidores_carga.2"></div>
+    </div>
+    <div class="srv-linha">
+      <span class="srv-rotulo">Carga completa<span class="material-symbols-outlined srv-info" data-title="Completa: quem não vier no arquivo fica inativo (nunca é apagado). Parcial: só acrescenta e altera.">info</span></span>
+      <div class="srv-ctl" id="srv-completa-ctl"></div>
+    </div>
+    <div class="srv-erro hidden" id="srv-envio-erro" role="alert"><span class="material-symbols-outlined">error</span><span id="srv-envio-erro-txt"></span></div>
+    <div class="srv-acoes">
+      <button type="button" class="ds-btn ds-btn--primary" id="srv-btn-importar" data-on-click="pages_servidores_carga.3">
+        <span class="material-symbols-outlined">upload_file</span>Importar
+      </button>
+    </div>
+    <div class="srv-resultado hidden" id="srv-resultado"></div>
+  </section>
+
+  <section class="srv-bloco">
+    <div class="srv-bloco-topo">Histórico de cargas</div>
+    <table class="table-full srv-tabela" id="srv-tabela-hist">
+      <thead>
+        <tr>
+          <th class="srv-col-em">Data</th>
+          <th class="srv-col-arq">Arquivo</th>
+          <th class="srv-col-tipo">Carga</th>
+          <th class="srv-col-por">Por</th>
+          <th class="srv-col-tot">Resultado</th>
+          <th class="srv-col-card" aria-hidden="true"></th>
+        </tr>
+      </thead>
+      <tbody id="srv-tbody-hist">
+        <tr class="srv-linha-msg"><td colspan="6"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando…</span></div></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="srv-bloco">
+    <div class="srv-bloco-topo">Base de servidores</div>
+    <div class="srv-filtros">
+      <div class="srv-search">
+        <button type="button" class="ds-icon-action" id="srv-search-toggle" data-on-click="pages_servidores_carga.4" data-title="Buscar servidor" aria-label="Buscar servidor">
+          <span class="material-symbols-outlined">search</span>
+        </button>
+        <div class="srv-search-caixa hidden" id="srv-search-caixa">
+          <span class="material-symbols-outlined srv-search-icon" aria-hidden="true">search</span>
+          <input type="text" id="srv-busca" class="ds-input srv-search-input" maxlength="100" placeholder="Nome, matrícula ou e-mail…" aria-label="Buscar servidor"
+            data-on-input="pages_servidores_carga.5" data-on-keydown="pages_servidores_carga.6">
+          <button type="button" id="srv-limpar-busca" class="srv-search-clear hidden" data-on-click="pages_servidores_carga.7" data-title="Limpar busca" aria-label="Limpar busca">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+      <div class="srv-filtro">
+        <button type="button" class="srv-filtro-btn" id="srv-filtro-btn-ativo" data-on-click="pages_servidores_carga.8" aria-haspopup="menu" aria-expanded="false">
+          <span id="srv-filtro-label-ativo">Situação</span><span class="material-symbols-outlined">expand_more</span>
+        </button>
+        <button type="button" class="srv-filtro-x hidden" id="srv-filtro-x-ativo" data-on-click="pages_servidores_carga.9" data-title="Remover filtro de situação" aria-label="Remover filtro de situação">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <button type="button" id="srv-limpar-filtros" class="srv-limpar-link hidden" data-on-click="pages_servidores_carga.10">Limpar filtros</button>
+    </div>
+    <div class="srv-aviso hidden" id="srv-aviso-truncado" role="status"><span class="material-symbols-outlined">warning</span><span>Mostrando os primeiros 200 resultados. Refine a busca para ver os demais.</span></div>
+    <table class="table-full srv-tabela" id="srv-tabela-base">
+      <thead>
+        <tr>
+          <th class="srv-col-nome">Nome</th>
+          <th class="srv-col-mat">Matrícula</th>
+          <th class="srv-col-cpf">CPF</th>
+          <th class="srv-col-cargo">Cargo</th>
+          <th class="srv-col-lot">Lotação</th>
+          <th class="srv-col-sit">Situação</th>
+          <th class="srv-col-card" aria-hidden="true"></th>
+        </tr>
+      </thead>
+      <tbody id="srv-tbody-base">
+        <tr class="srv-linha-msg"><td colspan="7"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando…</span></div></td></tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<style>
+  #usr-view-carga { display: flex; flex-direction: column; gap: 28px; }
+  #usr-view-carga.hidden { display: none; }
+  #usr-view-carga .srv-bloco { min-width: 0; }
+  #usr-view-carga .srv-bloco-topo { padding: 0 4px 8px; border-bottom: 1px solid var(--ds-color-border); font-size: 16px; font-weight: 600; color: var(--ds-color-text); }
+  #usr-view-carga .srv-linha { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--ds-color-border); flex-wrap: wrap; max-width: 760px; }
+  #usr-view-carga .srv-linha.hidden { display: none; }
+  #usr-view-carga .srv-rotulo { flex: 1 1 220px; min-width: 0; display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--ds-color-text); }
+  #usr-view-carga .srv-ctl { display: flex; align-items: center; gap: 12px; margin-left: auto; min-width: 0; }
+  #usr-view-carga .srv-info { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; }
+  #usr-view-carga .srv-sel { min-width: 240px; height: 38px; padding: 0 6px 0 12px; box-sizing: border-box; border: 1px solid var(--ds-color-border); border-radius: 4px; background: var(--ds-color-surface);
+    color: var(--ds-color-text); font-family: inherit; font-size: 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; text-align: left; }
+  #usr-view-carga .srv-sel span:first-child { flex: 1; }
+  #usr-view-carga .srv-sel .material-symbols-outlined { font-size: 20px; color: var(--ds-color-text-muted); }
+  #usr-view-carga .srv-arq { max-width: 280px; font-family: inherit; font-size: 13px; color: var(--ds-color-text); }
+  #usr-view-carga .srv-acoes { display: flex; justify-content: flex-end; padding: 12px 4px 0; max-width: 760px; }
+  #usr-view-carga .srv-erro { display: flex; gap: 6px; align-items: flex-start; padding: 10px 4px; font-size: 13px; color: var(--ds-color-danger-fg); max-width: 760px; }
+  #usr-view-carga .srv-erro.hidden, #usr-view-carga .srv-aviso.hidden, #usr-view-carga .srv-resultado.hidden { display: none; }
+  #usr-view-carga .srv-erro .material-symbols-outlined, #usr-view-carga .srv-aviso .material-symbols-outlined { font-size: 18px; }
+  #usr-view-carga .srv-aviso { display: flex; gap: 6px; align-items: center; padding: 10px 4px; font-size: 13px; color: var(--ds-status-elaboracao-fg, #b06000); }
+
+  #usr-view-carga .srv-resultado { margin-top: 16px; max-width: 760px; }
+  #usr-view-carga .srv-totais { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+  #usr-view-carga .srv-total { padding: 12px; border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface); }
+  #usr-view-carga .srv-total strong { display: block; font-size: 22px; font-weight: 600; color: var(--ds-color-text); }
+  #usr-view-carga .srv-total span { font-size: 13px; color: var(--ds-color-text-muted); }
+  #usr-view-carga .srv-pend { margin-top: 12px; font-size: 13px; color: var(--ds-color-text); }
+  #usr-view-carga .srv-pend-grupo { padding: 8px 4px; border-bottom: 1px solid var(--ds-color-border); }
+  #usr-view-carga .srv-pend-grupo strong { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--ds-color-text-muted); margin-bottom: 4px; }
+
+  #usr-view-carga .srv-filtros { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 0; }
+  #usr-view-carga .srv-search { position: relative; display: inline-flex; align-items: center; }
+  #usr-view-carga .srv-search-caixa { position: relative; display: flex; align-items: center; }
+  #usr-view-carga .srv-search-caixa.hidden, #usr-view-carga .srv-search .ds-icon-action.hidden { display: none; }
+  #usr-view-carga .srv-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--ds-color-text-muted); pointer-events: none; }
+  #usr-view-carga .srv-search-input { width: 220px; max-width: 60vw; padding-left: 42px; padding-right: 38px; }
+  #usr-view-carga .srv-search-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); }
+  #usr-view-carga .srv-search-clear.hidden { display: none; }
+  #usr-view-carga .srv-search-clear:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text); }
+  #usr-view-carga .srv-search-clear .material-symbols-outlined { font-size: 18px; }
+  #usr-view-carga .srv-filtro { display: inline-flex; align-items: stretch; }
+  #usr-view-carga .srv-filtro-btn { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px; background: var(--ds-color-surface); border: 1px solid var(--ds-color-border);
+    border-radius: var(--ds-r-lg); color: var(--ds-color-text); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); cursor: pointer; white-space: nowrap; }
+  #usr-view-carga .srv-filtro-btn:hover { background: var(--ds-sidebar-item-hover); }
+  #usr-view-carga .srv-filtro-btn .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
+  #usr-view-carga .srv-filtro-btn--ativo { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); border-color: var(--ds-color-info-bg); font-weight: var(--ds-weight-semibold); }
+  #usr-view-carga .srv-filtro-btn--ativo .material-symbols-outlined { color: var(--ds-color-info-fg); }
+  #usr-view-carga .srv-filtro-btn:has(+ .srv-filtro-x:not(.hidden)) { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent); }
+  #usr-view-carga .srv-filtro-x { display: inline-flex; align-items: center; justify-content: center; width: 26px; padding: 0; background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); cursor: pointer;
+    border: 1px solid var(--ds-color-info-bg); border-left-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent); border-top-right-radius: var(--ds-r-lg); border-bottom-right-radius: var(--ds-r-lg); }
+  #usr-view-carga .srv-filtro-x.hidden, #usr-view-carga .srv-limpar-link.hidden { display: none; }
+  #usr-view-carga .srv-filtro-x .material-symbols-outlined { font-size: 15px; }
+  #usr-view-carga .srv-limpar-link { background: none; border: none; padding: 6px 4px; color: var(--ds-color-action); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; white-space: nowrap; }
+  #usr-view-carga .srv-limpar-link:hover { text-decoration: underline; }
+
+  #usr-view-carga .srv-tabela { margin: 0; border-collapse: separate; border-spacing: 0; }
+  #usr-view-carga .srv-tabela thead th { padding: 12px 16px; text-align: left; white-space: nowrap; font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--ds-color-text-muted); background: var(--ds-color-surface); border-bottom: 2px solid var(--ds-color-border); }
+  #usr-view-carga .srv-tabela tbody td { padding: 14px 16px; vertical-align: middle; border-bottom: 1px solid var(--ds-glass-border); font-size: var(--ds-text-base); color: var(--ds-color-text); }
+  #usr-view-carga .srv-tabela tbody tr:last-child td { border-bottom: none; }
+  #usr-view-carga .srv-tabela tbody tr:hover td { background: var(--ds-sidebar-item-hover); }
+  #usr-view-carga .srv-tabela tbody tr.srv-linha-msg:hover td { background: none; }
+  #usr-view-carga .srv-col-card { display: none; }
+  #usr-view-carga .srv-nome { font-weight: var(--ds-weight-semibold); }
+  #usr-view-carga .srv-sec { color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); white-space: nowrap; }
+  #usr-view-carga .srv-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+
+  @media (max-width: 768px) {
+    #usr-view-carga .srv-ctl { width: 100%; justify-content: flex-end; }
+    #usr-view-carga .srv-sel { width: 100%; min-width: 0; }
+    #usr-view-carga .srv-arq { max-width: 100%; width: 100%; }
+    #usr-view-carga .srv-acoes .ds-btn { flex: 1; justify-content: center; }
+    #usr-view-carga .srv-filtro { flex: 1 1 108px; }
+    #usr-view-carga .srv-filtro-btn { width: 100%; justify-content: space-between; }
+    #usr-view-carga .srv-tabela, #usr-view-carga .srv-tabela thead, #usr-view-carga .srv-tabela tbody { display: block; width: 100%; }
+    #usr-view-carga .srv-tabela thead { display: none; }
+    #usr-view-carga .srv-tabela tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 12px; }
+    #usr-view-carga .srv-tabela tbody tr {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "cab tag" "titulo titulo" "card card";
+      gap: 6px 8px; align-items: center; padding: 12px;
+      background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-shadow-1);
+    }
+    #usr-view-carga .srv-tabela tbody td { display: block; padding: 0; border: none; }
+    #usr-view-carga .srv-tabela tbody tr:hover td { background: none; }
+    #usr-view-carga .srv-tabela tbody .srv-col-card { grid-area: card; display: block; }
+    /* histórico: data · tipo / arquivo / totais */
+    #usr-view-carga #srv-tabela-hist tbody .srv-col-em { grid-area: cab; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+    #usr-view-carga #srv-tabela-hist tbody .srv-col-tipo { grid-area: tag; }
+    #usr-view-carga #srv-tabela-hist tbody .srv-col-arq { grid-area: titulo; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: var(--ds-weight-semibold); }
+    #usr-view-carga #srv-tabela-hist tbody .srv-col-por, #usr-view-carga #srv-tabela-hist tbody .srv-col-tot { display: none; }
+    /* base: matrícula · situação / nome / cpf, cargo, lotação */
+    #usr-view-carga #srv-tabela-base tbody .srv-col-mat { grid-area: cab; }
+    #usr-view-carga #srv-tabela-base tbody .srv-col-sit { grid-area: tag; }
+    #usr-view-carga #srv-tabela-base tbody .srv-col-nome { grid-area: titulo; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--ds-text-md); }
+    #usr-view-carga #srv-tabela-base tbody .srv-col-cpf, #usr-view-carga #srv-tabela-base tbody .srv-col-cargo, #usr-view-carga #srv-tabela-base tbody .srv-col-lot { display: none; }
+    #usr-view-carga .srv-tabela tbody tr.srv-linha-msg { display: block; grid-column: 1 / -1; background: none; border: none; box-shadow: none; padding: 0; }
+    #usr-view-carga .srv-tabela tbody tr.srv-linha-msg td { display: block; }
+  }
+  body.high-contrast #usr-view-carga .srv-total { background: #000; border-color: #fff; }
+</style>
+
+<script>
+var SRV_FORMATOS = [
+  { valor: 'SIAPE', rotulo: 'Extrator SIAPE (.TXT + .REF)' },
+  { valor: 'PLANILHA', rotulo: 'Planilha (.CSV)' }
+];
+var _srv = { formato: 'SIAPE', completa: true, ativo: '', busca: '', carregadoHist: false, timerBusca: null };
+
+function srvMontar() {
+  var view = document.getElementById('usr-view-carga'), pagina = document.getElementById('page-usuarios');
+  if (view && pagina && view.parentNode !== pagina) pagina.appendChild(view);
+  srvRenderCompleta();
+}
+document.addEventListener('DOMContentLoaded', srvMontar);
+
+// Fecha a busca vazia ao clicar fora (padrão "Filtros e busca em barra")
+document.addEventListener('click', function (e) {
+  var caixa = document.getElementById('srv-search-caixa');
+  if (!caixa || caixa.classList.contains('hidden')) return;
+  if (e.target.closest && e.target.closest('.srv-search')) return;
+  if (!document.getElementById('srv-busca').value) srvFecharBusca();
+});
+
+function srvIniciar() {
+  srvCarregarHistorico();
+  srvCarregarBase();
+}
+
+// ---------- envio ----------
+function srvAbrirFormato(btn) {
+  abrirMenuSelecao(btn, [{ itens: SRV_FORMATOS.map(function (f) {
+    return { label: f.rotulo, ativo: f.valor === _srv.formato, onclick: "srvEscolherFormato('" + f.valor + "')" };
+  }) }]);
+}
+function srvEscolherFormato(v) {
+  _srv.formato = v;
+  var f = SRV_FORMATOS.find(function (x) { return x.valor === v; });
+  document.getElementById('srv-formato-label').textContent = f ? f.rotulo : v;
+  var siape = v === 'SIAPE';
+  document.getElementById('srv-linha-txt').classList.toggle('hidden', !siape);
+  document.getElementById('srv-linha-ref').classList.toggle('hidden', !siape);
+  document.getElementById('srv-linha-planilha').classList.toggle('hidden', siape);
+  srvErro('');
+}
+function srvRenderCompleta() {
+  var el = document.getElementById('srv-completa-ctl');
+  if (el) el.innerHTML = ntfSwitchHtml(_srv.completa, false, 'srvAlternarCompleta()', 'Carga completa');
+}
+function srvAlternarCompleta() { _srv.completa = !_srv.completa; srvRenderCompleta(); }
+function srvErro(txt) {
+  document.getElementById('srv-envio-erro-txt').textContent = txt || '';
+  document.getElementById('srv-envio-erro').classList.toggle('hidden', !txt);
+}
+
+function srvLerArquivo(input, codificacao) {
+  return new Promise(function (resolve, reject) {
+    var arq = input.files && input.files[0];
+    if (!arq) { resolve(null); return; }
+    var r = new FileReader();
+    r.onload = function () { resolve({ nome: arq.name, texto: String(r.result || '') }); };
+    r.onerror = function () { reject(new Error('Não foi possível ler o arquivo ' + arq.name + '.')); };
+    r.readAsText(arq, codificacao || 'utf-8');
+  });
+}
+
+// CSV → matriz de células (aspas duplas, separador "," ou ";" detectado na 1ª linha)
+function srvCsvParaMatriz(texto) {
+  var t = String(texto || '').replace(/^\uFEFF/, '');
+  var primeira = t.split(/\r?\n/, 1)[0] || '';
+  var sep = (primeira.split(';').length > primeira.split(',').length) ? ';' : ',';
+  var linhas = [], linha = [], cel = '', aspas = false;
+  for (var i = 0; i < t.length; i++) {
+    var c = t[i];
+    if (aspas) {
+      if (c === '"') { if (t[i + 1] === '"') { cel += '"'; i++; } else aspas = false; } else cel += c;
+    } else if (c === '"') aspas = true;
+    else if (c === sep) { linha.push(cel); cel = ''; }
+    else if (c === '\n' || c === '\r') {
+      if (c === '\r' && t[i + 1] === '\n') i++;
+      linha.push(cel); cel = '';
+      if (linha.some(function (x) { return x !== ''; })) linhas.push(linha);
+      linha = [];
+    } else cel += c;
+  }
+  linha.push(cel);
+  if (linha.some(function (x) { return x !== ''; })) linhas.push(linha);
+  return linhas;
+}
+
+function srvImportar() {
+  srvErro('');
+  var siape = _srv.formato === 'SIAPE';
+  var leituras = siape
+    ? [srvLerArquivo(document.getElementById('srv-arq-txt'), 'latin1'), srvLerArquivo(document.getElementById('srv-arq-ref'), 'latin1')]
+    : [srvLerArquivo(document.getElementById('srv-arq-planilha'), 'utf-8')];
+  Promise.all(leituras).then(function (arqs) {
+    var dados;
+    if (siape) {
+      if (!arqs[0] || !arqs[1]) { srvErro('Escolha o arquivo .TXT e o leiaute .REF.'); return; }
+      dados = { formato: 'SIAPE', txt: arqs[0].texto, ref: arqs[1].texto, completa: _srv.completa, arquivo: arqs[0].nome };
+    } else {
+      if (!arqs[0]) { srvErro('Escolha a planilha.'); return; }
+      var matriz = srvCsvParaMatriz(arqs[0].texto);
+      if (matriz.length < 2) { srvErro('A planilha precisa do cabeçalho e de pelo menos uma linha.'); return; }
+      dados = { formato: 'PLANILHA', matriz: matriz, completa: _srv.completa, arquivo: arqs[0].nome };
+    }
+    mostrarLoader();
+    google.script.run
+      .withSuccessHandler(function (r) {
+        esconderLoader();
+        srvRenderResultado(r || {});
+        ['srv-arq-txt', 'srv-arq-ref', 'srv-arq-planilha'].forEach(function (id) { document.getElementById(id).value = ''; });
+        srvCarregarHistorico();
+        srvCarregarBase();
+      })
+      .withFailureHandler(function (err) { esconderLoader(); srvErro(err.message); })
+      .apiImportarServidores(dados);
+  }, function (err) { srvErro(err.message); });
+}
+
+// Contrato: pendências = [{ codigo, quantidade }]; erros = [{ linha, matricula, mensagens[] }] (máx. 50)
+function srvQtd(lista) { return Array.isArray(lista) ? lista.length : 0; }
+function srvItemPend(x) { return x.codigo + ' (' + x.quantidade + ')'; }
+function srvItemErro(x) {
+  return 'Linha ' + x.linha + (x.matricula ? ' · matrícula ' + x.matricula : '') + ': ' + (x.mensagens || []).join('; ');
+}
+function srvTotaisHTML(r) {
+  var p = r.pendencias || {};
+  var qPend = srvQtd(p.situacoesForaDoCatalogo) + srvQtd(p.cargosDesconhecidos) + srvQtd(p.uorgsDesconhecidas);
+  var tot = [
+    { n: r.novos, t: 'Novos' }, { n: r.alterados, t: 'Alterados' }, { n: r.inativados, t: 'Inativados' },
+    { n: r.comErro, t: 'Com erro' }, { n: qPend, t: 'Pendências' }
+  ];
+  return '<div class="srv-totais">' + tot.map(function (x) {
+    return '<div class="srv-total"><strong>' + escapeHtml(_fmtNumBR(Number(x.n) || 0)) + '</strong><span>' + x.t + '</span></div>';
+  }).join('') + '</div>';
+}
+function srvRenderResultado(r) {
+  var p = r.pendencias || {};
+  var grupos = [
+    { t: 'Linhas com erro', l: r.erros, fmt: srvItemErro },
+    { t: 'Situações fora do catálogo', l: p.situacoesForaDoCatalogo, fmt: srvItemPend },
+    { t: 'Cargos desconhecidos', l: p.cargosDesconhecidos, fmt: srvItemPend },
+    { t: 'Unidades desconhecidas', l: p.uorgsDesconhecidas, fmt: srvItemPend }
+  ].filter(function (g) { return Array.isArray(g.l) && g.l.length; });
+  var det = grupos.map(function (g) {
+    return '<div class="srv-pend-grupo"><strong>' + g.t + '</strong>' + g.l.map(function (x) { return escapeHtml(g.fmt(x)); }).join('<br>') + '</div>';
+  }).join('');
+  var el = document.getElementById('srv-resultado');
+  el.innerHTML = srvTotaisHTML(r) + (det ? '<div class="srv-pend">' + det + '</div>' : '');
+  el.classList.remove('hidden');
+}
+
+// ---------- histórico ----------
+function srvCarregarHistorico() {
+  var tbody = document.getElementById('srv-tbody-hist');
+  tbody.innerHTML = '<tr class="srv-linha-msg"><td colspan="6">' + spinnerListaHTML('Carregando…') + '</td></tr>';
+  google.script.run
+    .withSuccessHandler(function (lista) { srvRenderHistorico(lista || []); })
+    .withFailureHandler(function (err) { tbody.innerHTML = srvMsgHTML(6, 'error', err.message); })
+    .apiGetImportacoes();
+}
+function srvMsgHTML(cols, icone, titulo) {
+  return '<tr class="srv-linha-msg"><td colspan="' + cols + '"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">' + icone + '</span><p class="el-esti">' + escapeHtml(titulo) + '</p></div></td></tr>';
+}
+function srvResumoTexto(r) {
+  if (!r) return '—';
+  return [r.novos + ' novos', r.alterados + ' alterados', r.inativados + ' inativados', r.comErro + ' com erro']
+    .filter(function (x) { return !/^undefined/.test(x); }).join(' · ') || '—';
+}
+function srvRenderHistorico(lista) {
+  var tbody = document.getElementById('srv-tbody-hist');
+  if (!lista.length) { tbody.innerHTML = srvMsgHTML(6, 'history', 'Nenhuma carga realizada'); return; }
+  tbody.innerHTML = lista.map(function (i) {
+    var tipo = '<span class="ds-badge ds-badge--neutral">' + (i.completa ? 'Completa' : 'Parcial') + '</span>';
+    var resumo = srvResumoTexto(i.resumo);
+    return '<tr>'
+      + '<td class="srv-col-em"><span class="srv-sec">' + escapeHtml(i.em || '—') + '</span></td>'
+      + '<td class="srv-col-arq" data-title="' + escapeHtml(i.arquivo || '') + '">' + escapeHtml(i.arquivo || '—') + '</td>'
+      + '<td class="srv-col-tipo">' + tipo + '</td>'
+      + '<td class="srv-col-por"><span class="srv-sec">' + escapeHtml(i.por || '—') + '</span></td>'
+      + '<td class="srv-col-tot"><span class="srv-sec">' + escapeHtml(resumo) + '</span></td>'
+      + '<td class="srv-col-card"><div class="srv-card-meta"><span>' + escapeHtml(i.origem || '') + '</span><span>' + escapeHtml(resumo) + '</span></div></td></tr>';
+  }).join('');
+}
+
+// ---------- base ----------
+function srvCarregarBase() {
+  var tbody = document.getElementById('srv-tbody-base');
+  tbody.innerHTML = '<tr class="srv-linha-msg"><td colspan="7">' + spinnerListaHTML('Carregando…') + '</td></tr>';
+  document.getElementById('srv-aviso-truncado').classList.add('hidden');
+  var filtros = { busca: _srv.busca, ativo: _srv.ativo };
+  google.script.run
+    .withSuccessHandler(function (r) {
+      r = r || {};
+      document.getElementById('srv-aviso-truncado').classList.toggle('hidden', !r.truncado);
+      srvRenderBase(r.itens || []);
+    })
+    .withFailureHandler(function (err) { tbody.innerHTML = srvMsgHTML(7, 'error', err.message); })
+    .apiGetServidores(filtros);
+}
+function srvRenderBase(itens) {
+  var tbody = document.getElementById('srv-tbody-base');
+  if (!itens.length) {
+    tbody.innerHTML = srvTemFiltro() ? srvMsgHTML(7, 'search_off', 'Nenhum servidor encontrado') : srvMsgHTML(7, 'badge', 'A base de servidores está vazia');
+    return;
+  }
+  tbody.innerHTML = itens.map(function (s) {
+    var sit = '<span class="ds-badge ds-badge--' + (s.ativo ? 'success' : 'neutral') + '"' + (s.situacao ? ' data-title="' + escapeHtml(s.situacao) + '"' : '') + '>' + (s.ativo ? 'Ativo' : 'Inativo') + '</span>';
+    var meta = [s.cpf, s.cargo, s.lotacao].filter(Boolean).map(function (x) { return '<span>' + escapeHtml(x) + '</span>'; }).join('');
+    return '<tr>'
+      + '<td class="srv-col-nome" data-title="' + escapeHtml(s.nome) + '"><span class="srv-nome">' + escapeHtml(s.nome) + '</span></td>'
+      + '<td class="srv-col-mat"><span class="srv-sec">' + escapeHtml(s.matricula) + '</span></td>'
+      + '<td class="srv-col-cpf"><span class="srv-sec">' + escapeHtml(s.cpf || '—') + '</span></td>'
+      + '<td class="srv-col-cargo">' + escapeHtml(s.cargo || '—') + '</td>'
+      + '<td class="srv-col-lot"><span class="srv-sec">' + escapeHtml(s.lotacao || '—') + '</span></td>'
+      + '<td class="srv-col-sit">' + sit + '</td>'
+      + '<td class="srv-col-card"><div class="srv-card-meta">' + meta + '</div></td></tr>';
+  }).join('');
+}
+
+function srvTemFiltro() { return !!_srv.busca || _srv.ativo !== ''; }
+function srvAtualizarFiltros() {
+  var btn = document.getElementById('srv-filtro-btn-ativo'), ativo = _srv.ativo !== '';
+  document.getElementById('srv-filtro-label-ativo').textContent = _srv.ativo === true ? 'Ativos' : _srv.ativo === false ? 'Inativos' : 'Situação';
+  btn.classList.toggle('srv-filtro-btn--ativo', ativo);
+  document.getElementById('srv-filtro-x-ativo').classList.toggle('hidden', !ativo);
+  document.getElementById('srv-limpar-filtros').classList.toggle('hidden', !srvTemFiltro());
+  document.getElementById('srv-limpar-busca').classList.toggle('hidden', !document.getElementById('srv-busca').value);
+}
+function srvAbrirBusca() {
+  document.getElementById('srv-search-toggle').classList.add('hidden');
+  document.getElementById('srv-search-caixa').classList.remove('hidden');
+  document.getElementById('srv-busca').focus();
+}
+function srvFecharBusca() {
+  document.getElementById('srv-search-caixa').classList.add('hidden');
+  document.getElementById('srv-search-toggle').classList.remove('hidden');
+}
+function srvDigitarBusca(v) {
+  srvAtualizarFiltros();
+  clearTimeout(_srv.timerBusca);
+  _srv.timerBusca = setTimeout(function () { _srv.busca = String(v || '').trim(); srvAtualizarFiltros(); srvCarregarBase(); }, 400);
+}
+function srvLimparBusca() {
+  document.getElementById('srv-busca').value = '';
+  _srv.busca = ''; srvAtualizarFiltros(); srvCarregarBase();
+  document.getElementById('srv-busca').focus();
+}
+function srvAbrirFiltroAtivo(btn) {
+  abrirMenuSelecao(btn, [{ itens: [
+    { label: 'Ativos', ativo: _srv.ativo === true, onclick: 'srvEscolherAtivo(true)' },
+    { label: 'Inativos', ativo: _srv.ativo === false, onclick: 'srvEscolherAtivo(false)' }
+  ] }]);
+}
+function srvEscolherAtivo(v) { _srv.ativo = v; srvAtualizarFiltros(); srvCarregarBase(); }
+function srvLimparFiltros() {
+  document.getElementById('srv-busca').value = '';
+  _srv.busca = ''; _srv.ativo = '';
+  srvFecharBusca(); srvAtualizarFiltros(); srvCarregarBase();
+}
+
+uiRegistrarAcoes('pages_servidores_carga', {
+  '1': function (event) { srvAbrirFormato(this); },
+  '2': function (event) { srvErro(''); },
+  '3': function (event) { srvImportar(); },
+  '4': function (event) { srvAbrirBusca(); },
+  '5': function (event) { srvDigitarBusca(this.value); },
+  '6': function (event) { if (event.key === 'Enter') { clearTimeout(_srv.timerBusca); _srv.busca = this.value.trim(); srvAtualizarFiltros(); srvCarregarBase(); } },
+  '7': function (event) { srvLimparBusca(); },
+  '8': function (event) { srvAbrirFiltroAtivo(this); },
+  '9': function (event) { srvEscolherAtivo(''); },
+  '10': function (event) { srvLimparFiltros(); }
+});
+</script>
+
        <!-- ARQUIVO: pages_unidades.html -->
 <!-- Gestão de Unidades (unifica SIORG/UGR — ver code.js, bloco "GESTÃO DE
      UNIDADES") — página própria no submenu Configurações, mesmo
