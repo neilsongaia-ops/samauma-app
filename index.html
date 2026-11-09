@@ -1284,7 +1284,11 @@ uiAcoes['ui.chamar'] = function (event) { return _uiExecChamada(this.getAttribut
 function _uiExecAcao(el, tipo, ev) {
   var fn = uiAcoes[el.getAttribute('data-on-' + tipo)];
   if (!fn) { console.error('Ação não registrada: ' + el.getAttribute('data-on-' + tipo)); return; }
-  if (fn.call(el, ev) === false) ev.preventDefault();
+  // Trava de envio (uiAlvoTrava/uiExecutarComTrava em app_ui_utils): repetição com o alvo ainda travado é ignorada.
+  var alvo = typeof uiAlvoTrava === 'function' ? uiAlvoTrava(el, tipo, ev) : null;
+  if (alvo && uiBotaoTravado(alvo)) { ev.preventDefault(); ev.stopPropagation(); return; }
+  var ret = alvo ? uiExecutarComTrava(alvo, function () { return fn.call(el, ev); }) : fn.call(el, ev);
+  if (ret === false) ev.preventDefault();
 }
 if (!window._uiDelegacaoAtiva) {
   window._uiDelegacaoAtiva = true;
@@ -5260,6 +5264,7 @@ uiRegistrarAcoes('components_modal_resultado', {
             <label>Email *</label>
             <input type="email" name="email" id="input-user-email" class="form-control" required placeholder="email@dominio.com" data-on-blur="components_modal_usuario.6">
             <small id="error-email" class="error-text hidden">Email já cadastrado ou inválido.</small>
+            <small id="aviso-email-base" class="user-ajuda-text hidden">E-mail diferente do que consta na base de servidores.</small>
           </div>
           <div class="form-group">
             <label>Telefone</label>
@@ -5276,9 +5281,10 @@ uiRegistrarAcoes('components_modal_resultado', {
         <!-- Linha 3: Siape e Cargo (autocomplete via tabela CARGOS) -->
         <div class="form-row" id="user-linha-siape-cargo">
           <div class="form-group">
-            <label>SIAPE (Matrícula)</label>
-            <input type="text" name="siape" id="input-user-siape" class="form-control" placeholder="Apenas números (Máx 7)" maxlength="7" data-on-input="components_modal_usuario.8" data-on-blur="components_modal_usuario.9">
-            <small id="error-siape" class="error-text hidden">SIAPE já cadastrado.</small>
+            <label>Matrícula<span class="material-symbols-outlined user-info-ico" data-title="Só para quem consta na base de servidores: a lotação e o cargo passam a vir da base. Quem não consta fica sem matrícula, com a unidade informada abaixo.">info</span></label>
+            <input type="text" name="siape" id="input-user-siape" class="form-control" placeholder="Apenas números" maxlength="7" data-on-input="components_modal_usuario.8" data-on-blur="components_modal_usuario.9">
+            <small id="error-siape" class="error-text hidden"></small>
+            <small id="info-siape" class="user-ajuda-text hidden"></small>
           </div>
           <div class="form-group" style="position: relative;">
             <label>Cargo / Função</label>
@@ -5298,6 +5304,7 @@ uiRegistrarAcoes('components_modal_resultado', {
           <!-- Lista Sugestões -->
           <div id="user-unidade-suggestions" class="autocomplete-list hidden"></div>
           <span class="material-symbols-outlined input-icon-right hidden" id="user-unidade-clear-btn" data-on-click="components_modal_usuario.11">close</span>
+          <small id="error-unidade" class="error-text hidden">Informe a unidade de lotação.</small>
         </div>
 
         <!-- Linha 5: Papéis (Permissões) -->
@@ -5368,6 +5375,8 @@ uiRegistrarAcoes('components_modal_resultado', {
 .error-text { color: var(--ds-color-danger-solid); font-size: 0.75rem; margin-top: 2px; display: block; font-weight: 500; }
 .input-error { border-color: var(--ds-color-danger-solid) !important; }
 
+.user-ajuda-text { color: var(--ds-color-text-ui-muted); font-size: 0.75rem; margin-top: 2px; display: block; overflow-wrap: anywhere; }
+
 /* Lista de Papéis */
 .roles-container {
   border: 1px solid var(--ds-color-border-ui); border-radius: 4px;
@@ -5429,6 +5438,25 @@ let cacheUnidadesUser = [];
 let cachePapeisUser = [];
 let cacheCargosUser = [];
 let lotacaoEditavelUser = true; // false = usuário ligado à base: lotação, cargo e matrícula só leitura
+// Ligação por matrícula (apiGetPessoaDaBasePorMatricula): última consulta { matricula, pessoa, erro }.
+let consultaMatriculaUser = null;
+let seqConsultaMatriculaUser = 0;
+let siapeOriginalUser = '';
+let ligadoBaseUser = false; // matrícula confirmada nesta edição: cargo e lotação só leitura
+
+const MSG_MATRICULA_USER = {
+  naoEncontrada: 'Matrícula não encontrada na base de servidores.',
+  inativa: 'Este vínculo não está ativo na base de servidores.',
+  jaTemUsuario: 'Já existe um usuário para esta pessoa.'
+};
+// Mensagens do servidor que pertencem a um campo (o resto vai para showMessage).
+const ERROS_CAMPO_USER = {
+  'Matrícula não encontrada na base de servidores.': 'siape',
+  'Este vínculo não está ativo na base de servidores.': 'siape',
+  'Já existe um usuário para esta pessoa.': 'siape',
+  'Informe a matrícula: só quem consta na base de servidores pode ser cadastrado.': 'siape',
+  'Informe a unidade de lotação.': 'unidade'
+};
 
 function abrirModalUsuario() {
   const form = document.getElementById('form-novo-usuario');
@@ -5454,6 +5482,7 @@ function abrirModalUsuario() {
 
   // Reseta erros
   resetarErros();
+  siapeOriginalUser = '';
   aplicarVinculosNoFormulario(true, []);
 
   document.getElementById('modal-novo-usuario').classList.remove('hidden');
@@ -5518,6 +5547,7 @@ function preencherFormularioUsuario(dados) {
   form.telefone.value = dados.telefone || '';
   if (form.telefone.value) mascaraTelefone(form.telefone);
   form.siape.value = dados.siape || '';
+  siapeOriginalUser = form.siape.value.trim();
 
   if (dados.idUnidade) selecionarUnidadeUser(dados.idUnidade, dados.unidadeTexto || dados.idUnidade);
   if (dados.idCargo) selecionarCargoUser(dados.idCargo, dados.cargoNome || '');
@@ -5548,6 +5578,7 @@ function aplicarPermissoesNoFormulario(permissoes) {
 // lotacaoEditavel=false: a base manda (só leitura). Mais de um vínculo: lista em leitura no lugar dos campos únicos.
 function aplicarVinculosNoFormulario(editavel, vinculos) {
   lotacaoEditavelUser = editavel;
+  ligadoBaseUser = false;
   const varios = (vinculos || []).length > 1;
   const lista = document.getElementById('user-vinculos-lista');
   lista.innerHTML = varios ? vinculos.map(v => {
@@ -5741,6 +5772,7 @@ function selecionarUnidadeUser(id, texto) {
   document.getElementById('input-user-unidade-value').value = id;
   document.getElementById('user-unidade-suggestions').classList.add('hidden');
   document.getElementById('user-unidade-clear-btn').classList.remove('hidden');
+  mostrarErroInput(document.getElementById('input-user-unidade-search'), document.getElementById('error-unidade'), false);
 }
 
 function limparSelecaoUnidadeUser() {
@@ -5763,12 +5795,17 @@ function mascaraTelefone(input) {
 function mascaraSiape(input) {
   // Apenas números, max 7 (já no atributo maxlength)
   input.value = input.value.replace(/\D/g, "");
+  if (!consultaMatriculaUser || consultaMatriculaUser.matricula !== input.value.trim()) limparConsultaMatriculaUser();
 }
 
 function resetarErros() {
   document.querySelectorAll('.error-text').forEach(el => el.classList.add('hidden'));
   document.querySelectorAll('.form-control').forEach(el => el.classList.remove('input-error'));
   document.getElementById('btn-salvar-user').disabled = false;
+  document.getElementById('info-siape').classList.add('hidden');
+  document.getElementById('aviso-email-base').classList.add('hidden');
+  consultaMatriculaUser = null;
+  seqConsultaMatriculaUser++;
 }
 
 // Validação em Tempo Real (Debounce simples via onblur)
@@ -5794,27 +5831,85 @@ function validarEmailUnico(input) {
       mostrarErroInput(input, errorMsg, false);
       btn.disabled = false;
     }
-  }).apiVerificarDuplicidadeUsuario('email', email, idEdicao);
+  }).apiEmailUsuarioJaExiste(email, idEdicao);
 }
 
-function validarSiapeUnico(input) {
-  if (input.readOnly) return;
-  const siape = input.value;
-  const errorMsg = document.getElementById('error-siape');
-  const btn = document.getElementById('btn-salvar-user');
+// --- LIGAÇÃO POR MATRÍCULA (base de servidores) ---
+function limparConsultaMatriculaUser() {
+  seqConsultaMatriculaUser++;
+  consultaMatriculaUser = null;
+  mostrarErroInput(document.getElementById('input-user-siape'), document.getElementById('error-siape'), false);
+  document.getElementById('info-siape').classList.add('hidden');
+  document.getElementById('aviso-email-base').classList.add('hidden');
+  if (ligadoBaseUser) liberarLigacaoBaseUser();
+}
+
+function erroSiapeUser(texto) {
+  const msg = document.getElementById('error-siape');
+  msg.textContent = texto;
+  mostrarErroInput(document.getElementById('input-user-siape'), msg, true);
+  document.getElementById('info-siape').classList.add('hidden');
+}
+
+// Mostra o resultado no texto de ajuda/erro do campo. aoTerminar(consulta) é opcional (fluxo de salvar).
+function consultarMatriculaUser(input, aoTerminar) {
+  if (input.readOnly) { if (aoTerminar) aoTerminar(null); return; }
+  const matricula = input.value.trim();
+  if (!matricula) { limparConsultaMatriculaUser(); if (aoTerminar) aoTerminar(null); return; }
+  if (consultaMatriculaUser && consultaMatriculaUser.matricula === matricula) { if (aoTerminar) aoTerminar(consultaMatriculaUser); return; }
+  const seq = ++seqConsultaMatriculaUser;
   const idEdicao = document.getElementById('input-usuario-id-edicao').value;
+  const email = document.getElementById('input-user-email').value.trim();
+  google.script.run
+    .withSuccessHandler(res => {
+      if (seq !== seqConsultaMatriculaUser) return;
+      res = res || {};
+      let erro = '';
+      if (!res.encontrada) erro = MSG_MATRICULA_USER.naoEncontrada;
+      else if (res.ativo === false) erro = MSG_MATRICULA_USER.inativa;
+      else if (res.jaTemUsuario) erro = MSG_MATRICULA_USER.jaTemUsuario;
+      consultaMatriculaUser = { matricula: matricula, pessoa: res.encontrada ? res : null, erro: erro };
+      if (erro) erroSiapeUser(erro);
+      else {
+        mostrarErroInput(input, document.getElementById('error-siape'), false);
+        const info = document.getElementById('info-siape');
+        info.textContent = [res.nome, descricaoLotacaoBaseUser(res)].filter(Boolean).join(' · ');
+        info.classList.remove('hidden');
+      }
+      document.getElementById('aviso-email-base').classList.toggle('hidden', !(res.encontrada && res.emailConfere === false));
+      if (aoTerminar) aoTerminar(consultaMatriculaUser);
+    })
+    .withFailureHandler(err => {
+      if (seq !== seqConsultaMatriculaUser) return;
+      if (aoTerminar) aoTerminar(null, err);
+    })
+    .apiGetPessoaDaBasePorMatricula(matricula, idEdicao, email);
+}
 
-  if (!siape) return;
+function descricaoLotacaoBaseUser(p) {
+  return [(p.unidades || []).join(', '), p.cargo].filter(Boolean).join(' · ');
+}
 
-  google.script.run.withSuccessHandler(existe => {
-    if (existe) {
-      mostrarErroInput(input, errorMsg, true);
-      btn.disabled = true;
-    } else {
-      mostrarErroInput(input, errorMsg, false);
-      btn.disabled = false;
-    }
-  }).apiVerificarDuplicidadeUsuario('siape', siape, idEdicao);
+// Matrícula confirmada: cargo e lotação vêm da base (só leitura, como em lotacaoEditavel = false).
+function aplicarLigacaoBaseUser() {
+  ligadoBaseUser = true;
+  document.getElementById('input-user-cargo-search').disabled = true;
+  document.getElementById('input-user-unidade-search').disabled = true;
+  document.getElementById('user-lotacao-obrig').classList.add('hidden');
+  document.getElementById('user-cargo-clear-btn').classList.add('hidden');
+  document.getElementById('user-unidade-clear-btn').classList.add('hidden');
+  document.getElementById('user-cargo-suggestions').classList.add('hidden');
+  document.getElementById('user-unidade-suggestions').classList.add('hidden');
+  mostrarErroInput(document.getElementById('input-user-unidade-search'), document.getElementById('error-unidade'), false);
+}
+function liberarLigacaoBaseUser() {
+  ligadoBaseUser = false;
+  if (!lotacaoEditavelUser) return;
+  document.getElementById('input-user-cargo-search').disabled = false;
+  document.getElementById('input-user-unidade-search').disabled = false;
+  document.getElementById('user-lotacao-obrig').classList.remove('hidden');
+  document.getElementById('user-cargo-clear-btn').classList.toggle('hidden', !document.getElementById('input-user-cargo-value').value);
+  document.getElementById('user-unidade-clear-btn').classList.toggle('hidden', !document.getElementById('input-user-unidade-value').value);
 }
 
 function mostrarErroInput(input, msgEl, mostrar) {
@@ -5862,55 +5957,91 @@ function confirmarCrop() {
 }
 
 // --- SALVAR ---
+// Trava: o botão fica ocupado durante a consulta da matrícula e o envio (uiTravarBotao, app_ui_utils);
+// enquanto o diálogo de confirmação está aberto ele fica livre (cancelar não avisa a tela).
 function handleSalvarNovoUsuario(e) {
   e.preventDefault();
-  
-  // Verifica se há Unidade selecionada (campo hidden)
+  const form = e.target;
+  const btn = document.getElementById('btn-salvar-user');
+  if (uiBotaoTravado(btn)) return;
+  const inputSiape = document.getElementById('input-user-siape');
+  const siape = form.siape.value.trim();
+  const matriculaNova = !!siape && !inputSiape.readOnly && siape !== siapeOriginalUser;
+
+  if (!matriculaNova) { prosseguirSalvarUsuario(form, btn, null); return; }
+
+  const liberar = uiTravarBotao(btn);
+  consultarMatriculaUser(inputSiape, (c, err) => {
+    liberar();
+    if (err) { showMessage('error', 'Erro', escapeHtml(err.message)); return; }
+    if (!c || c.matricula !== form.siape.value.trim()) return; // digitou de novo durante a consulta
+    if (c.erro) { inputSiape.focus(); return; }
+    prosseguirSalvarUsuario(form, btn, c.pessoa);
+  });
+}
+
+// pessoa = pessoa da base para uma matrícula nova/alterada (pede confirmação); null = sem ligação nova.
+function prosseguirSalvarUsuario(form, btn, pessoa) {
+  const siape = form.siape.value.trim();
   const idUnidade = document.getElementById('input-user-unidade-value').value;
-  if (!idUnidade && lotacaoEditavelUser) {
-    alert("Selecione uma Lotação (Unidade) válida.");
+  if (!siape && !idUnidade && lotacaoEditavelUser) {
+    mostrarErroInput(document.getElementById('input-user-unidade-search'), document.getElementById('error-unidade'), true);
+    document.getElementById('input-user-unidade-search').focus();
     return;
   }
 
-  // Coleta Papéis Selecionados
   const permissoesSelecionadas = [];
-  const checkboxes = document.querySelectorAll('input[type="checkbox"][id^="chk-papel-"]');
-  
-  checkboxes.forEach(chk => {
+  document.querySelectorAll('input[type="checkbox"][id^="chk-papel-"]').forEach(chk => {
     if (chk.checked) {
       const idPapel = chk.value;
-      const dataValidade = document.getElementById(`date-papel-${idPapel}`).value;
       permissoesSelecionadas.push({
         idPapel: idPapel,
-        validade: dataValidade // string YYYY-MM-DD
+        validade: document.getElementById(`date-papel-${idPapel}`).value // string YYYY-MM-DD
       });
     }
   });
 
   const dados = {
-    nome: e.target.nome.value.trim(),
-    email: e.target.email.value.trim(),
-    telefone: e.target.telefone.value.trim(),
-    siape: e.target.siape.value.trim(),
+    nome: form.nome.value.trim(),
+    email: form.email.value.trim(),
+    telefone: form.telefone.value.trim(),
+    siape: siape,
     idCargo: document.getElementById('input-user-cargo-value').value || '',
     idUnidade: idUnidade,
     fotoBase64: fotoUserBase64,
     permissoes: permissoesSelecionadas
   };
 
+  if (!pessoa) { enviarUsuario(dados, btn); return; }
+  const lot = descricaoLotacaoBaseUser(pessoa);
+  showConfirm('Ligar à base de servidores',
+    'Ligar este usuário a <em>' + escapeHtml(pessoa.nome || '') + '</em>' + (lot ? ' (<em>' + escapeHtml(lot) + '</em>)' : '')
+      + '? A lotação e o cargo passam a vir da base.',
+    () => { aplicarLigacaoBaseUser(); enviarUsuario(dados, btn); });
+}
+
+function enviarUsuario(dados, btn) {
   const idEdicao = document.getElementById('input-usuario-id-edicao').value;
+  const liberar = uiTravarBotao(btn);
   const sucessoHandler = function() {
-    esconderLoader();
+    liberar();
     fecharModalUsuario();
     showMessage('success', 'Sucesso', idEdicao ? 'Usuário atualizado com sucesso!' : 'Usuário e permissões salvos com sucesso!');
     if (typeof carregarUsuarios === 'function') carregarUsuarios();
   };
   const erroHandler = function(err) {
-    esconderLoader();
-    showMessage('error', 'Erro', err.message);
+    liberar();
+    const msg = String((err && err.message) || '');
+    const campo = ERROS_CAMPO_USER[msg];
+    if (campo === 'siape') { erroSiapeUser(msg); document.getElementById('input-user-siape').focus(); return; }
+    if (campo === 'unidade') {
+      if (ligadoBaseUser) liberarLigacaoBaseUser();
+      mostrarErroInput(document.getElementById('input-user-unidade-search'), document.getElementById('error-unidade'), true);
+      return;
+    }
+    showMessage('error', 'Erro', escapeHtml(msg));
   };
 
-  mostrarLoader();
   if (idEdicao) {
     dados.id = idEdicao;
     google.script.run.withSuccessHandler(sucessoHandler).withFailureHandler(erroHandler).apiAtualizarUsuarioCompleto(dados);
@@ -5929,7 +6060,7 @@ uiRegistrarAcoes('components_modal_usuario', {
   '6': function (event) { validarEmailUnico(this); },
   '7': function (event) { mascaraTelefone(this); },
   '8': function (event) { mascaraSiape(this); },
-  '9': function (event) { validarSiapeUnico(this); },
+  '9': function (event) { consultarMatriculaUser(this); },
   '10': function (event) { limparSelecaoCargoUser(); },
   '11': function (event) { limparSelecaoUnidadeUser(); },
   '12': function (event) { cancelarCrop(); },
@@ -7003,7 +7134,7 @@ function _mktAppRenderizarLista(catalogo) {
             '<span class="material-symbols-outlined" style="font-size:20px; color:var(--ds-primary-700);">' + escapeHtml(icone) + '</span>' +
           '</div>' +
           '<div style="min-width:0;">' +
-            '<div style="font-weight:600; font-size:0.9rem; color:var(--text); display:flex; align-items:center;">' +
+            '<div style="font-weight:600; font-size:0.9rem; color:var(--ds-color-text-ui); display:flex; align-items:center;">' +
               '<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + escapeHtml(app.nome) + '</span>' +
               tagTipo +
             '</div>' +
@@ -9079,6 +9210,117 @@ function uiEscopoRespIdsUnidades(unidades, chave) {
   while (pilha.length) (filhos[pilha.pop()] || []).forEach(function(f) { if (!ids.has(f)) { ids.add(f); pilha.push(f); } });
   return ids;
 }
+
+// --- Trava de envio (duplo clique / Enter repetido) ---
+// Botão que dispara escrita fica desabilitado, com spinner no próprio botão, até a resposta (sucesso ou erro).
+// Automático: a delegação (app_ui_acoes) chama a ação dentro de uiExecutarComTrava(alvo, …); toda chamada a
+// rota de escrita feita nesse trecho síncrono prende o alvo até responder. Fluxos com etapa assíncrona antes
+// de gravar (consulta, confirmação) usam uiTravarBotao(btn) direto e chamam o liberar() devolvido.
+// Lista = rotas "escrita" de docs/referencia_rotas.md.
+var _UI_ROTAS_ESCRITA = new Set(['apiAuthSair', 'apiAuthSolicitarCodigo', 'apiAuthVerificarCodigo', 'apiMarcarNotificacoes', 'apiSalvarConfigEmailNotificacoes', 'apiSalvarConfigNotificacoes', 'apiSalvarPreferenciaNotificacao', 'apiCancelarMensagemSistema', 'apiExcluirMensagemEnviada', 'apiExcluirMensagemSistema', 'apiLerMensagemSistema', 'apiPublicarMensagemSistema', 'apiSalvarMensagemSistema', 'apiSalvarConfigArmazenamento', 'apiSalvarLimitesArmazenamento', 'apiSalvarConfigAlertasNotificacoes', 'apiInativarUnidade', 'apiReativarUnidade', 'apiSalvarUnidade', 'apiAtualizarUsuarioCompleto', 'apiExcluirUsuario', 'apiExcluirUsuariosEmLote', 'apiSalvarNovoUsuarioCompleto', 'apiToggleAtivoUsuario', 'apiToggleAtivoUsuariosEmLote', 'apiImportarServidores', 'apiAprovarUsuarioPendente', 'apiRecusarUsuarioPendente', 'apiSalvarConfigCadastroUsuarios', 'apiEscolherVinculo', 'apiAuthConfirmarPrimeiroAcesso', 'apiAuthPrimeiroAcesso', 'apiAtualizarPlano', 'apiSalvarPlano', 'apiExcluirPlano', 'apiProrrogarPlano', 'apiTramitarPlano', 'apiExcluirPlanoDefinitivo', 'apiAbrirJanelaRevisao', 'apiFecharJanelaRevisao', 'apiFecharRevisao', 'apiSolicitarRevisaoPlano', 'apiCancelarSolicitacao', 'apiResponderSolicitacao', 'apiAprovarVinculoPlano', 'apiCancelarPropostaVinculo', 'apiDefinirPlanoSuperiorPrincipal', 'apiDesvincularVinculo', 'apiDispensarVinculoRecusado', 'apiExcluirVinculosOrfaos', 'apiPropoQuerVinculoSubordinado', 'apiResponderPropostaVinculoSubordinado', 'apiVincularASuperior', 'apiSalvarConfigGlobal', 'apiSalvarConfigPlano', 'apiAtualizarStatusApp', 'apiDesinstalarApp', 'apiInstalarApp', 'apiReordenarAppsPlano', 'apiIndicarParesAvaliacao', 'apiRemoverParIndicado', 'apiSalvarConfigAvaliacao', 'apiAlterarRelacionamentosElementos', 'apiAtualizarElemento', 'apiReordenarElementos', 'apiRestaurarLayoutDiagrama', 'apiSalvarElemento', 'apiSalvarPosicoesDiagrama', 'apiAlternarColaboracaoElemento', 'apiCancelarSolicitacaoColaboracao', 'apiIndicarColaboradorElemento', 'apiResponderSolicitacaoColaboracao', 'apiSolicitarColaboracao', 'apiSalvarMetasPeriodo', 'apiAtualizarIndicador', 'apiExcluirIndicador', 'apiExcluirMeta', 'apiSalvarIndicador', 'apiSalvarExecucaoEResultado', 'apiValidarResultado', 'apiExcluirElemento', 'apiReanexarIndicador', 'apiRestaurarItemPlano', 'apiAdicionarCausaConsequencia', 'apiAtualizarRisco', 'apiExcluirRegistroTratamento', 'apiExcluirRisco', 'apiExcluirTratamento', 'apiSalvarRegistroTratamento', 'apiSalvarRisco', 'apiSalvarTratamento', 'apiAdicionarTopicoALista', 'apiArquivarTopicoForum', 'apiCriarListaForum', 'apiCriarTopicoForum', 'apiEditarMensagemForum', 'apiEnviarMensagemForum', 'apiExcluirListaForum', 'apiExcluirMensagemForum', 'apiExcluirTopicoForum', 'apiFavoritarTopicoForum', 'apiFixarTopicoForum', 'apiMarcarTopicoLido', 'apiMarcarTopicoNaoLido', 'apiRemoverTopicoDaLista', 'apiRenomearListaForum', 'apiRenomearTopicoForum', 'apiReordenarCatalogoOpcoes', 'apiSalvarOpcaoCatalogo', 'apiSalvarConfigSistemaSecao', 'apiSalvarPreferenciaUsuario', 'apiAvaliarPlano', 'apiCancelarAvaliacao', 'apiRecorrerAvaliacao', 'apiResponderRecurso', 'apiSalvarRascunhoAvaliacao']);
+var _uiTravaAlvo = null;
+function _uiTravaCss() {
+  if (document.getElementById('ui-trava-css')) return;
+  var s = document.createElement('style');
+  s.id = 'ui-trava-css';
+  s.textContent = '.ui-btn-ocupado{cursor:progress !important}'
+    + '.ui-btn-ocupado > .material-symbols-outlined{display:none}'
+    + '.ui-btn-spinner{display:inline-block;flex-shrink:0;width:1em;height:1em;box-sizing:border-box;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;vertical-align:-0.15em;margin-right:6px;animation:uiBtnGira .7s linear infinite}'
+    + '@keyframes uiBtnGira{to{transform:rotate(360deg)}}'
+    + '@media (prefers-reduced-motion: reduce){.ui-btn-spinner{animation-duration:2s}}';
+  (document.head || document.documentElement).appendChild(s);
+}
+function _uiEhBotao(el) { return !!(el && el.matches && el.matches('button, input[type="submit"], input[type="button"], a.btn')); }
+// Trava o elemento e devolve liberar() (idempotente; travas sobrepostas são contadas).
+// Botão: desabilita + spinner. Outro elemento (campo com Enter): só marca, e a delegação ignora repetições.
+function uiTravarBotao(btn) {
+  if (!btn || btn.nodeType !== 1) return function () {};
+  var n = (+btn.dataset.uiTrava || 0) + 1;
+  btn.dataset.uiTrava = String(n);
+  if (n === 1) {
+    btn.setAttribute('aria-busy', 'true');
+    if (_uiEhBotao(btn)) {
+      _uiTravaCss();
+      btn.dataset.uiTravaDesab = btn.disabled ? '1' : '';
+      btn.disabled = true;
+      btn.classList.add('ui-btn-ocupado');
+      if (btn.tagName !== 'INPUT') {
+        var sp = document.createElement('span');
+        sp.className = 'ui-btn-spinner';
+        sp.setAttribute('aria-hidden', 'true');
+        btn.insertBefore(sp, btn.firstChild);
+      }
+    }
+  }
+  var feito = false;
+  return function liberar() {
+    if (feito) return;
+    feito = true;
+    var resto = (+btn.dataset.uiTrava || 1) - 1;
+    if (resto > 0) { btn.dataset.uiTrava = String(resto); return; }
+    delete btn.dataset.uiTrava;
+    btn.removeAttribute('aria-busy');
+    if (_uiEhBotao(btn)) {
+      btn.disabled = btn.dataset.uiTravaDesab === '1';
+      delete btn.dataset.uiTravaDesab;
+      btn.classList.remove('ui-btn-ocupado');
+      var sp = btn.querySelector(':scope > .ui-btn-spinner');
+      if (sp) sp.remove();
+    }
+  };
+}
+function uiBotaoTravado(el) { return !!(el && el.dataset && el.dataset.uiTrava); }
+// Qual elemento a delegação prende à ação: o botão clicado; no submit, o botão de envio do formulário;
+// no Enter de um campo, o próprio campo. O confirmar do showConfirm fica de fora: o diálogo fecha antes da ação.
+function uiAlvoTrava(el, tipo, ev) {
+  if (!el || (el.closest && el.closest('.sys-overlay'))) return null;
+  if (tipo === 'click') return _uiEhBotao(el) ? el : null;
+  if (tipo === 'submit') {
+    var f = el.tagName === 'FORM' ? el : null;
+    if (!f) return null;
+    return (ev && ev.submitter) || f.querySelector('[type="submit"]')
+      || (f.id ? document.querySelector('[type="submit"][form="' + f.id + '"]') : null) || f;
+  }
+  if (tipo === 'keydown') return ev && ev.key === 'Enter' && !ev.isComposing ? el : null;
+  return null;
+}
+function uiExecutarComTrava(alvo, fn) {
+  var anterior = _uiTravaAlvo;
+  _uiTravaAlvo = alvo;
+  try { return fn(); } finally { _uiTravaAlvo = anterior; }
+}
+// Envolve google.script.run (nativo ou o do app_api_shim): rota de escrita chamada dentro de uma ação travável prende o alvo.
+(function () {
+  var gs = window.google && window.google.script;
+  if (!gs || !gs.run || gs.run.__uiTrava) return;
+  var base = gs.run;
+  function criar(ok, falha, obj, temObj) {
+    return new Proxy({}, {
+      get: function (_, nome) {
+        if (nome === '__uiTrava') return true;
+        if (nome === 'withSuccessHandler') return function (fn) { return criar(fn, falha, obj, temObj); };
+        if (nome === 'withFailureHandler') return function (fn) { return criar(ok, fn, obj, temObj); };
+        if (nome === 'withUserObject') return function (o) { return criar(ok, falha, o, true); };
+        if (typeof nome !== 'string') return undefined;
+        return function () {
+          var okF = ok, falhaF = falha;
+          if (_uiTravaAlvo && _UI_ROTAS_ESCRITA.has(nome)) {
+            var liberar = uiTravarBotao(_uiTravaAlvo);
+            okF = function () { liberar(); if (ok) return ok.apply(this, arguments); };
+            falhaF = function (e) { liberar(); if (falha) return falha.apply(this, arguments); console.error(e); };
+          }
+          var r = base;
+          if (okF) r = r.withSuccessHandler(okF);
+          if (falhaF) r = r.withFailureHandler(falhaF);
+          if (temObj) r = r.withUserObject(obj);
+          return r[nome].apply(r, arguments);
+        };
+      }
+    });
+  }
+  var run = criar(null, null, undefined, false);
+  try { gs.run = run; } catch (e) { /* objeto congelado: segue sem a trava automática */ }
+})();
 
 </script>
 
@@ -16939,7 +17181,7 @@ uiRegistrarAcoes('plano', {
 #page-execucao-planos .exl-prog-barra {
   width: 72px; height: 6px; border-radius: 999px; background: rgba(16,38,73,0.08); overflow: hidden; flex-shrink: 0;
 }
-#page-execucao-planos .exl-prog-fill { height: 100%; border-radius: 999px; transition: width var(--ds-duration-normal); }
+#page-execucao-planos .exl-prog-fill { height: 100%; border-radius: 999px; transition: width var(--ds-duration-base) var(--ds-ease-standard); }
 #page-execucao-planos .exl-prog-txt { font-size: 12px; font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); min-width: 34px; white-space: nowrap; }
 
 /* Ações da linha: aparecem no hover/foco (sempre visíveis em toque e <= 1024px) */
@@ -21969,7 +22211,7 @@ function csisSalvarApp(id, st, sub) {
 
 // ---------- painel: cadastroUsuarios (política de cadastro; rotas próprias, salva em lote) ----------
 // d = { modo, modos, dominios (texto), exigeAprovacao, situacoesAtivas (texto) } — contrato de apiGetConfigCadastroUsuarios.
-var CSIS_CAD_MODOS = { BASE: 'Só a base de servidores', BASE_OU_AVULSO: 'Base ou usuário avulso', LIVRE: 'Livre' };
+var CSIS_CAD_MODOS = { BASE: 'Só a base de servidores', BASE_OU_AVULSO: 'Base ou usuário avulso' };
 var CSIS_CAD_INFO = 'Só a base: só quem está ativo na base de servidores pode ser cadastrado ou fazer o primeiro acesso. '
   + 'Base ou avulso: além da base, quem tem permissão cadastra usuário avulso, fora da base. '
   + 'Livre: o cadastro não consulta a base.';
