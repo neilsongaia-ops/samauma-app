@@ -19333,7 +19333,7 @@ function _execRenderizarAcoesSelecao(qtd) {
 }
 
 function abrirExecucaoPlano(idPlano) {
-  estadoExecTarefas = { idPlano: String(idPlano), dados: null, aba: 'tarefas', view: '5w2h', filtroStatus: 'todos', busca: '', ordenacao: { coluna: null, direcao: 'asc' } };
+  estadoExecTarefas = { idPlano: String(idPlano), dados: null, aba: 'tarefas', view: 'kanban', filtroStatus: 'todos', busca: '', ordenacao: { coluna: null, direcao: 'asc' } };
   navigate('execucao-tarefas', { idPlano: idPlano });
   execTarefasCarregar();
 }
@@ -19376,11 +19376,14 @@ uiRegistrarAcoes('pages_execucao_planos', {
        <!-- ARQUIVO: pages_execucao_tarefas.html -->
 <!-- Workspace de execução de UM plano (aberto via abrirExecucaoPlano(idPlano),
      em pages_execucao_planos.html).
-     Padronizado com pages_plano_detalhe.html:
-     - Hero limpo com título de 30px, badge-status e botão de painel lateral (right_panel_open);
+     Padronizado com o Design System do Sistema Samaúma (pages_plano_detalhe.html e pages_planos_lista.html):
+     - Hero limpo com título de 30px, badge-status e botão sticky de painel lateral (right_panel_open);
+     - Sem sobreposição: margem e espaçamentos padronizados para o hero e a linha de abas;
+     - Barra de filtros unificada na mesma linha base: busca expansível estilo Drive, filtro de status dropdown
+       com abrirMenuSelecao, toggle de colaborações e limpar filtros à esquerda;
+     - À direita na mesma linha base: seletor de exercício plurianual via dropdown e alternador de modos (Lista/Kanban);
+     - Ações de colunas e atualizar movidas para a topbar do kanban e para o cabeçalho da tabela no modo lista;
      - Painel lateral (#extp-panel) com abas Detalhes e Atividade;
-     - Modos de visualização simplificados: apenas Lista e Kanban;
-     - Kanban com colunas personalizáveis e arrasto suave sem abertura forçada de modais;
      - Binômio Elemento + Indicadores ancorados ("pendendo do elemento");
      - Suporte a planos plurianuais com seletor de exercício/período. -->
 <div id="page-execucao-tarefas" class="page-content hidden">
@@ -19417,71 +19420,84 @@ uiRegistrarAcoes('pages_execucao_planos', {
   <!-- PAINEL: RESPONSABILIDADES -->
   <div id="ext-painel-tarefas">
 
-    <!-- Barra de Modos de Visualização e Controles -->
-    <div class="el-vis-section">
-      <div class="elementos-toolbar">
-        <!-- Alternador Simplificado: Apenas Lista e Kanban -->
-        <div class="view-mode-toggle">
-          <button class="mode-btn active" data-view="kanban" data-on-click="pages_execucao_tarefas.4" id="ext-btn-modo-kanban" data-title="Visualização em Kanban">
-            <span class="material-symbols-outlined icon-sm">view_kanban</span> Kanban
-          </button>
-          <button class="mode-btn" data-view="lista" data-on-click="pages_execucao_tarefas.3" id="ext-btn-modo-lista" data-title="Visualização em Lista">
-            <span class="material-symbols-outlined icon-sm">format_list_bulleted</span> Lista
-          </button>
-        </div>
+    <!-- Barra de Filtros Unificada: Busca, Filtro Status, Colaboração, Limpar + Exercício e Modos de Visualização -->
+    <div class="ext-filtros" id="ext-filtros">
+      <div class="ext-filtros-normal" id="ext-filtros-normal">
 
-        <!-- Seletor de Período / Exercício Plurianual -->
-        <div class="ext-periodo-wrap" id="ext-periodo-wrap" data-title="Selecione o exercício de apuração do plano">
-          <span class="material-symbols-outlined" style="font-size:16px;color:var(--ds-color-action)">event</span>
-          <label for="ext-seletor-ano" class="ext-periodo-label">Exercício:</label>
-          <select id="ext-seletor-ano" class="ext-select-periodo" data-on-change="pages_execucao_tarefas.28">
-            <!-- Opções preenchidas dinamicamente a partir dos anos do plano -->
-          </select>
-        </div>
-
-        <!-- Ações do Workspace -->
-        <div class="elem-main-toolbar" style="margin-left:auto; display:flex; align-items:center; gap:8px;">
-          <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" id="ext-btn-kanban-cfg" data-on-click="pages_execucao_tarefas.29" data-title="Configurar colunas do Kanban">
-            <span class="material-symbols-outlined" style="font-size:16px">view_column</span> Colunas
+        <!-- Busca expansível (estilo Drive / Samaúma) -->
+        <div class="ext-search" id="ext-search-wrap">
+          <button type="button" class="ds-icon-action" id="ext-search-toggle" data-on-click="pages_execucao_tarefas.5"
+                  data-title="Buscar" aria-label="Buscar responsabilidade">
+            <span class="material-symbols-outlined">search</span>
           </button>
-          <button type="button" class="elem-tb-btn" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar dados">
-            <span class="material-symbols-outlined">refresh</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Área de Filtros e Busca -->
-    <div class="el-filtros-cards-section">
-      <div class="el-filtros-area">
-        <div class="elementos-filtros">
-          <div class="filtro-busca-wrap">
-            <span class="material-symbols-outlined filtro-search-icon">search</span>
-            <input type="text" class="filtro-input" id="ext-busca"
-                   placeholder="Buscar elemento, código ou indicador…" data-on-input="pages_execucao_tarefas.9">
+          <div class="ext-search-caixa hidden" id="ext-search-caixa">
+            <span class="material-symbols-outlined ext-search-icon" aria-hidden="true">search</span>
+            <input type="text" class="ds-input ext-search-input" id="ext-busca"
+                   placeholder="Buscar elemento, código ou indicador…" data-on-input="pages_execucao_tarefas.9"
+                   aria-label="Buscar elemento, código ou indicador">
+            <button type="button" class="ext-search-clear hidden" id="ext-btn-limpar-busca"
+                    data-on-click="pages_execucao_tarefas.6" data-title="Limpar busca" aria-label="Limpar busca">
+              <span class="material-symbols-outlined">close</span>
+            </button>
           </div>
-          <select class="filtro-select" id="ext-filtro-status" data-on-change="pages_execucao_tarefas.10" style="display:none;">
-            <option value="todos">Todos os status</option>
-            <option value="Não Iniciado">Não Iniciado</option>
-            <option value="Em Andamento">Em Andamento</option>
-            <option value="Concluído">Concluído</option>
-          </select>
-          <label class="ext-toggle-origem" data-title="Mostra só as responsabilidades que você assumiu por colaboração externa (fora do seu escopo normal de Unidade)">
-            <input type="checkbox" id="ext-filtro-colaboracao" data-on-change="pages_execucao_tarefas.10">
-            <span class="ext-toggle-track"><span class="ext-toggle-thumb"></span></span>
-            <span>Somente colaborações</span>
-          </label>
         </div>
-        <div class="el-tipo-contador">
-          <div class="el-tipo-chips" id="ext-contador"></div>
-        </div>
-      </div>
 
-      <!-- Container Dinâmico (Kanban ou Lista) -->
-      <div class="el-cards-area">
-        <div id="ext-container"></div>
+        <!-- Filtro Status (dropdown estilo Drive via abrirMenuSelecao) -->
+        <div class="ext-filtro" data-filtro="status" id="ext-filtro-wrap-status">
+          <button type="button" class="ext-filtro-btn" id="ext-filtro-btn-status" data-on-click="pages_execucao_tarefas.10"
+                  aria-haspopup="menu" aria-expanded="false">
+            <span id="ext-filtro-label-status">Status</span>
+            <span class="material-symbols-outlined">expand_more</span>
+          </button>
+          <button type="button" class="ext-filtro-x hidden" id="ext-filtro-x-status" data-on-click="pages_execucao_tarefas.38"
+                  data-title="Remover filtro de status" aria-label="Remover filtro de status">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <!-- Toggle: Somente colaborações -->
+        <label class="ext-toggle-origem" data-title="Mostra só as responsabilidades que você assumiu por colaboração externa (fora do seu escopo normal de Unidade)">
+          <input type="checkbox" id="ext-filtro-colaboracao" data-on-change="pages_execucao_tarefas.8">
+          <span class="ext-toggle-track"><span class="ext-toggle-thumb"></span></span>
+          <span>Somente colaborações</span>
+        </label>
+
+        <!-- Limpar filtros -->
+        <button type="button" class="ext-limpar-link hidden" id="ext-btn-limpar-filtros"
+                data-on-click="pages_execucao_tarefas.7" aria-label="Limpar filtros">
+          Limpar filtros
+        </button>
+
+        <!-- Spacer empurra os controles para a direita na mesma linha base -->
+        <div style="flex:1"></div>
+
+        <!-- Seletor de Período / Exercício Plurianual (dropdown na mesma linha base) -->
+        <div class="ext-filtro ext-periodo-filtro" id="ext-periodo-wrap" data-filtro="exercicio">
+          <button type="button" class="ext-filtro-btn" id="ext-filtro-btn-exercicio" data-on-click="pages_execucao_tarefas.28"
+                  aria-haspopup="menu" aria-expanded="false" data-title="Selecione o exercício de apuração do plano">
+            <span class="material-symbols-outlined" style="font-size:18px;color:var(--ds-color-action)">event</span>
+            <span id="ext-filtro-label-exercicio">Exercício</span>
+            <span class="material-symbols-outlined">expand_more</span>
+          </button>
+        </div>
+
+        <!-- Alternador Simplificado de Visualização: Apenas Lista e Kanban (à direita, mesma linha base) -->
+        <div class="det-modos" role="group" aria-label="Modo de visualização">
+          <button type="button" class="det-modo ativo" data-view="kanban" data-on-click="pages_execucao_tarefas.4"
+                  id="ext-btn-modo-kanban" data-title="Visualização em Kanban" aria-label="Visualização em Kanban" aria-pressed="true">
+            <span class="material-symbols-outlined">view_kanban</span>
+          </button>
+          <button type="button" class="det-modo" data-view="lista" data-on-click="pages_execucao_tarefas.3"
+                  id="ext-btn-modo-lista" data-title="Visualização em Lista" aria-label="Visualização em Lista" aria-pressed="false">
+            <span class="material-symbols-outlined">format_list_bulleted</span>
+          </button>
+        </div>
+
       </div>
     </div>
+
+    <!-- Container Dinâmico (Kanban ou Lista) -->
+    <div id="ext-container"></div>
   </div>
 
   <!-- PAINEL: AÇÕES DE TRATAMENTO -->
@@ -19520,7 +19536,7 @@ uiRegistrarAcoes('pages_execucao_planos', {
         </p>
         <div id="ext-colunas-lista" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto"></div>
         <div style="display:flex;gap:8px;margin-top:6px">
-          <input type="text" id="ext-nova-coluna-titulo" class="filtro-input" placeholder="Nome da nova coluna…" style="flex:1" maxlength="40">
+          <input type="text" id="ext-nova-coluna-titulo" class="filtro-input ds-input" placeholder="Nome da nova coluna…" style="flex:1" maxlength="40">
           <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_execucao_tarefas.31">Adicionar</button>
         </div>
       </div>
@@ -19544,11 +19560,11 @@ uiRegistrarAcoes('pages_execucao_planos', {
         <input type="hidden" id="ext-reg-id-tratamento">
         <div class="ext-mini-field">
           <label for="ext-reg-data">Data da execução *</label>
-          <input type="date" id="ext-reg-data" class="filtro-input">
+          <input type="date" id="ext-reg-data" class="filtro-input ds-input">
         </div>
         <div class="ext-mini-field">
           <label for="ext-reg-obs">Observação / Evidência</label>
-          <textarea id="ext-reg-obs" class="filtro-input" rows="3" placeholder="Descreva brevemente o que foi feito…"></textarea>
+          <textarea id="ext-reg-obs" class="filtro-input ds-input" rows="3" placeholder="Descreva brevemente o que foi feito…"></textarea>
         </div>
       </div>
       <div class="ext-mini-footer">
@@ -19565,69 +19581,267 @@ uiRegistrarAcoes('pages_execucao_planos', {
    ESTILOS ESPECÍFICOS: WORKSPACE DE REGISTRO DE EXECUÇÃO
    ========================================================================== */
 
+#page-execucao-tarefas {
+  --ext-sticky-top: 0px;
+  --ext-tabs-h: 44px;
+  --ext-acoes-w: 48px;
+}
+
 /* --- Hero limpo (idêntico ao padrão de pages_plano_detalhe.html) --- */
 #page-execucao-tarefas .detalhe-hero {
-  display: flex; align-items: center; min-height: var(--det-tabs-h, 48px);
-  padding-right: var(--det-acoes-w, 240px);
+  display: flex;
+  align-items: center;
+  min-height: var(--ext-tabs-h);
+  padding-right: var(--ext-acoes-w);
+  margin-bottom: 20px;
 }
 #page-execucao-tarefas .detalhe-hero-titulo {
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 #page-execucao-tarefas #ext-titulo {
-  font-size: 30px; line-height: 1.15; letter-spacing: -0.8px; font-weight: var(--ds-weight-bold);
-  color: var(--ds-color-text); margin: 0; overflow-wrap: anywhere;
+  font-size: 30px;
+  line-height: 1.15;
+  letter-spacing: -0.8px;
+  font-weight: var(--ds-weight-bold);
+  color: var(--ds-color-text);
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 #page-execucao-tarefas .badge-status {
-  border: none; background: var(--ds-color-surface-2); border-radius: var(--ds-radius-pill);
-  font-size: 13px; font-weight: var(--ds-weight-semibold); padding: 4px 12px;
-  display: inline-flex; align-items: center;
+  border: none;
+  background: var(--ds-color-surface-2);
+  border-radius: var(--ds-radius-pill);
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-weight-semibold);
+  padding: 3px 12px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.4;
 }
 
 /* Botão sticky de ação do Hero */
 #page-execucao-tarefas .detalhe-hero-acoes {
-  position: sticky; top: var(--det-sticky-top, 0); z-index: 43;
-  width: max-content; margin-left: auto;
-  margin-top: calc(-1 * (var(--det-tabs-h, 48px) + 20px));
-  height: calc(var(--det-tabs-h, 48px) - 1px);
-  display: flex; align-items: center; gap: 8px; padding-left: 12px;
-  background: var(--ds-color-surface); box-shadow: none;
+  position: sticky;
+  top: var(--ext-sticky-top);
+  z-index: 43;
+  width: max-content;
+  margin-left: auto;
+  margin-top: calc(-1 * (var(--ext-tabs-h) + 20px));
+  height: calc(var(--ext-tabs-h) - 1px);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  background: var(--ds-color-surface);
+  box-shadow: none;
 }
 @media (max-width: 768px) {
-  #page-execucao-tarefas .detalhe-hero { padding-right: 0; min-height: auto; align-items: flex-start; flex-direction: column; }
-  #page-execucao-tarefas #ext-titulo { font-size: 24px; }
-  #page-execucao-tarefas .detalhe-hero-acoes { position: static; margin-top: 0; width: 100%; height: auto; padding: 0; justify-content: flex-end; }
+  #page-execucao-tarefas .detalhe-hero {
+    padding-right: 0;
+    min-height: auto;
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: 12px;
+  }
+  #page-execucao-tarefas #ext-titulo { font-size: 26px; }
+  #page-execucao-tarefas .detalhe-hero-acoes {
+    position: static;
+    margin-top: 0;
+    width: 100%;
+    height: auto;
+    padding: 0;
+    justify-content: flex-end;
+  }
 }
 
-/* --- Linha de abas --- */
+/* --- Linha de abas estilo Gmail / Planejamento Institucional --- */
 #page-execucao-tarefas .view-tabs-container {
-  margin-bottom: var(--ds-space-4);
+  position: sticky;
+  top: var(--ext-sticky-top);
+  z-index: 42;
+  display: flex;
+  align-items: flex-start;
+  padding-right: var(--ext-acoes-w);
+  background: var(--ds-color-surface);
+  border: none;
   border-bottom: 1px solid var(--ds-color-border);
+  box-shadow: none;
+  margin: 0;
+  margin-bottom: var(--ds-space-3);
+  padding-top: 0;
+  padding-bottom: 0;
+}
+#page-execucao-tarefas .view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+}
+#page-execucao-tarefas .view-tabs .tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--ext-tabs-h);
+  padding: 0 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--ds-color-text-muted);
+  font-family: var(--ds-font-sans);
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+#page-execucao-tarefas .view-tabs .tab-btn:hover {
+  color: var(--ds-color-text);
+  background: var(--ds-sidebar-item-hover);
+}
+#page-execucao-tarefas .view-tabs .tab-btn.active {
+  color: var(--ds-color-action);
+  font-weight: var(--ds-weight-semibold);
+  border-bottom-color: var(--ds-color-action);
+  background: none;
 }
 
-/* --- Seletor de Período / Exercício Plurianual --- */
-#page-execucao-tarefas .ext-periodo-wrap {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border);
-  padding: 4px 10px; border-radius: var(--ds-r-md); font-size: 0.85rem;
+/* --- Barra de filtros unificada (estilo Drive / Samaúma) --- */
+#page-execucao-tarefas .ext-filtros {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  margin-bottom: var(--ds-space-3);
+  position: sticky;
+  top: var(--ext-sticky-top);
+  z-index: 41;
+  background: var(--ds-color-surface);
 }
-#page-execucao-tarefas .ext-periodo-label {
-  font-weight: var(--ds-weight-semibold); color: var(--ds-color-text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.4px;
-}
-#page-execucao-tarefas .ext-select-periodo {
-  border: none; background: transparent; font-family: var(--ds-font-sans); font-size: 0.88rem;
-  font-weight: var(--ds-weight-semibold); color: var(--ds-color-action); cursor: pointer; outline: none;
+#page-execucao-tarefas .ext-filtros-normal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: wrap;
 }
 
-/* --- Toggle "Somente colaborações" --- */
+/* Busca expansível */
+#page-execucao-tarefas .ext-search { position: relative; display: inline-flex; align-items: center; }
+#page-execucao-tarefas .ext-search-caixa { position: relative; display: flex; align-items: center; }
+#page-execucao-tarefas .ext-search-caixa.hidden { display: none; }
+#page-execucao-tarefas .ext-search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 20px; color: var(--ds-color-text-muted); pointer-events: none;
+}
+#page-execucao-tarefas .ext-search-input { width: 260px; max-width: 60vw; padding-left: 42px; padding-right: 38px; height: 36px; }
+#page-execucao-tarefas .ext-search-clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted);
+}
+#page-execucao-tarefas .ext-search-clear:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text); }
+#page-execucao-tarefas .ext-search-clear .material-symbols-outlined { font-size: 18px; }
+
+/* Pastilhas de Filtro (Chip-buttons de filtro, padrão pll/exl) */
+#page-execucao-tarefas .ext-filtro { display: inline-flex; align-items: stretch; }
+#page-execucao-tarefas .ext-filtro-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px;
+  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
+  color: var(--ds-color-text); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
+  cursor: pointer; white-space: nowrap; transition: all 0.15s;
+}
+#page-execucao-tarefas .ext-filtro-btn:hover { background: var(--ds-sidebar-item-hover); }
+#page-execucao-tarefas .ext-filtro-btn .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
+#page-execucao-tarefas .ext-filtro-btn--ativo {
+  background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); border-color: var(--ds-color-info-bg); font-weight: var(--ds-weight-semibold);
+}
+#page-execucao-tarefas .ext-filtro-btn--ativo .material-symbols-outlined { color: var(--ds-color-info-fg); }
+#page-execucao-tarefas .ext-filtro-btn:has(+ .ext-filtro-x:not(.hidden)) {
+  border-top-right-radius: 0; border-bottom-right-radius: 0;
+  border-right-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
+}
+#page-execucao-tarefas .ext-filtro-x {
+  display: inline-flex; align-items: center; justify-content: center; width: 26px; padding: 0;
+  background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); cursor: pointer;
+  border: 1px solid var(--ds-color-info-bg);
+  border-left-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
+  border-top-right-radius: var(--ds-r-lg); border-bottom-right-radius: var(--ds-r-lg);
+}
+#page-execucao-tarefas .ext-filtro-x:hover { filter: brightness(0.94); }
+#page-execucao-tarefas .ext-filtro-x .material-symbols-outlined { font-size: 15px; }
+
+/* Link limpar filtros */
+#page-execucao-tarefas .ext-limpar-link {
+  background: none; border: none; padding: 6px 4px; color: var(--ds-color-action); font-family: var(--ds-font-sans);
+  font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; white-space: nowrap;
+}
+#page-execucao-tarefas .ext-limpar-link:hover { text-decoration: underline; }
+
+/* Toggle "Somente colaborações" */
 #page-execucao-tarefas .ext-toggle-origem {
-  display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--ds-color-text-muted);
-  cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 8px; font-size: var(--ds-text-sm); color: var(--ds-color-text);
+  cursor: pointer; white-space: nowrap; height: 36px; padding: 0 4px;
 }
 #page-execucao-tarefas .ext-toggle-origem input { position: absolute; opacity: 0; width: 0; height: 0; }
-#page-execucao-tarefas .ext-toggle-track { width: 30px; height: 16px; background: var(--ds-color-border); border-radius: 10px; position: relative; flex-shrink: 0; transition: background 0.15s; }
-#page-execucao-tarefas .ext-toggle-thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ds-color-surface); transition: left 0.15s; }
+#page-execucao-tarefas .ext-toggle-track {
+  width: 30px; height: 16px; background: var(--ds-color-border); border-radius: 10px;
+  position: relative; flex-shrink: 0; transition: background 0.15s;
+}
+#page-execucao-tarefas .ext-toggle-thumb {
+  position: absolute; top: 2px; left: 2px; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--ds-color-surface); transition: left 0.15s;
+}
 #page-execucao-tarefas .ext-toggle-origem input:checked + .ext-toggle-track { background: var(--ds-color-action); }
 #page-execucao-tarefas .ext-toggle-origem input:checked + .ext-toggle-track .ext-toggle-thumb { left: 16px; }
+
+/* Alternador de Modos de visualização (.det-modos / .det-modo) */
+#page-execucao-tarefas .det-modos {
+  display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--ds-r-lg);
+  background: var(--ds-color-surface-2); border: 1px solid var(--ds-glass-border, var(--ds-color-border));
+}
+#page-execucao-tarefas .det-modo {
+  position: relative; width: 38px; height: 30px; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted);
+  transition: all 0.15s;
+}
+#page-execucao-tarefas .det-modo:hover { color: var(--ds-color-text); background: var(--ds-sidebar-item-hover); }
+#page-execucao-tarefas .det-modo.ativo {
+  background: var(--ds-color-surface); color: var(--ds-color-action); box-shadow: var(--ds-shadow-1);
+}
+#page-execucao-tarefas .det-modo .material-symbols-outlined { font-size: 19px; }
+
+/* Topbar do Kanban e da Lista */
+#page-execucao-tarefas .ext-kanban-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 2px 12px; gap: 12px;
+}
+#page-execucao-tarefas .ext-contador-badge {
+  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
+  color: var(--ds-color-text-muted);
+}
+#page-execucao-tarefas .ext-kanban-topbar-acoes {
+  display: flex; align-items: center; gap: 8px; margin-left: auto;
+}
+#page-execucao-tarefas .ext-icon-th-btn {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0;
+  background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); cursor: pointer;
+  transition: all 0.15s;
+}
+#page-execucao-tarefas .ext-icon-th-btn:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
+
+/* Ações no cabeçalho da tabela */
+#page-execucao-tarefas .ext-th-acoes {
+  display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; width: 100%;
+}
 
 /* --- KANBAN BOARD E COLUNAS --- */
 #page-execucao-tarefas .kanban-board {
@@ -19651,6 +19865,12 @@ uiRegistrarAcoes('pages_execucao_planos', {
 }
 #page-execucao-tarefas .kanban-header-titulo {
   display: flex; align-items: center; gap: 8px; font-size: 0.92rem;
+}
+#page-execucao-tarefas .badge-count {
+  font-size: 11px; font-weight: var(--ds-weight-bold);
+  padding: 1px 7px; border-radius: var(--ds-radius-pill);
+  background: var(--ds-color-surface); color: var(--ds-color-text-muted);
+  border: 1px solid var(--ds-color-border);
 }
 #page-execucao-tarefas .kanban-body {
   padding: 12px; display: flex; flex-direction: column; gap: 12px; min-height: 120px;
@@ -19778,18 +19998,21 @@ uiRegistrarAcoes('pages_execucao_planos', {
 #page-execucao-tarefas .action-btn-mini:hover { background: var(--ds-color-surface-2); color: var(--ds-color-action); border-color: var(--ds-color-action); }
 
 /* --- MODO LISTA: TABELA HIERÁRQUICA E LINHAS EXPANSÍVEIS --- */
+#page-execucao-tarefas .ext-tabela-wrap {
+  width: 100%; overflow-x: auto; background: var(--ds-color-surface);
+  border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md);
+}
 #page-execucao-tarefas .ext-tabela-lista {
-  width: 100%; border-collapse: separate; border-spacing: 0; background: var(--ds-color-surface);
-  border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md); overflow: hidden;
+  width: 100%; border-collapse: collapse; font-family: var(--ds-font-sans);
 }
 #page-execucao-tarefas .ext-tabela-lista th {
-  padding: 10px 14px; font-weight: var(--ds-weight-semibold); font-size: 0.82rem;
-  color: var(--ds-color-text-muted); background: var(--ds-color-surface-2);
-  border-bottom: 1px solid var(--ds-color-border); text-align: left;
+  padding: 10px 14px; font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs);
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--ds-color-text-muted);
+  background: var(--ds-color-surface-2); border-bottom: 1px solid var(--ds-color-border); text-align: left;
 }
 #page-execucao-tarefas .ext-tabela-lista td {
   padding: 12px 14px; border-bottom: 1px solid var(--ds-color-border);
-  font-size: 0.86rem; color: var(--ds-color-text); vertical-align: middle;
+  font-size: var(--ds-text-sm); color: var(--ds-color-text); vertical-align: middle;
   transition: background var(--ds-duration-fast) var(--ds-ease-standard);
 }
 #page-execucao-tarefas .ext-tabela-lista tbody tr.ext-linha-elemento:hover td {
@@ -19882,22 +20105,45 @@ function execTarefasCarregar() {
   estadoExecTarefas.tarefasAbertas = {};
 
   // Reseta a UI de filtros/visualização para o estado padrão
-  estadoExecTarefas.view = estadoExecTarefas.view || 'kanban';
+  if (estadoExecTarefas.view !== 'lista' && estadoExecTarefas.view !== 'kanban') {
+    estadoExecTarefas.view = 'kanban';
+  }
   estadoExecTarefas.filtroStatus = 'todos';
   estadoExecTarefas.busca = '';
   estadoExecTarefas.somenteColaboracao = false;
   estadoExecTarefas.ordenacao = { coluna: null, direcao: 'asc' };
 
-  document.querySelectorAll('#page-execucao-tarefas .mode-btn').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.view === estadoExecTarefas.view);
-  });
+  var btnKanban = document.getElementById('ext-btn-modo-kanban');
+  var btnLista = document.getElementById('ext-btn-modo-lista');
+  if (btnKanban) {
+    btnKanban.classList.toggle('ativo', estadoExecTarefas.view === 'kanban');
+    btnKanban.setAttribute('aria-pressed', estadoExecTarefas.view === 'kanban' ? 'true' : 'false');
+  }
+  if (btnLista) {
+    btnLista.classList.toggle('ativo', estadoExecTarefas.view === 'lista');
+    btnLista.setAttribute('aria-pressed', estadoExecTarefas.view === 'lista' ? 'true' : 'false');
+  }
+
   var buscaEl = document.getElementById('ext-busca');
   if (buscaEl) buscaEl.value = '';
-  var filtroStatusEl = document.getElementById('ext-filtro-status');
-  if (filtroStatusEl) { filtroStatusEl.value = 'todos'; filtroStatusEl.style.display = (estadoExecTarefas.view === 'kanban') ? 'none' : ''; }
+  var btnClearBusca = document.getElementById('ext-btn-limpar-busca');
+  if (btnClearBusca) btnClearBusca.classList.add('hidden');
+  var caixaBusca = document.getElementById('ext-search-caixa');
+  var toggleBusca = document.getElementById('ext-search-toggle');
+  if (caixaBusca) caixaBusca.classList.add('hidden');
+  if (toggleBusca) toggleBusca.classList.remove('hidden');
+
+  var elLabelStatus = document.getElementById('ext-filtro-label-status');
+  var elBtnStatus = document.getElementById('ext-filtro-btn-status');
+  var elXStatus = document.getElementById('ext-filtro-x-status');
+  if (elLabelStatus) elLabelStatus.textContent = 'Status';
+  if (elBtnStatus) elBtnStatus.classList.remove('ext-filtro-btn--ativo');
+  if (elXStatus) elXStatus.classList.add('hidden');
+
   var filtroColabEl = document.getElementById('ext-filtro-colaboracao');
   if (filtroColabEl) filtroColabEl.checked = false;
 
+  _extVerificarLimparFiltros();
   execTarefasMudarAba('tarefas', true);
   document.getElementById('ext-container').innerHTML = spinnerListaHTML('Carregando responsabilidades…');
 
@@ -19938,31 +20184,13 @@ function execTarefasRenderizarHeader(p) {
   elStatus.style.color = cor[1];
 
   // Configura o seletor de Exercício / Período Plurianual
-  var seletorAno = document.getElementById('ext-seletor-ano');
-  if (seletorAno) {
-    seletorAno.innerHTML = '';
-    var optTodos = document.createElement('option');
-    optTodos.value = 'todos';
-    optTodos.textContent = 'Todos os exercícios';
-    seletorAno.appendChild(optTodos);
-
-    var anos = p.anosVigencia || [];
-    if (!anos.length && p.anoInicio && p.anoFim) {
-      for (var a = Number(p.anoInicio); a <= Number(p.anoFim); a++) anos.push(a);
-    }
-    var anoAtual = new Date().getFullYear();
-    var anoPadrao = anos.indexOf(anoAtual) > -1 ? anoAtual : (anos[0] || 'todos');
-
-    anos.forEach(function(ano) {
-      var opt = document.createElement('option');
-      opt.value = String(ano);
-      opt.textContent = 'Exercício ' + ano;
-      if (String(ano) === String(anoPadrao)) opt.selected = true;
-      seletorAno.appendChild(opt);
-    });
-
-    estadoExecTarefas.anoSelecionado = String(anoPadrao);
+  var anos = p.anosVigencia || [];
+  if (!anos.length && p.anoInicio && p.anoFim) {
+    for (var a = Number(p.anoInicio); a <= Number(p.anoFim); a++) anos.push(a);
   }
+  var anoAtual = new Date().getFullYear();
+  var anoPadrao = anos.indexOf(anoAtual) > -1 ? anoAtual : (anos[0] || 'todos');
+  extSelecionarExercicio(String(anoPadrao));
 
   // Mantém os dados da barra lateral atualizados
   _extpRenderDetalhes();
@@ -20072,7 +20300,7 @@ function _extpRenderAtividade() {
   }
 }
 
-// Fechamento de painel lateral com tecla Esc
+// Fechamento de painel lateral e modal com tecla Esc
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Escape') return;
   var modalCol = document.getElementById('ext-modal-colunas');
@@ -20086,6 +20314,18 @@ document.addEventListener('keydown', function(e) {
     extFecharPainelDetalhes();
     e.preventDefault();
   }
+});
+
+// Fechamento da caixa de busca ao clicar fora
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('ext-search-wrap');
+  var caixa = document.getElementById('ext-search-caixa');
+  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
+  var inp = document.getElementById('ext-busca');
+  if (inp && inp.value) return;
+  caixa.classList.add('hidden');
+  var toggle = document.getElementById('ext-search-toggle');
+  if (toggle) toggle.classList.remove('hidden');
 });
 
 // --- ABAS: RESPONSABILIDADES / AÇÕES DE TRATAMENTO ---
@@ -20104,36 +20344,169 @@ function execTarefasMudarAba(aba, semCarregarRiscos) {
 
 function execTarefasSetView(view) {
   estadoExecTarefas.view = view;
-  document.querySelectorAll('#page-execucao-tarefas .mode-btn').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.view === view);
-  });
-  var filtroStatusEl = document.getElementById('ext-filtro-status');
-  if (filtroStatusEl) filtroStatusEl.style.display = (view === 'kanban') ? 'none' : '';
-  var btnCfg = document.getElementById('ext-btn-kanban-cfg');
-  if (btnCfg) btnCfg.classList.toggle('hidden', view !== 'kanban');
+  var btnKanban = document.getElementById('ext-btn-modo-kanban');
+  var btnLista = document.getElementById('ext-btn-modo-lista');
+  if (btnKanban) {
+    btnKanban.classList.toggle('ativo', view === 'kanban');
+    btnKanban.setAttribute('aria-pressed', view === 'kanban' ? 'true' : 'false');
+  }
+  if (btnLista) {
+    btnLista.classList.toggle('ativo', view === 'lista');
+    btnLista.setAttribute('aria-pressed', view === 'lista' ? 'true' : 'false');
+  }
   execTarefasRenderizar();
+}
+
+// --- FILTROS E BUSCA (ESTILO DRIVE COM abrirMenuSelecao) ---
+
+function extAbrirBusca() {
+  var toggle = document.getElementById('ext-search-toggle');
+  var caixa = document.getElementById('ext-search-caixa');
+  var inp = document.getElementById('ext-busca');
+  if (toggle) toggle.classList.add('hidden');
+  if (caixa) caixa.classList.remove('hidden');
+  if (inp) inp.focus();
+}
+
+function extLimparBusca() {
+  var inp = document.getElementById('ext-busca');
+  if (inp) {
+    inp.value = '';
+    inp.focus();
+  }
+  var btnClear = document.getElementById('ext-btn-limpar-busca');
+  if (btnClear) btnClear.classList.add('hidden');
+  execTarefasFiltrar();
 }
 
 function execTarefasFiltrar() {
-  estadoExecTarefas.busca = document.getElementById('ext-busca').value.toLowerCase();
-  var filtroStatusEl = document.getElementById('ext-filtro-status');
-  if (filtroStatusEl) estadoExecTarefas.filtroStatus = filtroStatusEl.value;
-  var colabEl = document.getElementById('ext-filtro-colaboracao');
-  if (colabEl) estadoExecTarefas.somenteColaboracao = colabEl.checked;
+  var inp = document.getElementById('ext-busca');
+  estadoExecTarefas.busca = inp ? inp.value.toLowerCase().trim() : '';
+  var btnClear = document.getElementById('ext-btn-limpar-busca');
+  if (btnClear) btnClear.classList.toggle('hidden', !estadoExecTarefas.busca);
+  _extVerificarLimparFiltros();
   execTarefasRenderizar();
 }
 
-function execTarefasMudarExercicio() {
-  var sel = document.getElementById('ext-seletor-ano');
-  if (sel) estadoExecTarefas.anoSelecionado = sel.value;
+function extToggleColaboracao(input) {
+  estadoExecTarefas.somenteColaboracao = !!(input && input.checked);
+  _extVerificarLimparFiltros();
+  execTarefasRenderizar();
+}
+
+function extAbrirFiltroStatus(ev, gatilho) {
+  if (ev) ev.stopPropagation();
+  gatilho = gatilho || (this instanceof Element ? this : null) || (ev && ev.currentTarget && ev.currentTarget !== document.documentElement && ev.currentTarget !== document.body ? ev.currentTarget : null) || document.getElementById('ext-filtro-btn-status');
+  var atual = estadoExecTarefas.filtroStatus || 'todos';
+  var opcoes = [
+    { valor: 'todos', label: 'Todos os status' },
+    { valor: 'Não Iniciado', label: 'Não Iniciado' },
+    { valor: 'Em Andamento', label: 'Em Andamento' },
+    { valor: 'Concluído', label: 'Concluído' },
+    { valor: 'Atrasado', label: 'Atrasado' }
+  ];
+  var itens = opcoes.map(function(o) {
+    return {
+      label: o.label,
+      ativo: o.valor === atual,
+      onclick: "extSelecionarFiltroStatus('" + escapeJsAttr(o.valor) + "')"
+    };
+  });
+  if (typeof abrirMenuSelecao === 'function') {
+    abrirMenuSelecao(gatilho, [{ itens: itens }]);
+  }
+}
+
+function extSelecionarFiltroStatus(valor) {
+  estadoExecTarefas.filtroStatus = valor || 'todos';
+  var ativo = valor && valor !== 'todos';
+  var elLabel = document.getElementById('ext-filtro-label-status');
+  var elBtn = document.getElementById('ext-filtro-btn-status');
+  var elX = document.getElementById('ext-filtro-x-status');
+  if (elLabel) elLabel.textContent = ativo ? valor : 'Status';
+  if (elBtn) elBtn.classList.toggle('ext-filtro-btn--ativo', !!ativo);
+  if (elX) elX.classList.toggle('hidden', !ativo);
+  _extVerificarLimparFiltros();
+  execTarefasRenderizar();
+}
+
+function extLimparFiltroStatus() {
+  extSelecionarFiltroStatus('todos');
+}
+
+function extAbrirMenuExercicio(ev, gatilho) {
+  if (ev) ev.stopPropagation();
+  gatilho = gatilho || (this instanceof Element ? this : null) || (ev && ev.currentTarget && ev.currentTarget !== document.documentElement && ev.currentTarget !== document.body ? ev.currentTarget : null) || document.getElementById('ext-filtro-btn-exercicio');
+  var p = (estadoExecTarefas.dados && estadoExecTarefas.dados.plano) || {};
+  var anos = p.anosVigencia || [];
+  if (!anos.length && p.anoInicio && p.anoFim) {
+    for (var a = Number(p.anoInicio); a <= Number(p.anoFim); a++) anos.push(a);
+  }
+  var atual = String(estadoExecTarefas.anoSelecionado || 'todos');
+  var itens = [
+    { label: 'Todos os exercícios', ativo: atual === 'todos', onclick: "extSelecionarExercicio('todos')" }
+  ].concat(anos.map(function(ano) {
+    return {
+      label: 'Exercício ' + ano,
+      ativo: atual === String(ano),
+      onclick: "extSelecionarExercicio('" + ano + "')"
+    };
+  }));
+  if (typeof abrirMenuSelecao === 'function') {
+    abrirMenuSelecao(gatilho, [{ itens: itens }]);
+  }
+}
+
+function extSelecionarExercicio(ano) {
+  estadoExecTarefas.anoSelecionado = String(ano);
+  var elLabel = document.getElementById('ext-filtro-label-exercicio');
+  var elBtn = document.getElementById('ext-filtro-btn-exercicio');
+  if (elLabel) elLabel.textContent = (ano === 'todos') ? 'Todos os exercícios' : ('Exercício ' + ano);
+  if (elBtn) elBtn.classList.toggle('ext-filtro-btn--ativo', ano !== 'todos');
+  execTarefasRenderizar();
+}
+
+function _extVerificarLimparFiltros() {
+  var temBusca = !!estadoExecTarefas.busca;
+  var temStatus = estadoExecTarefas.filtroStatus && estadoExecTarefas.filtroStatus !== 'todos';
+  var temColab = !!estadoExecTarefas.somenteColaboracao;
+  var btnLimpar = document.getElementById('ext-btn-limpar-filtros');
+  if (btnLimpar) btnLimpar.classList.toggle('hidden', !(temBusca || temStatus || temColab));
+}
+
+function extLimparFiltros() {
+  var inp = document.getElementById('ext-busca');
+  if (inp) inp.value = '';
+  var btnClear = document.getElementById('ext-btn-limpar-busca');
+  if (btnClear) btnClear.classList.add('hidden');
+  var caixa = document.getElementById('ext-search-caixa');
+  var toggle = document.getElementById('ext-search-toggle');
+  if (caixa) caixa.classList.add('hidden');
+  if (toggle) toggle.classList.remove('hidden');
+
+  estadoExecTarefas.busca = '';
+  estadoExecTarefas.filtroStatus = 'todos';
+  estadoExecTarefas.somenteColaboracao = false;
+
+  var elLabelStatus = document.getElementById('ext-filtro-label-status');
+  var elBtnStatus = document.getElementById('ext-filtro-btn-status');
+  var elXStatus = document.getElementById('ext-filtro-x-status');
+  if (elLabelStatus) elLabelStatus.textContent = 'Status';
+  if (elBtnStatus) elBtnStatus.classList.remove('ext-filtro-btn--ativo');
+  if (elXStatus) elXStatus.classList.add('hidden');
+
+  var colabEl = document.getElementById('ext-filtro-colaboracao');
+  if (colabEl) colabEl.checked = false;
+
+  _extVerificarLimparFiltros();
   execTarefasRenderizar();
 }
 
 // Lista filtrada: LIMITA O REGISTRO DE EXECUÇÃO EXCLUSIVAMENTE A ELEMENTOS COM INDICADORES
 function _execListaFiltrada() {
   if (!estadoExecTarefas.dados || !estadoExecTarefas.dados.tarefas) return [];
-  var busca = estadoExecTarefas.busca, statusF = estadoExecTarefas.filtroStatus;
-  var ignorarStatus = estadoExecTarefas.view === 'kanban';
+  var busca = (estadoExecTarefas.busca || '').toLowerCase().trim();
+  var statusF = estadoExecTarefas.filtroStatus || 'todos';
   var somenteColaboracao = estadoExecTarefas.somenteColaboracao;
 
   return estadoExecTarefas.dados.tarefas.filter(function(t) {
@@ -20147,23 +20520,23 @@ function _execListaFiltrada() {
       var matchInd = inds.some(function(i) { return i.nome && i.nome.toLowerCase().indexOf(busca) > -1; });
       if (!matchTitulo && !matchCodigo && !matchInd) return false;
     }
-    if (!ignorarStatus && statusF !== 'todos' && t.status !== statusF) return false;
+
+    if (statusF !== 'todos') {
+      if (statusF === 'Atrasado') {
+        if (!_execEstaAtrasado(t)) return false;
+      } else if (t.status !== statusF) {
+        return false;
+      }
+    }
+
     if (somenteColaboracao && !t.origemColaboracao) return false;
     return true;
   });
 }
 
-function execTarefasRenderizarContador(itens) {
-  var el = document.getElementById('ext-contador');
-  if (!el) return;
-  var total = (estadoExecTarefas.dados && estadoExecTarefas.dados.tarefas.length) || 0;
-  el.textContent = itens.length + ' de ' + total + ' responsabilidade(s) com indicadores';
-}
-
 function execTarefasRenderizar() {
   var container = document.getElementById('ext-container');
   var itens = _execListaFiltrada();
-  execTarefasRenderizarContador(itens);
 
   if (estadoExecTarefas.view === 'lista') _execRenderTabelaLista(itens, container);
   else _execRenderKanban(itens, container);
@@ -20260,8 +20633,21 @@ function _execSalvarColunasKanban(colunas) {
 
 function _execRenderKanban(itens, container) {
   var colunas = _execObterColunasKanban();
-  var html = '<div class="kanban-board">';
+  var total = (estadoExecTarefas.dados && estadoExecTarefas.dados.tarefas && estadoExecTarefas.dados.tarefas.length) || 0;
 
+  var topbarHtml = '<div class="ext-kanban-topbar">'
+    + '<div class="ext-contador-badge">' + itens.length + ' de ' + total + ' responsabilidade(s) com indicadores</div>'
+    + '<div class="ext-kanban-topbar-acoes">'
+    +   '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" id="ext-btn-kanban-cfg" data-on-click="pages_execucao_tarefas.29" data-title="Configurar colunas do Kanban">'
+    +     '<span class="material-symbols-outlined" style="font-size:16px">view_column</span> Colunas'
+    +   '</button>'
+    +   '<button type="button" class="ext-icon-th-btn" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar dados" aria-label="Atualizar dados">'
+    +     '<span class="material-symbols-outlined" style="font-size:18px">refresh</span>'
+    +   '</button>'
+    + '</div>'
+    + '</div>';
+
+  var boardHtml = '<div class="kanban-board">';
   colunas.forEach(function(col) {
     var statusAlvo = col.status || col.titulo;
     var itensCol = itens.filter(function(t) {
@@ -20272,7 +20658,7 @@ function _execRenderKanban(itens, container) {
       return (t.colunaPersonalizada === col.id) || (t.status === statusAlvo);
     });
 
-    html += '<div class="kanban-col" data-col-id="' + escapeHtml(col.id) + '">'
+    boardHtml += '<div class="kanban-col" data-col-id="' + escapeHtml(col.id) + '">'
       + '<div class="kanban-header">'
       +   '<div class="kanban-header-titulo"><span class="material-symbols-outlined" style="font-size:17px;color:var(--ds-color-action)">' + (col.icone || 'circle') + '</span> ' + escapeHtml(col.titulo) + '</div>'
       +   '<span class="badge-count">' + itensCol.length + '</span>'
@@ -20280,9 +20666,9 @@ function _execRenderKanban(itens, container) {
       + '<div class="kanban-body">' + itensCol.map(function(t) { return _execCriarCardKanban(t); }).join('') + '</div>'
       + '</div>';
   });
+  boardHtml += '</div>';
 
-  html += '</div>';
-  container.innerHTML = html;
+  container.innerHTML = topbarHtml + boardHtml;
   _execAtivarDrag();
 }
 
@@ -20412,8 +20798,18 @@ function _execToggleGavetaCard(idElemento) {
 // --- MODO LISTA: TABELA HIERÁRQUICA COM LINHAS EXPANSÍVEIS ---
 
 function _execRenderTabelaLista(itens, container) {
+  var total = (estadoExecTarefas.dados && estadoExecTarefas.dados.tarefas && estadoExecTarefas.dados.tarefas.length) || 0;
+
   if (itens.length === 0) {
-    container.innerHTML = '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhuma responsabilidade encontrada</p><p>Ajuste os filtros ou aguarde novas atribuições.</p></div>';
+    container.innerHTML = '<div class="ext-kanban-topbar">'
+      + '<div class="ext-contador-badge">0 de ' + total + ' responsabilidade(s) com indicadores</div>'
+      + '<div class="ext-kanban-topbar-acoes">'
+      +   '<button type="button" class="ext-icon-th-btn" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar dados" aria-label="Atualizar dados">'
+      +     '<span class="material-symbols-outlined" style="font-size:18px">refresh</span>'
+      +   '</button>'
+      + '</div>'
+      + '</div>'
+      + '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhuma responsabilidade encontrada</p><p>Ajuste os filtros ou aguarde novas atribuições.</p></div>';
     return;
   }
 
@@ -20451,14 +20847,25 @@ function _execRenderTabelaLista(itens, container) {
     return linhaPrincipal + linhaDetalhes;
   }).join('');
 
-  container.innerHTML = '<div class="card table-container"><table class="ext-tabela-lista"><thead><tr>'
+  var topbarHtml = '<div class="ext-kanban-topbar">'
+    + '<div class="ext-contador-badge">' + itens.length + ' de ' + total + ' responsabilidade(s) com indicadores</div>'
+    + '</div>';
+
+  container.innerHTML = topbarHtml + '<div class="card table-container ext-tabela-wrap"><table class="ext-tabela-lista"><thead><tr>'
     + '<th style="width:80px">Cód.</th>'
     + '<th>Elemento (O Quê)</th>'
     + '<th>Responsável (Quem)</th>'
     + '<th>Prazo (Quando)</th>'
     + '<th style="width:130px">Progresso</th>'
     + '<th>Indicadores</th>'
-    + '<th style="text-align:right;width:100px">Ações</th>'
+    + '<th style="text-align:right;width:110px">'
+    +   '<div class="ext-th-acoes">'
+    +     '<span style="font-size:0.78rem;font-weight:600;text-transform:uppercase;color:var(--ds-color-text-muted)">Ações</span>'
+    +     '<button type="button" class="ext-icon-th-btn" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar dados" aria-label="Atualizar dados">'
+    +       '<span class="material-symbols-outlined" style="font-size:18px">refresh</span>'
+    +     '</button>'
+    +   '</div>'
+    + '</th>'
     + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
 }
 
@@ -20704,8 +21111,12 @@ uiRegistrarAcoes('pages_execucao_tarefas', {
   '2': function (event) { execTarefasMudarAba('riscos'); },
   '3': function (event) { execTarefasSetView('lista'); },
   '4': function (event) { execTarefasSetView('kanban'); },
+  '5': function (event) { extAbrirBusca(); },
+  '6': function (event) { extLimparBusca(); },
+  '7': function (event) { extLimparFiltros(); },
+  '8': function (event) { extToggleColaboracao(this); },
   '9': function (event) { execTarefasFiltrar(); },
-  '10': function (event) { execTarefasFiltrar(); },
+  '10': function (event) { extAbrirFiltroStatus(event, this); },
   '11': function (event) { execTarefasCarregar(); },
   '12': function (event) { _execAbrirModalLancamento(uiArgJs(this.dataset.aclick0)); },
   '13': function (event) { _execAbrirModalProgresso(uiArgJs(this.dataset.aclick0)); },
@@ -20716,17 +21127,17 @@ uiRegistrarAcoes('pages_execucao_tarefas', {
   '25': function (event) { _extpMudarAba('detalhes'); },
   '26': function (event) { _extpMudarAba('atividade'); },
   '27': function (event) { extFecharPainelDetalhes(); },
-  '28': function (event) { execTarefasMudarExercicio(); },
+  '28': function (event) { extAbrirMenuExercicio(event, this); },
   '29': function (event) { _execAbrirModalColunasKanban(); },
   '30': function (event) { _execFecharModalColunasKanban(); },
   '31': function (event) { _execAdicionarColunaKanban(); },
   '32': function (event) { _execRestaurarColunasKanbanPadrao(); },
   '33': function (event) { event.stopPropagation(); _execToggleGavetaCard(uiArgJs(this.dataset.aclick0)); },
   '35': function (event) { event.stopPropagation(); _execAbrirModalLancamentoIndicador(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
-  '37': function (event) { _execExcluirColunaKanban(uiArgJs(this.dataset.aclick0)); }
+  '37': function (event) { _execExcluirColunaKanban(uiArgJs(this.dataset.aclick0)); },
+  '38': function (event) { extLimparFiltroStatus(); }
 });
 </script>
-
        <!-- ARQUIVO: pages_colaboracao.html -->
 <!-- Colaboração Externa em Elementos: descobrir elementos abertos por outros
      planos (fora do escopo de Unidade do usuário) e solicitar participação,
