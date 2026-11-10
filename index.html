@@ -18332,6 +18332,16 @@ uiRegistrarAcoes('plano', {
       </button>
     </div>
 
+    <!-- Barra de seleção em lote: substitui os filtros normais (mesma posição, como em pages_planos_lista.html) -->
+    <div class="exl-filtros-selecao hidden" id="exl-filtros-selecao">
+      <button type="button" class="ds-icon-action" data-on-click="pages_execucao_planos.22" data-title="Cancelar seleção" aria-label="Cancelar seleção">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      <span class="exl-selecao-texto" id="exl-selecao-texto">0 selecionado(s)</span>
+      <div class="exl-selecao-divisor"></div>
+      <div class="exl-selecao-acoes" id="exl-selecao-acoes"></div>
+    </div>
+
     <!-- Paginação integrada à direita -->
     <div class="exl-pag-wrap">
       <span id="exl-pag-counter" class="exl-pag-counter">0 de 0</span>
@@ -18355,7 +18365,7 @@ uiRegistrarAcoes('plano', {
       <table class="exl-tabela" id="exl-tabela">
         <thead id="exl-thead"></thead>
         <tbody id="exl-tbody">
-          <tr class="exl-linha-msg"><td colspan="6"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando planos em execução…</span></div></td></tr>
+          <tr class="exl-linha-msg"><td colspan="7"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando planos em execução…</span></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -18412,6 +18422,11 @@ uiRegistrarAcoes('plano', {
   display: flex; align-items: center; gap: 8px; padding: 10px 0; background: var(--ds-color-surface);
 }
 #page-execucao-planos .exl-filtros-normal { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 1 1 auto; min-width: 0; }
+#page-execucao-planos .exl-filtros-selecao { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 1 1 auto; min-width: 0; }
+#page-execucao-planos .exl-filtros-selecao.hidden { display: none; }
+#page-execucao-planos .exl-selecao-texto { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); font-size: var(--ds-text-sm); }
+#page-execucao-planos .exl-selecao-divisor { width: 1px; align-self: stretch; margin: 2px 4px; background: var(--ds-color-border); }
+#page-execucao-planos .exl-selecao-acoes { display: inline-flex; align-items: center; }
 #page-execucao-planos .exl-pag-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
 
 /* Busca expansível */
@@ -18504,12 +18519,17 @@ uiRegistrarAcoes('plano', {
   transition: background var(--ds-duration-fast) var(--ds-ease-standard);
 }
 #page-execucao-planos .exl-tabela tbody tr.exl-linha:hover td { background: var(--ds-sidebar-item-hover); }
+#page-execucao-planos .exl-tabela tbody tr.exl-linha.selecionada td { background: var(--ds-sidebar-item-active); }
 #page-execucao-planos .exl-tabela tbody tr.exl-linha-msg { cursor: default; }
 #page-execucao-planos .exl-tabela tbody tr.exl-linha-msg:hover td { background: transparent !important; }
 #page-execucao-planos .th-sortable { cursor: pointer; user-select: none; }
 #page-execucao-planos .th-sortable:hover { color: var(--ds-color-action); }
 #page-execucao-planos .sort-icon { font-size: 14px; vertical-align: middle; margin-left: 3px; color: var(--ds-color-action); }
 #page-execucao-planos .sort-icon:empty { display: none; }
+
+#page-execucao-planos .exl-tabela .exl-col-check { width: 48px; text-align: left; padding: 14px 0 14px 16px; }
+#page-execucao-planos .exl-tabela thead .exl-col-check { padding-top: 12px; padding-bottom: 12px; }
+#page-execucao-planos .exl-tabela input[type="checkbox"] { display: block; margin: 0; width: 16px; height: 16px; cursor: pointer; accent-color: var(--ds-color-action); }
 
 #page-execucao-planos .exl-col-plano { width: 44%; min-width: 260px; }
 #page-execucao-planos .exl-col-vig { width: 1%; white-space: nowrap; }
@@ -18532,15 +18552,14 @@ uiRegistrarAcoes('plano', {
 #page-execucao-planos .exl-nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; overflow-wrap: break-word; text-wrap: pretty; }
 #page-execucao-planos .exl-vig-sub { display: none; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 
-/* Vigência e Vencimento */
-#page-execucao-planos .exl-vig-wrap { display: flex; flex-direction: column; gap: 2px; }
+/* Vigência e Indicador de Atraso */
+#page-execucao-planos .exl-vig-wrap { display: inline-flex; align-items: center; gap: 2px; }
 #page-execucao-planos .exl-vig { color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); white-space: nowrap; }
-#page-execucao-planos .exl-vence {
-  display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: var(--ds-weight-semibold); white-space: nowrap;
+#page-execucao-planos .exl-alerta-atraso {
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--ds-color-danger-fg); cursor: help; vertical-align: middle; margin-left: 6px;
 }
-#page-execucao-planos .exl-vence .material-symbols-outlined { font-size: 14px; }
-#page-execucao-planos .exl-vence--alerta { color: #b06000; }
-#page-execucao-planos .exl-vence--atraso { color: var(--ds-color-danger-fg); }
+#page-execucao-planos .exl-alerta-atraso .material-symbols-outlined { font-size: 16px; }
 
 /* Responsável */
 #page-execucao-planos .resp-badge {
@@ -18550,21 +18569,15 @@ uiRegistrarAcoes('plano', {
 }
 #page-execucao-planos .resp-badge .material-symbols-outlined { font-size: 14px; }
 
-/* Status */
-#page-execucao-planos .ds-badge--execucao { background: #e6f4ea; color: #137333; }
-#page-execucao-planos .ds-badge--prorrogado { background: #e6f4ea; color: #0b8043; }
-
-/* Minhas tarefas: barra de progresso */
+/* Minhas tarefas: barra de progresso (Design System: ds-kpi-track com ds-tone-info) */
 #page-execucao-planos .exl-prog { display: inline-flex; align-items: center; gap: 10px; }
-#page-execucao-planos .exl-prog-barra {
-  width: 72px; height: 6px; border-radius: 999px; background: rgba(16,38,73,0.08); overflow: hidden; flex-shrink: 0;
-}
-#page-execucao-planos .exl-prog-fill { height: 100%; border-radius: 999px; transition: width var(--ds-duration-base) var(--ds-ease-standard); }
+#page-execucao-planos .exl-prog-barra { width: 72px; flex: none; }
 #page-execucao-planos .exl-prog-txt { font-size: 12px; font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); min-width: 34px; white-space: nowrap; }
 
-/* Ações da linha: aparecem no hover/foco (sempre visíveis em toque e <= 1024px) */
+/* Ações da linha: aparecem no hover/foco (sempre visíveis em toque, linha selecionada e <= 1024px) */
 #page-execucao-planos .exl-tabela .acoes-linha { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
 #page-execucao-planos .exl-tabela tr:hover .acoes-linha,
+#page-execucao-planos .exl-tabela tr.selecionada .acoes-linha,
 #page-execucao-planos .exl-tabela tr:focus-within .acoes-linha,
 #page-execucao-planos .exl-tabela .acoes-linha:has([aria-expanded="true"]) { opacity: 1; }
 @media (hover: none) { #page-execucao-planos .exl-tabela .acoes-linha { opacity: 1; } }
@@ -18593,6 +18606,8 @@ uiRegistrarAcoes('plano', {
     border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl);
   }
   #page-execucao-planos .exl-tabela thead th { position: static; display: none; padding: 6px 0; border: none; }
+  #page-execucao-planos .exl-tabela thead .exl-col-check { width: auto; padding: 6px 4px 6px 0; }
+  #page-execucao-planos .exl-tabela thead th.exl-col-check { display: inline-flex; align-items: center; }
   #page-execucao-planos .exl-tabela thead th.exl-col-plano,
   #page-execucao-planos .exl-tabela thead th.exl-col-acoes { display: inline-flex; align-items: center; width: auto; min-width: 0; }
   #page-execucao-planos .exl-tabela thead th.exl-col-plano { margin-right: auto; }
@@ -18601,15 +18616,19 @@ uiRegistrarAcoes('plano', {
   #page-execucao-planos .exl-tabela tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 12px; }
   /* card: tag + ⋮ / nome / detalhes / tarefas */
   #page-execucao-planos .exl-tabela tbody tr.exl-linha {
-    display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "tipo . acoes" "nome nome nome" "card card card";
+    display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "chk tipo . acoes" "nome nome nome nome" "card card card card";
     gap: 6px 8px; align-items: center; padding: 12px;
     background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-shadow-1);
     transition: background var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast), border-color var(--ds-duration-fast);
   }
   #page-execucao-planos .exl-tabela tbody tr.exl-linha:hover { background: var(--ds-sidebar-item-hover); }
+  #page-execucao-planos .exl-tabela tbody tr.exl-linha.selecionada { background: var(--ds-sidebar-item-active); border-color: var(--ds-color-action); }
   #page-execucao-planos .exl-tabela tbody td { display: none; padding: 0; border: none; }
   #page-execucao-planos .exl-tabela tbody tr.exl-linha:hover td { background: none; }
+  #page-execucao-planos .exl-tabela tbody tr.exl-linha.selecionada td { background: none; }
+  #page-execucao-planos .exl-tabela tbody .exl-col-check { grid-area: chk; width: auto; padding: 4px 0 0; }
+  #page-execucao-planos .exl-tabela tbody td.exl-col-check { display: block; }
   #page-execucao-planos .exl-tabela tbody td.exl-col-plano,
   #page-execucao-planos .exl-tabela tbody .exl-plano,
   #page-execucao-planos .exl-tabela tbody .exl-nome-wrap { display: contents; }
@@ -18637,6 +18656,18 @@ body.high-contrast #page-execucao-planos .exl-tipo { border-color: #fff; color: 
 <script>
 // ===================== MÓDULO EXECUÇÃO DE PLANOS (lista) =====================
 
+const EXL_STATUS_BADGE = {
+  'Em Elaboração': 'elaboracao',
+  'Em Análise':    'analise',
+  'Em Execução':   'execucao',
+  'Em Avaliação':  'avaliacao',
+  'Prorrogado':    'prorrogado',
+  'Em Revisão':    'revisao',
+  'Finalizado':    'finalizado',
+  'Cancelado':     'cancelado',
+  'Excluído':      'cancelado'
+};
+
 var ABAS_EXEC = [
   { key: 'todos',        label: 'Todos',          icon: 'apps'        },
   { key: 'meus',         label: 'Meus planos',    icon: 'person'      },
@@ -18652,7 +18683,9 @@ var estadoExecPlanos = {
   ordenacao: { col: 'nome', dir: 'asc' },
   paginaAtual: 1,
   itensPorPagina: 10,
-  _visiveis: []
+  _visiveis: [],
+  selecionados: new Set(),
+  _ultimoClicado: null
 };
 
 // ---- Inicialização ---------------------------------------------------
@@ -18669,6 +18702,8 @@ function initExecucaoPlanos() {
 function invalidarCacheExecPlanos() {
   estadoExecPlanos.carregado = false;
   estadoExecPlanos.dadosBrutos = [];
+  if (estadoExecPlanos.selecionados) estadoExecPlanos.selecionados.clear();
+  estadoExecPlanos._ultimoClicado = null;
 }
 
 function atualizarExecPlanos() {
@@ -18680,7 +18715,7 @@ function _execCarregar() {
   _execRenderizarAbas();
   document.getElementById('exl-thead').innerHTML = _execCabecalho();
   document.getElementById('exl-tbody').innerHTML =
-    '<tr class="exl-linha-msg"><td colspan="6">' + spinnerListaHTML('Carregando planos em execução…') + '</td></tr>';
+    '<tr class="exl-linha-msg"><td colspan="7">' + spinnerListaHTML('Carregando planos em execução…') + '</td></tr>';
   _execAtualizarOffsetsSticky();
 
   google.script.run
@@ -18746,6 +18781,7 @@ function _execRenderizarAbas() {
 
 function execMudarAba(key) {
   if (estadoExecPlanos.abaAtiva === key) return;
+  limparSelecaoExecPlanos();
   estadoExecPlanos.abaAtiva = key;
   _execRenderizarAbas();
   execPlanosAplicarFiltro();
@@ -18776,8 +18812,17 @@ document.addEventListener('click', function(e) {
   document.getElementById('exl-search-toggle').classList.remove('hidden');
 });
 
+// Atalhos de teclado:
+// - Esc: fecha busca se aberta; desmarca seleção de linhas se houver itens marcados e nenhum modal aberto
+// - Ctrl/Cmd+A: seleciona todas as linhas visíveis na tabela (como no Google Drive)
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') {
+  var pagina = document.getElementById('page-execucao-planos');
+  if (!pagina || pagina.classList.contains('hidden')) return;
+
+  if (e.key === 'Escape' || e.key === 'Esc') {
+    var modalAberto = document.querySelector('.modal-overlay:not(.hidden), .sys-overlay:not(.hidden), .ext-mini-overlay:not(.hidden), .modal-container:not(.hidden), .ds-modal:not(.hidden)');
+    if (modalAberto) return;
+
     var caixa = document.getElementById('exl-search-caixa');
     var inp = document.getElementById('exl-filtro-busca');
     if (caixa && !caixa.classList.contains('hidden')) {
@@ -18789,8 +18834,29 @@ document.addEventListener('keydown', function(e) {
         var toggle = document.getElementById('exl-search-toggle');
         if (toggle) toggle.classList.remove('hidden');
       }
+      return;
+    }
+
+    if (estadoExecPlanos.selecionados && estadoExecPlanos.selecionados.size > 0) {
+      limparSelecaoExecPlanos();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
     }
   }
+
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+  if (String(e.key).toLowerCase() !== 'a') return;
+  var main = document.getElementById('main-content');
+  if (main && main.inert) return;
+  var alvo = e.target;
+  if (alvo && (alvo.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName))) return;
+  if (!document.querySelector('#exl-tbody .exec-select-checkbox')) return;
+  e.preventDefault();
+  document.querySelectorAll('#exl-tbody .exec-select-checkbox').forEach(function(chk) {
+    estadoExecPlanos.selecionados.add(chk.dataset.id);
+  });
+  _execRedesenharSelecao();
 });
 
 // ---- Filtros (estilo Drive via abrirMenuSelecao) ----------------------
@@ -18926,14 +18992,14 @@ function _execAbrirMenuOrdenar(ev) {
   var colAtual = estadoExecPlanos.ordenacao.col, dirAtual = estadoExecPlanos.ordenacao.dir;
   var colunas = [
     { key: 'nome',             label: 'Nome do plano'   },
-    { key: 'vigenciaEfetiva',   label: 'Vigência'        },
+    { key: 'vigencia',         label: 'Vigência'        },
     { key: 'nomeResponsavel',   label: 'Responsável'     },
     { key: 'status',            label: 'Status'          },
     { key: 'tarefasConcluidas', label: 'Minhas tarefas'  }
   ];
   abrirMenuSelecao(ev.currentTarget, [
     { label: 'Ordenar por', itens: colunas.map(function(c) {
-      return { label: c.label, ativo: c.key === colAtual, onclick: "execOrdenarPorMenu('" + c.key + "')" };
+      return { label: c.label, ativo: c.key === colAtual || (c.key === 'vigencia' && colAtual === 'vigenciaEfetiva'), onclick: "execOrdenarPorMenu('" + c.key + "')" };
     }) },
     { label: 'Ordem', itens: [
       { label: 'Crescente',   ativo: dirAtual === 'asc',  onclick: "execDefinirDirecaoMenu('asc')" },
@@ -18949,6 +19015,11 @@ function _execOrdenar(lista) {
   var s = estadoExecPlanos.ordenacao;
   return lista.slice().sort(function(a, b) {
     var va = a[s.col], vb = b[s.col];
+    if (s.col === 'vigencia' || s.col === 'vigenciaEfetiva') {
+      var nA = Number(a.anoInicio) || 0;
+      var nB = Number(b.anoInicio) || 0;
+      return s.dir === 'asc' ? nA - nB : nB - nA;
+    }
     if (s.col === 'tarefasConcluidas') {
       var pctA = a.totalTarefas > 0 ? (a.tarefasConcluidas / a.totalTarefas) : 0;
       var pctB = b.totalTarefas > 0 ? (b.tarefasConcluidas / b.totalTarefas) : 0;
@@ -18961,8 +19032,8 @@ function _execOrdenar(lista) {
 }
 
 function _execPlanosBadgeStatus(status) {
-  var cls = status === 'Prorrogado' ? 'ds-badge--prorrogado' : 'ds-badge--execucao';
-  return '<span class="ds-badge ' + cls + '">' + escapeHtml(status || 'Em Execução') + '</span>';
+  var slug = EXL_STATUS_BADGE[status] || 'execucao';
+  return '<span class="ds-badge ds-badge--' + slug + '" style="white-space:nowrap">' + escapeHtml(status || 'Em Execução') + '</span>';
 }
 
 function formatarDataBR(iso) {
@@ -19022,15 +19093,18 @@ function _execCabecalho() {
   var s = estadoExecPlanos.ordenacao;
   var cols = [
     { col: 'nome',             label: 'Plano',          cls: 'exl-col-plano'   },
-    { col: 'vigenciaEfetiva',   label: 'Vigência',       cls: 'exl-col-vig'     },
+    { col: 'vigencia',         label: 'Vigência',       cls: 'exl-col-vig'     },
     { col: 'nomeResponsavel',   label: 'Responsável',    cls: 'exl-col-resp'    },
     { col: 'status',            label: 'Status',         cls: 'exl-col-status'  },
     { col: 'tarefasConcluidas', label: 'Minhas tarefas', cls: 'exl-col-tarefas' }
   ];
 
   var html = '<tr>';
+  html += '<th class="exl-col-check">'
+    + '<input type="checkbox" id="chk-select-all-exec" data-on-change="pages_execucao_planos.23" aria-label="Selecionar todos">'
+    + '</th>';
   cols.forEach(function(c) {
-    var ativo = s.col === c.col;
+    var ativo = s.col === c.col || (c.col === 'vigencia' && (s.col === 'vigencia' || s.col === 'vigenciaEfetiva'));
     var icon = ativo ? (s.dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '';
     html += '<th class="th-sortable ' + c.cls + '" data-on-click="pages_execucao_planos.16" data-aclick0="' + c.col + '">'
       + escapeHtml(c.label)
@@ -19053,32 +19127,25 @@ function _execRenderizarTabela(planos) {
     var vz = temFiltro
       ? { icon: 'filter_alt_off', titulo: 'Nenhum resultado para os filtros', detalhe: 'Tente ampliar ou limpar os filtros aplicados.' }
       : { icon: 'checklist', titulo: 'Nenhum plano para registrar execução', detalhe: 'Não há planos em execução ou prorrogados com tarefas atribuídas a você nesta aba.' };
-    tbody.innerHTML = '<tr class="exl-linha-msg"><td colspan="6"><div class="el-empty-state">'
+    tbody.innerHTML = '<tr class="exl-linha-msg"><td colspan="7"><div class="el-empty-state">'
       + '<span class="material-symbols-outlined el-esi">' + vz.icon + '</span>'
       + '<p class="el-esti">' + vz.titulo + '</p>'
       + '<p>' + vz.detalhe + '</p>'
       + '</div></td></tr>';
+    _execAtualizarCheckAll();
     return;
   }
 
   tbody.innerHTML = planos.map(function(p) {
-    var vigTxt = p.vigenciaEfetiva ? ('até ' + formatarDataBR(p.vigenciaEfetiva)) : '—';
-    var diasAte = _execDiasAte(p.vigenciaEfetiva);
-    var venceHtml = '';
-    if (diasAte !== null && diasAte <= 45) {
-      var venceTxt = '';
-      var venceCls = 'exl-vence--alerta';
-      if (diasAte < 0) {
-        venceTxt = diasAte === -1 ? 'venceu ontem' : ('venceu há ' + Math.abs(diasAte) + ' dias');
-        venceCls = 'exl-vence--atraso';
-      } else if (diasAte === 0) {
-        venceTxt = 'vence hoje';
-      } else if (diasAte === 1) {
-        venceTxt = 'vence amanhã';
-      } else {
-        venceTxt = 'vence em ' + diasAte + ' dias';
-      }
-      venceHtml = '<div class="exl-vence ' + venceCls + '"><span class="material-symbols-outlined">schedule</span>' + venceTxt + '</div>';
+    var idStr = String(p.id);
+    var sel = estadoExecPlanos.selecionados && estadoExecPlanos.selecionados.has(idStr);
+
+    var vigencia = (p.anoInicio || '?') + '–' + (p.anoFim || '?');
+    var alertaHtml = '';
+    if (p.tarefasAtrasadas > 0) {
+      var alertaTxt = p.tarefasAtrasadas === 1 ? '1 item com prazo vencido' : (p.tarefasAtrasadas + ' itens com prazos vencidos');
+      alertaHtml = '<span class="exl-alerta-atraso" data-title="' + escapeHtml(alertaTxt) + '" aria-label="' + escapeHtml(alertaTxt) + '">'
+        + '<span class="material-symbols-outlined">warning</span></span>';
     }
 
     var iconResp = p.tipoResponsavel === 'USER' ? 'person' : 'apartment';
@@ -19088,31 +19155,40 @@ function _execRenderizarTabela(planos) {
       : '—';
 
     var pct = p.totalTarefas > 0 ? Math.round(100 * p.tarefasConcluidas / p.totalTarefas) : 0;
-    var fillCor = (p.totalTarefas > 0 && p.tarefasConcluidas >= p.totalTarefas) ? '#137333' : 'var(--ds-color-action)';
     var tarefasHtml = '<div class="exl-prog" data-title="' + p.tarefasConcluidas + ' de ' + p.totalTarefas + ' tarefas concluídas (' + pct + '%)">'
-      + '<div class="exl-prog-barra"><div class="exl-prog-fill" style="width:' + pct + '%;background:' + fillCor + '"></div></div>'
+      + '<div class="ds-kpi-track exl-prog-barra"><div class="ds-kpi-fill ds-tone-info" style="width:' + pct + '%"></div></div>'
       + '<span class="exl-prog-txt">' + p.tarefasConcluidas + '/' + p.totalTarefas + '</span>'
       + '</div>';
 
     var statusHtml = _execPlanosBadgeStatus(p.status);
 
     var acoesHtml = acoesLinhaHTML('exec-' + p.id, [
-      { icone: 'edit_note', rotulo: 'Registrar execução', onclick: "abrirExecucaoPlano('" + p.id + "')", principal: true },
-      { icone: 'visibility', rotulo: 'Ver detalhes do plano', onclick: "carregarDetalhesPlano('" + p.id + "')", principal: true }
+      { icone: 'task_alt', rotulo: 'Registrar execução', onclick: "abrirExecucaoPlano('" + p.id + "')", principal: true },
+      { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: "carregarDetalhesPlano('" + p.id + "')", principal: true }
     ]);
+
+    var chkTd = '<td class="exl-col-check">'
+      + '<input type="checkbox" class="exec-select-checkbox" data-id="' + p.id + '"'
+      + ' data-on-change="pages_execucao_planos.24" data-achange0="' + p.id + '" aria-label="Selecionar plano"'
+      + (sel ? ' checked' : '') + '>'
+      + '</td>';
 
     var planoTd = '<td class="exl-col-plano"><div class="exl-plano">'
       + '<span class="exl-tipo">' + escapeHtml(p.tipo || '—') + '</span>'
       + '<div class="exl-nome-wrap">'
       + '<span class="exl-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</span>'
-      + '<div class="exl-vig-sub">' + escapeHtml(vigTxt) + (venceHtml ? ' · ' + venceHtml : '') + '</div>'
+      + '<div class="exl-vig-sub"><span>' + escapeHtml(vigencia) + '</span>' + alertaHtml + '</div>'
       + '</div></div></td>';
 
-    var metaCard = statusHtml + (p.nomeResponsavel ? respHtml : '') + '<span>' + escapeHtml(vigTxt) + '</span>' + venceHtml;
+    var metaCard = statusHtml + (p.nomeResponsavel ? respHtml : '') + '<span>' + escapeHtml(vigencia) + '</span>' + alertaHtml;
 
-    return '<tr class="exl-linha" data-id="' + escapeHtml(String(p.id)) + '" data-on-click="pages_execucao_planos.20" data-aclick0="' + p.id + '" title="Clique para registrar a execução">'
+    return '<tr class="exl-linha' + (sel ? ' selecionada' : '') + '" data-id="' + escapeHtml(String(p.id)) + '"'
+      + ' data-on-click="pages_execucao_planos.20" data-aclick0="' + p.id + '"'
+      + ' data-on-dblclick="pages_execucao_planos.25" data-adblclick0="' + p.id + '"'
+      + ' title="Clique para selecionar, duplo clique para registrar a execução">'
+      + chkTd
       + planoTd
-      + '<td class="exl-col-vig exl-nowrap"><div class="exl-vig-wrap"><span class="exl-vig">' + escapeHtml(vigTxt) + '</span>' + venceHtml + '</div></td>'
+      + '<td class="exl-col-vig exl-nowrap"><div class="exl-vig-wrap"><span class="exl-vig">' + escapeHtml(vigencia) + '</span>' + alertaHtml + '</div></td>'
       + '<td class="exl-col-resp exl-nowrap">' + respHtml + '</td>'
       + '<td class="exl-col-status exl-nowrap">' + statusHtml + '</td>'
       + '<td class="exl-col-tarefas exl-nowrap">' + tarefasHtml + '</td>'
@@ -19120,6 +19196,140 @@ function _execRenderizarTabela(planos) {
       + '<td class="exl-col-card"><div class="exl-card-meta">' + metaCard + '</div><div class="exl-card-prog">' + tarefasHtml + '</div></td>'
       + '</tr>';
   }).join('');
+
+  _execAtualizarCheckAll();
+}
+
+// ---- Clique/duplo clique e seleção na tabela -------------------------
+
+function execCliqueLinha(evt, id) {
+  if (evt.target.closest('input')) return;
+  if (evt.shiftKey) {
+    evt.preventDefault();
+    var sel = window.getSelection && window.getSelection();
+    if (sel) sel.removeAllRanges();
+  }
+  var idStr = String(id);
+  if (evt.shiftKey && estadoExecPlanos._ultimoClicado != null) {
+    _execSelecionarIntervalo(estadoExecPlanos._ultimoClicado, idStr);
+  } else if (evt.ctrlKey || evt.metaKey) {
+    if (estadoExecPlanos.selecionados.has(idStr)) estadoExecPlanos.selecionados.delete(idStr);
+    else estadoExecPlanos.selecionados.add(idStr);
+    estadoExecPlanos._ultimoClicado = idStr;
+  } else {
+    estadoExecPlanos.selecionados.clear();
+    estadoExecPlanos.selecionados.add(idStr);
+    estadoExecPlanos._ultimoClicado = idStr;
+  }
+  _execRedesenharSelecao();
+}
+
+function execDuploCliqueLinha(evt, id) {
+  if (evt.target.closest('input')) return;
+  abrirExecucaoPlano(id);
+}
+
+function _execSelecionarIntervalo(idInicio, idFim) {
+  var ids = Array.from(document.querySelectorAll('#exl-tbody .exec-select-checkbox')).map(function(chk) { return chk.dataset.id; });
+  var i1 = ids.indexOf(String(idInicio));
+  var i2 = ids.indexOf(String(idFim));
+  estadoExecPlanos.selecionados.clear();
+  if (i1 === -1 || i2 === -1) { estadoExecPlanos.selecionados.add(String(idFim)); return; }
+  var ini = Math.min(i1, i2), fim = Math.max(i1, i2);
+  for (var i = ini; i <= fim; i++) estadoExecPlanos.selecionados.add(ids[i]);
+}
+
+function _execRedesenharSelecao() {
+  document.querySelectorAll('#exl-tbody .exec-select-checkbox').forEach(function(chk) {
+    var marcado = estadoExecPlanos.selecionados.has(chk.dataset.id);
+    chk.checked = marcado;
+    var tr = chk.closest('tr');
+    if (tr) tr.classList.toggle('selecionada', marcado);
+  });
+  _execAtualizarCheckAll();
+}
+
+function toggleSelecaoExecPlano(id, checked) {
+  var idStr = String(id);
+  if (checked) estadoExecPlanos.selecionados.add(idStr);
+  else         estadoExecPlanos.selecionados.delete(idStr);
+  estadoExecPlanos._ultimoClicado = idStr;
+  var chk = document.querySelector('#exl-tbody .exec-select-checkbox[data-id="' + idStr + '"]');
+  if (chk) {
+    var tr = chk.closest('tr');
+    if (tr) tr.classList.toggle('selecionada', checked);
+  }
+  _execAtualizarCheckAll();
+}
+
+function toggleSelecaoTodosExecPlanos(checked) {
+  document.querySelectorAll('#exl-tbody .exec-select-checkbox').forEach(function(chk) {
+    chk.checked = checked;
+    var tr = chk.closest('tr');
+    if (tr) tr.classList.toggle('selecionada', checked);
+    if (checked) estadoExecPlanos.selecionados.add(chk.dataset.id);
+    else         estadoExecPlanos.selecionados.delete(chk.dataset.id);
+  });
+  _execAtualizarCheckAll();
+}
+
+function limparSelecaoExecPlanos() {
+  estadoExecPlanos.selecionados.clear();
+  document.querySelectorAll('#exl-tbody .exec-select-checkbox').forEach(function(chk) {
+    chk.checked = false;
+    var tr = chk.closest('tr');
+    if (tr) tr.classList.remove('selecionada');
+  });
+  var chkAll = document.getElementById('chk-select-all-exec');
+  if (chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
+  atualizarBarraSelecaoExecPlanos();
+}
+
+function _execAtualizarCheckAll() {
+  var chkAll = document.getElementById('chk-select-all-exec');
+  var caixas = document.querySelectorAll('#exl-tbody .exec-select-checkbox');
+  if (!chkAll) return;
+  if (caixas.length === 0) {
+    chkAll.checked = false; chkAll.indeterminate = false;
+  } else {
+    var marcados = Array.from(caixas).filter(function(c) { return c.checked; }).length;
+    chkAll.checked = marcados === caixas.length;
+    chkAll.indeterminate = marcados > 0 && marcados < caixas.length;
+  }
+  atualizarBarraSelecaoExecPlanos();
+}
+
+function atualizarBarraSelecaoExecPlanos() {
+  var qtd = estadoExecPlanos.selecionados ? estadoExecPlanos.selecionados.size : 0;
+  var elNormal = document.getElementById('exl-filtros-normal');
+  var elSelecao = document.getElementById('exl-filtros-selecao');
+  if (elNormal) elNormal.classList.toggle('hidden', qtd > 0);
+  if (elSelecao) elSelecao.classList.toggle('hidden', qtd === 0);
+  if (qtd > 0) {
+    var txtEl = document.getElementById('exl-selecao-texto');
+    if (txtEl) {
+      txtEl.textContent = qtd + ' plano' + (qtd > 1 ? 's' : '') + ' selecionado' + (qtd > 1 ? 's' : '');
+    }
+    _execRenderizarAcoesSelecao(qtd);
+  }
+  _execAtualizarOffsetsSticky();
+}
+
+function _execRenderizarAcoesSelecao(qtd) {
+  var alvo = document.getElementById('exl-selecao-acoes');
+  if (!alvo) return;
+  var selecionados = estadoExecPlanos.dadosBrutos.filter(function(p) { return estadoExecPlanos.selecionados.has(String(p.id)); });
+
+  if (qtd === 1) {
+    var p = selecionados[0];
+    alvo.innerHTML = p ? acoesLinhaHTML('exsel-' + p.id, [
+      { icone: 'task_alt', rotulo: 'Registrar execução', onclick: "abrirExecucaoPlano('" + p.id + "')", principal: true },
+      { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: "carregarDetalhesPlano('" + p.id + "')", principal: true }
+    ], { maxDireto: 2 }) : '';
+    return;
+  }
+
+  alvo.innerHTML = '';
 }
 
 function abrirExecucaoPlano(idPlano) {
@@ -19153,9 +19363,14 @@ uiRegistrarAcoes('pages_execucao_planos', {
   '17': function (event) { atualizarExecPlanos(); },
   '18': function (event) { execExportarPlaceholder(); },
   '19': function (event) { _execAbrirMenuOrdenar(event); },
-  '20': function (event) { abrirExecucaoPlano(uiArgJs(this.dataset.aclick0)); },
-  '21': function (event) { event.stopPropagation(); }
+  '20': function (event) { execCliqueLinha(event, uiArgJs(this.dataset.aclick0)); },
+  '21': function (event) { event.stopPropagation(); },
+  '22': function (event) { limparSelecaoExecPlanos(); },
+  '23': function (event) { toggleSelecaoTodosExecPlanos(this.checked); },
+  '24': function (event) { toggleSelecaoExecPlano(uiArgJs(this.dataset.achange0), this.checked); },
+  '25': function (event) { execDuploCliqueLinha(event, uiArgJs(this.dataset.adblclick0 || this.dataset.aclick0)); }
 });
+</script>
 </script>
 
        <!-- ARQUIVO: pages_execucao_tarefas.html -->
