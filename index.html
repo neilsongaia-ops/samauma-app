@@ -13071,6 +13071,8 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
   </div>
 </div>
 <script>
+// Os modais saem de #main-content: bloquearFundo() deixa o conteúdo inert, e o que estiver dentro dele deixaria de responder.
+['cal-modal', 'cal-modal-serie'].forEach(function (id) { var el = document.getElementById(id); if (el) document.body.appendChild(el); });
 var _CAL_TONS = ['execucao', 'analise', 'avaliacao', 'revisao', 'prorrogado', 'elaboracao', 'finalizado'];
 var _CAL_SITUACOES = { PROGRAMADO: ['Programado', 'info'], ABERTO: ['Aberto', 'success'], ENCERRADO: ['Encerrado', 'neutral'], CANCELADO: ['Cancelado', 'danger'] };
 var _CAL_ALCANCES = { TODOS: 'Todos os planos', TIPO_PLANO: 'Tipo de plano', UNIDADE: 'Unidade', PLANO: 'Plano' };
@@ -22933,6 +22935,8 @@ uiRegistrarAcoes('pages_avaliacao_executar', {
 </div>
 
 <script>
+// O modal sai de #main-content: bloquearFundo() deixa o conteúdo inert, e o que estiver dentro dele deixaria de responder.
+(function () { var el = document.getElementById('modal-gestao-revisoes'); if (el) document.body.appendChild(el); })();
 function abrirGestaoRevisoes() {
   document.getElementById('modal-gestao-revisoes').classList.remove('hidden');
   bloquearFundo();
