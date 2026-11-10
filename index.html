@@ -1188,6 +1188,12 @@ body.high-contrast .ds-pasta { --pasta-line: #fff; --pasta-strip: #000; --pasta-
   .ds-pasta .tab-btn { min-height: 44px; padding: 8px 14px; }
   .ds-pasta > .detalhe-content-area { padding: 12px 10px 16px; }
 }
+/* Ícone (i) de explicação — promovido de .elwiz-info/.srv-info/.selresp-info/.selsup-info (2026-11).
+   Uso: <span class="material-symbols-outlined ds-info" tabindex="0" data-title="texto">info</span>, logo após o rótulo. */
+.ds-info { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; margin-left: 4px; user-select: none; }
+.ds-info:hover, .ds-info:focus-visible { color: var(--ds-color-text); outline: none; }
+.ds-info.hidden { display: none; }
+body.high-contrast .ds-info { color: #fff; }
 </style>
 
     <script>
@@ -1404,6 +1410,10 @@ if (!window._uiDelegacaoAtiva) {
             <button type="button" class="nav-submenu-item" data-nav-rota="planos" data-on-click="components_header.10">
               <span class="material-symbols-outlined" aria-hidden="true">corporate_fare</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Planejamento Institucional</span></span>
+            </button>
+            <button type="button" class="nav-submenu-item" data-nav-rota="calendario" data-on-click="components_header.36">
+              <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Calendário</span></span>
             </button>
             <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
               <span class="material-symbols-outlined" aria-hidden="true">account_balance</span>
@@ -2404,6 +2414,7 @@ uiRegistrarAcoes('components_header', {
   '8': function (event) { navigate('mensagens', { view: 'caixa', pasta: 'excluidas' }); navAposEscolherSubmenu(); fecharMenuMobile(); },
   '9': function (event) { toggleNavSubmenu('planejamento', event); },
   '10': function (event) { navigate('planos'); navAposEscolherSubmenu(); fecharMenuMobile(); },
+  '36': function (event) { navigate('calendario'); navAposEscolherSubmenu(); fecharMenuMobile(); },
   '11': function (event) { toggleNavSubmenu('execucao', event); },
   '12': function (event) { navigate('execucao-planos'); navAposEscolherSubmenu(); fecharMenuMobile(); },
   '13': function (event) { navigate('colaboracao'); navAposEscolherSubmenu(); fecharMenuMobile(); },
@@ -4793,6 +4804,11 @@ uiRegistrarAcoes('components_modal_plano', {
   cursor: pointer;
   font-weight: bold;
 }
+.res-erro { display: block; font-size: 12px; color: var(--ds-color-danger-fg); margin-top: 4px; }
+.res-erro:empty { display: none; }
+.res-meta { font-size: 14px; color: var(--ds-color-text); padding: 6px 0; }
+.res-cab { display: flex; align-items: center; }
+.res-contador { margin-left: auto; font-size: 11px; color: var(--ds-color-text-muted); }
 </style>
 
 <div id="modal-lancar-resultado" class="modal-overlay hidden" data-fechar="fecharModalResultado" data-on-click="components_modal_resultado.1">
@@ -4813,8 +4829,12 @@ uiRegistrarAcoes('components_modal_plano', {
         <input type="hidden" name="idElemento" id="input-res-id-elemento">
         <input type="hidden" name="idIndicador" id="input-res-id-indicador">
         
-        <!-- SEÇÃO 1: PROGRESSO FÍSICO (Sempre visível) -->
-        <div class="section-title">1. Progresso Físico</div>
+        <!-- Tarefas do elemento (components_tarefas_elemento.html) -->
+        <div id="res-tarefas-host"></div>
+
+        <!-- Progresso físico: some quando o progresso vem das tarefas -->
+        <div id="wrapper-progresso">
+        <div class="section-title">Progresso físico</div>
         
         <div class="form-row">
           <div class="form-group" style="flex: 0 0 150px;">
@@ -4839,10 +4859,11 @@ uiRegistrarAcoes('components_modal_plano', {
             </div>
           </div>
         </div>
+        </div>
 
-        <!-- SEÇÃO 2: RESULTADO / INDICADOR (Condicional) -->
+        <!-- RESULTADO / INDICADOR (Condicional) -->
         <div id="wrapper-indicador" class="hidden">
-          <div class="section-title">2. Apuração de Resultado</div>
+          <div class="section-title">Apuração de resultado</div>
           
           <div class="form-group" style="background: var(--ds-color-surface-2); padding: 10px; border-radius: 4px; border-left: 4px solid var(--ds-color-action);">
             <label style="font-weight:bold; color:var(--ds-primary-700);">Indicador Vinculado:</label>
@@ -4853,19 +4874,18 @@ uiRegistrarAcoes('components_modal_plano', {
             <div class="form-group">
               <label>Data da Aferição *</label>
               <input type="date" name="dataAfericao" class="form-control" id="input-res-data" data-on-change="components_modal_resultado.5">
+              <span class="res-erro" id="res-erro-data" role="alert"></span>
             </div>
             <div class="form-group">
               <label>Valor Apurado *</label>
-              <input type="number" step="0.01" name="valorApurado" class="form-control" id="input-res-valor" placeholder="0.00">
+              <input type="number" step="0.01" name="valorApurado" class="form-control" id="input-res-valor" placeholder="0,00">
+              <span class="res-erro" id="res-erro-valor" role="alert"></span>
             </div>
           </div>
 
           <div class="form-group">
-            <label>Vincular Meta (Opcional)</label>
-            <select name="idMeta" id="input-res-meta" class="form-control">
-              <option value="">Carregando...</option>
-            </select>
-            <small style="font-size:0.75rem; color: var(--ds-color-text-muted);">Selecione a meta alvo para cálculo de desempenho.</small>
+            <label>Meta do período <span class="material-symbols-outlined ds-info" tabindex="0" data-title="A meta é escolhida pela data da aferição.">info</span></label>
+            <div class="res-meta" id="res-meta-periodo">—</div>
           </div>
 
           <!-- Área de Evidências -->
@@ -4892,22 +4912,24 @@ uiRegistrarAcoes('components_modal_plano', {
 
             <!-- MODO LINK -->
             <div id="container-link" class="hidden">
-              <input type="url" name="linkEvidencia" class="form-control" placeholder="https://docs.google.com/..." id="input-res-link">
+              <input type="url" name="linkEvidencia" class="form-control" placeholder="https://docs.google.com/..." id="input-res-link" maxlength="2000">
+              <span class="res-erro" id="res-erro-link" role="alert"></span>
             </div>
           </div>
 
           <div class="form-group">
-            <label>Análise Qualitativa / Obs</label>
-            <textarea name="analise" class="form-control" rows="2" placeholder="Comentários sobre o resultado..."></textarea>
+            <div class="res-cab"><label for="input-res-analise">Análise</label><span class="res-contador" id="res-analise-cont">0/5000</span></div>
+            <textarea name="analise" id="input-res-analise" class="form-control" rows="3" maxlength="5000" data-on-input="components_modal_resultado.9"></textarea>
           </div>
         </div>
 
+        <span class="res-erro" id="res-erro-geral" role="alert"></span>
       </form>
     </div>
     
     <div class="modal-footer">
-      <button type="button" class="btn btn-outline" data-on-click="components_modal_resultado.2">Cancelar</button>
-      <button type="submit" form="form-lancar-resultado" class="btn btn-primary">Salvar Tudo</button>
+      <button type="button" class="ds-btn ds-btn--secondary" data-on-click="components_modal_resultado.2">Cancelar</button>
+      <button type="submit" form="form-lancar-resultado" class="ds-btn ds-btn--primary" id="res-btn-salvar">Salvar</button>
     </div>
   </div>
 </div>
@@ -4938,6 +4960,20 @@ function abrirModalResultado(dados) {
   document.getElementById('input-res-id-elemento').value = dados.idElemento || '';
   document.getElementById('lbl-res-titulo-elemento').innerText = dados.tituloElemento || 'Elemento sem título';
   
+  _resDados = dados;
+  ['data', 'valor', 'link', 'geral'].forEach(function (c) { _resErro(c, ''); });
+  document.getElementById('res-btn-salvar').textContent = dados.idResultado ? 'Salvar correção' : 'Salvar';
+  // Progresso: some quando vem das tarefas; correção de resultado não mexe no progresso
+  _resProgressoVisivel(!dados.progressoPorTarefas && !dados.idResultado);
+  const hostTar = document.getElementById('res-tarefas-host');
+  hostTar.innerHTML = '';
+  if (dados.idElemento && !dados.idResultado && typeof telMontar === 'function') {
+    telMontar('res-tarefas-host', dados.idElemento, function (st) {
+      _resProgressoVisivel(!st.progressoPorTarefas);
+      if (typeof dados.aoMudarTarefas === 'function') dados.aoMudarTarefas(st);
+    });
+  }
+
   const pct = dados.percentualAtual || 0;
   syncProgresso(pct); // Sincroniza slider e input
   
@@ -4954,8 +4990,18 @@ function abrirModalResultado(dados) {
     inputIdInd.value = dados.idIndicador;
     document.getElementById('lbl-res-nome-indicador').innerText = dados.nomeIndicador;
     
-    // Define data de hoje
-    document.getElementById('input-res-data').valueAsDate = new Date();
+    const dataEl = document.getElementById('input-res-data');
+    const hojeIso = _resHojeIso();
+    dataEl.max = dados.vigenciaFim && dados.vigenciaFim < hojeIso ? dados.vigenciaFim : hojeIso;
+    dataEl.min = dados.vigenciaInicio || '';
+    dataEl.value = dados.dataAfericao || hojeIso;
+    if (dados.idResultado) {
+      document.getElementById('input-res-valor').value = dados.valor !== undefined && dados.valor !== null ? dados.valor : '';
+      document.getElementById('input-res-analise').value = dados.analise || '';
+      document.getElementById('input-res-link').value = dados.linkEvidencia || '';
+      if (dados.linkEvidencia) toggleEvidenceMode('link');
+    }
+    _resContarAnalise();
     
     // Carrega Metas
     carregarMetas(dados.idIndicador);
@@ -4966,11 +5012,20 @@ function abrirModalResultado(dados) {
   }
 
   document.getElementById('modal-lancar-resultado').classList.remove('hidden');
+  if (typeof bloquearFundo === 'function') bloquearFundo();
 }
 
+var _resDados = null;
 function fecharModalResultado() {
   document.getElementById('modal-lancar-resultado').classList.add('hidden');
+  if (typeof desbloquearFundo === 'function') desbloquearFundo();
 }
+function _resHojeIso() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function _resProgressoVisivel(v) { document.getElementById('wrapper-progresso').classList.toggle('hidden', !v); }
+function _resErro(campo, msg) { const e = document.getElementById('res-erro-' + campo); if (e) e.textContent = msg || ''; return !msg; }
+function _resContarAnalise() { document.getElementById('res-analise-cont').textContent = document.getElementById('input-res-analise').value.length + '/5000'; }
+// Erro do servidor vai para o campo de data quando fala de data/vigência/janela; senão, para o rodapé.
+function _resErroServidor(msg) { if (/data|vig[eê]ncia|futur|janela|per[ií]odo/i.test(msg)) _resErro('data', msg); else _resErro('geral', msg); }
 
 // --- LÓGICA DE PROGRESSO ---
 function syncProgresso(val) {
@@ -5073,117 +5128,67 @@ function _resMetaDaData(iso) {
 }
 
 function _resSelecionarMetaPorData() {
-  const sel = document.getElementById('input-res-meta');
   const dataEl = document.getElementById('input-res-data');
-  if (!sel || (sel.value !== '' && sel.value !== _resMetaAuto)) return;
-  const iso = (dataEl && dataEl.value) || new Date().toISOString().slice(0, 10);
-  _resMetaAuto = _resMetaDaData(iso);
-  sel.value = _resMetaAuto;
+  const iso = (dataEl && dataEl.value) || _resHojeIso();
+  _resErro('data', '');
+  const id = _resMetaDaData(iso), m = _resMetasDoIndicador.find(x => String(x.id) === id);
+  document.getElementById('res-meta-periodo').textContent = m ? (m.ano + ' / ' + m.periodo + ' — alvo ' + m.valor) : 'Sem meta para esta data';
 }
 
 function carregarMetas(idIndicador) {
-  _resMetaAuto = '';
-  const selectMeta = document.getElementById('input-res-meta');
-  selectMeta.innerHTML = '<option value="">Carregando...</option>';
-  selectMeta.disabled = true;
-
+  _resMetasDoIndicador = [];
+  const alvo = document.getElementById('res-meta-periodo');
+  alvo.innerHTML = spinnerListaHTML('');
   google.script.run
-    .withSuccessHandler(metas => {
-      selectMeta.innerHTML = '<option value="">-- Sem vínculo com meta --</option>';
-      if(metas && metas.length > 0) {
-        metas.forEach(m => {
-          const opt = document.createElement('option');
-          opt.value = m.id;
-          opt.text = `${m.ano} / ${m.periodo} - Alvo: ${m.valor}`;
-          selectMeta.appendChild(opt);
-        });
-        // Pré-seleciona a meta do período que contém a data do lançamento (hoje, se ainda não houver data)
-        _resMetasDoIndicador = metas;
-        _resSelecionarMetaPorData();
-      }
-      selectMeta.disabled = false;
-    })
+    .withSuccessHandler(metas => { _resMetasDoIndicador = metas || []; _resSelecionarMetaPorData(); })
+    .withFailureHandler(err => { alvo.textContent = err.message; })
     .apiGetMetasDoIndicador(idIndicador);
 }
 
 // --- SUBMIT DO FORMULÁRIO ---
 async function handleSalvarResultado(e) {
   e.preventDefault();
-  
-  // Validações Básicas
+  const form = e.target, d0 = _resDados || {};
   const idIndicador = document.getElementById('input-res-id-indicador').value;
   const valorApurado = document.getElementById('input-res-valor').value;
-  
-  // Se tem indicador, valor é obrigatório
-  if (idIndicador && valorApurado === "") {
-    alert("Para lançar um resultado, informe o Valor Apurado.");
-    return;
+  const link = form.linkEvidencia.value.trim();
+  const modoLink = document.getElementById('container-upload').classList.contains('hidden');
+  ['data', 'valor', 'link', 'geral'].forEach(function (c) { _resErro(c, ''); });
+  let ok = true;
+  if (idIndicador) {
+    const dataEl = document.getElementById('input-res-data'), dt = dataEl.value;
+    ok = _resErro('valor', valorApurado === '' ? 'Informe o valor apurado.' : '') && ok;
+    ok = _resErro('data', !dt ? 'Informe a data da aferição.' : dt > _resHojeIso() ? 'A data não pode ser futura.' : (dataEl.min && dt < dataEl.min) || (dataEl.max && dt > dataEl.max) ? 'A data precisa estar dentro da vigência do plano.' : '') && ok;
+    if (modoLink && link) ok = _resErro('link', !/^https?:\/\//i.test(link) ? 'Use um link que comece com http:// ou https://.' : link.length > 2000 ? 'Use até 2.000 caracteres.' : '') && ok;
   }
+  if (!ok) return;
 
-  // Prepara Objeto de Dados
-  const form = e.target;
   const dados = {
     idElemento: form.idElemento.value,
-    status: form.status.value,
-    percentual: form.percentual.value,
-    idIndicador: form.idIndicador.value,
+    idIndicador: idIndicador,
     dataAfericao: form.dataAfericao.value,
-    valorApurado: form.valorApurado.value,
-    idMeta: form.idMeta.value,
-    linkEvidencia: form.linkEvidencia.value,
+    valorApurado: valorApurado,
+    linkEvidencia: modoLink ? link : '',
     analise: form.analise.value,
-    arquivos: [] 
+    arquivos: []
   };
-
-  // Se houver arquivos e estiver no modo upload, processar leitura
-  if (idIndicador && !document.getElementById('container-upload').classList.contains('hidden') && arquivosSelecionados.length > 0) {
-    if (confirm(`Deseja enviar ${arquivosSelecionados.length} arquivos? Isso pode levar alguns segundos.`)) {
-       try {
-         dados.arquivos = await Promise.all(arquivosSelecionados.map(lerArquivoParaBase64));
-       } catch (err) {
-         alert("Erro ao ler arquivos: " + err.message);
-         return;
-       }
-    }
+  if (!document.getElementById('wrapper-progresso').classList.contains('hidden')) { dados.status = form.status.value; dados.percentual = form.percentual.value; }
+  const btnSubmit = e.submitter || document.getElementById('res-btn-salvar');
+  const liberar = uiTravarBotao(btnSubmit);
+  if (idIndicador && !modoLink && arquivosSelecionados.length > 0) {
+    try { dados.arquivos = await Promise.all(arquivosSelecionados.map(lerArquivoParaBase64)); }
+    catch (err) { liberar(); _resErro('geral', 'Erro ao ler arquivos: ' + err.message); return; }
   }
-
-  // --- CORREÇÃO AQUI ---
-  // O botão está fora do form, então usamos e.submitter ou buscamos globalmente pelo atributo form
-  const btnSubmit = e.submitter || document.querySelector('button[form="form-lancar-resultado"]');
-  
-  let txtOriginal = "Salvar"; // Valor padrão caso não encontre o botão (segurança)
-  
-  if (btnSubmit) {
-    txtOriginal = btnSubmit.innerText;
-    btnSubmit.disabled = true;
-    btnSubmit.innerText = "Salvando...";
-  }
-  // ---------------------
-
-  // Envio ao Backend
-  google.script.run
-    .withSuccessHandler(res => {
-      if (btnSubmit) {
-        btnSubmit.disabled = false;
-        btnSubmit.innerText = txtOriginal;
-      }
-      fecharModalResultado();
-      
-      // Use um toast/alert mais bonito se tiver, ou o alert padrão
-      alert("Salvo com sucesso!");
-      
-      // Recarregar tela se função existir
-      if (typeof carregarDadosExecucao === 'function') carregarDadosExecucao();
-      else if (typeof carregarPainelExecucao === 'function') carregarPainelExecucao();
-    })
-    .withFailureHandler(err => {
-      if (btnSubmit) {
-        btnSubmit.disabled = false;
-        btnSubmit.innerText = txtOriginal;
-      }
-      alert("Erro ao salvar: " + err.message);
-    })
-    .apiSalvarExecucaoEResultado(dados);
+  const ok2 = function () {
+    liberar(); fecharModalResultado();
+    showMessage('success', 'Salvo', d0.idResultado ? 'Resultado corrigido.' : 'Lançamento salvo.');
+    if (typeof d0.aoSalvar === 'function') d0.aoSalvar();
+    else if (typeof carregarDadosExecucao === 'function') carregarDadosExecucao();
+    else if (typeof carregarPainelExecucao === 'function') carregarPainelExecucao();
+  };
+  const falha = function (err) { liberar(); _resErroServidor(err.message); };
+  if (d0.idResultado) google.script.run.withSuccessHandler(ok2).withFailureHandler(falha).apiCorrigirResultado(String(d0.idResultado), dados);
+  else google.script.run.withSuccessHandler(ok2).withFailureHandler(falha).apiSalvarExecucaoEResultado(dados);
 }
 
 // Helper: Converte File para Objeto { nome, mimeType, bytes (base64 sem header) }
@@ -5213,9 +5218,174 @@ uiRegistrarAcoes('components_modal_resultado', {
   '5': function (event) { _resSelecionarMetaPorData(); },
   '6': function (event) { toggleEvidenceMode('upload'); },
   '7': function (event) { toggleEvidenceMode('link'); },
-  '8': function (event) { removerArquivo(uiArgLit(this.dataset.rclick0)); }
+  '8': function (event) { removerArquivo(uiArgLit(this.dataset.rclick0)); },
+  '9': function (event) { _resContarAnalise(); }
 });
-</script> 
+</script>
+    <!-- ARQUIVO: components_tarefas_elemento.html -->
+<!-- Seção "Tarefas" do elemento (lista a fazer, estilo Planner), montada dentro do modal "Atualizar Execução"
+     (components_modal_resultado.html) ao abrir um elemento na execução. Rotas: apiGetTarefasElemento, apiSalvarTarefaElemento,
+     apiConcluirTarefaElemento, apiReordenarTarefaElemento, apiExcluirTarefaElemento, apiDefinirProgressoPorTarefas.
+     Permissões (podeEditar/podeConcluir/podeDefinirProgresso) vêm do servidor; a tela só mostra/esconde. -->
+<style>
+.tel-sec { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.tel-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tel-cab-t { font-size: 14px; font-weight: var(--ds-weight-bold); color: var(--ds-color-text); }
+.tel-cont { font-size: 12px; color: var(--ds-color-text-muted); }
+.tel-chave { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ds-color-text); }
+.tel-lista { display: flex; flex-direction: column; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md); overflow: hidden; background: var(--ds-color-surface); }
+.tel-lista:empty { display: none; }
+.tel-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--ds-color-border); min-height: 44px; }
+.tel-item:last-child { border-bottom: 0; }
+.tel-item.tel-arrastando { opacity: .4; }
+.tel-item.tel-sobre { box-shadow: inset 0 2px 0 var(--ds-color-primary); }
+.tel-alca { font-size: 18px; color: var(--ds-color-text-muted); cursor: grab; }
+.tel-item input[type="checkbox"] { width: 18px; height: 18px; flex: none; }
+.tel-titulo { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 14px; color: var(--ds-color-text); padding: 4px 6px; border-radius: var(--ds-r-sm); }
+.tel-titulo:focus { outline: 2px solid var(--ds-color-focus, var(--ds-color-primary)); background: var(--ds-color-surface-2); }
+.tel-titulo[readonly] { outline: none; background: transparent; }
+.tel-item--feita .tel-titulo { text-decoration: line-through; color: var(--ds-color-text-muted); }
+.tel-data { width: 140px; flex: none; border: 1px solid transparent; background: transparent; font: inherit; font-size: 12px; color: var(--ds-color-text-muted); border-radius: var(--ds-r-sm); padding: 4px; }
+.tel-data:hover, .tel-data:focus { border-color: var(--ds-color-border); }
+.tel-novo { display: flex; align-items: center; gap: 8px; padding: 0 8px; border: 1px dashed var(--ds-color-border); border-radius: var(--ds-r-md); min-height: 44px; }
+.tel-novo .material-symbols-outlined { color: var(--ds-color-text-muted); font-size: 20px; }
+.tel-novo input { flex: 1; border: 0; background: transparent; font: inherit; font-size: 14px; color: var(--ds-color-text); outline: none; min-width: 0; }
+.tel-erro { font-size: 12px; color: var(--ds-color-danger-fg); }
+.tel-erro:empty { display: none; }
+@media (max-width: 768px) { .tel-alca { display: none; } .tel-data { width: 118px; } }
+@media (min-width: 769px) { .tel-so-mobile { display: none; } }
+body.high-contrast .tel-item.tel-sobre { box-shadow: inset 0 2px 0 #fff; }
+</style>
+<script>
+var _tel = { idElemento: null, dados: null, arrastando: null, aoMudar: null };
+
+// Monta a seção em #hostId e carrega. aoMudar({ percentual, status, progressoPorTarefas, total, concluidas }) avisa quem abriu.
+function telMontar(hostId, idElemento, aoMudar) {
+  var host = document.getElementById(hostId);
+  if (!host) return;
+  _tel.idElemento = String(idElemento); _tel.dados = null; _tel.aoMudar = aoMudar || null;
+  host.innerHTML = '<div class="tel-sec" id="tel-sec">'
+    + '<div class="tel-cab"><span class="tel-cab-t">Tarefas</span><span class="tel-cont" id="tel-cont"></span>'
+    +   '<span class="tel-chave hidden" id="tel-chave"></span></div>'
+    + '<div id="tel-corpo">' + spinnerListaHTML('') + '</div>'
+    + '<span class="tel-erro" id="tel-erro" role="alert"></span></div>';
+  var id = _tel.idElemento;
+  google.script.run
+    .withSuccessHandler(function (r) { if (id !== _tel.idElemento) return; _tel.dados = r || { tarefas: [] }; telRender(); _telAvisar(); })
+    .withFailureHandler(function (err) { if (id !== _tel.idElemento) return; document.getElementById('tel-corpo').innerHTML = ''; telErro(err.message); })
+    .apiGetTarefasElemento(id);
+}
+function telErro(msg) { var e = document.getElementById('tel-erro'); if (e) e.textContent = msg || ''; }
+function _telTarefas() { return ((_tel.dados && _tel.dados.tarefas) || []).slice().sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0); }); }
+function _telAvisar() {
+  var t = _telTarefas(), d = _tel.dados || {};
+  if (_tel.aoMudar) _tel.aoMudar({ percentual: d.percentual, status: d.status, progressoPorTarefas: !!d.progressoPorTarefas, total: t.length, concluidas: t.filter(function (x) { return x.concluida; }).length });
+}
+function telRender() {
+  var d = _tel.dados || {}, t = _telTarefas(), feitas = t.filter(function (x) { return x.concluida; }).length;
+  var edita = !!d.podeEditar, conclui = edita && d.podeConcluir !== false;
+  document.getElementById('tel-cont').textContent = t.length ? feitas + ' de ' + t.length : '';
+  var chave = document.getElementById('tel-chave');
+  chave.classList.toggle('hidden', !edita && !d.progressoPorTarefas);
+  chave.innerHTML = ntfSwitchHtml(!!d.progressoPorTarefas, !d.podeDefinirProgresso, 'telAlternarProgresso()', 'Progresso pelas tarefas')
+    + '<span>Progresso pelas tarefas</span><span class="material-symbols-outlined ds-info" tabindex="0" data-title="Ligada, o percentual do elemento passa a ser a parte concluída das tarefas e não é mais digitado.">info</span>';
+  var motivoChk = !conclui && edita ? ' data-title="O plano não está em execução"' : '';
+  var h = '<div class="tel-lista" id="tel-lista">' + t.map(function (x, i) {
+    var quem = x.concluida && x.concluidaPorNome ? 'Concluída por ' + x.concluidaPorNome + (x.concluidaEm ? ' em ' + (typeof _isoParaBR === 'function' ? _isoParaBR(String(x.concluidaEm).slice(0, 10)) : x.concluidaEm) : '') : '';
+    var acoes = edita ? acoesLinhaHTML('tel-' + x.id, [
+      { icone: 'arrow_upward', rotulo: 'Mover para cima', oculto: i === 0, onclick: "telMover('" + escapeJsAttr(x.id) + "',-1)" },
+      { icone: 'arrow_downward', rotulo: 'Mover para baixo', oculto: i === t.length - 1, onclick: "telMover('" + escapeJsAttr(x.id) + "',1)" },
+      { icone: 'delete', rotulo: 'Excluir', perigo: true, onclick: "telExcluir('" + escapeJsAttr(x.id) + "')" }
+    ], { maxDireto: 0 }) : '';
+    return '<div class="tel-item' + (x.concluida ? ' tel-item--feita' : '') + '" data-id="' + escapeHtml(x.id) + '"' + (edita ? ' draggable="true"' : '') + (quem ? ' data-title="' + escapeHtml(quem) + '"' : '') + '>'
+      + (edita ? '<span class="material-symbols-outlined tel-alca" aria-hidden="true">drag_indicator</span>' : '')
+      + '<input type="checkbox"' + (x.concluida ? ' checked' : '') + (conclui ? '' : ' disabled') + motivoChk + ' data-on-change="components_tarefas_elemento.1" data-id="' + escapeHtml(x.id) + '" aria-label="Concluir tarefa">'
+      + '<input type="text" class="tel-titulo" value="' + escapeHtml(x.titulo) + '" maxlength="300"' + (edita ? '' : ' readonly') + ' data-on-keydown="components_tarefas_elemento.2" data-on-blur="components_tarefas_elemento.3" data-id="' + escapeHtml(x.id) + '" aria-label="Título da tarefa">'
+      + '<input type="date" class="tel-data" value="' + escapeHtml(x.dataPrevista || '') + '"' + (edita ? '' : ' disabled') + ' data-on-change="components_tarefas_elemento.4" data-id="' + escapeHtml(x.id) + '" aria-label="Data prevista">'
+      + acoes + '</div>';
+  }).join('') + '</div>';
+  if (edita) h += '<label class="tel-novo"><span class="material-symbols-outlined" aria-hidden="true">add</span><input type="text" id="tel-novo" maxlength="300" placeholder="Adicionar tarefa" data-on-keydown="components_tarefas_elemento.5" aria-label="Adicionar tarefa"></label>';
+  if (!t.length && !edita) h = '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhuma tarefa</p></div>';
+  document.getElementById('tel-corpo').innerHTML = h;
+  if (edita) _telAtivarArraste();
+}
+function _telAplicar(r) {
+  if (!r) return;
+  if (r.tarefa) { var l = _tel.dados.tarefas, i = l.findIndex(function (x) { return String(x.id) === String(r.tarefa.id) || x._tmp === r.tarefa._tmp; }); if (i >= 0) l[i] = r.tarefa; }
+  if (r.percentual !== undefined) _tel.dados.percentual = r.percentual;
+  if (r.status !== undefined) _tel.dados.status = r.status;
+  if (r.progressoPorTarefas !== undefined) _tel.dados.progressoPorTarefas = r.progressoPorTarefas;
+}
+function _telOtimista(mudar, rota, args, depois) {
+  var copia = JSON.parse(JSON.stringify(_tel.dados));
+  mudar(); telErro(''); telRender(); _telAvisar();
+  var r = google.script.run.withSuccessHandler(function (res) { if (depois) depois(res); else _telAplicar(res); telRender(); _telAvisar(); })
+    .withFailureHandler(function (err) { _tel.dados = copia; telRender(); _telAvisar(); telErro(err.message); });
+  r[rota].apply(r, args);
+}
+function _telAchar(id) { return _tel.dados.tarefas.filter(function (x) { return String(x.id) === String(id); })[0]; }
+function telConcluir(id, on) {
+  var x = _telAchar(id); if (!x) return;
+  _telOtimista(function () { x.concluida = on; }, 'apiConcluirTarefaElemento', [String(id), !!on]);
+}
+function telRenomear(el) {
+  var x = _telAchar(el.dataset.id), v = el.value.trim(); if (!x) return;
+  if (v === x.titulo) return;
+  if (!v) { el.value = x.titulo; telErro('O título precisa de 1 a 300 caracteres.'); return; }
+  _telOtimista(function () { x.titulo = v; }, 'apiSalvarTarefaElemento', [{ id: x.id, idElemento: _tel.idElemento, titulo: v, nota: x.nota, dataPrevista: x.dataPrevista || '' }]);
+}
+function telMudarData(el) {
+  var x = _telAchar(el.dataset.id); if (!x) return;
+  _telOtimista(function () { x.dataPrevista = el.value; }, 'apiSalvarTarefaElemento', [{ id: x.id, idElemento: _tel.idElemento, titulo: x.titulo, nota: x.nota, dataPrevista: el.value }]);
+}
+function telCriar(el) {
+  var v = el.value.trim(); if (!v) return;
+  var tmp = 'tmp-' + Date.now(), t = _telTarefas(), ordem = t.length ? (t[t.length - 1].ordem || t.length) + 1 : 1;
+  _telOtimista(function () { _tel.dados.tarefas.push({ id: tmp, _tmp: tmp, titulo: v, concluida: false, dataPrevista: '', ordem: ordem }); },
+    'apiSalvarTarefaElemento', [{ idElemento: _tel.idElemento, titulo: v }],
+    function (res) { var i = _tel.dados.tarefas.findIndex(function (x) { return x._tmp === tmp; }); if (i >= 0 && res && res.tarefa) _tel.dados.tarefas[i] = res.tarefa; _telAplicar({ percentual: res && res.percentual, status: res && res.status }); });
+  setTimeout(function () { var n = document.getElementById('tel-novo'); if (n) n.focus(); }, 0);
+}
+function telExcluir(id) {
+  _telOtimista(function () { _tel.dados.tarefas = _tel.dados.tarefas.filter(function (x) { return String(x.id) !== String(id); }); }, 'apiExcluirTarefaElemento', [String(id)]);
+}
+function _telReordenar(id, novaPos) {
+  var t = _telTarefas(), de = t.findIndex(function (x) { return String(x.id) === String(id); });
+  if (de < 0 || novaPos < 0 || novaPos >= t.length || novaPos === de) return;
+  var item = t.splice(de, 1)[0]; t.splice(novaPos, 0, item);
+  var ant = t[novaPos - 1], seg = t[novaPos + 1];
+  _telOtimista(function () { t.forEach(function (x, i) { x.ordem = i + 1; }); }, 'apiReordenarTarefaElemento', [String(id), ant ? String(ant.id) : '', seg ? String(seg.id) : ''],
+    function (res) { if (res && res.ordem !== undefined) item.ordem = res.ordem; });
+}
+function telMover(id, passo) { var t = _telTarefas(), i = t.findIndex(function (x) { return String(x.id) === String(id); }); _telReordenar(id, i + passo); }
+function _telAtivarArraste() {
+  document.querySelectorAll('#tel-lista .tel-item').forEach(function (el) {
+    el.addEventListener('dragstart', function (e) { if (!e.target.classList.contains('tel-item')) return; _tel.arrastando = el.dataset.id; el.classList.add('tel-arrastando'); e.dataTransfer.effectAllowed = 'move'; });
+    el.addEventListener('dragend', function () { el.classList.remove('tel-arrastando'); _tel.arrastando = null; });
+    el.addEventListener('dragover', function (e) { if (!_tel.arrastando) return; e.preventDefault(); el.classList.add('tel-sobre'); });
+    el.addEventListener('dragleave', function () { el.classList.remove('tel-sobre'); });
+    el.addEventListener('drop', function (e) {
+      e.preventDefault(); el.classList.remove('tel-sobre');
+      if (!_tel.arrastando || _tel.arrastando === el.dataset.id) return;
+      var t = _telTarefas(), alvo = t.findIndex(function (x) { return String(x.id) === String(el.dataset.id); });
+      _telReordenar(_tel.arrastando, alvo);
+    });
+  });
+}
+function telAlternarProgresso() {
+  var d = _tel.dados; if (!d || !d.podeDefinirProgresso) return;
+  var ligar = !d.progressoPorTarefas;
+  _telOtimista(function () { d.progressoPorTarefas = ligar; }, 'apiDefinirProgressoPorTarefas', [_tel.idElemento, ligar]);
+}
+uiRegistrarAcoes('components_tarefas_elemento', {
+  '1': function () { telConcluir(this.dataset.id, this.checked); },
+  '2': function (event) { if (event.key === 'Enter') { event.preventDefault(); this.blur(); } else if (event.key === 'Escape') { var x = _telAchar(this.dataset.id); if (x) this.value = x.titulo; this.blur(); } },
+  '3': function () { telRenomear(this); },
+  '4': function () { telMudarData(this); },
+  '5': function (event) { if (event.key === 'Enter') { event.preventDefault(); telCriar(this); this.value = ''; } }
+});
+</script>
+ 
     <!-- ARQUIVO: components_modal_usuario.html -->
 
 <!-- CSS Cropper -->
@@ -6322,11 +6492,16 @@ uiRegistrarAcoes('components_modal_avaliacao', {
 .mev-item-icone { font-size:34px; color:var(--ds-primary-700); }
 .mev-item-nome { font-size:0.72rem; color:var(--ds-color-text-ui); word-break:break-word; line-height:1.2; max-height:2.4em; overflow:hidden; }
 body.high-contrast .mev-item.mev-selecionado { background:#001a1a; border-color:#00ffff; }
+.mev-grupo { display: flex; flex-direction: column; gap: 8px; padding: 8px 0 12px; border-bottom: 1px solid var(--ds-color-border); }
+.mev-grupo:last-child { border-bottom: 0; }
+.mev-grupo-cab { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.mev-grupo-data { color: var(--ds-color-text-muted); }
 </style>
 
 <script>
 // ===================== MODAL: EVIDÊNCIAS DO INDICADOR (Explorador) =====================
 function abrirModalEvidenciasIndicador(idIndicador, nomeIndicador) {
+  _mevContexto = { idIndicador: String(idIndicador), nome: nomeIndicador || '' };
   document.getElementById('mev-titulo').textContent = 'Evidências' + (nomeIndicador ? ' · ' + nomeIndicador : '');
   document.getElementById('mev-contador').textContent = '';
   document.getElementById('mev-body').innerHTML = spinnerListaHTML('Carregando evidências…');
@@ -6348,26 +6523,69 @@ function fecharModalEvidenciasIndicador() {
 }
 
 let _mevArquivos = [];
+let _mevContexto = { idIndicador: '', nome: '' };
+var _MEV_STATUS = { Pendente: 'warning', Validado: 'success', Rejeitado: 'danger' };
+function _mevSeloHTML(status, motivo) {
+  if (!status) return '';
+  return '<span class="ds-badge ds-badge--' + (_MEV_STATUS[status] || 'neutral') + '">' + escapeHtml(status) + '</span>'
+    + (status === 'Rejeitado' && motivo ? '<span class="material-symbols-outlined ds-info" tabindex="0" data-title="' + escapeHtml(motivo) + '">info</span>' : '');
+}
 function _mevRender(res) {
   const qtd = (res && res.qtd) || 0;
   _mevArquivos = (res && res.arquivos) || [];
+  const exige = !(res && res.exigeValidacao === false);
   document.getElementById('mev-contador').textContent = qtd + (qtd === 1 ? ' arquivo' : ' arquivos');
   if (!qtd) {
     document.getElementById('mev-body').innerHTML =
       '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">folder_off</span>' +
-      '<div class="el-esti">Nenhuma evidência</div>' +
-      '<div class="el-esti" style="font-weight:400;font-size:0.85rem">Este indicador ainda não tem evidências anexadas.</div></div>';
+      '<p class="el-esti">Nenhuma evidência</p><p>Este indicador ainda não tem evidências anexadas.</p></div>';
     return;
   }
-  const html = _mevArquivos.map(function(a, idx) {
-    const dica = a.nome + (a.dataResultado ? ' · resultado de ' + a.dataResultado : '');
-    return '<div class="mev-item" data-idx="' + idx + '" data-title="' + escapeJsAttr(dica) + '" ' +
-      'onclick="_mevSelecionar(' + idx + ')" data-on-dblclick="components_modal_evidencias_indicador.5" data-rdblclick0="' + idx + '">' +
-      '<span class="material-symbols-outlined mev-item-icone">' + _mevIconeArquivo(a.extensao) + '</span>' +
-      '<span class="mev-item-nome">' + escapeHtml(a.nome) + '</span>' +
-      '</div>';
+  // Agrupa por resultado: cabeçalho com data, selo de estado e ações do autor; abaixo, os arquivos.
+  const grupos = [], porId = {};
+  _mevArquivos.forEach(function (a, idx) {
+    const k = String(a.idResultado || 'sem');
+    if (!porId[k]) { porId[k] = { a: a, itens: [] }; grupos.push(porId[k]); }
+    porId[k].itens.push(idx);
+  });
+  const html = grupos.map(function (g) {
+    const a = g.a;
+    const acoes = a.podeCorrigir && a.idResultado ? acoesLinhaHTML('mev-' + a.idResultado, [
+      { icone: 'edit', rotulo: 'Corrigir', onclick: "_mevCorrigir('" + escapeJsAttr(a.idResultado) + "')" },
+      { icone: 'delete', rotulo: 'Excluir', perigo: true, onclick: "_mevExcluir('" + escapeJsAttr(a.idResultado) + "')" }
+    ], { maxDireto: 0 }) : '';
+    return '<div class="mev-grupo"><div class="mev-grupo-cab"><span class="mev-grupo-data">' + escapeHtml(a.dataResultado ? 'Resultado de ' + a.dataResultado : 'Resultado') + '</span>'
+      + (exige ? _mevSeloHTML(a.statusValidacao, a.motivoRejeicao) : '') + '<span style="flex:1"></span>' + acoes + '</div>'
+      + '<div class="mev-grid">' + g.itens.map(function (idx) {
+        const x = _mevArquivos[idx];
+        return '<div class="mev-item" data-idx="' + idx + '" data-title="' + escapeHtml(x.nome) + '" ' +
+          'data-on-click="components_modal_evidencias_indicador.6" data-rclick0="' + idx + '" data-on-dblclick="components_modal_evidencias_indicador.5" data-rdblclick0="' + idx + '">' +
+          '<span class="material-symbols-outlined mev-item-icone">' + _mevIconeArquivo(x.extensao) + '</span>' +
+          '<span class="mev-item-nome">' + escapeHtml(x.nome) + '</span></div>';
+      }).join('') + '</div></div>';
   }).join('');
-  document.getElementById('mev-body').innerHTML = '<div class="mev-grid">' + html + '</div>';
+  document.getElementById('mev-body').innerHTML = html;
+}
+function _mevAchar(idResultado) { return _mevArquivos.filter(function (a) { return String(a.idResultado) === String(idResultado); })[0]; }
+function _mevCorrigir(idResultado) {
+  const a = _mevAchar(idResultado); if (!a) return;
+  fecharModalEvidenciasIndicador();
+  abrirModalResultado({
+    idResultado: idResultado, idIndicador: _mevContexto.idIndicador, nomeIndicador: _mevContexto.nome,
+    tituloElemento: _mevContexto.nome, dataAfericao: a.dataAfericaoISO || '', valor: a.valor, analise: a.analise || '',
+    linkEvidencia: a.extensao === 'link' ? a.url : '',
+    aoSalvar: function () { abrirModalEvidenciasIndicador(_mevContexto.idIndicador, _mevContexto.nome); if (typeof _monitCarregarDados === 'function') _monitCarregarDados(true, true); }
+  });
+}
+function _mevExcluir(idResultado) {
+  showConfirm('Excluir resultado', 'Excluir este resultado e suas evidências?', function () {
+    uiExecutarComTrava(null, function () {
+      google.script.run
+        .withSuccessHandler(function () { abrirModalEvidenciasIndicador(_mevContexto.idIndicador, _mevContexto.nome); if (typeof _monitCarregarDados === 'function') _monitCarregarDados(true, true); })
+        .withFailureHandler(function (err) { showMessage('error', 'Erro', escapeHtml(err.message)); })
+        .apiExcluirResultado(String(idResultado));
+    });
+  });
 }
 
 function _mevSelecionar(idx) {
@@ -6429,7 +6647,7 @@ function _mdiRenderTabela(ind) {
     rows += '<tr>' +
       '<td>' + escapeHtml(r.data || '') + '</td>' +
       '<td>' + escapeHtml(String(r.valor)) + '</td>' +
-      '<td>' + (stt ? '<span class="ax-badge-status ax-badge-' + escapeHtml(stt) + '">' + escapeHtml(stt) + '</span>' : '—') + '</td>' +
+      '<td>' + (stt ? _mevSeloHTML(stt, r.motivoRejeicao) : '—') + '</td>' +
       '<td>' + (r.analise ? escapeHtml(r.analise) : '<span style="color:var(--ds-color-text-ui-muted)">—</span>') + '</td>' +
       '</tr>';
   });
@@ -6475,7 +6693,8 @@ uiRegistrarAcoes('components_modal_evidencias_indicador', {
   '2': function (event) { fecharModalEvidenciasIndicador(); },
   '3': function (event) { if(event.target===this) fecharModalDetalhesIndicador(); },
   '4': function (event) { fecharModalDetalhesIndicador(); },
-  '5': function (event) { _mevAbrirItem(uiArgLit(this.dataset.rdblclick0)); }
+  '5': function (event) { _mevAbrirItem(uiArgLit(this.dataset.rdblclick0)); },
+  '6': function (event) { _mevSelecionar(uiArgLit(this.dataset.rclick0)); }
 });
 </script>
 
@@ -9217,7 +9436,7 @@ function uiEscopoRespIdsUnidades(unidades, chave) {
 // rota de escrita feita nesse trecho síncrono prende o alvo até responder. Fluxos com etapa assíncrona antes
 // de gravar (consulta, confirmação) usam uiTravarBotao(btn) direto e chamam o liberar() devolvido.
 // Lista = rotas "escrita" de docs/referencia_rotas.md.
-var _UI_ROTAS_ESCRITA = new Set(['apiAuthSair', 'apiAuthSolicitarCodigo', 'apiAuthVerificarCodigo', 'apiMarcarNotificacoes', 'apiSalvarConfigEmailNotificacoes', 'apiSalvarConfigNotificacoes', 'apiSalvarPreferenciaNotificacao', 'apiCancelarMensagemSistema', 'apiExcluirMensagemEnviada', 'apiExcluirMensagemSistema', 'apiLerMensagemSistema', 'apiPublicarMensagemSistema', 'apiSalvarMensagemSistema', 'apiSalvarConfigArmazenamento', 'apiSalvarLimitesArmazenamento', 'apiSalvarConfigAlertasNotificacoes', 'apiInativarUnidade', 'apiReativarUnidade', 'apiSalvarUnidade', 'apiAtualizarUsuarioCompleto', 'apiExcluirUsuario', 'apiExcluirUsuariosEmLote', 'apiSalvarNovoUsuarioCompleto', 'apiToggleAtivoUsuario', 'apiToggleAtivoUsuariosEmLote', 'apiImportarServidores', 'apiAprovarUsuarioPendente', 'apiRecusarUsuarioPendente', 'apiSalvarConfigCadastroUsuarios', 'apiEscolherVinculo', 'apiAuthConfirmarPrimeiroAcesso', 'apiAuthPrimeiroAcesso', 'apiAtualizarPlano', 'apiSalvarPlano', 'apiExcluirPlano', 'apiProrrogarPlano', 'apiTramitarPlano', 'apiExcluirPlanoDefinitivo', 'apiAbrirJanelaRevisao', 'apiFecharJanelaRevisao', 'apiFecharRevisao', 'apiSolicitarRevisaoPlano', 'apiCancelarSolicitacao', 'apiResponderSolicitacao', 'apiAprovarVinculoPlano', 'apiCancelarPropostaVinculo', 'apiDefinirPlanoSuperiorPrincipal', 'apiDesvincularVinculo', 'apiDispensarVinculoRecusado', 'apiExcluirVinculosOrfaos', 'apiPropoQuerVinculoSubordinado', 'apiResponderPropostaVinculoSubordinado', 'apiVincularASuperior', 'apiSalvarConfigGlobal', 'apiSalvarConfigPlano', 'apiAtualizarStatusApp', 'apiDesinstalarApp', 'apiInstalarApp', 'apiReordenarAppsPlano', 'apiIndicarParesAvaliacao', 'apiRemoverParIndicado', 'apiSalvarConfigAvaliacao', 'apiAlterarRelacionamentosElementos', 'apiAtualizarElemento', 'apiReordenarElementos', 'apiRestaurarLayoutDiagrama', 'apiSalvarElemento', 'apiSalvarPosicoesDiagrama', 'apiAlternarColaboracaoElemento', 'apiCancelarSolicitacaoColaboracao', 'apiIndicarColaboradorElemento', 'apiResponderSolicitacaoColaboracao', 'apiSolicitarColaboracao', 'apiSalvarMetasPeriodo', 'apiAtualizarIndicador', 'apiExcluirIndicador', 'apiExcluirMeta', 'apiSalvarIndicador', 'apiSalvarExecucaoEResultado', 'apiValidarResultado', 'apiExcluirElemento', 'apiReanexarIndicador', 'apiRestaurarItemPlano', 'apiAdicionarCausaConsequencia', 'apiAtualizarRisco', 'apiExcluirRegistroTratamento', 'apiExcluirRisco', 'apiExcluirTratamento', 'apiSalvarRegistroTratamento', 'apiSalvarRisco', 'apiSalvarTratamento', 'apiAdicionarTopicoALista', 'apiArquivarTopicoForum', 'apiCriarListaForum', 'apiCriarTopicoForum', 'apiEditarMensagemForum', 'apiEnviarMensagemForum', 'apiExcluirListaForum', 'apiExcluirMensagemForum', 'apiExcluirTopicoForum', 'apiFavoritarTopicoForum', 'apiFixarTopicoForum', 'apiMarcarTopicoLido', 'apiMarcarTopicoNaoLido', 'apiRemoverTopicoDaLista', 'apiRenomearListaForum', 'apiRenomearTopicoForum', 'apiReordenarCatalogoOpcoes', 'apiSalvarOpcaoCatalogo', 'apiSalvarConfigSistemaSecao', 'apiSalvarPreferenciaUsuario', 'apiAvaliarPlano', 'apiCancelarAvaliacao', 'apiRecorrerAvaliacao', 'apiResponderRecurso', 'apiSalvarRascunhoAvaliacao']);
+var _UI_ROTAS_ESCRITA = new Set(['apiIniciarCargaPessoas', 'apiEnviarLoteCargaPessoas', 'apiConcluirCargaPessoas', 'apiConfirmarCargaRetida', 'apiCancelarCargaPessoas', 'apiValidarResultado', 'apiCorrigirResultado', 'apiExcluirResultado', 'apiSalvarTarefaElemento', 'apiConcluirTarefaElemento', 'apiReordenarTarefaElemento', 'apiExcluirTarefaElemento', 'apiDefinirProgressoPorTarefas', 'apiSalvarEventoCalendario', 'apiCancelarEventoCalendario', 'apiAuthSair', 'apiAuthSolicitarCodigo', 'apiAuthVerificarCodigo', 'apiMarcarNotificacoes', 'apiSalvarConfigEmailNotificacoes', 'apiSalvarConfigNotificacoes', 'apiSalvarPreferenciaNotificacao', 'apiCancelarMensagemSistema', 'apiExcluirMensagemEnviada', 'apiExcluirMensagemSistema', 'apiLerMensagemSistema', 'apiPublicarMensagemSistema', 'apiSalvarMensagemSistema', 'apiSalvarConfigArmazenamento', 'apiSalvarLimitesArmazenamento', 'apiSalvarConfigAlertasNotificacoes', 'apiInativarUnidade', 'apiReativarUnidade', 'apiSalvarUnidade', 'apiAtualizarUsuarioCompleto', 'apiExcluirUsuario', 'apiExcluirUsuariosEmLote', 'apiSalvarNovoUsuarioCompleto', 'apiToggleAtivoUsuario', 'apiToggleAtivoUsuariosEmLote', 'apiImportarServidores', 'apiAprovarUsuarioPendente', 'apiRecusarUsuarioPendente', 'apiSalvarConfigCadastroUsuarios', 'apiEscolherVinculo', 'apiAuthConfirmarPrimeiroAcesso', 'apiAuthPrimeiroAcesso', 'apiAtualizarPlano', 'apiSalvarPlano', 'apiExcluirPlano', 'apiProrrogarPlano', 'apiTramitarPlano', 'apiExcluirPlanoDefinitivo', 'apiFecharRevisao', 'apiSolicitarRevisaoPlano', 'apiCancelarSolicitacao', 'apiResponderSolicitacao', 'apiAprovarVinculoPlano', 'apiCancelarPropostaVinculo', 'apiDefinirPlanoSuperiorPrincipal', 'apiDesvincularVinculo', 'apiDispensarVinculoRecusado', 'apiExcluirVinculosOrfaos', 'apiPropoQuerVinculoSubordinado', 'apiResponderPropostaVinculoSubordinado', 'apiVincularASuperior', 'apiSalvarConfigGlobal', 'apiSalvarConfigPlano', 'apiAtualizarStatusApp', 'apiDesinstalarApp', 'apiInstalarApp', 'apiReordenarAppsPlano', 'apiIndicarParesAvaliacao', 'apiRemoverParIndicado', 'apiSalvarConfigAvaliacao', 'apiAlterarRelacionamentosElementos', 'apiAtualizarElemento', 'apiReordenarElementos', 'apiRestaurarLayoutDiagrama', 'apiSalvarElemento', 'apiSalvarPosicoesDiagrama', 'apiAlternarColaboracaoElemento', 'apiCancelarSolicitacaoColaboracao', 'apiIndicarColaboradorElemento', 'apiResponderSolicitacaoColaboracao', 'apiSolicitarColaboracao', 'apiSalvarMetasPeriodo', 'apiAtualizarIndicador', 'apiExcluirIndicador', 'apiExcluirMeta', 'apiSalvarIndicador', 'apiSalvarExecucaoEResultado', 'apiValidarResultado', 'apiExcluirElemento', 'apiReanexarIndicador', 'apiRestaurarItemPlano', 'apiAdicionarCausaConsequencia', 'apiAtualizarRisco', 'apiExcluirRegistroTratamento', 'apiExcluirRisco', 'apiExcluirTratamento', 'apiSalvarRegistroTratamento', 'apiSalvarRisco', 'apiSalvarTratamento', 'apiAdicionarTopicoALista', 'apiArquivarTopicoForum', 'apiCriarListaForum', 'apiCriarTopicoForum', 'apiEditarMensagemForum', 'apiEnviarMensagemForum', 'apiExcluirListaForum', 'apiExcluirMensagemForum', 'apiExcluirTopicoForum', 'apiFavoritarTopicoForum', 'apiFixarTopicoForum', 'apiMarcarTopicoLido', 'apiMarcarTopicoNaoLido', 'apiRemoverTopicoDaLista', 'apiRenomearListaForum', 'apiRenomearTopicoForum', 'apiReordenarCatalogoOpcoes', 'apiSalvarOpcaoCatalogo', 'apiSalvarConfigSistemaSecao', 'apiSalvarPreferenciaUsuario', 'apiAvaliarPlano', 'apiCancelarAvaliacao', 'apiRecorrerAvaliacao', 'apiResponderRecurso', 'apiSalvarRascunhoAvaliacao']);
 var _uiTravaAlvo = null;
 function _uiTravaCss() {
   if (document.getElementById('ui-trava-css')) return;
@@ -12148,6 +12367,1109 @@ uiRegistrarAcoes('pages_planos_lista', {
 });
 </script>
 
+       <!-- ARQUIVO: pages_calendario.html -->
+<!-- Calendário (Planejamento → Calendário). Mesmo molde de pages_planos_lista.html (CSS copiado com prefixo cal-).
+     Cada evento abre/fecha uma ação do sistema; o servidor decide o que vale (apiGetCalendario devolve podeX). -->
+<style>
+/* --- Barra de seleção (compartilhada com outras páginas que ainda usam o padrão antigo) --- */
+.barra-selecao {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px; padding: 10px 16px;
+  background: var(--ds-color-info-bg); border-bottom: 1px solid #c5d8fb;
+}
+.barra-selecao-info { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--ds-primary-700); }
+.barra-selecao-acoes { display: flex; align-items: center; gap: 8px; }
+body.high-contrast .barra-selecao { background: #000; border-color: var(--ds-color-action); }
+
+/* --- Tabela --- */
+.table-full { width: 100%; border-collapse: collapse; }
+.table-full thead th {
+  padding: 10px 14px; text-align: left; font-size: 0.8rem;
+  font-weight: 600; color: var(--ds-color-text-ui-muted); background: var(--ds-color-bg-subtle);
+  border-bottom: 1px solid var(--ds-color-border-ui);
+}
+.table-full tbody td {
+  padding: 10px 14px; border-bottom: 1px solid var(--ds-color-border-ui); vertical-align: middle;
+}
+.table-full tbody tr:last-child td { border-bottom: none; }
+.table-full tbody tr:hover { background: var(--ds-color-bg-subtle); }
+.table-full tbody tr.selecionada { background: var(--ds-color-surface-2); }
+body.high-contrast .table-full tbody tr.selecionada { background: #1a1a2e; }
+
+/* Responsável */
+.resp-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--ds-color-surface-2); color: var(--ds-color-text); border-radius: 12px;
+  padding: 2px 8px; font-size: 0.8rem; font-weight: 500;
+}
+.resp-badge .material-symbols-outlined { font-size: 14px; }
+
+/* Estado vazio */
+.planos-vazio {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; padding: 40px 16px; color: var(--ds-color-text-ui-muted);
+}
+.planos-vazio .material-symbols-outlined { font-size: 54px; opacity: 0.35; }
+.planos-vazio p { font-size: 0.88rem; margin: 0; }
+
+/* Alto contraste */
+body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
+
+/* Colunas ordenáveis: cabeçalho continua clicável (convenção do sistema), mas só a coluna
+   ativa mostra a seta — o menu "Ordenar" (coluna de ações) é a via alternativa/descoberta. */
+.th-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+.th-sortable:hover { color: var(--ds-primary-700); }
+.sort-icon {
+  display: inline-flex; align-items: center; vertical-align: middle;
+  font-family: 'Material Symbols Outlined'; font-size: 14px;
+  font-weight: 300; margin-left: 3px; color: var(--ds-primary-700);
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+}
+.sort-icon:empty { display: none; }
+
+/* Menu de popover (filtros e ordenar): usa abrirMenuSelecao()/.acoes-menu-label/
+   .acoes-menu-dot, componente compartilhado em components_acoes_linha.html — ver ali. */
+
+/* Mobile */
+@media (max-width: 640px) {
+  .filtros-bar { padding: 10px 12px; }
+  .table-full th:nth-child(2), .table-full td:nth-child(2),
+  .table-full th:nth-child(5), .table-full td:nth-child(5) { display: none; }
+}
+
+/* ============================================================================
+   NOVA UI (escopo #page-calendario): hero → linha de abas → filtros → tabela.
+   Estrutura FLAT: hero/abas/filtros/tabela são filhos diretos de #page-calendario, sem
+   embrulho compartilhado (nada de .ds-pasta/.detalhe-content-area — ver comentário no
+   HTML). Cada seção é 100% própria desta página, sem herdar nada de outro componente.
+   ============================================================================ */
+/* Quem rola é o <main> inteiro (scroll único do app — ver docs/design_system.md "Área de
+   conteúdo com altura travada"): o título rola para cima e desaparece; a linha das abas,
+   a barra de filtros e o cabeçalho da tabela são "sticky" e vão parando, empilhados, no
+   topo de <main> conforme a rolagem os alcança — só as LINHAS da tabela seguem se
+   movendo por baixo deles. Como os níveis empilham (abas → filtros → cabeçalho), cada um
+   precisa saber a altura exata dos que vêm antes pra calcular seu próprio "top" — por
+   isso as variáveis --cal-tabs-h/--cal-filtros-h, mantidas atualizadas via JS
+   (pllAtualizarOffsetsSticky, chamada após render das abas, da barra de seleção e no
+   resize) em vez de valor fixo, já que o conteúdo dessas barras pode mudar de altura
+   (filtro virando chip, barra de seleção em lote, etc.). */
+/* --cal-sticky-top: -20px = menos o padding superior do <main>. O sticky conta a partir
+   da borda do padding do contêiner que rola, não da borda real — com top:0 tudo parava
+   20px abaixo do topbar, deixando uma faixa por onde as linhas da tabela apareciam
+   passando. Com -20px, abas/botão encostam direto no topbar. */
+#page-calendario { --cal-tabs-h: 44px; --cal-filtros-h: 57px; --cal-sticky-top: -20px; }
+#page-calendario > * { margin-bottom: 20px; }
+#page-calendario > *:last-child { margin-bottom: 0; }
+
+/* Hero: só o título, que rola normalmente com a página. Altura mínima = --cal-tabs-h
+   (a mesma do botão), pra o botão — sobreposto a esta linha via margem negativa — ficar
+   centralizado com o título em repouso. */
+#page-calendario .cal-hero { display: flex; align-items: center; min-height: var(--cal-tabs-h); padding-right: 180px; }
+#page-calendario .cal-hero h1 {
+  /* Tamanho padrão de título de página (4px menor que o antigo 34px) — mesmo valor em
+     pages_plano_detalhe.html (#det-titulo). */
+  font-size: 30px; line-height: 1.15; letter-spacing: -0.8px; font-weight: var(--ds-weight-bold);
+  color: var(--ds-color-text); margin: 0;
+}
+/* Botão "Novo plano": filho direto de #page-calendario (não do hero — ver comentário no
+   HTML), sticky top:0. Efeito: em repouso fica na linha do título; ao rolar, sobe junto
+   até bater no topo de <main> (logo abaixo do topbar) e para ali; as abas continuam
+   subindo e param quando a base delas encontra a base do botão (mesma altura
+   --cal-tabs-h, ambos top:0), passando por trás dele.
+   margin-top negativo = altura do hero (--cal-tabs-h) + o respiro de 20px entre hero e
+   abas: puxa o botão de volta pra linha do título, sem ocupar uma linha própria.
+   width:max-content + margin-left:auto: caixa só do tamanho do botão, colada à direita
+   — assim o fundo opaco cobre as abas que passam por trás, mas não cobre nada à esquerda. */
+#page-calendario .cal-hero-acoes {
+  position: sticky; top: var(--cal-sticky-top); z-index: 43;
+  width: max-content; margin-left: auto;
+  margin-top: calc(-1 * (var(--cal-tabs-h) + 20px));
+  /* -1px: não cobre a linha base (border-bottom) das abas quando grudados juntos */
+  height: calc(var(--cal-tabs-h) - 1px); display: flex; align-items: center; padding-left: 12px;
+  background: var(--ds-color-surface); box-shadow: none;
+}
+#page-calendario .cal-btn-novo { flex-shrink: 0; white-space: nowrap; min-height: 40px; padding: 0 20px; }
+
+/* Linha das abas — SEM sangria lateral (removida a pedido do usuário: o padding lateral
+   de 40px do <main> precisa aparecer de verdade, criando um respiro entre o conteúdo e o
+   sidebar — a tabela não deve ficar grudada nele). Fica dentro do padding padrão de
+   <main>, alinhada com o título do hero. Sticky no topo (top:0). SEM padding próprio
+   acima da aba: o topo do .cal-tab-btn É o topo da própria linha, então quando fica
+   sticky ele toca e para exatamente no topo de <main>, sem gap vertical — pedido
+   explícito do usuário (esse "sem gap" era só em cima/embaixo, não nas laterais). */
+#page-calendario .cal-tabs-row {
+  position: sticky; top: var(--cal-sticky-top); z-index: 42;
+  display: flex; align-items: flex-start; gap: 4px;
+  /* Reserva a largura do botão "Novo plano" à direita: quando os dois estão grudados no
+     topo, ele fica sobre esta faixa — sem a reserva, a última aba ficaria por baixo dele.
+     Com ela, se faltar espaço, as abas rolam em carrossel e a seta › aparece. */
+  padding-right: 170px;
+  /* Branco, igual a main-content/tabela — pedido explícito do usuário: nada de faixa
+     cinza aqui, main-content inteiro é da mesma cor da tabela. */
+  background: var(--ds-color-surface);
+  /* Linha base contínua sob TODAS as abas, estilo Gmail — a aba ativa desenha seu
+     sublinhado colorido por cima dela (ver .cal-tab-btn.active). */
+  border-bottom: 1px solid var(--ds-color-border);
+}
+#page-calendario .cal-tabs-scroll-wrap { position: relative; flex: 1 1 auto; min-width: 0; }
+#page-calendario .cal-tabs-scroll { overflow-x: auto; scrollbar-width: none; }
+#page-calendario .cal-tabs-scroll::-webkit-scrollbar { display: none; }
+#page-calendario .cal-tabs { display: flex; align-items: center; }
+/* Aba estilo Gmail: texto + ícone, sem pílula/fundo em repouso; a aba ativa ganha cor de
+   destaque e um sublinhado colorido de 3px (margin-bottom:-1px cobre a linha base da
+   linha inteira, senão ficariam duas linhas coladas uma do lado da outra). */
+#page-calendario .cal-tab-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 12px 16px; margin-bottom: -1px;
+  background: none; border: none; border-bottom: 3px solid transparent;
+  color: var(--ds-color-text-muted); font-family: var(--ds-font-sans);
+  font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
+  cursor: pointer; white-space: nowrap;
+}
+#page-calendario .cal-tab-btn:hover { color: var(--ds-color-text); background: var(--ds-sidebar-item-hover); }
+#page-calendario .cal-tab-btn.active {
+  color: var(--ds-color-action); font-weight: var(--ds-weight-semibold);
+  border-bottom-color: var(--ds-color-action);
+}
+#page-calendario .cal-tab-btn .material-symbols-outlined { font-size: 18px; }
+#page-calendario .cal-tab-btn.active .ds-tab-count { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
+/* Setas de carrossel: só aparecem (via JS, classe .hidden) quando as abas não cabem
+   inteiras na largura disponível. Fundo em degradê pra sumir suavemente sobre as abas,
+   não uma barra sólida por cima delas. */
+#page-calendario .cal-tabs-arrow {
+  position: absolute; top: 0; bottom: 1px; width: 28px; padding: 0; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; color: var(--ds-color-text-muted); z-index: 1;
+}
+#page-calendario .cal-tabs-arrow:hover { color: var(--ds-color-action); }
+#page-calendario .cal-tabs-arrow--start { left: 0; background: linear-gradient(to left, transparent, var(--ds-color-surface) 55%); }
+#page-calendario .cal-tabs-arrow--end { right: 0; background: linear-gradient(to right, transparent, var(--ds-color-surface) 55%); }
+#page-calendario .cal-tabs-arrow.hidden { display: none; }
+
+/* Barra de filtros — SEM sangria lateral (mesmo motivo da linha de abas: o padding de
+   40px do <main> precisa criar um respiro real entre a lista e o sidebar). Sem "cara de
+   card": no Drive a barra de filtros e a lista não têm contêiner visível (nem borda, nem
+   sombra, nem fundo próprio) — só um respiro discreto entre as seções. Sticky logo
+   abaixo da linha das abas (empilhamento via --cal-tabs-h) — por isso o fundo aqui
+   PRECISA ser opaco, senão as linhas da tabela apareceriam "por baixo" dela ao rolar. */
+/* Flex row: .cal-filtros-normal/.cal-filtros-selecao (um dos dois, nunca junto) ocupam o
+   espaço flexível à esquerda; .cal-pag-wrap fica fixo à direita nos DOIS modos — pedido
+   explícito do usuário (senão, ao selecionar itens, a paginação sumia junto com os
+   filtros e não dava pra navegar até outra página pra continuar selecionando). */
+#page-calendario .cal-filtros {
+  position: sticky; top: calc(var(--cal-sticky-top) + var(--cal-tabs-h)); z-index: 41;
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 0; background: var(--ds-color-surface);
+}
+#page-calendario .cal-filtros-normal,
+#page-calendario .cal-filtros-selecao { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 1 1 auto; min-width: 0; }
+#page-calendario .cal-filtros-normal.hidden,
+#page-calendario .cal-filtros-selecao.hidden { display: none; }
+#page-calendario .cal-pag-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+#page-calendario .cal-selecao-texto { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); font-size: var(--ds-text-sm); }
+#page-calendario .cal-selecao-divisor { width: 1px; align-self: stretch; margin: 2px 4px; background: var(--ds-color-border); }
+/* Ações preenchidas via JS (acoesLinhaHTML) — o .acoes-linha dela vem com opacity:0 por
+   padrão SÓ dentro da tabela (regra escopada a .cal-tabela); aqui, fora da tabela, herda
+   opacity normal (sempre visível) sem precisar de override. */
+#page-calendario .cal-selecao-acoes { display: inline-flex; align-items: center; }
+
+/* Busca expansível: ícone só-botão vira caixa de texto ao clicar */
+#page-calendario .cal-search { position: relative; display: inline-flex; align-items: center; }
+#page-calendario .cal-search-caixa { position: relative; display: flex; align-items: center; }
+#page-calendario .cal-search-caixa.hidden { display: none; }
+#page-calendario .cal-search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 20px; color: var(--ds-color-text-muted); pointer-events: none;
+}
+#page-calendario .cal-search-input { width: 220px; max-width: 60vw; padding-left: 42px; padding-right: 38px; }
+#page-calendario .cal-search-clear {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted);
+}
+#page-calendario .cal-search-clear:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text); }
+#page-calendario .cal-search-clear .material-symbols-outlined { font-size: 18px; }
+
+/* Filtros Tipo/Ano/Status: botão + "x"; quando ativo, os dois se fundem numa única pastilha
+   (mesma cor, sem costura no meio — só a borda externa arredondada), como no modelo do
+   Claude Design, em vez de duas caixas separadas. */
+#page-calendario .cal-filtro { display: inline-flex; align-items: stretch; }
+#page-calendario .cal-filtro-btn {
+  display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px;
+  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
+  color: var(--ds-color-text); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
+  cursor: pointer; white-space: nowrap;
+}
+#page-calendario .cal-filtro-btn:hover { background: var(--ds-sidebar-item-hover); }
+#page-calendario .cal-filtro-btn .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
+#page-calendario .cal-filtro-btn--ativo {
+  background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); border-color: var(--ds-color-info-bg); font-weight: var(--ds-weight-semibold);
+}
+#page-calendario .cal-filtro-btn--ativo .material-symbols-outlined { color: var(--ds-color-info-fg); }
+/* Com o "x" visível (filtro ativo), o botão perde o arredondamento/borda do lado direito
+   para os dois virarem uma peça só */
+#page-calendario .cal-filtro-btn:has(+ .cal-filtro-x:not(.hidden)) {
+  border-top-right-radius: 0; border-bottom-right-radius: 0; border-right-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
+}
+#page-calendario .cal-filtro-x {
+  display: inline-flex; align-items: center; justify-content: center; width: 26px; padding: 0;
+  background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); cursor: pointer;
+  border: 1px solid var(--ds-color-info-bg); border-left-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
+  border-top-right-radius: var(--ds-r-lg); border-bottom-right-radius: var(--ds-r-lg);
+}
+#page-calendario .cal-filtro-x:hover { filter: brightness(0.94); }
+#page-calendario .cal-filtro-x .material-symbols-outlined { font-size: 15px; }
+
+#page-calendario .cal-limpar-link {
+  background: none; border: none; padding: 6px 4px; color: var(--ds-color-action); font-family: var(--ds-font-sans);
+  font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; white-space: nowrap;
+}
+#page-calendario .cal-limpar-link:hover { text-decoration: underline; }
+
+/* Ícones "Atualizar"/"Exportar"/"Ordenar" do cabeçalho: agrupados na mesma coluna, só o
+   ícone, sem caixa/borda em repouso (não são botões de vidro) — atualizar/exportar
+   saíram da barra de filtros e vieram pra cá, no mesmo estilo do ícone de ordenar. */
+#page-calendario .cal-th-acoes { display: inline-flex; align-items: center; gap: 2px; }
+#page-calendario .cal-sort-btn {
+  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0;
+  background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); cursor: pointer;
+}
+#page-calendario .cal-sort-btn:hover, #page-calendario .cal-sort-btn[aria-expanded="true"] { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
+#page-calendario .cal-sort-btn .material-symbols-outlined { font-size: 20px; }
+
+/* Cartão da tabela: fluxo normal (quem rola agora é o <main> inteiro, não mais um
+   contêiner interno próprio). SEM sangria lateral (removida a pedido do usuário: a
+   tabela não deve ficar grudada no sidebar, o padding de 40px do <main> precisa
+   aparecer também aqui) — só embaixo continua sangrando (-20px, o padding vertical do
+   <main>), pra não sobrar aquele respiro vazio no fim da rolagem. Fundo
+   --ds-color-surface (não "none"): sem um painel por trás (removemos o
+   .detalhe-content-area compartilhado que antes dava esse fundo branco), as linhas
+   ficariam mostrando o fundo da página por baixo. */
+#page-calendario .cal-tabela-card {
+  margin-bottom: -20px !important;
+  padding: 0; background: var(--ds-color-surface); border: none; box-shadow: none;
+}
+
+/* SEM overflow-x/overflow-y aqui: qualquer "overflow" diferente de visible neste
+   elemento (mesmo só no eixo X) vira sem querer o "ancestral com scroll" mais próximo
+   do cabeçalho sticky da tabela logo abaixo — e ele passaria a colar dentro desta caixa
+   (que anda junto com a página) em vez de colar no topo real de <main>. */
+#page-calendario .cal-table-wrap { overflow: visible; }
+/* border-collapse:separate (não "collapse", herdado de .table-full): com bordas
+   "coladas" entre células, um <th> sticky não consegue levar a própria borda-de-baixo
+   junto ao rolar — o navegador pinta a borda como parte da malha de bordas compartilhada
+   da tabela (calculada uma vez, não por célula), então ela fica "presa" na posição
+   original enquanto o cabeçalho sobe, dando a impressão de que a linha forte passa por
+   trás dele. Com bordas separadas, cada <th>/<td> pinta a própria borda sozinho, e ela
+   acompanha o sticky normalmente. Nenhuma célula desta tabela usa borda de cima nem
+   lateral, só de baixo — border-spacing:0 então não deixa nenhum vão visível. */
+#page-calendario .cal-tabela { margin: 0; border-collapse: separate; border-spacing: 0; }
+#page-calendario .cal-tabela thead th {
+  /* Terceiro nível do empilhamento sticky: cola logo abaixo das abas + filtros
+     (soma das duas variáveis de altura — ver comentário grande acima de .cal-tabs-row) */
+  position: sticky; top: calc(var(--cal-sticky-top) + var(--cal-tabs-h) + var(--cal-filtros-h)); z-index: 40;
+  padding: 12px 16px; text-align: left; white-space: nowrap;
+  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  /* Fundo opaco branco (--ds-color-surface, igual a main-content/tabela/abas agora) — as
+     linhas passam "por baixo" dele ao rolar, por isso não pode ser transparente. */
+  color: var(--ds-color-text-muted); background: var(--ds-color-surface);
+  /* Mais forte que a linha entre linhas da tabela (--ds-glass-border, quase invisível):
+     aqui precisa separar bem o cabeçalho fixo dos itens que rolam por baixo dele —
+     pedido explícito do usuário. */
+  border-bottom: 2px solid var(--ds-color-border);
+}
+#page-calendario .cal-tabela tbody td {
+  padding: 14px 16px; vertical-align: middle;
+  border-bottom: 1px solid var(--ds-glass-border);
+  font-size: var(--ds-text-base); color: var(--ds-color-text);
+}
+/* Clique = seleciona (Ctrl/Shift para incremental/intervalo, estilo Explorer/Drive),
+   duplo clique = abre detalhes (ver pllCliqueLinha/pllDuploCliqueLinha no script) —
+   cursor de "clicável" na linha inteira, não mais só no nome. user-select:none evita
+   grifar texto sem querer ao segurar Shift e clicar. */
+#page-calendario .cal-tabela tbody tr { cursor: pointer; user-select: none; }
+#page-calendario .cal-tabela tbody tr:last-child td { border-bottom: none; }
+#page-calendario .cal-tabela tbody tr:hover td { background: var(--ds-sidebar-item-hover); }
+#page-calendario .cal-tabela tbody tr.selecionada td { background: var(--ds-sidebar-item-active); }
+#page-calendario .th-sortable:hover { color: var(--ds-color-action); }
+#page-calendario .sort-icon { color: var(--ds-color-action); }
+/* Checkbox: MESMO padding/alinhamento no cabeçalho e nas linhas (o th tem regra própria de
+   text-align/padding, por isso a especificidade explícita aqui) */
+#page-calendario .cal-tabela .cal-col-check { width: 48px; text-align: left; padding: 14px 0 14px 16px; }
+#page-calendario .cal-tabela thead .cal-col-check { padding-top: 12px; padding-bottom: 12px; }
+#page-calendario .cal-tabela input[type="checkbox"] { display: block; margin: 0; width: 16px; height: 16px; }
+#page-calendario .cal-col-acoes { width: 1%; white-space: nowrap; text-align: right; }
+/* Especificidade explícita: a regra genérica "thead th { text-align:left }" acima tem mais
+   seletores de tag e venceria a regra de cima nesta coluna especificamente (cabeçalho da
+   coluna de ações/ordenar precisa ficar à direita, alinhado com os botões de ação das linhas) */
+#page-calendario .cal-tabela thead th.cal-col-acoes { text-align: right; }
+/* Plano ocupa a folga da tabela (as demais colunas ficam do tamanho do conteúdo) */
+#page-calendario .cal-tabela .cal-col-plano { width: 46%; min-width: 260px; }
+#page-calendario .cal-tabela td.cal-col-vig, #page-calendario .cal-tabela td.cal-col-resp, #page-calendario .cal-tabela td.cal-col-status { white-space: nowrap; }
+/* coluna do card (só mobile) */
+#page-calendario .cal-tabela .cal-col-card { display: none; }
+
+/* Célula "Plano": tag de tipo + nome (+ linha secundária no mobile) */
+#page-calendario .cal-plano { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#page-calendario .cal-tipo {
+  flex-shrink: 0; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; white-space: nowrap;
+  padding: 1px 8px; border-radius: var(--ds-r-md);
+  color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border);
+}
+#page-calendario .cal-nome-wrap { min-width: 0; }
+/* Sem cara de link (sem cursor:pointer nem cor de hover): agora a linha inteira decide o
+   clique — 1 clique seleciona, duplo clique abre os detalhes (ver .cal-tabela tbody tr) —
+   não é mais só o nome que navega sozinho. */
+#page-calendario .cal-nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; overflow-wrap: anywhere; }
+#page-calendario .cal-vig { white-space: nowrap; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
+#page-calendario .resp-badge { background: var(--ds-color-surface-2); color: var(--ds-color-text); border-radius: var(--ds-radius-pill); font-size: var(--ds-text-sm); }
+#page-calendario .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); }
+
+/* Progresso */
+#page-calendario .cal-prog { display: flex; align-items: center; gap: 10px; }
+#page-calendario .cal-prog .ds-kpi-track { width: 72px; flex: none; }
+#page-calendario .cal-prog-txt { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); min-width: 34px; }
+#page-calendario .cal-sem-prog { color: var(--ds-color-text-muted); }
+
+/* Ações: aparecem ao passar o mouse / focar / quando a linha está selecionada (sempre
+   visíveis em toque e em telas <= 1024px) */
+#page-calendario .cal-tabela .acoes-linha { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
+#page-calendario .cal-tabela tr:hover .acoes-linha,
+#page-calendario .cal-tabela tr:focus-within .acoes-linha,
+#page-calendario .cal-tabela tr.selecionada .acoes-linha,
+#page-calendario .cal-tabela .acoes-linha:has([aria-expanded="true"]) { opacity: 1; }
+@media (hover: none) { #page-calendario .cal-tabela .acoes-linha { opacity: 1; } }
+
+/* Contador + paginação: agora na própria barra de filtros (sem seletor de "Exibir" nem
+   rodapé próprio) — [1-8 de 8] [atualizar] [exportar] [< 1 >], pedido explícito do usuário. */
+#page-calendario .cal-pag-counter { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; }
+#page-calendario .cal-pag-nav { display: inline-flex; align-items: center; gap: 2px; }
+#page-calendario .cal-pag-atual {
+  min-width: 20px; text-align: center; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text);
+}
+#page-calendario .ds-icon-action--sm:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Responsivo: <=1024 some Progresso; <=768 Vigência/Responsável descem p/ linha secundária */
+@media (max-width: 1024px) {
+  #page-calendario .cal-col-prog { display: none; }
+  #page-calendario .cal-tabela .acoes-linha { opacity: 1; }
+}
+@media (max-width: 768px) {
+  /* Sem sticky empilhado no mobile: a galeria de cards flui normalmente e quem rola é
+     o <main> (mesmo padrão de sempre) — o empilhamento abas/filtros/cabeçalho e a
+     sangria lateral (-40px) são só desktop. */
+  #page-calendario .cal-tabela thead th { position: static; }
+
+  #page-calendario .cal-hero h1 { font-size: 26px; }
+  #page-calendario .cal-hero { align-items: stretch; flex-direction: column; min-height: 0; padding-right: 0; }
+  /* Botão deixa de ser sticky no mobile — some com o título, sem "abas empilhando atrás
+     dele" (esse efeito é só desktop); volta a ficar embaixo do título, largura total */
+  #page-calendario .cal-hero-acoes { position: static; height: auto; width: 100%; margin: 0 0 20px; padding-left: 0; background: none; }
+  #page-calendario .cal-btn-novo { flex: 1; }
+
+  /* Linha das abas deixa de ser sticky: quebra livremente, sem carrossel/setas, sem sangria */
+  #page-calendario .cal-tabs-row { position: static; margin: 0; width: 100%; flex-wrap: wrap; padding: 8px 10px; }
+  #page-calendario .cal-tabs-arrow { display: none !important; }
+  #page-calendario .cal-tabs-scroll { overflow-x: visible; }
+
+  #page-calendario .cal-filtros { position: static; margin: 0; width: 100%; }
+  #page-calendario .cal-filtro { flex: 1 1 108px; }
+  #page-calendario .cal-filtro-btn { width: 100%; justify-content: space-between; }
+
+  /* ---- Galeria de cards (estilo "gallery" do Power Apps): sem rolagem lateral, tudo à vista ---- */
+  #page-calendario .cal-tabela-card { margin: 0 !important; width: 100%; display: block; overflow: visible; background: none; border: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  #page-calendario .cal-table-wrap { overflow: visible; }
+  #page-calendario .cal-tabela, #page-calendario .cal-tabela thead, #page-calendario .cal-tabela tbody { display: block; width: 100%; }
+
+  /* cabeçalho vira uma barra de "selecionar todos" + ordenação */
+  #page-calendario .cal-tabela thead tr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 8px 12px;
+    background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl);
+  }
+  #page-calendario .cal-tabela thead th { padding: 6px 0; border: none; display: inline-flex; align-items: center; }
+  #page-calendario .cal-tabela thead .cal-col-check { width: auto; padding: 6px 4px 6px 0; }
+  #page-calendario .cal-tabela thead .cal-col-prog { display: inline-flex; }
+  #page-calendario .cal-tabela thead .cal-col-acoes { margin-left: auto; }
+  #page-calendario .cal-tabela thead .cal-col-card { display: none; }
+
+  /* corpo: grade de cards (1 coluna no celular; 2+ em telas maiores) */
+  #page-calendario .cal-tabela tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 12px; }
+  #page-calendario .cal-tabela tbody tr {
+    /* linha 1: checkbox + tag de tipo + ⋮ · linha 2: NOME sozinho (1 linha, reticências) · linha 3: detalhes */
+    display: grid; grid-template-columns: 28px auto minmax(0, 1fr) auto;
+    grid-template-areas: "chk tipo . acoes" "nome nome nome nome" "card card card card";
+    gap: 6px 8px; align-items: center; padding: 12px;
+    background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-shadow-1);
+  }
+  #page-calendario .cal-tabela tbody tr.selecionada { background: var(--ds-sidebar-item-active); border-color: var(--ds-color-action); }
+  #page-calendario .cal-tabela tbody td { display: block; padding: 0; border: none; }
+  /* fundo transparente também no hover/selecionada (o realce é do card); SEM display aqui, senão
+     estas regras (mais específicas) reexibiriam as colunas de desktop escondidas abaixo */
+  #page-calendario .cal-tabela tbody tr:hover td, #page-calendario .cal-tabela tbody tr.selecionada td { background: none; }
+  #page-calendario .cal-tabela tbody .cal-col-check { grid-area: chk; width: auto; padding: 4px 0 0; }
+  /* a célula "Plano" e seus wrappers "dissolvem": tag e nome viram itens diretos da grade do card */
+  #page-calendario .cal-tabela tbody .cal-col-plano, #page-calendario .cal-tabela tbody .cal-plano,
+  #page-calendario .cal-tabela tbody .cal-nome-wrap { display: contents; }
+  #page-calendario .cal-tabela tbody .cal-tipo { grid-area: tipo; justify-self: start; }
+  #page-calendario .cal-tabela tbody .cal-nome {
+    grid-area: nome; min-width: 0; font-size: var(--ds-text-md);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal;
+  }
+  #page-calendario .cal-tabela tbody .cal-col-acoes { grid-area: acoes; width: auto; }
+  #page-calendario .cal-tabela tbody .cal-col-card { grid-area: card; display: block; }
+  /* colunas de desktop somem nas linhas (o card mostra tudo) */
+  #page-calendario .cal-tabela tbody .cal-col-vig, #page-calendario .cal-tabela tbody .cal-col-resp,
+  #page-calendario .cal-tabela tbody .cal-col-status, #page-calendario .cal-tabela tbody .cal-col-prog { display: none; }
+  /* linhas de mensagem (carregando/vazio) ocupam a largura toda, sem virar card */
+  #page-calendario .cal-tabela tbody tr.cal-linha-msg { display: block; grid-column: 1 / -1; background: none; border: none; box-shadow: none; padding: 0; }
+  #page-calendario .cal-tabela tbody tr.cal-linha-msg td { display: block; }
+
+  #page-calendario .cal-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  #page-calendario .cal-card-meta .cal-vig { font-size: var(--ds-text-xs); }
+  #page-calendario .cal-card-prog { margin-top: 8px; }
+  #page-calendario .cal-card-prog .cal-prog { width: 100%; }
+  #page-calendario .cal-card-prog .ds-kpi-track { flex: 1; width: auto; }
+}
+</style>
+
+<style>
+#page-calendario .cal-mes { padding: 0 0 16px; }
+#page-calendario .cal-mes-nav { display: flex; align-items: center; gap: 8px; padding: 8px 4px 12px; }
+#page-calendario .cal-mes-titulo { font-size: 16px; font-weight: var(--ds-weight-bold); color: var(--ds-color-text); text-transform: capitalize; margin-left: 4px; }
+#page-calendario .cal-grade { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg); overflow: hidden; background: var(--ds-color-surface); }
+#page-calendario .cal-dsem { padding: 8px; font-size: 11px; font-weight: var(--ds-weight-bold); text-transform: uppercase; color: var(--ds-color-text-muted); border-bottom: 1px solid var(--ds-color-border); }
+#page-calendario .cal-semana { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-auto-rows: min-content; position: relative; min-height: 112px; border-bottom: 1px solid var(--ds-color-border); }
+#page-calendario .cal-semana:last-child { border-bottom: 0; }
+#page-calendario .cal-dia { grid-row: 1; padding: 6px 8px; font-size: 12px; color: var(--ds-color-text-muted); border-right: 1px solid var(--ds-color-border); }
+#page-calendario .cal-dia:nth-child(7) { border-right: 0; }
+#page-calendario .cal-dia--fora { color: var(--ds-color-text-disabled, var(--ds-color-text-muted)); opacity: .55; }
+#page-calendario .cal-dia--hoje span { display: inline-grid; place-items: center; min-width: 22px; height: 22px; border-radius: 11px; background: var(--ds-color-primary); color: var(--ds-color-on-primary, #fff); font-weight: var(--ds-weight-bold); }
+#page-calendario .cal-dias-fundo { grid-row: 1 / span 20; grid-column: 1 / -1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); pointer-events: none; }
+#page-calendario .cal-faixa { margin: 2px 4px; padding: 2px 8px; border: 0; border-radius: var(--ds-r-sm); font: inherit; font-size: 12px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+#page-calendario .cal-faixa .material-symbols-outlined { font-size: 14px; }
+#page-calendario .cal-faixa--cancelado { text-decoration: line-through; opacity: .6; }
+#page-calendario .cal-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--ds-r-sm); font-size: 12px; font-weight: var(--ds-weight-medium); white-space: nowrap; }
+#page-calendario .cal-tag .material-symbols-outlined { font-size: 14px; }
+#page-calendario .cal-evento-cel { display: flex; align-items: center; gap: 8px; min-width: 0; }
+#page-calendario .cal-evento-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#page-calendario .cal-serie { font-size: 16px; color: var(--ds-color-text-muted); }
+#page-calendario .cal-mes-lista { display: none; }
+#page-calendario .cal-grupo-dia { padding: 12px 4px 4px; font-size: 12px; font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); text-transform: capitalize; }
+#page-calendario .cal-mes-lista .cal-faixa { width: 100%; margin: 4px 0; padding: 10px 12px; font-size: 14px; white-space: normal; }
+@media (max-width: 768px) {
+  #page-calendario .cal-grade { display: none; }
+  #page-calendario .cal-mes-lista { display: block; }
+}
+.cal-prazos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.cal-prazos.hidden { display: none; }
+.cal-prazo { border: 0; font: inherit; font-size: 12px; cursor: pointer; }
+.calm-form { display: flex; flex-direction: column; gap: 16px; }
+.calm-linha { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.calm-campo { display: flex; flex-direction: column; gap: 4px; position: relative; min-width: 0; }
+.calm-campo .ds-label { display: inline-flex; align-items: center; gap: 4px; margin: 0; }
+.calm-cab { display: flex; align-items: center; gap: 4px; }
+.calm-contador { margin-left: auto; font-size: 11px; color: var(--ds-color-text-muted); }
+.calm-erro { font-size: 12px; color: var(--ds-color-danger-fg); }
+.calm-erro:empty { display: none; }
+.calm-chave { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ds-color-text); }
+.calm-escolha { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 768px) { .calm-linha { grid-template-columns: minmax(0, 1fr); } }
+</style>
+<div id="page-calendario" class="page-content hidden">
+  <section class="cal-hero">
+    <h1>Calendário</h1>
+  </section>
+  <div class="cal-hero-acoes" id="cal-hero-acoes">
+    <button type="button" class="ds-icon-action" data-on-click="pages_calendario.1" data-title="Atualizar" aria-label="Atualizar">
+      <span class="material-symbols-outlined">refresh</span>
+    </button>
+    <button type="button" class="ds-btn ds-btn--primary cal-btn-novo hidden" id="cal-btn-novo" data-on-click="pages_calendario.2">
+      <span class="material-symbols-outlined">add</span> Novo evento
+    </button>
+  </div>
+
+  <div class="cal-tabs-row" id="cal-tabs-row">
+    <div class="ds-tabs ds-tabs--segmented" id="cal-tabs" role="tablist" aria-label="Visão do calendário">
+      <button type="button" role="tab" class="ds-tab-btn active" aria-selected="true" data-on-click="pages_calendario.3" data-visao="mes">
+        <span class="material-symbols-outlined">calendar_month</span><span>Mês</span>
+      </button>
+      <button type="button" role="tab" class="ds-tab-btn" aria-selected="false" data-on-click="pages_calendario.3" data-visao="lista">
+        <span class="material-symbols-outlined">list</span><span>Lista</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="cal-filtros" id="cal-filtros-card">
+    <div class="cal-filtros-normal" id="cal-filtros-normal">
+      <div class="cal-search" id="cal-search-wrap">
+        <button type="button" class="ds-icon-action" id="cal-search-toggle" data-on-click="pages_calendario.4" data-title="Buscar evento" aria-label="Buscar evento">
+          <span class="material-symbols-outlined">search</span>
+        </button>
+        <div class="cal-search-caixa hidden" id="cal-search-caixa">
+          <span class="material-symbols-outlined cal-search-icon" aria-hidden="true">search</span>
+          <input type="text" id="cal-busca" class="ds-input cal-search-input" placeholder="Buscar evento pelo título…" data-on-input="pages_calendario.5" aria-label="Buscar evento pelo título">
+          <button type="button" id="cal-limpar-busca" class="cal-search-clear hidden" data-on-click="pages_calendario.6" data-title="Limpar busca" aria-label="Limpar busca">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+      <div class="cal-filtro" data-filtro="tipo">
+        <button type="button" class="cal-filtro-btn" id="cal-filtro-btn-tipo" data-on-click="pages_calendario.7" data-campo="tipo" aria-haspopup="menu" aria-expanded="false">
+          <span id="cal-filtro-label-tipo">Tipo</span><span class="material-symbols-outlined">expand_more</span>
+        </button>
+        <button type="button" class="cal-filtro-x hidden" id="cal-filtro-x-tipo" data-on-click="pages_calendario.8" data-campo="tipo" data-title="Remover filtro de tipo" aria-label="Remover filtro de tipo">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="cal-filtro" data-filtro="situacao">
+        <button type="button" class="cal-filtro-btn" id="cal-filtro-btn-situacao" data-on-click="pages_calendario.7" data-campo="situacao" aria-haspopup="menu" aria-expanded="false">
+          <span id="cal-filtro-label-situacao">Situação</span><span class="material-symbols-outlined">expand_more</span>
+        </button>
+        <button type="button" class="cal-filtro-x hidden" id="cal-filtro-x-situacao" data-on-click="pages_calendario.8" data-campo="situacao" data-title="Remover filtro de situação" aria-label="Remover filtro de situação">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="cal-filtro" data-filtro="alcance">
+        <button type="button" class="cal-filtro-btn" id="cal-filtro-btn-alcance" data-on-click="pages_calendario.7" data-campo="alcance" aria-haspopup="menu" aria-expanded="false">
+          <span id="cal-filtro-label-alcance">Alcance</span><span class="material-symbols-outlined">expand_more</span>
+        </button>
+        <button type="button" class="cal-filtro-x hidden" id="cal-filtro-x-alcance" data-on-click="pages_calendario.8" data-campo="alcance" data-title="Remover filtro de alcance" aria-label="Remover filtro de alcance">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <button type="button" class="cal-limpar-filtros hidden" id="cal-limpar-filtros" data-on-click="pages_calendario.9">Limpar filtros</button>
+    </div>
+    <div class="cal-filtros-selecao hidden" id="cal-filtros-selecao">
+      <button type="button" class="ds-icon-action" data-on-click="pages_calendario.10" data-title="Cancelar seleção" aria-label="Cancelar seleção">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      <span class="cal-selecao-texto" id="cal-selecao-texto"></span>
+      <div class="cal-selecao-divisor"></div>
+      <div class="cal-selecao-acoes" id="cal-selecao-acoes"></div>
+    </div>
+  </div>
+
+  <div class="cal-mes" id="cal-visao-mes">
+    <div class="cal-mes-nav">
+      <button type="button" class="ds-icon-action" data-on-click="pages_calendario.11" data-passo="-1" data-title="Mês anterior" aria-label="Mês anterior"><span class="material-symbols-outlined">chevron_left</span></button>
+      <button type="button" class="ds-icon-action" data-on-click="pages_calendario.11" data-passo="1" data-title="Próximo mês" aria-label="Próximo mês"><span class="material-symbols-outlined">chevron_right</span></button>
+      <button type="button" class="ds-btn ds-btn--ghost" data-on-click="pages_calendario.11" data-passo="0">Hoje</button>
+      <span class="cal-mes-titulo" id="cal-mes-titulo"></span>
+    </div>
+    <div class="cal-grade" id="cal-grade"></div>
+    <div class="cal-mes-lista" id="cal-mes-lista"></div>
+  </div>
+
+  <div class="cal-tabela-card hidden" id="cal-visao-lista">
+    <div class="table-container cal-table-wrap">
+      <table class="table-full cal-tabela" id="cal-tabela">
+        <thead>
+          <tr>
+            <th class="cal-col-check"><input type="checkbox" id="cal-chk-todos" data-on-change="pages_calendario.12" aria-label="Selecionar todos"></th>
+            <th class="cal-col-plano">Evento</th>
+            <th class="cal-col-vig">Período</th>
+            <th>Alcance</th>
+            <th>Situação</th>
+            <th>Criado por</th>
+            <th class="cal-col-acoes" aria-hidden="true"></th>
+            <th class="cal-col-card" aria-hidden="true"></th>
+          </tr>
+        </thead>
+        <tbody id="cal-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="cal-modal">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cal-modal-titulo">
+    <div class="modal-header">
+      <h2 id="cal-modal-titulo">Novo evento</h2>
+      <button type="button" class="ds-icon-action" data-on-click="pages_calendario.13" aria-label="Fechar"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="modal-body">
+      <form class="calm-form" id="cal-form" data-on-submit="pages_calendario.14" novalidate>
+        <div class="calm-campo">
+          <div class="calm-cab"><label class="ds-label" for="cal-f-tipo">Tipo <span class="selsup-obrig">*</span></label><span class="material-symbols-outlined ds-info hidden" id="cal-f-tipo-info" tabindex="0" data-title="">info</span></div>
+          <select id="cal-f-tipo" class="ds-select" required data-on-change="pages_calendario.15"></select>
+          <span class="calm-erro" id="cal-e-tipo"></span>
+        </div>
+        <div class="calm-campo">
+          <div class="calm-cab"><label class="ds-label" for="cal-f-titulo">Título <span class="selsup-obrig">*</span></label><span class="calm-contador" id="cal-c-titulo">0/120</span></div>
+          <input type="text" id="cal-f-titulo" class="ds-input" maxlength="120" required data-on-input="pages_calendario.16" data-contador="cal-c-titulo">
+          <span class="calm-erro" id="cal-e-titulo"></span>
+        </div>
+        <div class="calm-linha">
+          <div class="calm-campo">
+            <label class="ds-label" for="cal-f-inicio">Início <span class="selsup-obrig">*</span></label>
+            <input type="date" id="cal-f-inicio" class="ds-input" required>
+            <span class="calm-erro" id="cal-e-inicio"></span>
+          </div>
+          <div class="calm-campo">
+            <label class="ds-label" for="cal-f-fim">Fim <span class="selsup-obrig">*</span></label>
+            <input type="date" id="cal-f-fim" class="ds-input" required>
+            <span class="calm-erro" id="cal-e-fim"></span>
+          </div>
+        </div>
+        <div class="calm-campo">
+          <label class="ds-label" for="cal-f-escopo">Alcance <span class="selsup-obrig">*</span></label>
+          <select id="cal-f-escopo" class="ds-select" required data-on-change="pages_calendario.17"></select>
+          <span class="calm-erro" id="cal-e-escopo"></span>
+        </div>
+        <div class="calm-campo hidden" id="cal-w-tipoplano">
+          <label class="ds-label" for="cal-f-tipoplano">Tipo de plano <span class="selsup-obrig">*</span></label>
+          <select id="cal-f-tipoplano" class="ds-select"></select>
+        </div>
+        <div class="calm-campo hidden" id="cal-w-unidade">
+          <div id="cal-f-unidade"></div>
+          <label class="calm-chave"><span id="cal-sw-sub"></span>Incluir subunidades</label>
+        </div>
+        <div class="calm-campo hidden" id="cal-w-plano">
+          <label class="ds-label" for="cal-f-plano">Plano <span class="selsup-obrig">*</span></label>
+          <div id="cal-f-plano"></div>
+        </div>
+        <span class="calm-erro" id="cal-e-alvo"></span>
+        <div class="calm-linha" id="cal-w-repetir">
+          <div class="calm-campo">
+            <label class="ds-label" for="cal-f-repetir">Repetir</label>
+            <select id="cal-f-repetir" class="ds-select" data-on-change="pages_calendario.18">
+              <option value="">Não repetir</option><option value="MENSAL">Mensal</option><option value="BIMESTRAL">Bimestral</option>
+              <option value="TRIMESTRAL">Trimestral</option><option value="SEMESTRAL">Semestral</option><option value="ANUAL">Anual</option>
+            </select>
+          </div>
+          <div class="calm-campo hidden" id="cal-w-vezes">
+            <label class="ds-label" for="cal-f-vezes">Quantas vezes</label>
+            <input type="number" id="cal-f-vezes" class="ds-input" min="2" max="24" step="1" value="2">
+            <span class="calm-erro" id="cal-e-vezes"></span>
+          </div>
+        </div>
+        <div class="calm-campo hidden" id="cal-w-travar">
+          <div class="calm-chave"><span id="cal-sw-travar"></span>Travar<span class="material-symbols-outlined ds-info" tabindex="0" data-title="Eventos de unidade ou de plano só valem dentro do período deste evento.">info</span></div>
+        </div>
+        <div class="calm-campo">
+          <div class="calm-cab"><label class="ds-label" for="cal-f-descricao">Descrição</label><span class="calm-contador" id="cal-c-descricao">0/1000</span></div>
+          <textarea id="cal-f-descricao" class="ds-input" rows="3" maxlength="1000" data-on-input="pages_calendario.16" data-contador="cal-c-descricao"></textarea>
+        </div>
+        <span class="calm-erro" id="cal-e-geral" role="alert"></span>
+      </form>
+    </div>
+    <div class="modal-footer" id="cal-modal-rodape">
+      <button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_calendario.13">Fechar</button>
+      <button type="submit" form="cal-form" class="ds-btn ds-btn--primary" id="cal-btn-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="cal-modal-serie">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cal-serie-titulo" style="max-width:420px">
+    <div class="modal-header"><h2 id="cal-serie-titulo">Evento recorrente</h2></div>
+    <div class="modal-footer">
+      <button type="button" class="ds-btn ds-btn--ghost" data-on-click="pages_calendario.19" data-serie="">Voltar</button>
+      <button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_calendario.19" data-serie="ESTE">Só este</button>
+      <button type="button" class="ds-btn ds-btn--primary" data-on-click="pages_calendario.19" data-serie="FUTUROS">Este e os seguintes</button>
+    </div>
+  </div>
+</div>
+<script>
+var _CAL_TONS = ['execucao', 'analise', 'avaliacao', 'revisao', 'prorrogado', 'elaboracao', 'finalizado'];
+var _CAL_SITUACOES = { PROGRAMADO: ['Programado', 'info'], ABERTO: ['Aberto', 'success'], ENCERRADO: ['Encerrado', 'neutral'], CANCELADO: ['Cancelado', 'danger'] };
+var _CAL_ALCANCES = { TODOS: 'Todos os planos', TIPO_PLANO: 'Tipo de plano', UNIDADE: 'Unidade', PLANO: 'Plano' };
+var _CAL_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+var estadoCal = { visao: 'mes', ref: null, dados: null, carregando: false, busca: '', filtros: { tipo: '', situacao: '', alcance: '' }, idPlano: '', selecionados: new Set(), timerBusca: null, edicao: null, selUnidade: null, subunidades: true, travar: false, pendenteSerie: null };
+
+function initCalendario(opcoes) {
+  opcoes = opcoes || {};
+  if (!estadoCal.ref) { var h = new Date(); estadoCal.ref = new Date(h.getFullYear(), h.getMonth(), 1); }
+  if (opcoes.idPlano !== undefined) estadoCal.idPlano = String(opcoes.idPlano || '');
+  ['cal-f-tipo', 'cal-f-escopo', 'cal-f-tipoplano', 'cal-f-repetir'].forEach(function (id) { if (window.SeletorOpcao) SeletorOpcao.melhorar(document.getElementById(id)); });
+  calRenderizarEsqueleto();
+  calCarregar();
+}
+function calAbrirDoPlano(idPlano) { navigate('calendario'); estadoCal.visao = 'lista'; calMudarVisao('lista'); initCalendario({ idPlano: idPlano }); }
+function _calIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function _calData(iso) { var p = String(iso || '').split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+function _calBR(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? p[2] + '/' + p[1] : ''; }
+function _calPeriodo(ev) { return ev.dataInicio === ev.dataFim ? _calBR(ev.dataInicio) : _calBR(ev.dataInicio) + ' a ' + _calBR(ev.dataFim); }
+function _calIntervalo() {
+  var r = estadoCal.ref, ini = new Date(r.getFullYear(), r.getMonth(), 1), fim = new Date(r.getFullYear(), r.getMonth() + 1, 0);
+  ini.setDate(ini.getDate() - ini.getDay()); fim.setDate(fim.getDate() + (6 - fim.getDay()));
+  if (estadoCal.visao === 'lista') { ini = new Date(r.getFullYear(), r.getMonth() - 1, 1); fim = new Date(r.getFullYear(), r.getMonth() + 12, 0); }
+  return { inicio: _calIso(ini), fim: _calIso(fim) };
+}
+function calCarregar() {
+  var f = _calIntervalo();
+  if (estadoCal.filtros.tipo) f.tipo = estadoCal.filtros.tipo;
+  if (estadoCal.idPlano) f.idPlano = estadoCal.idPlano;
+  estadoCal.carregando = true;
+  calRenderizarConteudo();
+  google.script.run
+    .withSuccessHandler(function (r) { estadoCal.carregando = false; estadoCal.dados = r || { eventos: [] }; estadoCal.selecionados.clear(); calAtualizarBarra(); calRenderizarConteudo(); })
+    .withFailureHandler(function (err) { estadoCal.carregando = false; estadoCal.dados = null; calRenderizarConteudo(err.message); })
+    .apiGetCalendario(f);
+}
+function _calTipo(chave) {
+  var tipos = (estadoCal.dados && estadoCal.dados.tipos) || [];
+  for (var i = 0; i < tipos.length; i++) if (tipos[i].chave === chave) return { t: tipos[i], tom: _CAL_TONS[i % _CAL_TONS.length] };
+  return { t: { chave: chave, rotulo: chave, icone: 'event' }, tom: 'finalizado' };
+}
+function _calCorStyle(tom) { return 'background:var(--ds-status-' + tom + '-bg);color:var(--ds-status-' + tom + '-fg)'; }
+function _calEventosFiltrados() {
+  var evs = (estadoCal.dados && estadoCal.dados.eventos) || [], f = estadoCal.filtros, b = estadoCal.busca.toLowerCase();
+  return evs.filter(function (e) {
+    if (f.tipo && e.tipo !== f.tipo) return false;
+    if (f.situacao && String(e.situacao).toUpperCase() !== f.situacao) return false;
+    if (f.alcance && String(e.escopo).toUpperCase() !== f.alcance) return false;
+    if (b && String(e.titulo || '').toLowerCase().indexOf(b) < 0) return false;
+    return true;
+  }).sort(function (a, c) { return a.dataInicio < c.dataInicio ? -1 : a.dataInicio > c.dataInicio ? 1 : 0; });
+}
+function _calAlcanceTexto(e) {
+  switch (String(e.escopo).toUpperCase()) {
+    case 'TODOS': return 'Todos os planos';
+    case 'TIPO_PLANO': return 'Planos ' + String(e.tipoPlano || '').toLowerCase() + (String(e.tipoPlano || '').slice(-1) === 's' ? '' : 's');
+    case 'UNIDADE': return (e.siglaUnidade || '') + (e.incluirSubunidades ? ' e subunidades' : '');
+    case 'PLANO': return e.nomePlano || '';
+  }
+  return '';
+}
+function _calSituacaoHTML(s) { var x = _CAL_SITUACOES[String(s || '').toUpperCase()] || [s, 'neutral']; return '<span class="ds-badge ds-badge--' + x[1] + '">' + escapeHtml(x[0]) + '</span>'; }
+function _calTagHTML(e) { var t = _calTipo(e.tipo); return '<span class="cal-tag" style="' + _calCorStyle(t.tom) + '"><span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(t.t.icone || 'event') + '</span>' + escapeHtml(t.t.rotulo) + '</span>'; }
+function _calSerieHTML(e) { return e.idSerie ? '<span class="material-symbols-outlined cal-serie" data-title="Evento recorrente" aria-label="Evento recorrente">repeat</span>' : ''; }
+
+function calRenderizarEsqueleto() {
+  var r = estadoCal.ref;
+  document.getElementById('cal-mes-titulo').textContent = _CAL_MESES[r.getMonth()] + ' de ' + r.getFullYear();
+  calAtualizarFiltros();
+}
+function calRenderizarConteudo(erro) {
+  var d = estadoCal.dados;
+  document.getElementById('cal-btn-novo').classList.toggle('hidden', !(d && d.podeCriar));
+  if (estadoCal.visao === 'mes') calRenderizarMes(erro); else calRenderizarLista(erro);
+}
+function calRenderizarMes(erro) {
+  var r = estadoCal.ref, grade = document.getElementById('cal-grade'), lista = document.getElementById('cal-mes-lista');
+  var ini = new Date(r.getFullYear(), r.getMonth(), 1); ini.setDate(ini.getDate() - ini.getDay());
+  var hoje = _calIso(new Date()), evs = estadoCal.carregando || erro ? [] : _calEventosFiltrados();
+  var h = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(function (s) { return '<div class="cal-dsem">' + s + '</div>'; }).join('');
+  var cur = new Date(ini);
+  for (var w = 0; w < 6; w++) {
+    var sIni = _calIso(cur), dias = '', sem = [];
+    for (var i = 0; i < 7; i++) {
+      var iso = _calIso(cur); sem.push(iso);
+      dias += '<div class="cal-dia' + (cur.getMonth() !== r.getMonth() ? ' cal-dia--fora' : '') + (iso === hoje ? ' cal-dia--hoje' : '') + '" style="grid-column:' + (i + 1) + '"><span>' + cur.getDate() + '</span></div>';
+      cur.setDate(cur.getDate() + 1);
+    }
+    var sFim = sem[6], faixas = '', linha = 2;
+    evs.forEach(function (e) {
+      if (e.dataFim < sIni || e.dataInicio > sFim) return;
+      var a = Math.max(0, sem.indexOf(e.dataInicio < sIni ? sIni : e.dataInicio)), b = sem.indexOf(e.dataFim > sFim ? sFim : e.dataFim);
+      var t = _calTipo(e.tipo);
+      faixas += '<button type="button" class="cal-faixa' + (String(e.situacao).toUpperCase() === 'CANCELADO' ? ' cal-faixa--cancelado' : '') + '" style="grid-row:' + (linha++) + ';grid-column:' + (a + 1) + ' / ' + (b + 2) + ';' + _calCorStyle(t.tom) + '" data-on-click="pages_calendario.20" data-id="' + escapeHtml(e.id) + '" data-title="' + escapeHtml(t.t.rotulo + ' · ' + _calPeriodo(e)) + '"><span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(t.t.icone || 'event') + '</span>' + escapeHtml(e.titulo) + '</button>';
+    });
+    h += '<div class="cal-semana">' + dias + faixas + '</div>';
+    if (cur.getMonth() !== r.getMonth() && w >= 3) break;
+  }
+  grade.innerHTML = h;
+  if (estadoCal.carregando) { lista.innerHTML = spinnerListaHTML('Carregando…'); return; }
+  if (erro) { lista.innerHTML = _calVazio('error', 'Não foi possível carregar', erro); return; }
+  var mIni = _calIso(new Date(r.getFullYear(), r.getMonth(), 1)), mFim = _calIso(new Date(r.getFullYear(), r.getMonth() + 1, 0));
+  var grupos = {};
+  evs.forEach(function (e) { if (e.dataFim < mIni || e.dataInicio > mFim) return; var k = e.dataInicio < mIni ? mIni : e.dataInicio; (grupos[k] = grupos[k] || []).push(e); });
+  var chaves = Object.keys(grupos).sort();
+  lista.innerHTML = chaves.length ? chaves.map(function (k) {
+    var d = _calData(k);
+    return '<div class="cal-grupo-dia">' + ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][d.getDay()] + ', ' + d.getDate() + ' de ' + _CAL_MESES[d.getMonth()] + '</div>' + grupos[k].map(function (e) {
+      return '<button type="button" class="cal-faixa" style="' + _calCorStyle(_calTipo(e.tipo).tom) + '" data-on-click="pages_calendario.20" data-id="' + escapeHtml(e.id) + '"><span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(_calTipo(e.tipo).t.icone || 'event') + '</span>' + escapeHtml(e.titulo) + ' · ' + _calPeriodo(e) + '</button>';
+    }).join('');
+  }).join('') : _calVazio('event_busy', 'Nenhum evento neste mês', '');
+}
+function _calVazio(icone, titulo, detalhe) { return '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">' + icone + '</span><p class="el-esti">' + escapeHtml(titulo) + '</p>' + (detalhe ? '<p>' + escapeHtml(detalhe) + '</p>' : '') + '</div>'; }
+function calRenderizarLista(erro) {
+  var tb = document.getElementById('cal-tbody');
+  if (estadoCal.carregando) { tb.innerHTML = '<tr><td colspan="8">' + spinnerListaHTML('Carregando…') + '</td></tr>'; return; }
+  if (erro) { tb.innerHTML = '<tr><td colspan="8">' + _calVazio('error', 'Não foi possível carregar', erro) + '</td></tr>'; return; }
+  var evs = _calEventosFiltrados();
+  if (!evs.length) { tb.innerHTML = '<tr><td colspan="8">' + _calVazio('event_busy', 'Nenhum evento', calTemFiltro() ? 'Nenhum evento com estes filtros.' : '') + '</td></tr>'; _calAtualizarCheckTodos(); return; }
+  tb.innerHTML = evs.map(function (e) {
+    var sel = estadoCal.selecionados.has(String(e.id)), cancelado = String(e.situacao).toUpperCase() === 'CANCELADO';
+    var acoes = acoesLinhaHTML(e.id, [
+      { icone: e.podeEditar ? 'edit' : 'visibility', rotulo: e.podeEditar ? 'Editar' : 'Ver', principal: true, onclick: "calAbrirEvento('" + escapeJsAttr(e.id) + "')" },
+      { icone: 'event_busy', rotulo: 'Cancelar', perigo: true, oculto: !e.podeEditar || cancelado, onclick: "calCancelar(['" + escapeJsAttr(e.id) + "'])" }
+    ], { maxDireto: 1 });
+    var nome = nomeRespExibicao(e.criadoPorNome, 'USER');
+    return '<tr class="' + (sel ? 'selected' : '') + '" data-on-click="pages_calendario.21" data-id="' + escapeHtml(e.id) + '">'
+      + '<td class="cal-col-check">' + (e.podeEditar && !cancelado ? '<input type="checkbox" data-on-change="pages_calendario.22" data-id="' + escapeHtml(e.id) + '"' + (sel ? ' checked' : '') + ' aria-label="Selecionar evento">' : '') + '</td>'
+      + '<td class="cal-col-plano"><div class="cal-evento-cel">' + _calTagHTML(e) + '<span class="cal-evento-titulo" data-title="' + escapeHtml(e.titulo) + '">' + escapeHtml(e.titulo) + '</span>' + _calSerieHTML(e) + '</div></td>'
+      + '<td class="cal-col-vig">' + _calPeriodo(e) + '</td>'
+      + '<td>' + escapeHtml(_calAlcanceTexto(e)) + '</td>'
+      + '<td>' + _calSituacaoHTML(e.situacao) + '</td>'
+      + '<td data-title="' + escapeHtml(e.criadoPorNome || '') + '">' + escapeHtml(nome) + '</td>'
+      + '<td class="cal-col-acoes">' + acoes + '</td>'
+      + '<td class="cal-col-card"><div class="cal-evento-cel">' + _calTagHTML(e) + '<span class="cal-evento-titulo">' + escapeHtml(e.titulo) + '</span>' + _calSerieHTML(e) + '</div><div>' + _calPeriodo(e) + ' · ' + escapeHtml(_calAlcanceTexto(e)) + '</div><div>' + _calSituacaoHTML(e.situacao) + '</div>' + acoes + '</td>'
+      + '</tr>';
+  }).join('');
+  _calAtualizarCheckTodos();
+}
+function calMudarVisao(v) {
+  var antes = estadoCal.visao; estadoCal.visao = v;
+  Array.prototype.forEach.call(document.querySelectorAll('#cal-tabs .ds-tab-btn'), function (b) { var on = b.dataset.visao === v; b.classList.toggle('active', on); b.setAttribute('aria-selected', on); });
+  document.getElementById('cal-visao-mes').classList.toggle('hidden', v !== 'mes');
+  document.getElementById('cal-visao-lista').classList.toggle('hidden', v !== 'lista');
+  estadoCal.selecionados.clear(); calAtualizarBarra();
+  if (antes !== v && estadoCal.ref) calCarregar();
+}
+function calNavegarMes(passo) {
+  var r = estadoCal.ref, h = new Date();
+  estadoCal.ref = passo === 0 ? new Date(h.getFullYear(), h.getMonth(), 1) : new Date(r.getFullYear(), r.getMonth() + passo, 1);
+  calRenderizarEsqueleto(); calCarregar();
+}
+// ---- Filtros (roteiro copiado de _pll*) ----
+function calTemFiltro() { var f = estadoCal.filtros; return !!(estadoCal.busca || f.tipo || f.situacao || f.alcance || estadoCal.idPlano); }
+function calAbrirBusca() { document.getElementById('cal-search-toggle').classList.add('hidden'); document.getElementById('cal-search-caixa').classList.remove('hidden'); document.getElementById('cal-busca').focus(); }
+function calDigitarBusca(v) {
+  document.getElementById('cal-limpar-busca').classList.toggle('hidden', !v);
+  clearTimeout(estadoCal.timerBusca);
+  estadoCal.timerBusca = setTimeout(function () { estadoCal.busca = v.trim(); calAtualizarFiltros(); calRenderizarConteudo(); }, 250);
+}
+function calLimparBusca() {
+  var i = document.getElementById('cal-busca'); i.value = ''; estadoCal.busca = '';
+  document.getElementById('cal-limpar-busca').classList.add('hidden');
+  document.getElementById('cal-search-caixa').classList.add('hidden'); document.getElementById('cal-search-toggle').classList.remove('hidden');
+  calAtualizarFiltros(); calRenderizarConteudo();
+}
+function _calOpcoesFiltro(campo) {
+  if (campo === 'tipo') return ((estadoCal.dados && estadoCal.dados.tipos) || []).map(function (t) { return { v: t.chave, l: t.rotulo }; });
+  if (campo === 'situacao') return Object.keys(_CAL_SITUACOES).map(function (k) { return { v: k, l: _CAL_SITUACOES[k][0] }; });
+  return Object.keys(_CAL_ALCANCES).map(function (k) { return { v: k, l: _CAL_ALCANCES[k] }; });
+}
+function calAbrirFiltro(campo, gatilho) {
+  var atual = estadoCal.filtros[campo];
+  var itens = [{ label: 'Todos', ativo: !atual, onclick: "calSelecionarFiltro('" + campo + "','')" }].concat(_calOpcoesFiltro(campo).map(function (o) {
+    return { label: o.l, ativo: o.v === atual, onclick: "calSelecionarFiltro('" + campo + "','" + escapeJsAttr(o.v) + "')" };
+  }));
+  abrirMenuSelecao(gatilho, [{ itens: itens }]);
+}
+function calSelecionarFiltro(campo, valor) {
+  if (typeof fecharMenuSelecao === 'function') fecharMenuSelecao();
+  var recarrega = campo === 'tipo';
+  estadoCal.filtros[campo] = valor; calAtualizarFiltros();
+  if (recarrega) calCarregar(); else calRenderizarConteudo();
+}
+function calLimparFiltros() {
+  estadoCal.filtros = { tipo: '', situacao: '', alcance: '' }; estadoCal.idPlano = '';
+  calLimparBusca(); calCarregar();
+}
+function calAtualizarFiltros() {
+  var nomes = { tipo: 'Tipo', situacao: 'Situação', alcance: 'Alcance' };
+  Object.keys(nomes).forEach(function (c) {
+    var v = estadoCal.filtros[c], o = _calOpcoesFiltro(c).filter(function (x) { return x.v === v; })[0];
+    var btn = document.getElementById('cal-filtro-btn-' + c);
+    document.getElementById('cal-filtro-label-' + c).textContent = v ? (o ? o.l : v) : nomes[c];
+    btn.classList.toggle('active', !!v);
+    document.getElementById('cal-filtro-x-' + c).classList.toggle('hidden', !v);
+  });
+  document.getElementById('cal-limpar-filtros').classList.toggle('hidden', !calTemFiltro());
+}
+// ---- Seleção em lote ----
+function _calSelecionaveis() { return _calEventosFiltrados().filter(function (e) { return e.podeEditar && String(e.situacao).toUpperCase() !== 'CANCELADO'; }); }
+function calAlternarSelecao(id, on) { id = String(id); if (on) estadoCal.selecionados.add(id); else estadoCal.selecionados.delete(id); calAtualizarBarra(); calRenderizarLista(); }
+function calAlternarTodos(on) { estadoCal.selecionados.clear(); if (on) _calSelecionaveis().forEach(function (e) { estadoCal.selecionados.add(String(e.id)); }); calAtualizarBarra(); calRenderizarLista(); }
+function _calAtualizarCheckTodos() {
+  var c = document.getElementById('cal-chk-todos'), n = _calSelecionaveis().length, s = estadoCal.selecionados.size;
+  c.checked = n > 0 && s === n; c.indeterminate = s > 0 && s < n; c.disabled = n === 0;
+}
+function calAtualizarBarra() {
+  var q = estadoCal.selecionados.size;
+  document.getElementById('cal-filtros-normal').classList.toggle('hidden', q > 0);
+  document.getElementById('cal-filtros-selecao').classList.toggle('hidden', q === 0);
+  if (q > 0) {
+    document.getElementById('cal-selecao-texto').textContent = q + ' evento' + (q > 1 ? 's' : '') + ' selecionado' + (q > 1 ? 's' : '');
+    document.getElementById('cal-selecao-acoes').innerHTML = '<button type="button" class="ds-btn ds-btn--danger" data-on-click="pages_calendario.23"><span class="material-symbols-outlined">event_busy</span>Cancelar selecionados</button>';
+  }
+}
+function _calEvento(id) { return (((estadoCal.dados || {}).eventos) || []).filter(function (e) { return String(e.id) === String(id); })[0]; }
+// ---- Cancelar ----
+function calCancelar(ids) {
+  ids = ids.map(String);
+  var unico = ids.length === 1 ? _calEvento(ids[0]) : null;
+  var executar = function (serie) {
+    var btn = document.activeElement;
+    uiExecutarComTrava(btn, function () {
+      Promise.all(ids.map(function (id) {
+        return new Promise(function (ok, falha) { google.script.run.withSuccessHandler(ok).withFailureHandler(falha).apiCancelarEventoCalendario(id, { serie: serie }); });
+      })).then(function () { estadoCal.selecionados.clear(); calAtualizarBarra(); calCarregar(); }, function (err) { showMessage('error', 'Erro', err.message); calCarregar(); });
+    });
+  };
+  if (unico && unico.idSerie) { calPerguntarSerie('Cancelar evento recorrente', executar); return; }
+  showConfirm('Cancelar ' + (ids.length > 1 ? ids.length + ' eventos' : 'evento'), ids.length > 1 ? 'Os eventos selecionados serão cancelados.' : 'O evento será cancelado.', function () { executar('ESTE'); });
+}
+function calPerguntarSerie(titulo, fn) {
+  estadoCal.pendenteSerie = fn;
+  document.getElementById('cal-serie-titulo').textContent = titulo;
+  document.getElementById('cal-modal-serie').classList.remove('hidden'); bloquearFundo();
+}
+function calResponderSerie(serie) {
+  var fn = estadoCal.pendenteSerie; estadoCal.pendenteSerie = null;
+  document.getElementById('cal-modal-serie').classList.add('hidden'); desbloquearFundo();
+  if (serie && fn) fn(serie);
+}
+// ---- Modal ----
+function _calOpcoes(sel, itens, vazio) {
+  sel.innerHTML = (vazio !== null ? '<option value="">' + escapeHtml(vazio || 'Selecione') + '</option>' : '') + itens.map(function (o) { return '<option value="' + escapeHtml(o.v) + '">' + escapeHtml(o.l) + '</option>'; }).join('');
+}
+function _calSinc(id) { if (window.SeletorOpcao) SeletorOpcao.sincronizar(document.getElementById(id).parentNode); }
+function calAbrirNovo() { calAbrirEvento(null); }
+function calAbrirEvento(id) {
+  var d = estadoCal.dados || {}, ev = id ? _calEvento(id) : null, leitura = !!(ev && !ev.podeEditar);
+  estadoCal.edicao = ev ? { id: ev.id, idSerie: ev.idSerie, leitura: leitura } : { id: null, leitura: false };
+  document.getElementById('cal-modal-titulo').textContent = !ev ? 'Novo evento' : leitura ? 'Evento' : 'Editar evento';
+  _calOpcoes(document.getElementById('cal-f-tipo'), (d.tipos || []).map(function (t) { return { v: t.chave, l: t.rotulo }; }));
+  _calOpcoes(document.getElementById('cal-f-escopo'), (d.alcancesPermitidos || []).map(function (a) { return { v: a, l: _CAL_ALCANCES[a] || a }; }));
+  var tiposPlano = []; (d.planosPermitidos || []).forEach(function (p) { if (p.tipo && tiposPlano.indexOf(p.tipo) < 0) tiposPlano.push(p.tipo); });
+  _calOpcoes(document.getElementById('cal-f-tipoplano'), tiposPlano.map(function (t) { return { v: t, l: t }; }));
+  _calMontarPlano(d.planosPermitidos || []);
+  if (!estadoCal.selUnidade && window.SeletorResponsaveis) {
+    estadoCal.selUnidade = SeletorResponsaveis.criar({ containerId: 'cal-f-unidade', label: 'Unidade *', getUnidades: function () { return ((estadoCal.dados || {}).unidadesPermitidas) || []; }, getUsuarios: function () { return []; }, getLimite: function () { return 1; } });
+  }
+  var v = ev || { tipo: '', titulo: '', dataInicio: '', dataFim: '', escopo: (d.alcancesPermitidos || [])[0] || '', descricao: '', travado: false, incluirSubunidades: true };
+  document.getElementById('cal-f-tipo').value = v.tipo || '';
+  document.getElementById('cal-f-titulo').value = v.titulo || '';
+  document.getElementById('cal-f-inicio').value = v.dataInicio || '';
+  document.getElementById('cal-f-fim').value = v.dataFim || '';
+  document.getElementById('cal-f-escopo').value = v.escopo || '';
+  document.getElementById('cal-f-tipoplano').value = v.tipoPlano || '';
+  document.getElementById('cal-f-plano').dataset.valor = v.idPlano || '';
+  document.getElementById('cal-f-descricao').value = v.descricao || '';
+  document.getElementById('cal-f-repetir').value = '';
+  document.getElementById('cal-f-vezes').value = '2';
+  document.getElementById('cal-w-repetir').classList.toggle('hidden', !!ev);
+  estadoCal.subunidades = v.incluirSubunidades !== false; estadoCal.travar = !!v.travado;
+  if (estadoCal.selUnidade) estadoCal.selUnidade.setLista(v.idUnidade ? [{ id: v.idUnidade, tipo: 'UNIT', nome: v.siglaUnidade }] : []);
+  _calPlanoAtualizar();
+  ['cal-f-tipo', 'cal-f-escopo', 'cal-f-tipoplano', 'cal-f-repetir'].forEach(_calSinc);
+  ['cal-f-titulo', 'cal-f-descricao'].forEach(function (i) { calContar(document.getElementById(i)); });
+  Array.prototype.forEach.call(document.querySelectorAll('#cal-form .calm-erro'), function (e) { e.textContent = ''; });
+  Array.prototype.forEach.call(document.querySelectorAll('#cal-form input, #cal-form select, #cal-form textarea'), function (e) { e.disabled = leitura; });
+  if (estadoCal.selUnidade) estadoCal.selUnidade.setDisabled(leitura);
+  document.getElementById('cal-btn-salvar').classList.toggle('hidden', leitura);
+  calAtualizarTipoInfo(); calAtualizarAlcance(); calAtualizarRepetir(); _calRenderChaves();
+  document.getElementById('cal-modal').classList.remove('hidden'); bloquearFundo();
+  if (!leitura) setTimeout(function () { var t = document.getElementById('cal-f-tipo-selop') || document.getElementById('cal-f-titulo'); t.focus(); }, 50);
+}
+function _calMontarPlano(planos) {
+  var host = document.getElementById('cal-f-plano');
+  if (!window.SeletorLista) return;
+  if (!estadoCal.selPlano) {
+    estadoCal.selPlano = SeletorLista.criar({
+      containerId: 'cal-f-plano', unico: true,
+      getOpcoes: function () { return (((estadoCal.dados || {}).planosPermitidos) || []).map(function (p) { return { id: p.id, titulo: p.nome, tipo: p.tipo, meta: p.tipo }; }); },
+      getConfig: function () { return {}; }
+    });
+  }
+}
+function _calPlanoAtualizar() {
+  var v = document.getElementById('cal-f-plano').dataset.valor;
+  if (estadoCal.selPlano) { if (v) estadoCal.selPlano.setLista([{ id: v }]); else estadoCal.selPlano.limpar(); }
+}
+function calFecharModal() { document.getElementById('cal-modal').classList.add('hidden'); desbloquearFundo(); }
+function calContar(el) { var c = document.getElementById(el.dataset.contador); if (c) c.textContent = el.value.length + '/' + el.maxLength; }
+function calAtualizarTipoInfo() {
+  var t = _calTipo(document.getElementById('cal-f-tipo').value).t, info = document.getElementById('cal-f-tipo-info');
+  info.setAttribute('data-title', t && t.efeito ? t.efeito : ''); info.classList.toggle('hidden', !(t && t.efeito));
+}
+function calAtualizarAlcance() {
+  var e = document.getElementById('cal-f-escopo').value;
+  document.getElementById('cal-w-tipoplano').classList.toggle('hidden', e !== 'TIPO_PLANO');
+  document.getElementById('cal-w-unidade').classList.toggle('hidden', e !== 'UNIDADE');
+  document.getElementById('cal-w-plano').classList.toggle('hidden', e !== 'PLANO');
+  document.getElementById('cal-w-travar').classList.toggle('hidden', !(estadoCal.dados && estadoCal.dados.podeTravar));
+}
+function calAtualizarRepetir() { document.getElementById('cal-w-vezes').classList.toggle('hidden', !document.getElementById('cal-f-repetir').value); }
+function _calRenderChaves() {
+  var leit = estadoCal.edicao && estadoCal.edicao.leitura;
+  document.getElementById('cal-sw-sub').innerHTML = ntfSwitchHtml(estadoCal.subunidades, leit, 'calAlternarChave(\'subunidades\')', 'Incluir subunidades');
+  document.getElementById('cal-sw-travar').innerHTML = ntfSwitchHtml(estadoCal.travar, leit, 'calAlternarChave(\'travar\')', 'Travar');
+}
+function calAlternarChave(qual) { estadoCal[qual] = !estadoCal[qual]; _calRenderChaves(); }
+function _calErro(campo, msg) { document.getElementById('cal-e-' + campo).textContent = msg || ''; return !msg; }
+function calSalvar(btn) {
+  var g = function (id) { return document.getElementById(id).value; };
+  var dados = { tipo: g('cal-f-tipo'), titulo: g('cal-f-titulo').trim(), dataInicio: g('cal-f-inicio'), dataFim: g('cal-f-fim'), escopo: g('cal-f-escopo'), descricao: g('cal-f-descricao').trim() };
+  if (estadoCal.edicao.id) dados.id = estadoCal.edicao.id;
+  var ok = true;
+  ok = _calErro('tipo', dados.tipo ? '' : 'Escolha o tipo.') && ok;
+  ok = _calErro('titulo', dados.titulo.length < 3 ? 'Use de 3 a 120 caracteres.' : '') && ok;
+  ok = _calErro('inicio', dados.dataInicio ? '' : 'Informe o início.') && ok;
+  ok = _calErro('fim', !dados.dataFim ? 'Informe o fim.' : dados.dataInicio && dados.dataFim < dados.dataInicio ? 'O fim não pode ser antes do início.' : '') && ok;
+  ok = _calErro('escopo', dados.escopo ? '' : 'Escolha o alcance.') && ok;
+  var alvo = '';
+  if (dados.escopo === 'TIPO_PLANO') { dados.tipoPlano = g('cal-f-tipoplano'); if (!dados.tipoPlano) alvo = 'Escolha o tipo de plano.'; }
+  if (dados.escopo === 'UNIDADE') { var u = estadoCal.selUnidade ? estadoCal.selUnidade.getLista() : []; dados.idUnidade = u[0] ? u[0].id : ''; dados.incluirSubunidades = estadoCal.subunidades; if (!dados.idUnidade) alvo = 'Escolha a unidade.'; }
+  if (dados.escopo === 'PLANO') { var p = estadoCal.selPlano ? estadoCal.selPlano.getIds() : []; dados.idPlano = p[0] || ''; if (!dados.idPlano) alvo = 'Escolha o plano.'; }
+  ok = _calErro('alvo', alvo) && ok;
+  if (estadoCal.dados && estadoCal.dados.podeTravar) dados.travado = estadoCal.travar;
+  if (!dados.id) {
+    dados.repetir = g('cal-f-repetir');
+    if (dados.repetir) { dados.vezes = parseInt(g('cal-f-vezes'), 10); ok = _calErro('vezes', !(dados.vezes >= 2 && dados.vezes <= 24) ? 'De 2 a 24.' : '') && ok; }
+  }
+  if (!ok) return;
+  var enviar = function (serie) {
+    _calErro('geral', '');
+    var liberar = uiTravarBotao(btn);
+    google.script.run
+      .withSuccessHandler(function () { liberar(); calFecharModal(); calCarregar(); })
+      .withFailureHandler(function (err) { liberar(); _calErro('geral', err.message); })
+      .apiSalvarEventoCalendario(dados, { serie: serie });
+  };
+  if (dados.id && estadoCal.edicao.idSerie) { calPerguntarSerie('Editar evento recorrente', enviar); return; }
+  enviar('ESTE');
+}
+// ---- Próximos prazos (detalhe do plano e execução) ----
+function calPrazosRender(hostId, idPlano) {
+  var host = document.getElementById(hostId);
+  if (!host || host.dataset.idPlano === String(idPlano || '')) return;
+  host.dataset.idPlano = String(idPlano || '');
+  host.innerHTML = ''; host.classList.add('hidden');
+  if (!idPlano) return;
+  google.script.run.withSuccessHandler(function (lista) {
+    lista = (lista || []).slice(0, 3);
+    if (!lista.length) return;
+    host.innerHTML = lista.map(function (p) {
+      var txt = p.dataInicio === p.dataFim || !p.dataInicio ? p.rotulo + ' até ' + _calBR(p.dataFim) : p.rotulo + ' de ' + _calBR(p.dataInicio) + ' a ' + _calBR(p.dataFim);
+      return '<button type="button" class="ds-badge ds-badge--' + (p.aberto ? 'info' : 'neutral') + ' cal-prazo" data-on-click="pages_calendario.24" data-id="' + escapeHtml(idPlano) + '">' + escapeHtml(txt) + '</button>';
+    }).join('');
+    host.classList.remove('hidden');
+  }).withFailureHandler(function () {}).apiGetProximosPrazosDoPlano(idPlano);
+}
+
+uiRegistrarAcoes('pages_calendario', {
+  '1': function () { calCarregar(); },
+  '2': function () { calAbrirNovo(); },
+  '3': function () { calMudarVisao(this.dataset.visao); },
+  '4': function () { calAbrirBusca(); },
+  '5': function () { calDigitarBusca(this.value); },
+  '6': function () { calLimparBusca(); },
+  '7': function (event) { event.stopPropagation(); calAbrirFiltro(this.dataset.campo, this); },
+  '8': function () { calSelecionarFiltro(this.dataset.campo, ''); },
+  '9': function () { calLimparFiltros(); },
+  '10': function () { calAlternarTodos(false); },
+  '11': function () { calNavegarMes(+this.dataset.passo); },
+  '12': function () { calAlternarTodos(this.checked); },
+  '13': function () { calFecharModal(); },
+  '14': function (event) { event.preventDefault(); calSalvar(document.getElementById('cal-btn-salvar')); },
+  '15': function () { calAtualizarTipoInfo(); },
+  '16': function () { calContar(this); },
+  '17': function () { calAtualizarAlcance(); },
+  '18': function () { calAtualizarRepetir(); },
+  '19': function () { calResponderSerie(this.dataset.serie); },
+  '20': function () { calAbrirEvento(this.dataset.id); },
+  '21': function (event) { if (event.target.closest('input, button, .acoes-linha')) return; calAbrirEvento(this.dataset.id); },
+  '22': function (event) { event.stopPropagation(); calAlternarSelecao(this.dataset.id, this.checked); },
+  '23': function () { calCancelar(Array.from(estadoCal.selecionados)); },
+  '24': function () { calAbrirDoPlano(this.dataset.id); }
+});
+</script>
+
        <!-- ARQUIVO: pages_plano_detalhe.html -->
 
 <div id="page-plano-detalhe" class="page-content hidden">
@@ -12181,6 +13503,7 @@ uiRegistrarAcoes('pages_planos_lista', {
       <span class="badge-status" id="det-status">--</span>
       <span id="det-avaliacao-badge" class="hidden" style="display:inline-flex;align-items:center;gap:6px"></span>
     </div>
+    <div class="cal-prazos hidden" id="det-prazos"></div>
   </section>
 
   <!-- Botões de ação do Hero: FORA do hero (irmão, não filho), para que o sticky dure na página toda.
@@ -16304,6 +17627,7 @@ function renderizarHeader() {
   const p = dadosDetalhados.plano;
   detKpiRenderizar();
   document.getElementById('det-titulo').innerText = p.nome || 'Sem Nome';
+  if (typeof calPrazosRender === 'function') calPrazosRender('det-prazos', p.id);
   // Tipo/vigência/responsável/visibilidade saíram do cabeçalho — vivem em #detp-panel
   // (aba Detalhes), montado por _detpRenderDetalhes() ao fim desta função.
 
@@ -17797,6 +19121,7 @@ uiRegistrarAcoes('pages_execucao_planos', {
       <div class="info-main">
         <span class="badge-tipo" id="ext-tipo">TIPO</span>
         <h1 id="ext-titulo">Carregando...</h1>
+        <div class="cal-prazos hidden" id="ext-prazos"></div>
         <div class="meta-row">
           <span><span class="material-symbols-outlined icon-xs">calendar_month</span> <span id="ext-vigencia">--</span></span>
           <span><span class="material-symbols-outlined icon-xs" id="ext-resp-icone">apartment</span> <span id="ext-unidade">--</span></span>
@@ -18034,6 +19359,8 @@ uiRegistrarAcoes('pages_execucao_planos', {
 .ext-mini-field { display: flex; flex-direction: column; gap: 5px; }
 .ext-mini-field label { font-size: 0.85rem; font-weight: 500; color: var(--ds-color-text); }
 .ext-mini-footer { padding: 14px 18px; border-top: 1px solid var(--ds-color-border); display: flex; justify-content: flex-end; gap: 10px; }
+.ext-tar-cont { font-size: 11px; color: var(--ds-color-text-muted); white-space: nowrap; }
+.task-card.ext-card-fixo { cursor: pointer; }
 </style>
 
 <script>
@@ -18107,6 +19434,7 @@ function carregarDadosExecucao() {
 
 function execTarefasRenderizarHeader(p) {
   document.getElementById('ext-titulo').innerText = p.nome || 'Sem Nome';
+  if (typeof calPrazosRender === 'function') calPrazosRender('ext-prazos', estadoExecTarefas.idPlano);
   document.getElementById('ext-tipo').innerText = p.tipo || '-';
 
   var elUnidade = document.getElementById('ext-unidade');
@@ -18502,13 +19830,15 @@ function _execCriarCard(t) {
     ? '<div class="indicators-badge has-items" data-title="Lançar Resultado" data-on-click="pages_execucao_tarefas.20" data-aclick0="' + t.id + '"><span class="material-symbols-outlined" style="font-size:16px">monitoring</span> ' + inds.length + '</div>'
     : '<div class="indicators-badge"><span class="material-symbols-outlined" style="font-size:16px">check_box_outline_blank</span></div>';
 
-  return '<div class="task-card" draggable="true" data-id="' + escapeHtml(String(t.id)) + '" data-on-click="pages_execucao_tarefas.13" data-aclick0="' + t.id + '">'
+  var porTarefas = !!t.progressoPorTarefas;
+  var contTar = porTarefas ? '<span class="ext-tar-cont">' + (t.tarefasConcluidas || 0) + ' de ' + (t.tarefasTotal || 0) + '</span>' : '';
+  return '<div class="task-card' + (porTarefas ? ' ext-card-fixo' : '') + '"' + (porTarefas ? ' data-title="O progresso deste elemento vem das tarefas"' : ' draggable="true"') + ' data-id="' + escapeHtml(String(t.id)) + '" data-on-click="pages_execucao_tarefas.13" data-aclick0="' + t.id + '">'
     + '<div class="card-meta"><span class="card-code">' + escapeHtml(t.codigo || 'S/N') + '</span>'
     +   '<span' + (atrasado ? ' style="color:var(--ds-color-danger);font-weight:bold"' : '') + '>' + escapeHtml(t.fim || 'Sem prazo') + '</span></div>'
     + '<div class="card-title">' + escapeHtml(t.titulo)
     +   (t.origemColaboracao ? ' <span class="material-symbols-outlined" style="font-size:14px;vertical-align:text-bottom;color:var(--ds-color-action)" data-title="Você colabora nesta tarefa (fora do seu escopo normal)">diversity_3</span>' : '')
     + '</div>'
-    + '<div class="card-footer"><div class="progress-pill ' + info.cls + '">' + t.percentual + '%</div>'
+    + '<div class="card-footer"><div style="display:flex;gap:6px;align-items:center"><div class="progress-pill ' + info.cls + '">' + t.percentual + '%</div>' + contTar + '</div>'
     +   '<div style="display:flex;gap:10px;align-items:center">' + indBadge
     +     '<button class="action-btn-mini" data-title="Ir para Plano" data-on-click="pages_execucao_tarefas.21" data-aclick0="' + t.idPlano + '"><span class="material-symbols-outlined" style="font-size:14px">arrow_forward</span></button>'
     +   '</div></div>'
@@ -18543,7 +19873,7 @@ function _execAtivarDrag() {
 
 function _execMoverTarefa(idTarefa, novoStatus) {
   var tarefa = estadoExecTarefas.dados.tarefas.find(function(t) { return String(t.id) === String(idTarefa); });
-  if (!tarefa || tarefa.status === novoStatus) return;
+  if (!tarefa || tarefa.status === novoStatus || tarefa.progressoPorTarefas) return;
 
   var statusAnterior = tarefa.status, pctAnterior = tarefa.percentual;
   var novoPct = tarefa.percentual;
@@ -18576,7 +19906,14 @@ function _execAbrirModalProgresso(idElemento) {
     abrirModalResultado({
       idElemento: t.id, tituloElemento: t.titulo,
       percentualAtual: Number(t.percentual) || 0, statusAtual: t.status || 'Não Iniciado',
-      idIndicador: null, nomeIndicador: null
+      idIndicador: null, nomeIndicador: null,
+      progressoPorTarefas: !!t.progressoPorTarefas,
+      aoMudarTarefas: function (st) {
+        t.progressoPorTarefas = st.progressoPorTarefas; t.tarefasTotal = st.total; t.tarefasConcluidas = st.concluidas;
+        if (st.percentual !== undefined && st.percentual !== null) t.percentual = st.percentual;
+        if (st.status) t.status = st.status;
+        execTarefasRenderizar(); execTarefasRenderizarKpis();
+      }
     });
   }
 }
@@ -18591,7 +19928,8 @@ function _execAbrirModalLancamento(idElemento) {
     abrirModalResultado({
       idElemento: t.id, tituloElemento: t.titulo,
       percentualAtual: Number(t.percentual) || 0, statusAtual: t.status || 'Não Iniciado',
-      idIndicador: ind.id, nomeIndicador: ind.nome + ' (' + ind.unidade + ')'
+      idIndicador: ind.id, nomeIndicador: ind.nome + ' (' + ind.unidade + ')',
+      progressoPorTarefas: !!t.progressoPorTarefas
     });
   }
 }
@@ -21562,54 +22900,23 @@ uiRegistrarAcoes('pages_avaliacao_executar', {
      (components_header.html) — ver docs/design_system.md "Menu principal
      em cascata". Este arquivo ficou só com o modal de Gestão de Revisões,
      que o item de menu "Gestão de Revisões" abre via abrirGestaoRevisoes().
-     Modelo (revisao_plano.js): o admin abre JANELAS (todos os planos em execução ou um plano, até uma data);
-     abrir a janela não muda o status de plano nenhum — o responsável inicia a revisão do próprio plano. -->
+     2026-11: janela de revisão = evento do tipo Revisão no Calendário (pages_calendario.html). O bloco "Janelas de revisão"
+     lista esses eventos e "Nova janela" abre o modal do calendário com o tipo Revisão; revisões e pedidos vêm de apiListarRevisoesEmAndamento. -->
 
 <!-- MODAL: Gestão de Revisões (ADMIN/DEV) -->
 <div id="modal-gestao-revisoes" class="modal-overlay hidden" data-fechar="fecharGestaoRevisoes" data-on-click="pages_config.1">
   <div class="modal-card" style="max-width: 600px;">
     <div class="modal-header">
-      <div>
-        <h3>Gestão de Revisões</h3>
-        <p style="font-size:0.8rem; color:var(--ds-color-text-ui-muted); margin:0">Abra uma janela para os responsáveis revisarem seus planos em execução.</p>
-      </div>
-      <button class="btn-icon-close" data-on-click="pages_config.2">
-        <span class="material-symbols-outlined">close</span>
-      </button>
+      <h3>Gestão de Revisões</h3>
+      <button type="button" class="ds-icon-action" data-on-click="pages_config.2" aria-label="Fechar"><span class="material-symbols-outlined">close</span></button>
     </div>
     <div class="modal-body">
-      <h4 style="margin:0 0 10px; font-size:0.95rem;">Abrir janela de revisão</h4>
-      <div class="form-group">
-        <label>Vale para</label>
-        <div style="display:flex; gap:18px; flex-wrap:wrap;">
-          <label style="display:flex; align-items:center; gap:6px; font-weight:400;"><input type="radio" name="rev-escopo" value="TODOS" checked data-on-change="pages_config.3"> Todos os planos em execução</label>
-          <label style="display:flex; align-items:center; gap:6px; font-weight:400;"><input type="radio" name="rev-escopo" value="PLANO" data-on-change="pages_config.3"> Um plano</label>
-        </div>
+      <div style="display:flex; align-items:center; gap:8px; margin:0 0 10px;">
+        <h4 style="margin:0; font-size:0.95rem;">Janelas de revisão</h4>
+        <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Cada janela é um evento do tipo Revisão no Calendário. Durante a janela, os responsáveis podem iniciar a revisão dos seus planos.">info</span>
+        <button type="button" class="ds-btn ds-btn--secondary hidden" id="rev-btn-nova-janela" style="margin-left:auto;" data-on-click="pages_config.3"><span class="material-symbols-outlined">add</span>Nova janela</button>
       </div>
-      <div class="form-group hidden" id="rev-plano-grupo">
-        <label for="rev-plano">Plano</label>
-        <select id="rev-plano" class="form-control"></select>
-      </div>
-      <div class="form-row" style="display:flex; gap:10px;">
-        <div class="form-group" style="flex:1;">
-          <label for="rev-abertura">Abertura</label>
-          <input type="date" id="rev-abertura" class="form-control">
-        </div>
-        <div class="form-group" style="flex:1;">
-          <label for="rev-fechamento">Fechamento *</label>
-          <input type="date" id="rev-fechamento" class="form-control">
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="rev-justificativa">Justificativa</label>
-        <textarea id="rev-justificativa" class="form-control" rows="2"></textarea>
-      </div>
-      <button type="button" class="btn btn-primary" data-on-click="pages_config.4">Abrir janela</button>
-
-      <hr style="margin:18px 0; border:none; border-top:1px solid var(--ds-color-border-ui);">
-
-      <h4 style="margin:0 0 10px; font-size:0.95rem;">Janelas abertas</h4>
-      <div id="rev-lista-janelas" style="font-size:0.85rem;">Carregando...</div>
+      <div id="rev-lista-janelas" style="font-size:0.85rem;"></div>
 
       <h4 style="margin:18px 0 10px; font-size:0.95rem;">Planos em revisão</h4>
       <div id="rev-lista-revisoes" style="font-size:0.85rem;"></div>
@@ -21620,145 +22927,93 @@ uiRegistrarAcoes('pages_avaliacao_executar', {
       </div>
     </div>
     <div class="modal-footer">
-      <button type="button" class="btn btn-outline" data-on-click="pages_config.2">Fechar</button>
+      <button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_config.2">Fechar</button>
     </div>
   </div>
 </div>
 
 <script>
-function revAtualizarEscopo() {
-  const escopo = document.querySelector('input[name="rev-escopo"]:checked').value;
-  document.getElementById('rev-plano-grupo').classList.toggle('hidden', escopo !== 'PLANO');
-}
-
 function abrirGestaoRevisoes() {
   document.getElementById('modal-gestao-revisoes').classList.remove('hidden');
-  const hoje = new Date().toISOString().slice(0, 10);
-  document.getElementById('rev-abertura').value = hoje;
-  document.getElementById('rev-fechamento').value = '';
-  document.getElementById('rev-justificativa').value = '';
-  document.querySelector('input[name="rev-escopo"][value="TODOS"]').checked = true;
-  revAtualizarEscopo();
-
-  // Popula o select de planos (só os que podem ter janela: em execução ou prorrogados)
-  const sel = document.getElementById('rev-plano');
-  sel.innerHTML = '<option value="">Carregando...</option>';
-  google.script.run
-    .withSuccessHandler(function(planos) {
-      sel.innerHTML = '';
-      (planos || []).filter(p => p.status === 'Em Execução' || p.status === 'Prorrogado').forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.nome + ' (' + (p.status || '') + ')';
-        sel.appendChild(opt);
-      });
-      if (!sel.options.length) sel.innerHTML = '<option value="">Nenhum plano em execução</option>';
-    })
-    .withFailureHandler(function() { sel.innerHTML = '<option value="">Erro ao carregar</option>'; })
-    .apiGetPlanos();
-
+  bloquearFundo();
   carregarGestaoRevisoes();
 }
-
 function fecharGestaoRevisoes() {
   document.getElementById('modal-gestao-revisoes').classList.add('hidden');
+  desbloquearFundo();
 }
-
 function _revLinhaGestao(texto, botao) {
   return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--ds-color-border-ui);">'
     + '<span>' + texto + '</span>' + (botao || '') + '</div>';
 }
-
+function _revTipoRevisao(tipos) { return (tipos || []).filter(function (t) { return /revis/i.test(t.chave + ' ' + t.rotulo); })[0]; }
+function _revBR(iso) { var x = String(iso || '').split('-'); return x.length === 3 ? x[2] + '/' + x[1] + '/' + x[0] : ''; }
 function carregarGestaoRevisoes() {
-  const divJ = document.getElementById('rev-lista-janelas');
-  const divR = document.getElementById('rev-lista-revisoes');
-  divJ.innerHTML = 'Carregando...';
-  divR.innerHTML = '';
+  var divJ = document.getElementById('rev-lista-janelas'), divR = document.getElementById('rev-lista-revisoes');
+  divJ.innerHTML = spinnerListaHTML(''); divR.innerHTML = spinnerListaHTML('');
+  var hoje = new Date(), ini = hoje.toISOString().slice(0, 10), fim = new Date(hoje.getFullYear() + 1, hoje.getMonth(), hoje.getDate()).toISOString().slice(0, 10);
   google.script.run
-    .withSuccessHandler(function(res) {
-      const janelas = (res && res.janelas) || [], revisoes = (res && res.revisoes) || [], sols = (res && res.solicitacoes) || [];
-      divJ.innerHTML = janelas.length ? janelas.map(j => _revLinhaGestao(
-        (j.escopo === 'PLANO' ? escapeHtml(j.nomePlano) : 'Todos os planos em execução')
-          + ' <small style="color:var(--ds-color-text-ui-muted)">— até ' + escapeHtml(j.dataFechamento) + (j.origem === 'SOLICITACAO' ? ' (a pedido do responsável)' : '') + '</small>',
-        '<button class="btn btn-outline btn-sm" data-on-click="pages_config.5" data-aclick0="' + j.id + '">Fechar</button>'
-      )).join('') : '<em style="color:var(--ds-color-text-ui-muted)">Nenhuma janela aberta.</em>';
-
-      divR.innerHTML = revisoes.length ? revisoes.map(r => _revLinhaGestao(
+    .withSuccessHandler(function (cal) {
+      var t = _revTipoRevisao(cal && cal.tipos);
+      document.getElementById('rev-btn-nova-janela').classList.toggle('hidden', !(cal && cal.podeCriar && t));
+      var evs = ((cal && cal.eventos) || []).filter(function (e) { return t && e.tipo === t.chave && String(e.situacao).toUpperCase() !== 'CANCELADO'; });
+      divJ.innerHTML = evs.length ? evs.map(function (e) {
+        return _revLinhaGestao(escapeHtml(e.titulo) + ' <small style="color:var(--ds-color-text-ui-muted)">— ' + escapeHtml(_revBR(e.dataInicio)) + ' a ' + escapeHtml(_revBR(e.dataFim)) + '</small>',
+          '<button type="button" class="ds-btn ds-btn--ghost" data-on-click="pages_config.5" data-id="' + escapeHtml(e.id) + '">Abrir</button>');
+      }).join('') : '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">event_available</span><p class="el-esti">Nenhuma janela programada</p></div>';
+    })
+    .withFailureHandler(function (err) { divJ.innerHTML = '<span class="calm-erro">' + escapeHtml(err.message) + '</span>'; })
+    .apiGetCalendario({ inicio: ini, fim: fim });
+  google.script.run
+    .withSuccessHandler(function (res) {
+      var revisoes = (res && res.revisoes) || [], sols = (res && res.solicitacoes) || [];
+      divR.innerHTML = revisoes.length ? revisoes.map(function (r) { return _revLinhaGestao(
         escapeHtml(r.nomePlano) + ' <small style="color:var(--ds-color-text-ui-muted)">— ' + (r.status === 'EmAnalise' ? 'em análise' : 'em revisão') + (r.dataFechamento ? ', prazo ' + escapeHtml(r.dataFechamento) : '') + '</small>',
-        '<button class="btn btn-outline btn-sm" data-on-click="pages_config.6" data-aclick0="' + r.id + '">Encerrar</button>'
-      )).join('') : '<em style="color:var(--ds-color-text-ui-muted)">Nenhum plano em revisão.</em>';
-
+        '<button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_config.6" data-id="' + escapeHtml(r.id) + '">Encerrar</button>'); }).join('')
+        : '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">rate_review</span><p class="el-esti">Nenhum plano em revisão</p></div>';
       document.getElementById('rev-bloco-solicitacoes').classList.toggle('hidden', !sols.length);
-      document.getElementById('rev-lista-solicitacoes').innerHTML = sols.map(s => _revLinhaGestao(
-        escapeHtml(s.nomePlano) + ' <small style="color:var(--ds-color-text-ui-muted)">— pedido em ' + escapeHtml(s.criadoEm) + ': ' + escapeHtml(s.justificativa) + '</small>'
-      )).join('') + (sols.length ? '<div style="margin-top:6px; color:var(--ds-color-text-ui-muted);">Abra o plano para aprovar (definindo o prazo) ou recusar.</div>' : '');
+      document.getElementById('rev-lista-solicitacoes').innerHTML = sols.map(function (s) { return _revLinhaGestao(
+        escapeHtml(s.nomePlano) + ' <small style="color:var(--ds-color-text-ui-muted)">— pedido em ' + escapeHtml(s.criadoEm) + '</small>',
+        '<span class="material-symbols-outlined ds-info" tabindex="0" data-title="' + escapeHtml(s.justificativa || '') + '">info</span>'); }).join('');
     })
-    .withFailureHandler(function(err) { divJ.innerHTML = '<span style="color:var(--ds-color-danger-solid)">' + escapeHtml(err.message) + '</span>'; })
-    .apiListarJanelasRevisao();
+    .withFailureHandler(function (err) { divR.innerHTML = '<span class="calm-erro">' + escapeHtml(err.message) + '</span>'; })
+    .apiListarRevisoesEmAndamento();
 }
-
-function confirmarAbrirJanelaRevisao() {
-  const escopo = document.querySelector('input[name="rev-escopo"]:checked').value;
-  const idPlano = escopo === 'PLANO' ? document.getElementById('rev-plano').value : '';
-  const abertura = document.getElementById('rev-abertura').value;
-  const fechamento = document.getElementById('rev-fechamento').value;
-  const just = document.getElementById('rev-justificativa').value;
-  if (escopo === 'PLANO' && !idPlano) { showMessage('error', 'Atenção', 'Selecione um plano.'); return; }
-  if (!fechamento) { showMessage('error', 'Atenção', 'Informe a data de fechamento.'); return; }
-
-  mostrarLoader();
-  google.script.run
-    .withSuccessHandler(function() {
-      esconderLoader();
-      if (typeof invalidarCacheListaPlanos === 'function') invalidarCacheListaPlanos();
-      showMessage('success', 'Janela aberta', 'Os responsáveis já podem iniciar a revisão dos planos' + (escopo === 'PLANO' ? ' selecionado.' : ' em execução.'));
-      document.getElementById('rev-fechamento').value = '';
-      document.getElementById('rev-justificativa').value = '';
-      carregarGestaoRevisoes();
-    })
-    .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
-    .apiAbrirJanelaRevisao(escopo, idPlano, abertura, fechamento, just);
+function revNovaJanela() {
+  fecharGestaoRevisoes();
+  navigate('calendario');
+  var tentar = function (n) {
+    var t = estadoCal.dados && _revTipoRevisao(estadoCal.dados.tipos);
+    if (!t) { if (n > 0) setTimeout(function () { tentar(n - 1); }, 300); return; }
+    calAbrirNovo(); document.getElementById('cal-f-tipo').value = t.chave; _calSinc('cal-f-tipo'); calAtualizarTipoInfo();
+  };
+  tentar(20);
 }
-
-function confirmarFecharJanelaRevisao(idJanela) {
-  showConfirm('Fechar janela', 'Fechar esta janela agora? Os planos que ainda estiverem em revisão serão enviados à análise.', function() {
-    mostrarLoader();
+function revAbrirJanela(id) {
+  fecharGestaoRevisoes(); navigate('calendario');
+  var tentar = function (n) { if (_calEvento(id)) calAbrirEvento(id); else if (n > 0) setTimeout(function () { tentar(n - 1); }, 300); };
+  tentar(20);
+}
+function confirmarEncerrarRevisao(idRevisao, btn) {
+  showConfirm('Encerrar revisão', 'Encerrar a revisão deste plano agora? Ele volta ao status anterior e a análise em curso é descartada.', function () {
+    var liberar = uiTravarBotao(btn);
     google.script.run
-      .withSuccessHandler(function(res) {
-        esconderLoader();
-        if (typeof invalidarCacheListaPlanos === 'function') invalidarCacheListaPlanos();
-        const n = res && res.planosEnviadosParaAnalise;
-        showMessage('success', 'Janela fechada', n ? (n + ' plano(s) enviado(s) à análise.') : 'Nenhum plano estava em revisão.');
-        carregarGestaoRevisoes();
-      })
-      .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
-      .apiFecharJanelaRevisao(idJanela);
-  });
-}
-
-function confirmarEncerrarRevisao(idRevisao) {
-  showConfirm('Encerrar revisão', 'Encerrar a revisão deste plano agora? Ele volta ao status anterior e a análise em curso é descartada.', function() {
-    mostrarLoader();
-    google.script.run
-      .withSuccessHandler(function() {
-        esconderLoader();
+      .withSuccessHandler(function () {
+        liberar();
         if (typeof invalidarCacheListaPlanos === 'function') invalidarCacheListaPlanos();
         showMessage('success', 'Revisão encerrada', 'O plano voltou ao status anterior.');
         carregarGestaoRevisoes();
       })
-      .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
+      .withFailureHandler(function (err) { liberar(); showMessage('error', 'Erro', escapeHtml(err.message)); })
       .apiFecharRevisao(idRevisao);
   });
 }
-
-// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
 uiRegistrarAcoes('pages_config', {
-  '1': function (event) { if(event.target===this) window[this.dataset.fechar](); },
+  '1': function (event) { if (event.target === this) window[this.dataset.fechar](); },
   '2': function (event) { fecharGestaoRevisoes(); },
-  '3': function (event) { revAtualizarEscopo(); },
-  '4': function (event) { confirmarAbrirJanelaRevisao(); },
-  '5': function (event) { confirmarFecharJanelaRevisao(uiArgJs(this.dataset.aclick0)); },
-  '6': function (event) { confirmarEncerrarRevisao(uiArgJs(this.dataset.aclick0)); }
+  '3': function (event) { revNovaJanela(); },
+  '5': function (event) { revAbrirJanela(this.dataset.id); },
+  '6': function (event) { confirmarEncerrarRevisao(this.dataset.id, this); }
 });
 </script>
 
@@ -24738,6 +25993,24 @@ function updRecusar(id, nome) {
         <span class="material-symbols-outlined">upload_file</span>Importar
       </button>
     </div>
+    <div class="srv-lote hidden" id="srv-lote">
+      <div class="srv-lote-linha">
+        <div class="ds-kpi-track srv-lote-track"><div class="ds-kpi-fill ds-tone-info" id="srv-lote-fill" style="width:0%"></div></div>
+        <span class="srv-lote-txt" id="srv-lote-txt"></span>
+      </div>
+      <div class="srv-lote-acoes">
+        <button type="button" class="ds-btn ds-btn--primary hidden" id="srv-lote-continuar" data-on-click="pages_servidores_carga.11"><span class="material-symbols-outlined">play_arrow</span>Continuar</button>
+        <button type="button" class="ds-btn ds-btn--secondary" id="srv-lote-cancelar" data-on-click="pages_servidores_carga.12">Cancelar</button>
+      </div>
+    </div>
+    <div class="srv-retida hidden" id="srv-retida" role="status">
+      <span class="material-symbols-outlined">warning</span>
+      <span class="srv-retida-txt" id="srv-retida-txt"></span>
+      <div class="srv-lote-acoes">
+        <button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_servidores_carga.12">Cancelar carga</button>
+        <button type="button" class="ds-btn ds-btn--primary" data-on-click="pages_servidores_carga.13">Confirmar</button>
+      </div>
+    </div>
     <div class="srv-resultado hidden" id="srv-resultado"></div>
   </section>
 
@@ -24751,11 +26024,13 @@ function updRecusar(id, nome) {
           <th class="srv-col-tipo">Carga</th>
           <th class="srv-col-por">Por</th>
           <th class="srv-col-tot">Resultado</th>
+          <th class="srv-col-sit">Situação</th>
+          <th class="srv-col-acoes" aria-hidden="true"></th>
           <th class="srv-col-card" aria-hidden="true"></th>
         </tr>
       </thead>
       <tbody id="srv-tbody-hist">
-        <tr class="srv-linha-msg"><td colspan="6"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando…</span></div></td></tr>
+        <tr class="srv-linha-msg"><td colspan="8"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando…</span></div></td></tr>
       </tbody>
     </table>
   </section>
@@ -24870,6 +26145,17 @@ function updRecusar(id, nome) {
   #usr-view-carga .srv-tabela tbody tr:hover td { background: var(--ds-sidebar-item-hover); }
   #usr-view-carga .srv-tabela tbody tr.srv-linha-msg:hover td { background: none; }
   #usr-view-carga .srv-col-card { display: none; }
+  #usr-view-carga .srv-col-sit { width: 170px; }
+  #usr-view-carga .srv-col-acoes { width: 48px; text-align: right; }
+  #usr-view-carga .srv-lote, #usr-view-carga .srv-retida { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 4px 0; max-width: 760px; }
+  #usr-view-carga .srv-lote.hidden, #usr-view-carga .srv-retida.hidden { display: none; }
+  #usr-view-carga .srv-lote-linha { flex: 1 1 260px; display: flex; align-items: center; gap: 12px; min-width: 0; }
+  #usr-view-carga .srv-lote-track { flex: 1; }
+  #usr-view-carga .srv-lote-txt { font-size: 13px; color: var(--ds-text-secondary); white-space: nowrap; }
+  #usr-view-carga .srv-lote-acoes { display: flex; gap: 8px; margin-left: auto; }
+  #usr-view-carga .srv-retida { color: var(--ds-warning-text, var(--ds-text-primary)); font-size: 14px; }
+  #usr-view-carga .srv-retida > .material-symbols-outlined { color: var(--ds-warning, currentColor); }
+  #usr-view-carga .srv-retida-txt { flex: 1 1 260px; }
   #usr-view-carga .srv-nome { font-weight: var(--ds-weight-semibold); }
   #usr-view-carga .srv-sec { color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); white-space: nowrap; }
   #usr-view-carga .srv-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
@@ -24913,7 +26199,7 @@ var SRV_FORMATOS = [
   { valor: 'SIAPE', rotulo: 'Extrator SIAPE (.TXT + .REF)' },
   { valor: 'PLANILHA', rotulo: 'Planilha (.CSV)' }
 ];
-var _srv = { formato: 'SIAPE', completa: true, ativo: '', busca: '', carregadoHist: false, timerBusca: null };
+var _srv = { formato: 'SIAPE', completa: true, ativo: '', busca: '', carregadoHist: false, timerBusca: null, lote: null };
 
 function srvMontar() {
   var view = document.getElementById('usr-view-carga'), pagina = document.getElementById('page-usuarios');
@@ -25003,31 +26289,120 @@ function srvImportar() {
     ? [srvLerArquivo(document.getElementById('srv-arq-txt'), 'latin1'), srvLerArquivo(document.getElementById('srv-arq-ref'), 'latin1')]
     : [srvLerArquivo(document.getElementById('srv-arq-planilha'), 'utf-8')];
   Promise.all(leituras).then(function (arqs) {
-    var dados;
+    var leiaute, linhas, nome;
     if (siape) {
       if (!arqs[0] || !arqs[1]) { srvErro('Escolha o arquivo .TXT e o leiaute .REF.'); return; }
-      dados = { formato: 'SIAPE', txt: arqs[0].texto, ref: arqs[1].texto, completa: _srv.completa, arquivo: arqs[0].nome };
+      leiaute = arqs[1].texto; linhas = srvSepararLinhas(arqs[0].texto); nome = arqs[0].nome;
     } else {
       if (!arqs[0]) { srvErro('Escolha a planilha.'); return; }
-      var matriz = srvCsvParaMatriz(arqs[0].texto);
-      if (matriz.length < 2) { srvErro('A planilha precisa do cabeçalho e de pelo menos uma linha.'); return; }
-      dados = { formato: 'PLANILHA', matriz: matriz, completa: _srv.completa, arquivo: arqs[0].nome };
+      var todas = srvSepararLinhas(arqs[0].texto);
+      if (todas.length < 2) { srvErro('A planilha precisa do cabeçalho e de pelo menos uma linha.'); return; }
+      leiaute = todas[0]; linhas = todas.slice(1); nome = arqs[0].nome;
     }
-    mostrarLoader();
-    google.script.run
-      .withSuccessHandler(function (r) {
-        esconderLoader();
-        srvRenderResultado(r || {});
-        ['srv-arq-txt', 'srv-arq-ref', 'srv-arq-planilha'].forEach(function (id) { document.getElementById(id).value = ''; });
-        srvCarregarHistorico();
-        srvCarregarBase();
-      })
-      .withFailureHandler(function (err) { esconderLoader(); srvErro(err.message); })
-      .apiImportarServidores(dados);
+    if (!linhas.length) { srvErro('O arquivo não tem linhas.'); return; }
+    srvLoteIniciar({ origem: _srv.formato, completa: _srv.completa, arquivo: nome, leiaute: leiaute, linhasTotal: linhas.length }, linhas);
   }, function (err) { srvErro(err.message); });
 }
-
-// Contrato: pendências = [{ codigo, quantidade }]; erros = [{ linha, matricula, mensagens[] }] (máx. 50)
+function srvSepararLinhas(texto) {
+  return String(texto || '').replace(/\r\n?/g, '\n').split('\n').filter(function (l) { return l.trim() !== ''; });
+}
+function srvLoteChamar(rota, args) {
+  return new Promise(function (resolve, reject) {
+    var r = google.script.run.withSuccessHandler(resolve).withFailureHandler(reject);
+    r[rota].apply(r, args);
+  });
+}
+function srvLoteMostrar(modo) {
+  document.getElementById('srv-btn-importar').parentNode.classList.toggle('hidden', modo !== 'form');
+  document.getElementById('srv-lote').classList.toggle('hidden', modo !== 'envio');
+  document.getElementById('srv-retida').classList.toggle('hidden', modo !== 'retida');
+}
+function srvLoteProgresso() {
+  var L = _srv.lote, n = Math.min(L.atual + 1, L.total);
+  document.getElementById('srv-lote-fill').style.width = Math.round(L.atual / L.total * 100) + '%';
+  document.getElementById('srv-lote-txt').textContent = L.atual >= L.total ? 'Concluindo…' : 'Lote ' + n + ' de ' + L.total;
+  document.getElementById('srv-lote-continuar').classList.toggle('hidden', !L.falhou);
+  document.getElementById('srv-lote-cancelar').disabled = false;
+}
+function srvLoteIniciar(dados, linhas) {
+  var btn = document.getElementById('srv-btn-importar');
+  var liberar = uiTravarBotao(btn);
+  srvLoteChamar('apiIniciarCargaPessoas', [dados]).then(function (r) {
+    liberar();
+    var tam = (r && r.tamanhoLote) || 300;
+    _srv.lote = { id: r.idImportacao, tam: tam, linhas: linhas, total: Math.ceil(linhas.length / tam), atual: 0, falhou: false, cancelado: false, erros: [] };
+    srvLoteMostrar('envio'); srvLoteProgresso(); srvLoteEnviar();
+  }, function (err) { liberar(); srvErro(err.message); });
+}
+function srvLoteEnviar() {
+  var L = _srv.lote;
+  if (!L || L.cancelado) return;
+  if (L.atual >= L.total) { srvLoteProgresso(); srvLoteConcluir(); return; }
+  L.falhou = false; srvErro(''); srvLoteProgresso();
+  var fatia = L.linhas.slice(L.atual * L.tam, (L.atual + 1) * L.tam);
+  srvLoteChamar('apiEnviarLoteCargaPessoas', [L.id, L.atual + 1, fatia]).then(function (r) {
+    if (L.cancelado) return;
+    if (r && r.erros) L.erros = L.erros.concat(r.erros);
+    L.atual++; srvLoteEnviar();
+  }, function (err) {
+    if (L.cancelado) return;
+    L.falhou = true; srvLoteProgresso(); srvErro(err.message);
+  });
+}
+function srvLoteConcluir() {
+  var L = _srv.lote;
+  srvLoteChamar('apiConcluirCargaPessoas', [L.id]).then(function (r) {
+    r = r || {};
+    if (r.estado === 'AGUARDANDO_CONFIRMACAO') {
+      document.getElementById('srv-retida-txt').textContent = 'Esta carga deixaria ' + (r.ausentes || 0) + ' pessoas ausentes (' + String(r.percentualAusentes || 0).replace('.', ',') + ' % da base). Confirme para concluir.';
+      srvLoteMostrar('retida'); srvCarregarHistorico(); return;
+    }
+    srvLoteFinal(r);
+  }, function (err) { L.falhou = true; L.atual = L.total; srvLoteProgresso(); srvErro(err.message); _srv.lote.reconcluir = true; });
+}
+function srvLoteFinal(r) {
+  var L = _srv.lote || {};
+  var res = Object.assign({}, r.resumo || {}, r);
+  if (L.erros && L.erros.length && !res.erros) res.erros = L.erros;
+  _srv.lote = null;
+  srvLoteMostrar('form');
+  srvRenderResultado(res.resumo ? Object.assign({ erros: res.erros }, res.resumo) : res);
+  ['srv-arq-txt', 'srv-arq-ref', 'srv-arq-planilha'].forEach(function (id) { document.getElementById(id).value = ''; });
+  srvCarregarHistorico(); srvCarregarBase();
+}
+function srvLoteContinuar() {
+  var L = _srv.lote; if (!L) return;
+  if (L.reconcluir) { L.reconcluir = false; L.falhou = false; srvErro(''); srvLoteProgresso(); srvLoteConcluir(); return; }
+  srvLoteEnviar();
+}
+function srvLoteConfirmar(btn) {
+  var L = _srv.lote; if (!L) return;
+  var liberar = uiTravarBotao(btn);
+  srvLoteChamar('apiConfirmarCargaRetida', [L.id]).then(function (r) { liberar(); srvLoteFinal(r || {}); }, function (err) { liberar(); srvErro(err.message); });
+}
+function srvLoteCancelar(btn) {
+  var L = _srv.lote; if (!L) return;
+  var liberar = uiTravarBotao(btn);
+  L.cancelado = true;
+  srvLoteChamar('apiCancelarCargaPessoas', [L.id]).then(function () {
+    liberar(); _srv.lote = null; srvErro(''); srvLoteMostrar('form'); srvCarregarHistorico();
+  }, function (err) { liberar(); L.cancelado = false; srvErro(err.message); });
+}
+function srvCancelarCargaAntiga(id) {
+  showConfirm('Cancelar carga', 'Cancelar esta carga em andamento?', function () {
+    uiExecutarComTrava(null, function () {
+      return srvLoteChamar('apiCancelarCargaPessoas', [id]).then(function () { srvCarregarHistorico(); }, function (err) { showMessage('error', 'Erro', err.message); });
+    });
+  });
+}
+var _SRV_SITUACOES = {
+  EM_ANDAMENTO: ['Em andamento', 'info'], AGUARDANDO_CONFIRMACAO: ['Aguardando confirmação', 'warning'],
+  CONCLUIDA: ['Concluída', 'success'], CANCELADA: ['Cancelada', 'neutral']
+};
+function srvSituacaoHTML(est) {
+  var s = _SRV_SITUACOES[String(est || 'CONCLUIDA').toUpperCase()] || [est, 'neutral'];
+  return '<span class="ds-badge ds-badge--' + s[1] + '">' + escapeHtml(s[0]) + '</span>';
+}
 function srvQtd(lista) { return Array.isArray(lista) ? lista.length : 0; }
 function srvItemPend(x) { return x.codigo + ' (' + x.quantidade + ')'; }
 function srvItemErro(x) {
@@ -25063,10 +26438,10 @@ function srvRenderResultado(r) {
 // ---------- histórico ----------
 function srvCarregarHistorico() {
   var tbody = document.getElementById('srv-tbody-hist');
-  tbody.innerHTML = '<tr class="srv-linha-msg"><td colspan="6">' + spinnerListaHTML('Carregando…') + '</td></tr>';
+  tbody.innerHTML = '<tr class="srv-linha-msg"><td colspan="8">' + spinnerListaHTML('Carregando…') + '</td></tr>';
   google.script.run
     .withSuccessHandler(function (lista) { srvRenderHistorico(lista || []); })
-    .withFailureHandler(function (err) { tbody.innerHTML = srvMsgHTML(6, 'error', err.message); })
+    .withFailureHandler(function (err) { tbody.innerHTML = srvMsgHTML(8, 'error', err.message); })
     .apiGetImportacoes();
 }
 function srvMsgHTML(cols, icone, titulo) {
@@ -25079,17 +26454,21 @@ function srvResumoTexto(r) {
 }
 function srvRenderHistorico(lista) {
   var tbody = document.getElementById('srv-tbody-hist');
-  if (!lista.length) { tbody.innerHTML = srvMsgHTML(6, 'history', 'Nenhuma carga realizada'); return; }
+  if (!lista.length) { tbody.innerHTML = srvMsgHTML(8, 'history', 'Nenhuma carga realizada'); return; }
   tbody.innerHTML = lista.map(function (i) {
     var tipo = '<span class="ds-badge ds-badge--neutral">' + (i.completa ? 'Completa' : 'Parcial') + '</span>';
     var resumo = srvResumoTexto(i.resumo);
+    var emAndamento = String(i.estado || '').toUpperCase() === 'EM_ANDAMENTO';
+    var acoes = emAndamento && i.id ? acoesLinhaHTML(i.id, [{ icone: 'cancel', rotulo: 'Cancelar carga', perigo: true, onclick: "srvCancelarCargaAntiga('" + escapeJsAttr(i.id) + "')" }], { maxDireto: 0 }) : '';
     return '<tr>'
       + '<td class="srv-col-em"><span class="srv-sec">' + escapeHtml(i.em || '—') + '</span></td>'
       + '<td class="srv-col-arq" data-title="' + escapeHtml(i.arquivo || '') + '">' + escapeHtml(i.arquivo || '—') + '</td>'
       + '<td class="srv-col-tipo">' + tipo + '</td>'
       + '<td class="srv-col-por"><span class="srv-sec">' + escapeHtml(i.por || '—') + '</span></td>'
       + '<td class="srv-col-tot"><span class="srv-sec">' + escapeHtml(resumo) + '</span></td>'
-      + '<td class="srv-col-card"><div class="srv-card-meta"><span>' + escapeHtml(i.origem || '') + '</span><span>' + escapeHtml(resumo) + '</span></div></td></tr>';
+      + '<td class="srv-col-sit">' + srvSituacaoHTML(i.estado) + '</td>'
+      + '<td class="srv-col-acoes">' + acoes + '</td>'
+      + '<td class="srv-col-card"><div class="srv-card-meta"><span>' + escapeHtml(i.origem || '') + '</span>' + srvSituacaoHTML(i.estado) + '<span>' + escapeHtml(resumo) + '</span></div>' + acoes + '</td></tr>';
   }).join('');
 }
 
@@ -25179,7 +26558,10 @@ uiRegistrarAcoes('pages_servidores_carga', {
   '7': function (event) { srvLimparBusca(); },
   '8': function (event) { srvAbrirFiltroAtivo(this); },
   '9': function (event) { srvEscolherAtivo(''); },
-  '10': function (event) { srvLimparFiltros(); }
+  '10': function (event) { srvLimparFiltros(); },
+  '11': function (event) { srvLoteContinuar(); },
+  '12': function (event) { srvLoteCancelar(this); },
+  '13': function (event) { srvLoteConfirmar(this); }
 });
 </script>
 
@@ -26087,6 +27469,15 @@ function navigate(pageName, extra) {
         { label: 'Planejamento Institucional' }
       ]);
       if (typeof initPlanos === 'function') initPlanos();
+      break;
+
+    case 'calendario':
+      document.getElementById('page-calendario').classList.remove('hidden');
+      setBreadcrumb([
+        { label: 'Planejamento' },
+        { label: 'Calendário' }
+      ]);
+      if (typeof initCalendario === 'function') initCalendario();
       break;
 
     case 'detalhe':

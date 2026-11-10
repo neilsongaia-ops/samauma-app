@@ -139,6 +139,30 @@ tr.is-open .mon-seta { transform: rotate(90deg); }
   .mon-tabela tr.mon-det td { display: block; padding: 0 12px 12px; }
   .mon-tabela tr.mon-linha-ind.is-open { border-radius: var(--ds-r-lg) var(--ds-r-lg) 0 0 !important; margin-bottom: 0 !important; }
 }
+/* Fila "Para validar" (app_monitoramento_validar.html) */
+.mon-val-normal, .mon-val-selecao { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.mon-val-normal.hidden, .mon-val-selecao.hidden { display: none; }
+.det-modo .ds-tab-count { margin-left: 4px; }
+.det-modo.hidden { display: none; }
+.mon-val-tabela .mon-val-col-check { width: 44px; text-align: center; }
+.mon-val-tabela .mon-val-col-ev { width: 96px; text-align: center; }
+.mon-val-tabela .mon-val-col-card { display: none; }
+.mon-val-tabela tr.selected td { background: var(--ds-color-primary-bg, var(--ds-color-surface-2)); }
+.mon-val-campo { display: flex; flex-direction: column; gap: 4px; }
+.mon-val-cab { display: flex; align-items: center; }
+.mon-val-cont { margin-left: auto; font-size: 11px; color: var(--ds-color-text-muted); }
+.mon-val-erro { font-size: 12px; color: var(--ds-color-danger-fg); }
+.mon-val-erro:empty { display: none; }
+@media (max-width: 768px) {
+  .mon-val-tabela thead { display: none; }
+  .mon-val-tabela tr { display: flex; align-items: flex-start; gap: 8px; padding: 12px; border-bottom: 1px solid var(--ds-color-border); }
+  .mon-val-tabela td { display: none; border: 0; padding: 0; }
+  .mon-val-tabela td.mon-val-col-check { display: block; width: auto; }
+  .mon-val-tabela td.mon-val-col-card { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; position: relative; padding-right: 40px; }
+  .mon-val-tabela td.mon-val-col-card .acoes-linha { position: absolute; right: 0; top: 0; }
+  .mon-val-card-t { font-weight: var(--ds-weight-medium); }
+  .mon-val-card-m { font-size: 12px; color: var(--ds-color-text-muted); display: flex; align-items: center; gap: 4px; }
+}
 </style>
 
 <div id="monit-corpo-wrap"></div>
@@ -342,6 +366,7 @@ function _monitCarregarDados(forcar, silencioso) {
         monitTudoExpandido = false;
       }
       renderizarMonitoramento(res);
+      if (!silencioso || !_monVal.dados) monValCarregar();
 
       var d = (res && res.desempenho && res.desempenho.proprio) || {};
       if (d.pendentes > 0) {
@@ -623,11 +648,13 @@ function monitMudarModo(modo) {
   estadoMonit.modo = modo;
   estadoMonit.busca = ''; estadoMonit.filtroStatus = ''; estadoMonit.filtroResp = '';
   estadoMonit.filtroElem = ''; estadoMonit.filtroConceito = '';
-  estadoMonit.sort = modo === 'progresso' ? { col: 'codigo', dir: 'asc' } : { col: 'alcanceSort', dir: 'desc' };
+  estadoMonit.sort = modo === 'desempenho' ? { col: 'alcanceSort', dir: 'desc' } : { col: 'codigo', dir: 'asc' };
+  _monVal.sel.clear();
   estadoMonit.paginaAtual = 1;
   _perfExpandidos = {};
   monitTudoExpandido = false;
   if (_perfDados) renderizarMonitoramento(_perfDados);
+  if (modo === 'validar') monValCarregar();
 }
 
 function monitMudarTamanho(val) {
@@ -1339,6 +1366,7 @@ function _monitFiltrosHTML(modo) {
     +   '<button type="button" class="det-modo' + (modo === 'desempenho' ? ' ativo' : '') + '" data-on-click="mon.9"'
     +     ' data-title="Desempenho — eficácia das metas" aria-label="Desempenho" aria-pressed="' + (modo === 'desempenho') + '">'
     +     '<span class="material-symbols-outlined">military_tech</span></button>'
+    +   monValBotaoModoHTML(modo)
     + '</div>'
     + '</div>';
 }
@@ -1415,6 +1443,7 @@ function renderizarMonitoramento(dados) {
   var container = document.getElementById('monit-corpo-wrap');
   if (!container) return;
   var modo = estadoMonit.modo;
+  if (modo === 'validar') { monValRenderizar(container); return; }
   var cols = modo === 'progresso'
     ? '<col><col class="mon-col-status"><col class="mon-col-prog"><col class="mon-col-prazo"><col class="mon-col-resp"><col class="mon-col-acoes">'
     : '<col><col class="mon-col-alc"><col class="mon-col-conc"><col class="mon-col-contrib"><col class="mon-col-acoes">';
@@ -1600,6 +1629,151 @@ function _monitRenderCorpo() {
   _monitAtualizarPaginacao(total, start);
 }
 
+// app_monitoramento_validar — fila "Para validar" (aba Monitoramento). Rotas: apiGetResultadosParaValidar, apiValidarResultado.
+var _monVal = { dados: null, carregando: false, erro: '', sel: new Set(), idRejeitar: null };
+
+function monValCarregar() {
+  if (!_monitPlanoId) return;
+  _monVal.carregando = true; _monVal.erro = '';
+  if (estadoMonit.modo === 'validar') monValRenderCorpo();
+  _monitoramentoSDK.chamar('apiGetResultadosParaValidar', _monitPlanoId).then(function (r) {
+    _monVal.carregando = false; _monVal.dados = r || { itens: [] };
+    var vivos = {}; (_monVal.dados.itens || []).forEach(function (i) { vivos[String(i.id)] = 1; });
+    _monVal.sel.forEach(function (id) { if (!vivos[id]) _monVal.sel.delete(id); });
+    if (!_monVal.dados.podeValidar && estadoMonit.modo === 'validar') { monitMudarModo('progresso'); return; }
+    monValAtualizarBotaoModo();
+    if (estadoMonit.modo === 'validar') monValRenderCorpo();
+  }, function (err) { _monVal.carregando = false; _monVal.erro = (err && err.message) || String(err); if (estadoMonit.modo === 'validar') monValRenderCorpo(); });
+}
+function monValPode() { return !!(_monVal.dados && _monVal.dados.podeValidar); }
+function monValQtd() { return ((_monVal.dados && _monVal.dados.itens) || []).length; }
+function monValBotaoModoHTML(modo) {
+  return '<button type="button" class="det-modo' + (modo === 'validar' ? ' ativo' : '') + (monValPode() ? '' : ' hidden') + '" id="monit-modo-validar" data-on-click="mon.24"'
+    + ' data-title="Para validar — resultados lançados aguardando validação" aria-label="Para validar" aria-pressed="' + (modo === 'validar') + '">'
+    + '<span class="material-symbols-outlined">fact_check</span><span class="ds-tab-count" id="monit-validar-cont">' + monValQtd() + '</span></button>';
+}
+function monValAtualizarBotaoModo() {
+  var b = document.getElementById('monit-modo-validar');
+  if (!b) return;
+  b.classList.toggle('hidden', !monValPode());
+  document.getElementById('monit-validar-cont').textContent = monValQtd();
+}
+function monValRenderizar(container) {
+  container.innerHTML =
+    '<div id="monit-filtros" class="el-filtros">'
+    + '<div class="mon-val-selecao hidden" id="mon-val-selecao">'
+    +   '<button type="button" class="ds-icon-action" data-on-click="mon.25" data-title="Cancelar seleção" aria-label="Cancelar seleção"><span class="material-symbols-outlined">close</span></button>'
+    +   '<span id="mon-val-sel-txt"></span>'
+    +   '<button type="button" class="ds-btn ds-btn--primary" data-on-click="mon.26"><span class="material-symbols-outlined">check</span>Validar selecionados</button>'
+    + '</div>'
+    + '<div class="mon-val-normal" id="mon-val-normal"><div style="flex:1"></div><div class="det-modos" role="group" aria-label="Modo de visualização">'
+    +   '<button type="button" class="det-modo" data-on-click="mon.8" data-title="Progresso — andamento dos elementos" aria-label="Progresso" aria-pressed="false"><span class="material-symbols-outlined">engineering</span></button>'
+    +   '<button type="button" class="det-modo" data-on-click="mon.9" data-title="Desempenho — eficácia das metas" aria-label="Desempenho" aria-pressed="false"><span class="material-symbols-outlined">military_tech</span></button>'
+    +   monValBotaoModoHTML('validar')
+    + '</div></div></div>'
+    + '<div class="el-table-wrap"><table class="el-tabela mon-tabela mon-val-tabela" id="mon-val-tabela"><thead><tr>'
+    +   '<th class="mon-val-col-check"><input type="checkbox" id="mon-val-todos" data-on-change="mon.27" aria-label="Selecionar todos"></th>'
+    +   '<th>Indicador</th><th>Período</th><th>Valor apurado</th><th>Meta do período</th><th>Lançado por</th><th>Lançado em</th><th class="mon-val-col-ev">Evidências</th><th class="mon-col-acoes" aria-hidden="true"></th><th class="mon-val-col-card" aria-hidden="true"></th>'
+    + '</tr></thead><tbody id="mon-val-tbody"></tbody></table></div>';
+  monValRenderCorpo();
+}
+function _monValNum(v, un) {
+  if (v === null || v === undefined || v === '') return '—';
+  var s = typeof _fmtNumBR === 'function' && _isNum(v) ? _fmtNumBR(v) : String(v);
+  return escapeHtml(s + (un ? (un === '%' ? '%' : ' ' + un) : ''));
+}
+function _monValData(v) { return escapeHtml(typeof _isoParaBR === 'function' ? _isoParaBR(String(v || '').slice(0, 10)) : String(v || '')); }
+function _monValSelecionaveis() { return ((_monVal.dados && _monVal.dados.itens) || []).filter(function (i) { return i.podeValidarEste; }); }
+function monValRenderCorpo() {
+  var tb = document.getElementById('mon-val-tbody');
+  if (!tb) return;
+  if (_monVal.carregando && !_monVal.dados) { tb.innerHTML = '<tr><td colspan="10">' + spinnerListaHTML() + '</td></tr>'; return; }
+  if (_monVal.erro) { tb.innerHTML = '<tr><td colspan="10"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">error</span><p class="el-esti">Não foi possível carregar</p><p>' + escapeHtml(_monVal.erro) + '</p></div></td></tr>'; return; }
+  var itens = (_monVal.dados && _monVal.dados.itens) || [];
+  if (!itens.length) { tb.innerHTML = '<tr><td colspan="10"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">task_alt</span><p class="el-esti">Nada para validar</p><p>Todos os resultados lançados já foram validados.</p></div></td></tr>'; monValAtualizarSelecao(); return; }
+  tb.innerHTML = itens.map(function (i) {
+    var id = String(i.id), sel = _monVal.sel.has(id), pode = !!i.podeValidarEste, motivo = pode ? '' : 'Você lançou este resultado';
+    var acoes = acoesLinhaHTML(id, [
+      { icone: 'check', rotulo: 'Validar', principal: true, desabilitado: !pode, onclick: "monValValidar(['" + escapeJsAttr(id) + "'])" },
+      { icone: 'block', rotulo: 'Rejeitar', principal: true, desabilitado: !pode, onclick: "monValAbrirRejeitar('" + escapeJsAttr(id) + "')" }
+    ], { maxDireto: 2 });
+    if (!pode) acoes = '<span data-title="' + motivo + '">' + acoes + '</span>';
+    var ev = i.temEvidencia
+      ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="mon.28" data-ind="' + escapeHtml(i.idIndicador) + '" data-nome="' + escapeHtml(i.nomeIndicador) + '" data-title="Ver evidências" aria-label="Ver evidências"><span class="material-symbols-outlined">attach_file</span></button>' : '';
+    var autor = nomeRespExibicao(i.autorNome, 'USER');
+    return '<tr class="' + (sel ? 'selected' : '') + '">'
+      + '<td class="mon-val-col-check">' + (pode ? '<input type="checkbox" data-on-change="mon.29" data-id="' + escapeHtml(id) + '"' + (sel ? ' checked' : '') + ' aria-label="Selecionar resultado">' : '<input type="checkbox" disabled data-title="' + motivo + '" aria-label="' + motivo + '">') + '</td>'
+      + '<td data-title="' + escapeHtml(i.nomeIndicador) + '">' + escapeHtml(i.nomeIndicador) + '</td>'
+      + '<td>' + escapeHtml(i.periodo || '') + '</td>'
+      + '<td>' + _monValNum(i.valor, i.unidadeMedida) + '</td>'
+      + '<td>' + _monValNum(i.valorMeta, i.unidadeMedida) + '</td>'
+      + '<td data-title="' + escapeHtml(i.autorNome || '') + '">' + escapeHtml(autor) + '</td>'
+      + '<td>' + _monValData(i.lancadoEm) + '</td>'
+      + '<td class="mon-val-col-ev">' + ev + '</td>'
+      + '<td class="mon-col-acoes">' + acoes + '</td>'
+      + '<td class="mon-val-col-card"><div class="mon-val-card-t">' + escapeHtml(i.nomeIndicador) + '</div>'
+      +   '<div class="mon-val-card-m">' + escapeHtml(i.periodo || '') + ' · ' + _monValNum(i.valor, i.unidadeMedida) + ' / meta ' + _monValNum(i.valorMeta, i.unidadeMedida) + '</div>'
+      +   '<div class="mon-val-card-m">' + escapeHtml(autor) + ' · ' + _monValData(i.lancadoEm) + ev + '</div>'
+      +   acoesLinhaHTML(id + '-m', [
+            { icone: 'check', rotulo: 'Validar', desabilitado: !pode, onclick: "monValValidar(['" + escapeJsAttr(id) + "'])" },
+            { icone: 'block', rotulo: 'Rejeitar', desabilitado: !pode, onclick: "monValAbrirRejeitar('" + escapeJsAttr(id) + "')" }], { maxDireto: 0 })
+      + '</td></tr>';
+  }).join('');
+  monValAtualizarSelecao();
+}
+function monValAtualizarSelecao() {
+  var q = _monVal.sel.size, n = _monValSelecionaveis().length, c = document.getElementById('mon-val-todos');
+  if (c) { c.checked = n > 0 && q === n; c.indeterminate = q > 0 && q < n; c.disabled = !n; }
+  var s = document.getElementById('mon-val-selecao'), nb = document.getElementById('mon-val-normal');
+  if (!s) return;
+  s.classList.toggle('hidden', !q); nb.classList.toggle('hidden', !!q);
+  document.getElementById('mon-val-sel-txt').textContent = q + ' resultado' + (q > 1 ? 's' : '') + ' selecionado' + (q > 1 ? 's' : '');
+}
+function monValAlternar(id, on) { if (on) _monVal.sel.add(String(id)); else _monVal.sel.delete(String(id)); monValRenderCorpo(); }
+function monValAlternarTodos(on) { _monVal.sel.clear(); if (on) _monValSelecionaveis().forEach(function (i) { _monVal.sel.add(String(i.id)); }); monValRenderCorpo(); }
+function _monValRemoverOtimista(ids) {
+  var antes = _monVal.dados.itens.slice();
+  _monVal.dados.itens = antes.filter(function (i) { return ids.indexOf(String(i.id)) < 0; });
+  ids.forEach(function (id) { _monVal.sel.delete(id); });
+  monValRenderCorpo(); monValAtualizarBotaoModo();
+  return function () { _monVal.dados.itens = antes; monValRenderCorpo(); monValAtualizarBotaoModo(); };
+}
+function _monValDecidir(ids, decisao, motivo, alvo) {
+  ids = ids.map(String);
+  var desfazer = _monValRemoverOtimista(ids);
+  return uiExecutarComTrava(alvo || null, function () {
+    return Promise.all(ids.map(function (id) { return _monitoramentoSDK.chamar('apiValidarResultado', id, decisao, motivo || ''); }))
+      .then(function () { _monitCarregarDados(true, true); monValCarregar(); },
+            function (err) { desfazer(); showMessage('error', 'Erro', escapeHtml((err && err.message) || String(err))); monValCarregar(); });
+  });
+}
+function monValValidar(ids) { _monValDecidir(ids, 'Validado', '', document.activeElement); }
+function monValAbrirRejeitar(id) {
+  _monVal.idRejeitar = String(id);
+  var m = document.getElementById('mon-val-modal');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'mon-val-modal'; m.className = 'modal-overlay hidden';
+    m.innerHTML = '<div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="mon-val-modal-t" style="max-width:480px">'
+      + '<div class="modal-header"><h3 id="mon-val-modal-t">Rejeitar resultado</h3><button type="button" class="ds-icon-action" data-on-click="mon.30" aria-label="Fechar"><span class="material-symbols-outlined">close</span></button></div>'
+      + '<div class="modal-body"><div class="mon-val-campo"><div class="mon-val-cab"><label class="ds-label" for="mon-val-motivo">Motivo <span class="selsup-obrig">*</span></label><span class="mon-val-cont" id="mon-val-motivo-c">0/1000</span></div>'
+      + '<textarea id="mon-val-motivo" class="ds-input" rows="4" maxlength="1000" data-on-input="mon.31"></textarea><span class="mon-val-erro" id="mon-val-motivo-e" role="alert"></span></div></div>'
+      + '<div class="modal-footer"><button type="button" class="ds-btn ds-btn--secondary" data-on-click="mon.30">Cancelar</button><button type="button" class="ds-btn ds-btn--danger" data-on-click="mon.32">Rejeitar</button></div></div>';
+    document.body.appendChild(m);
+  }
+  var t = document.getElementById('mon-val-motivo'); t.value = ''; monValContarMotivo();
+  document.getElementById('mon-val-motivo-e').textContent = '';
+  m.classList.remove('hidden'); bloquearFundo(); setTimeout(function () { t.focus(); }, 50);
+}
+function monValFecharRejeitar() { var m = document.getElementById('mon-val-modal'); if (m) m.classList.add('hidden'); desbloquearFundo(); }
+function monValContarMotivo() { document.getElementById('mon-val-motivo-c').textContent = document.getElementById('mon-val-motivo').value.length + '/1000'; }
+function monValConfirmarRejeitar(btn) {
+  var motivo = document.getElementById('mon-val-motivo').value.trim();
+  if (motivo.length < 10) { document.getElementById('mon-val-motivo-e').textContent = 'Escreva de 10 a 1.000 caracteres.'; return; }
+  monValFecharRejeitar();
+  _monValDecidir([_monVal.idRejeitar], 'Rejeitado', motivo, btn);
+}
+
 // app_monitoramento_eventos — registro das ações delegadas (uiRegistrarAcoes)
 uiRegistrarAcoes('mon', {
   '1': function (event) { monitAbrirMenuTipos(this, event); },
@@ -1624,7 +1798,16 @@ uiRegistrarAcoes('mon', {
   '20': function (event) { abrirDetalhesElementoPainel(uiArgJs(this.dataset.adblclick0)); },
   '21': function (event) { perfToggleExpand(uiArgJs(this.dataset.aclick0), event); },
   '22': function (event) { monitAbrirPainelIndicador(uiArgJs(this.dataset.adblclick0)); event.stopPropagation(); },
-  '23': function (event) { monitAbrirPainelIndicador(uiArgJs(this.dataset.aclick0)); }
+  '23': function (event) { monitAbrirPainelIndicador(uiArgJs(this.dataset.aclick0)); },
+  '24': function (event) { monitMudarModo('validar'); },
+  '25': function (event) { monValAlternarTodos(false); },
+  '26': function (event) { monValValidar(Array.from(_monVal.sel)); },
+  '27': function (event) { monValAlternarTodos(this.checked); },
+  '28': function (event) { abrirModalEvidenciasIndicador(this.dataset.ind, this.dataset.nome); },
+  '29': function (event) { monValAlternar(this.dataset.id, this.checked); },
+  '30': function (event) { monValFecharRejeitar(); },
+  '31': function (event) { monValContarMotivo(); },
+  '32': function (event) { monValConfirmarRejeitar(this); }
 });
 
 
