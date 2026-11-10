@@ -1293,6 +1293,10 @@ function _uiExecAcao(el, tipo, ev) {
   // Trava de envio (uiAlvoTrava/uiExecutarComTrava em app_ui_utils): repetição com o alvo ainda travado é ignorada.
   var alvo = typeof uiAlvoTrava === 'function' ? uiAlvoTrava(el, tipo, ev) : null;
   if (alvo && uiBotaoTravado(alvo)) { ev.preventDefault(); ev.stopPropagation(); return; }
+  // Simulação fiel do bubbling na delegação: currentTarget aponta para o elemento dono do handler
+  if (ev) {
+    try { Object.defineProperty(ev, 'currentTarget', { value: el, configurable: true }); } catch (_) {}
+  }
   var ret = alvo ? uiExecutarComTrava(alvo, function () { return fn.call(el, ev); }) : fn.call(el, ev);
   if (ret === false) ev.preventDefault();
 }
@@ -8709,7 +8713,7 @@ function acoesLinhaHTML(id, itens, opts) {
 
 function acoesLinhaMenu(id, ev) {
   if (ev) { ev.stopPropagation(); ev.preventDefault(); }
-  var gatilho = ev && (ev.currentTarget || (ev.target && ev.target.closest('.acoes-mais')));
+  var gatilho = ev && ((ev.currentTarget && ev.currentTarget !== document.documentElement && ev.currentTarget !== document.body ? ev.currentTarget : null) || (ev.target && ev.target.closest && ev.target.closest('.acoes-mais')));
   if (_acoesLinhaAberto && _acoesLinhaAberto.id === id) { acoesLinhaFechar(); return; }
   acoesLinhaFechar();
   var reg = _acoesLinhaReg[id];
@@ -8766,6 +8770,7 @@ function acoesLinhaFechar(devolverFoco) {
 var _menuSelecaoGatilho = null;
 
 function abrirMenuSelecao(gatilho, grupos) {
+  if (!gatilho || gatilho === document.documentElement || gatilho === document.body) return;
   if (_menuSelecaoGatilho === gatilho) { fecharMenuSelecao(); return; }
   fecharMenuSelecao();
   acoesLinhaFechar(); // nunca dois popovers abertos ao mesmo tempo
@@ -11638,9 +11643,9 @@ function _inicializarFiltros() {
   estadoPlanos._opcoesStatus = Object.keys(status).sort(function(a, b) { return a.localeCompare(b, 'pt'); });
 }
 
-function pllAbrirFiltro(campo, ev) {
-  ev.stopPropagation();
-  var gatilho = ev.currentTarget;
+function pllAbrirFiltro(campo, ev, gatilho) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  gatilho = gatilho || (this instanceof Element ? this : null) || (ev && ev.currentTarget && ev.currentTarget !== document.documentElement && ev.currentTarget !== document.body ? ev.currentTarget : null) || document.getElementById('pll-filtro-btn-' + campo);
   var def = PLL_FILTROS_DEF[campo];
   var atual = estadoPlanos.filtros[campo];
   var itens = [{ label: 'Todos', ativo: !atual, onclick: "pllSelecionarFiltro('" + campo + "','')" }]
@@ -11723,9 +11728,9 @@ function ordenarPorColuna(col) {
 
 // Menu "Ordenar" (coluna de ações do cabeçalho — mesma coluna dos botões de ação
 // das linhas): alternativa ao clique direto no cabeçalho de cada coluna.
-function pllAbrirMenuOrdenar(ev) {
-  ev.stopPropagation();
-  var gatilho = ev.currentTarget;
+function pllAbrirMenuOrdenar(ev, gatilho) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  gatilho = gatilho || (this instanceof Element ? this : null) || (ev && ev.currentTarget && ev.currentTarget !== document.documentElement && ev.currentTarget !== document.body ? ev.currentTarget : null) || (ev && ev.target && ev.target.closest && ev.target.closest('.pll-sort-btn')) || document.querySelector('.pll-sort-btn');
   var colunas = [
     { valor: 'nome',        label: 'Nome' },
     { valor: 'vigencia',    label: 'Vigência' },
@@ -12339,11 +12344,11 @@ uiRegistrarAcoes('pages_planos_lista', {
   '4': function (event) { pllAbrirBusca(); },
   '5': function (event) { aplicarFiltros(); },
   '6': function (event) { pllLimparBusca(); },
-  '7': function (event) { pllAbrirFiltro('tipo', event); },
+  '7': function (event) { pllAbrirFiltro('tipo', event, this); },
   '8': function (event) { pllLimparUmFiltro('tipo'); },
-  '9': function (event) { pllAbrirFiltro('ano', event); },
+  '9': function (event) { pllAbrirFiltro('ano', event, this); },
   '10': function (event) { pllLimparUmFiltro('ano'); },
-  '11': function (event) { pllAbrirFiltro('status', event); },
+  '11': function (event) { pllAbrirFiltro('status', event, this); },
   '12': function (event) { pllLimparUmFiltro('status'); },
   '13': function (event) { limparTodosFiltros(); },
   '14': function (event) { limparSelecaoPlanos(); },
@@ -12357,7 +12362,7 @@ uiRegistrarAcoes('pages_planos_lista', {
   '22': function (event) { ordenarPorColuna('progresso'); },
   '23': function (event) { atualizarListaPlanos(); },
   '24': function (event) { pllExportarPlaceholder(); },
-  '25': function (event) { pllAbrirMenuOrdenar(event); },
+  '25': function (event) { pllAbrirMenuOrdenar(event, this); },
   '26': function (event) { mudarAba(uiArgJs(this.dataset.aclick0)); },
   '27': function (event) { toggleSelecaoPlano(uiArgJs(this.dataset.achange0), this.checked); },
   '28': function (event) { executarAcaoLotePlanos('restaurar'); },
