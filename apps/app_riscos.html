@@ -1638,18 +1638,16 @@ function _achatarArvoreRisco(noRaiz) {
 }
 function _filtroUsuariosPorContexto(cacheUnidadesLocal, listaUsuarios) {
   var permitidas = _unidadesContextoPermitidoRisco(cacheUnidadesLocal);
-  var setIds = {};
-  permitidas.forEach(function(u) { setIds[String(u.id)] = true; });
-  return listaUsuarios.filter(function(u) { return setIds[String(u.idUnidadeLotacao)]; });
+  var setIds = new Set(permitidas.map(function(u) { return String(u.id); }));
+  return listaUsuarios.filter(function(u) { return uiUsuarioEmUnidades(u, setIds); });
 }
 
 function _filtroUsuariosPorContextoTrat(cacheUnidadesLocal, listaUsuarios) {
   var permitidas = _unidadesContextoPermitidoTrat(cacheUnidadesLocal);
-  var setIds = {};
-  permitidas.forEach(function(u) { setIds[String(u.id)] = true; });
+  var setIds = new Set(permitidas.map(function(u) { return String(u.id); }));
   var setExclusivos = {};
   _usuariosExclusivosContextoTrat().forEach(function(id) { setExclusivos[id] = true; });
-  return listaUsuarios.filter(function(u) { return setIds[String(u.idUnidadeLotacao)] || setExclusivos[String(u.id)]; });
+  return listaUsuarios.filter(function(u) { return uiUsuarioEmUnidades(u, setIds) || setExclusivos[String(u.id)]; });
 }
 
 function _riscosListaAtiva() {

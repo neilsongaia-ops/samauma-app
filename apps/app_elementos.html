@@ -2248,7 +2248,7 @@ function _initSeletorRespElemento() {
       const idsPessoal = _elIdsRespPlanoPessoal();
       if (idsPessoal) return lista.filter(user => idsPessoal.has(String(user.id)));
       const setUnidadeIds = new Set(unidadesContextoPermitidoEl.map(u => String(u.id)));
-      return lista.filter(user => setUnidadeIds.has(String(user.idUnidadeLotacao)));
+      return lista.filter(user => uiUsuarioEmUnidades(user, setUnidadeIds));
     }
   });
 }

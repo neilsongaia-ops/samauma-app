@@ -2627,8 +2627,9 @@ var SeletorResponsaveis = (function() {
       var usuarios = (cfg.getUsuarios ? cfg.getUsuarios() : []) || [];
       if (typeof cfg.filtroUsuarios === 'function') usuarios = cfg.filtroUsuarios(usuarios);
       if (compet) {
-        unidades = unidades.filter(function(u) { return compet.indexOf(String(u.id)) > -1; });
-        usuarios = usuarios.filter(function(u) { return compet.indexOf(String(u.idUnidadeLotacao)) > -1; });
+        var compSet = new Set(compet.map(String));
+        unidades = unidades.filter(function(u) { return compSet.has(String(u.id)); });
+        usuarios = usuarios.filter(function(u) { return uiUsuarioEmUnidades(u, compSet); });
       }
       var un = estado.filtro === 'USER' ? [] : unidades.filter(function(u) {
         return !termo || norm(u.sigla).indexOf(termo) > -1 || norm(u.nome).indexOf(termo) > -1;
@@ -2666,11 +2667,12 @@ var SeletorResponsaveis = (function() {
       }
       if (r.sv.length) {
         h += '<div class="plw-pop-grupo">Servidores</div>';
+        var todasUnidades = (cfg.getUnidades ? cfg.getUnidades() : []) || [];
         r.sv.forEach(function(u) {
-          var lot = infoUnidade(u.idUnidadeLotacao);
+          var siglasLot = uiSiglasUnidadesUsuario(u, todasUnidades);
           estado.visiveis.push({ id: u.id, tipo: 'USER', nome: u.nome });
           h += itemHtml(idx++, 'plw-av--ini', esc(iniciais(u.nome)), esc(u.nome),
-            esc('SIAPE ' + (u.siape || '') + (lot ? ' · ' + lot.sigla : '')), indice(u.id, 'USER') > -1);
+            esc('SIAPE ' + (u.siape || '') + (siglasLot ? ' · ' + siglasLot : '')), indice(u.id, 'USER') > -1);
         });
       }
       if (!estado.visiveis.length) {
@@ -3902,9 +3904,9 @@ function _plwInfoResp(r) {
   }
   var p = _plwUsuario(r.id), nomeU = p ? p.nome : (r.nome || '');
   var meu = _plwMeuId() === String(r.id);
-  var lot = p && p.idUnidadeLotacao ? _plwUnidade(p.idUnidadeLotacao) : null;
+  var siglasLot = uiSiglasUnidadesUsuario(p, cacheUnidadesPlano);
   return { avHtml: escapeHtml(_plwIniciais(nomeU)), avIni: true, prim: _plwNomeCurto(nomeU) + (meu ? ' (você)' : ''),
-           sub: 'Servidor' + (p && p.siape ? ' · SIAPE ' + p.siape : '') + (lot ? ' · ' + lot.sigla : ''),
+           sub: 'Servidor' + (p && p.siape ? ' · SIAPE ' + p.siape : '') + (siglasLot ? ' · ' + siglasLot : ''),
            curto: _plwNomeCurto(nomeU), chipIco: 'person', title: 'Servidor: ' + nomeU };
 }
 
@@ -4238,7 +4240,11 @@ function _plwConteudo(kind, filtro) {
   // resp / adic  Unidades + Servidores numa busca só
   var campo = _plwEl(PLW_CONTROLE[kind]), q2 = campo.value.trim(), nq2 = _plwNorm(q2);
   var comp = _plwCompetencia(), meuId = _plwMeuId();
-  var lotacao = (typeof usuarioLogado !== 'undefined' && usuarioLogado && usuarioLogado.idUnidadeLotacao) ? String(usuarioLogado.idUnidadeLotacao) : null;
+  var uLog = (typeof usuarioLogado !== 'undefined' && usuarioLogado) ? usuarioLogado : null;
+  var lotacoesLogado = ((uLog && uLog.idsUnidades && uLog.idsUnidades.length)
+    ? uLog.idsUnidades
+    : ((uLog && (uLog.idUnidade || uLog.idUnidadeLotacao)) ? [uLog.idUnidade || uLog.idUnidadeLotacao] : [])).map(String);
+  var lotacoesSet = new Set(lotacoesLogado);
   var principal = _plwEstado.resp ? _plwEstado.resp.tipo + ':' + _plwEstado.resp.id : '';
   var selKeys = kind === 'resp' ? [principal] : _plwEstado.adic.map(function(r) { return r.tipo + ':' + r.id; });
   var lim = filtro === 'todos' ? 6 : 30;
@@ -4248,12 +4254,13 @@ function _plwConteudo(kind, filtro) {
     if (kind === 'adic' && principal === 'UNIDADE:' + u.id) return false;
     return !nq2 || _plwNorm(u.sigla).indexOf(nq2) > -1 || _plwNorm(u.nome).indexOf(nq2) > -1;
   });
-  if (lotacao) uns.sort(function(a, b) { return (String(b.id) === lotacao) - (String(a.id) === lotacao); });
+  if (lotacoesSet.size) uns.sort(function(a, b) { return lotacoesSet.has(String(b.id)) - lotacoesSet.has(String(a.id)); });
   // Servidor responsável: lotação de quem indica + subunidades, salvo com RESPONSAVEL_PLANO_QUALQUER_SERVIDOR ligada
   var escopoSrv = uiEscopoRespIdsUnidades(cacheUnidadesPlano, 'RESPONSAVEL_PLANO_QUALQUER_SERVIDOR');
+  var compSet = comp ? new Set(comp.map(String)) : null;
   var srv = cacheUsuariosPlano.filter(function(u) {
-    if (escopoSrv) { if (!escopoSrv.has(String(u.idUnidadeLotacao))) return false; }
-    else if (comp && comp.indexOf(String(u.idUnidadeLotacao)) < 0) return false;
+    if (escopoSrv) { if (!uiUsuarioEmUnidades(u, escopoSrv)) return false; }
+    else if (compSet && !uiUsuarioEmUnidades(u, compSet)) return false;
     if (kind === 'adic' && principal === 'USER:' + u.id) return false;
     return !nq2 || _plwNorm(u.nome).indexOf(nq2) > -1 || String(u.siape || '').indexOf(nq2) > -1;
   });
@@ -4271,13 +4278,13 @@ function _plwConteudo(kind, filtro) {
   var grupos = [];
   if (filtro !== 'USER' && uns.length) grupos.push({ label: 'Unidades', itens: uns.slice(0, lim).map(function(u) {
     return { avHtml: '<span class="material-symbols-outlined">apartment</span>', avCls: '', prim: _plwHl(u.sigla, nq2), sub: _plwHl(u.nome, nq2),
-             quebra: false, tag: lotacao === String(u.id) ? 'Sua lotação' : '', sel: selKeys.indexOf('UNIDADE:' + u.id) > -1,
+             quebra: false, tag: lotacoesSet.has(String(u.id)) ? 'Sua lotação' : '', sel: selKeys.indexOf('UNIDADE:' + u.id) > -1,
              pick: escolher({ id: String(u.id), tipo: 'UNIDADE', nome: u.sigla + ' - ' + u.nome }) };
   }) });
   if (filtro !== 'UNIDADE' && srv.length) grupos.push({ label: 'Servidores', itens: srv.slice(0, lim).map(function(u) {
-    var lot = _plwUnidade(u.idUnidadeLotacao);
+    var siglasLot = uiSiglasUnidadesUsuario(u, cacheUnidadesPlano);
     return { avHtml: escapeHtml(_plwIniciais(u.nome)), avCls: 'plw-av--ini', prim: _plwHl(u.nome, nq2),
-             sub: _plwHl('SIAPE ' + (u.siape || '') + (lot ? ' · ' + lot.sigla : ''), nq2),
+             sub: _plwHl('SIAPE ' + (u.siape || '') + (siglasLot ? ' · ' + siglasLot : ''), nq2),
              quebra: false, tag: meuId === String(u.id) ? 'Você' : '', sel: selKeys.indexOf('USER:' + u.id) > -1,
              pick: escolher({ id: String(u.id), tipo: 'USER', nome: u.nome }) };
   }) });
@@ -9419,18 +9426,36 @@ function uiEscopoRespLiberado(chave) {
   if (!ch || typeof ch[chave] !== 'boolean') return true;
   return ch[chave];
 }
-// Ids (string) das unidades no escopo: lotação + descendentes (via idPai). null = sem filtro.
+// Pessoa (usuário da lista de responsáveis ou o logado) está lotada em alguma das unidades do conjunto?
+// Vale a união dos vínculos ativos (`idsUnidades`), igual à validação do servidor. `conjunto`: Set de ids em texto.
+function uiUsuarioEmUnidades(usuario, conjunto) {
+  if (!usuario || !conjunto) return false;
+  var ids = (usuario.idsUnidades && usuario.idsUnidades.length)
+    ? usuario.idsUnidades
+    : ((usuario.idUnidadeLotacao || usuario.idUnidade) ? [usuario.idUnidadeLotacao || usuario.idUnidade] : []);
+  return ids.some(function(id) { return conjunto.has(String(id)); });
+}
+// Siglas das unidades da pessoa, separadas por " · " (para exibir ao lado do nome).
+function uiSiglasUnidadesUsuario(usuario, unidades) {
+  var porId = {};
+  (unidades || []).forEach(function(x) { porId[String(x.id)] = x.sigla; });
+  var ids = (usuario && usuario.idsUnidades && usuario.idsUnidades.length)
+    ? usuario.idsUnidades
+    : ((usuario && (usuario.idUnidadeLotacao || usuario.idUnidade)) ? [usuario.idUnidadeLotacao || usuario.idUnidade] : []);
+  return ids.map(function(id) { return porId[String(id)]; }).filter(Boolean).join(' · ');
+}
+// Ids (string) das unidades no escopo: lotações do usuário logado + descendentes (via idPai). null = sem filtro.
 function uiEscopoRespIdsUnidades(unidades, chave) {
   if (uiEscopoRespLiberado(chave)) return null;
   var u = (typeof usuarioLogado !== 'undefined') ? usuarioLogado : null;
-  var raiz = u && u.idUnidadeLotacao ? String(u.idUnidadeLotacao) : '';
-  if (!raiz) return null;
+  var raizes = ((u && u.idsUnidades && u.idsUnidades.length) ? u.idsUnidades : (u && (u.idUnidadeLotacao || u.idUnidade) ? [u.idUnidadeLotacao || u.idUnidade] : [])).map(String);
+  if (!raizes.length) return null;
   var filhos = {};
   (unidades || []).forEach(function(x) {
     var pai = x.idPai ? String(x.idPai) : '';
     if (pai && pai !== String(x.id)) (filhos[pai] = filhos[pai] || []).push(String(x.id));
   });
-  var ids = new Set([raiz]), pilha = [raiz];
+  var ids = new Set(raizes), pilha = raizes.slice();
   while (pilha.length) (filhos[pilha.pop()] || []).forEach(function(f) { if (!ids.has(f)) { ids.add(f); pilha.push(f); } });
   return ids;
 }
@@ -10782,7 +10807,7 @@ uiRegistrarAcoes('pages_home', {
 
     <!-- Tabela -->
     <div class="table-container pll-table-wrap">
-      <table class="table-full pll-tabela" id="tabela-planos">
+      <table class="pll-tabela" id="tabela-planos">
         <thead>
           <tr>
             <th class="pll-col-check">
@@ -10849,9 +10874,9 @@ body.high-contrast .barra-selecao { background: #000; border-color: var(--ds-col
   padding: 10px 14px; border-bottom: 1px solid var(--ds-color-border-ui); vertical-align: middle;
 }
 .table-full tbody tr:last-child td { border-bottom: none; }
-.table-full tbody tr:hover { background: var(--ds-color-bg-subtle); }
-.table-full tbody tr.selecionada { background: var(--ds-color-surface-2); }
-body.high-contrast .table-full tbody tr.selecionada { background: #1a1a2e; }
+.table-full tbody tr:hover td { background-color: var(--ds-sidebar-item-hover); }
+.table-full tbody tr.selecionada td { background-color: var(--ds-sidebar-item-active); }
+body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a2e; }
 
 /* Responsável */
 .resp-badge {
@@ -11119,7 +11144,7 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
    trás dele. Com bordas separadas, cada <th>/<td> pinta a própria borda sozinho, e ela
    acompanha o sticky normalmente. Nenhuma célula desta tabela usa borda de cima nem
    lateral, só de baixo — border-spacing:0 então não deixa nenhum vão visível. */
-#page-planos .pll-tabela { margin: 0; border-collapse: separate; border-spacing: 0; }
+#page-planos .pll-tabela { width: 100%; margin: 0; border-collapse: separate; border-spacing: 0; }
 #page-planos .pll-tabela thead th {
   /* Terceiro nível do empilhamento sticky: cola logo abaixo das abas + filtros
      (soma das duas variáveis de altura — ver comentário grande acima de .pll-tabs-row) */
@@ -11144,10 +11169,15 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
    duplo clique = abre detalhes (ver pllCliqueLinha/pllDuploCliqueLinha no script) —
    cursor de "clicável" na linha inteira, não mais só no nome. user-select:none evita
    grifar texto sem querer ao segurar Shift e clicar. */
-#page-planos .pll-tabela tbody tr { cursor: pointer; user-select: none; }
+#page-planos .pll-tabela tbody tr {
+  cursor: pointer; user-select: none;
+  transition: background var(--ds-duration-fast) var(--ds-ease-standard);
+}
 #page-planos .pll-tabela tbody tr:last-child td { border-bottom: none; }
 #page-planos .pll-tabela tbody tr:hover td { background: var(--ds-sidebar-item-hover); }
 #page-planos .pll-tabela tbody tr.selecionada td { background: var(--ds-sidebar-item-active); }
+#page-planos .pll-tabela tbody tr.pll-linha-msg { cursor: default; }
+#page-planos .pll-tabela tbody tr.pll-linha-msg:hover td { background: transparent !important; }
 #page-planos .th-sortable:hover { color: var(--ds-color-action); }
 #page-planos .sort-icon { color: var(--ds-color-action); }
 /* Checkbox: MESMO padding/alinhamento no cabeçalho e nas linhas (o th tem regra própria de
@@ -11257,7 +11287,9 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
     grid-template-areas: "chk tipo . acoes" "nome nome nome nome" "card card card card";
     gap: 6px 8px; align-items: center; padding: 12px;
     background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-shadow-1);
+    transition: background var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast), border-color var(--ds-duration-fast);
   }
+  #page-planos .pll-tabela tbody tr:hover { background: var(--ds-sidebar-item-hover); }
   #page-planos .pll-tabela tbody tr.selecionada { background: var(--ds-sidebar-item-active); border-color: var(--ds-color-action); }
   #page-planos .pll-tabela tbody td { display: block; padding: 0; border: none; }
   /* fundo transparente também no hover/selecionada (o realce é do card); SEM display aqui, senão
@@ -11461,10 +11493,13 @@ function _montarAbas() {
 function _classificarPlano(p) {
   if (p.status === 'Excluído') return 'lixeira';
   var email = ((usuarioLogado && usuarioLogado.email) || '').toLowerCase().trim();
-  var idUnidade = ((usuarioLogado && usuarioLogado.idUnidade)  || '').trim();
+  var idsUnidades = (usuarioLogado && usuarioLogado.idsUnidades && usuarioLogado.idsUnidades.length)
+    ? usuarioLogado.idsUnidades
+    : ((usuarioLogado && (usuarioLogado.idUnidade || usuarioLogado.idUnidadeLotacao)) ? [usuarioLogado.idUnidade || usuarioLogado.idUnidadeLotacao] : []);
+  var setUnidades = new Set(idsUnidades.map(function(x) { return String(x).trim(); }));
   if (email && (p.criadoPor || '').toLowerCase().trim() === email) return 'meus';
-  if (idUnidade && p.tipoResponsavel === 'UNIDADE' &&
-      String(p.idResponsavelRaw || '').trim() === idUnidade) return 'unidade';
+  if (setUnidades.size && p.tipoResponsavel === 'UNIDADE' &&
+      setUnidades.has(String(p.idResponsavelRaw || '').trim())) return 'unidade';
   return 'outras';
 }
 
@@ -12397,9 +12432,9 @@ body.high-contrast .barra-selecao { background: #000; border-color: var(--ds-col
   padding: 10px 14px; border-bottom: 1px solid var(--ds-color-border-ui); vertical-align: middle;
 }
 .table-full tbody tr:last-child td { border-bottom: none; }
-.table-full tbody tr:hover { background: var(--ds-color-bg-subtle); }
-.table-full tbody tr.selecionada { background: var(--ds-color-surface-2); }
-body.high-contrast .table-full tbody tr.selecionada { background: #1a1a2e; }
+.table-full tbody tr:hover td { background-color: var(--ds-sidebar-item-hover); }
+.table-full tbody tr.selecionada td { background-color: var(--ds-sidebar-item-active); }
+body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a2e; }
 
 /* Responsável */
 .resp-badge {
@@ -12667,7 +12702,7 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
    trás dele. Com bordas separadas, cada <th>/<td> pinta a própria borda sozinho, e ela
    acompanha o sticky normalmente. Nenhuma célula desta tabela usa borda de cima nem
    lateral, só de baixo — border-spacing:0 então não deixa nenhum vão visível. */
-#page-calendario .cal-tabela { margin: 0; border-collapse: separate; border-spacing: 0; }
+#page-calendario .cal-tabela { width: 100%; margin: 0; border-collapse: separate; border-spacing: 0; }
 #page-calendario .cal-tabela thead th {
   /* Terceiro nível do empilhamento sticky: cola logo abaixo das abas + filtros
      (soma das duas variáveis de altura — ver comentário grande acima de .cal-tabs-row) */
@@ -12692,10 +12727,15 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
    duplo clique = abre detalhes (ver pllCliqueLinha/pllDuploCliqueLinha no script) —
    cursor de "clicável" na linha inteira, não mais só no nome. user-select:none evita
    grifar texto sem querer ao segurar Shift e clicar. */
-#page-calendario .cal-tabela tbody tr { cursor: pointer; user-select: none; }
+#page-calendario .cal-tabela tbody tr {
+  cursor: pointer; user-select: none;
+  transition: background var(--ds-duration-fast) var(--ds-ease-standard);
+}
 #page-calendario .cal-tabela tbody tr:last-child td { border-bottom: none; }
 #page-calendario .cal-tabela tbody tr:hover td { background: var(--ds-sidebar-item-hover); }
 #page-calendario .cal-tabela tbody tr.selecionada td { background: var(--ds-sidebar-item-active); }
+#page-calendario .cal-tabela tbody tr.cal-linha-msg { cursor: default; }
+#page-calendario .cal-tabela tbody tr.cal-linha-msg:hover td { background: transparent !important; }
 #page-calendario .th-sortable:hover { color: var(--ds-color-action); }
 #page-calendario .sort-icon { color: var(--ds-color-action); }
 /* Checkbox: MESMO padding/alinhamento no cabeçalho e nas linhas (o th tem regra própria de
@@ -12805,7 +12845,9 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
     grid-template-areas: "chk tipo . acoes" "nome nome nome nome" "card card card card";
     gap: 6px 8px; align-items: center; padding: 12px;
     background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-shadow-1);
+    transition: background var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast), border-color var(--ds-duration-fast);
   }
+  #page-calendario .cal-tabela tbody tr:hover { background: var(--ds-sidebar-item-hover); }
   #page-calendario .cal-tabela tbody tr.selecionada { background: var(--ds-sidebar-item-active); border-color: var(--ds-color-action); }
   #page-calendario .cal-tabela tbody td { display: block; padding: 0; border: none; }
   /* fundo transparente também no hover/selecionada (o realce é do card); SEM display aqui, senão
@@ -12967,7 +13009,7 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
 
   <div class="cal-tabela-card hidden" id="cal-visao-lista">
     <div class="table-container cal-table-wrap">
-      <table class="table-full cal-tabela" id="cal-tabela">
+      <table class="cal-tabela" id="cal-tabela">
         <thead>
           <tr>
             <th class="cal-col-check"><input type="checkbox" id="cal-chk-todos" data-on-change="pages_calendario.12" aria-label="Selecionar todos"></th>
@@ -18310,7 +18352,7 @@ uiRegistrarAcoes('plano', {
   <!-- Tabela sem moldura (no mobile vira galeria de cards via CSS) -->
   <div class="exl-tabela-card">
     <div class="table-container exl-table-wrap">
-      <table class="table-full exl-tabela" id="exl-tabela">
+      <table class="exl-tabela" id="exl-tabela">
         <thead id="exl-thead"></thead>
         <tbody id="exl-tbody">
           <tr class="exl-linha-msg"><td colspan="6"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando planos em execução…</span></div></td></tr>
@@ -18457,8 +18499,13 @@ uiRegistrarAcoes('plano', {
   padding: 14px 16px; vertical-align: middle; border-bottom: 1px solid var(--ds-glass-border);
   font-size: var(--ds-text-base); color: var(--ds-color-text);
 }
-#page-execucao-planos .exl-tabela tbody tr.exl-linha { cursor: pointer; user-select: none; transition: background var(--ds-duration-fast); }
+#page-execucao-planos .exl-tabela tbody tr.exl-linha {
+  cursor: pointer; user-select: none;
+  transition: background var(--ds-duration-fast) var(--ds-ease-standard);
+}
 #page-execucao-planos .exl-tabela tbody tr.exl-linha:hover td { background: var(--ds-sidebar-item-hover); }
+#page-execucao-planos .exl-tabela tbody tr.exl-linha-msg { cursor: default; }
+#page-execucao-planos .exl-tabela tbody tr.exl-linha-msg:hover td { background: transparent !important; }
 #page-execucao-planos .th-sortable { cursor: pointer; user-select: none; }
 #page-execucao-planos .th-sortable:hover { color: var(--ds-color-action); }
 #page-execucao-planos .sort-icon { font-size: 14px; vertical-align: middle; margin-left: 3px; color: var(--ds-color-action); }
@@ -18558,7 +18605,9 @@ uiRegistrarAcoes('plano', {
     grid-template-areas: "tipo . acoes" "nome nome nome" "card card card";
     gap: 6px 8px; align-items: center; padding: 12px;
     background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-shadow-1);
+    transition: background var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast), border-color var(--ds-duration-fast);
   }
+  #page-execucao-planos .exl-tabela tbody tr.exl-linha:hover { background: var(--ds-sidebar-item-hover); }
   #page-execucao-planos .exl-tabela tbody td { display: none; padding: 0; border: none; }
   #page-execucao-planos .exl-tabela tbody tr.exl-linha:hover td { background: none; }
   #page-execucao-planos .exl-tabela tbody td.exl-col-plano,
@@ -20488,7 +20537,7 @@ uiRegistrarAcoes('pages_colaboracao', {
   <!-- Tabela (sem moldura; no mobile vira galeria de cards via CSS) -->
   <div class="avl-tabela-card">
     <div class="table-container avl-table-wrap">
-      <table class="table-full avl-tabela" id="av-tabela">
+      <table class="avl-tabela" id="av-tabela">
         <thead id="av-thead"></thead>
         <tbody id="av-tbody">
           <tr class="avl-linha-msg"><td colspan="8"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando planos…</span></div></td></tr>
@@ -20649,8 +20698,14 @@ uiRegistrarAcoes('pages_colaboracao', {
 #page-avaliacao-planos .avl-tabela .avl-col-check { width: 48px; text-align: left; padding: 14px 0 14px 16px; }
 #page-avaliacao-planos .avl-tabela thead .avl-col-check { padding-top: 12px; padding-bottom: 12px; }
 #page-avaliacao-planos .avl-tabela input[type="checkbox"] { display: block; margin: 0; width: 16px; height: 16px; cursor: pointer; }
+#page-avaliacao-planos .avl-tabela tbody tr.avl-linha {
+  cursor: pointer; user-select: none;
+  transition: background var(--ds-duration-fast) var(--ds-ease-standard);
+}
 #page-avaliacao-planos .avl-tabela tbody tr:last-child td { border-bottom: none; }
 #page-avaliacao-planos .avl-tabela tbody tr.avl-linha:hover td { background: var(--ds-sidebar-item-hover); }
+#page-avaliacao-planos .avl-tabela tbody tr.avl-linha-msg { cursor: default; }
+#page-avaliacao-planos .avl-tabela tbody tr.avl-linha-msg:hover td { background: transparent !important; }
 #page-avaliacao-planos .th-sortable { cursor: pointer; user-select: none; }
 #page-avaliacao-planos .th-sortable:hover { color: var(--ds-color-action); }
 #page-avaliacao-planos .sort-icon { font-size: 14px; vertical-align: middle; margin-left: 3px; color: var(--ds-color-action); }
@@ -20747,7 +20802,9 @@ uiRegistrarAcoes('pages_colaboracao', {
     grid-template-areas: "chk tipo . acoes" "nome nome nome nome" "card card card card";
     gap: 6px 8px; align-items: center; padding: 12px;
     background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-shadow-1);
+    transition: background var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast), border-color var(--ds-duration-fast);
   }
+  #page-avaliacao-planos .avl-tabela tbody tr.avl-linha:hover { background: var(--ds-sidebar-item-hover); }
   #page-avaliacao-planos .avl-tabela tbody td { display: none; padding: 0; border: none; }
   #page-avaliacao-planos .avl-tabela tbody tr.avl-linha:hover td,
   #page-avaliacao-planos .avl-tabela tbody tr.avl-linha.selecionada td { background: none; }

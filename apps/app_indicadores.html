@@ -1197,7 +1197,7 @@ function _initSeletorRespInd() {
       var setUnidadeIds = new Set(unidadesContextoPermitidoInd.map(function(u) { return String(u.id); }));
       var setExclusivos = new Set(usuariosExclusivosContextoInd.map(String));
       return (lista || []).filter(function(user) {
-        return setUnidadeIds.has(String(user.idUnidadeLotacao)) || setExclusivos.has(String(user.id));
+        return uiUsuarioEmUnidades(user, setUnidadeIds) || setExclusivos.has(String(user.id));
       });
     }
   });
