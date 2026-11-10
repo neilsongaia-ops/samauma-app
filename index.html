@@ -19375,112 +19375,92 @@ uiRegistrarAcoes('pages_execucao_planos', {
 
        <!-- ARQUIVO: pages_execucao_tarefas.html -->
 <!-- Workspace de execução de UM plano (aberto via abrirExecucaoPlano(idPlano),
-     em pages_execucao_planos.html). Segue o "Padrão para Detalhamento" (ver
-     memória do projeto): header com metadados+KPIs igual ao de
-     pages_plano_detalhe.html, abas Responsabilidades (5W2H/Kanban/Planner/
-     Gantt) e Ações de Tratamento (leitura + registro de execução). Várias
-     classes usadas aqui (.detalhe-header, .plano-info-grid, .meta-row,
-     .badge-tipo, .badge-status, .kpi-card, .view-tabs, .tab-btn, .det-toolbar,
-     .elem-main-toolbar, .el-vis-section, .el-filtros-area, .gantt-*, .meta-tag,
-     .th-sortable) são GLOBAIS — definidas em pages_plano_detalhe.html (sempre
-     incluído em index.html), não redefinidas aqui, exatamente como previsto
-     pelo Padrão para Detalhamento (reaproveitar markup/CSS, só reprefixar ids). -->
+     em pages_execucao_planos.html).
+     Padronizado com pages_plano_detalhe.html:
+     - Hero limpo com título de 30px, badge-status e botão de painel lateral (right_panel_open);
+     - Painel lateral (#extp-panel) com abas Detalhes e Atividade;
+     - Modos de visualização simplificados: apenas Lista e Kanban;
+     - Kanban com colunas personalizáveis e arrasto suave sem abertura forçada de modais;
+     - Binômio Elemento + Indicadores ancorados ("pendendo do elemento");
+     - Suporte a planos plurianuais com seletor de exercício/período. -->
 <div id="page-execucao-tarefas" class="page-content hidden">
 
-  <div class="detalhe-header">
-    <div class="plano-info-grid">
-      <div class="info-main">
-        <span class="badge-tipo" id="ext-tipo">TIPO</span>
-        <h1 id="ext-titulo">Carregando...</h1>
-        <div class="cal-prazos hidden" id="ext-prazos"></div>
-        <div class="meta-row">
-          <span><span class="material-symbols-outlined icon-xs">calendar_month</span> <span id="ext-vigencia">--</span></span>
-          <span><span class="material-symbols-outlined icon-xs" id="ext-resp-icone">apartment</span> <span id="ext-unidade">--</span></span>
-          <span class="badge-status" id="ext-status">--</span>
-          <span class="ext-vis-readonly" data-title="Visibilidade do plano (somente leitura aqui)">
-            <span class="material-symbols-outlined" style="font-size:14px" id="ext-vis-icone">lock_open</span>
-            <span id="ext-vis-label">Público</span>
-          </span>
-        </div>
-      </div>
-
-      <div class="info-kpis" id="ext-kpis">
-        <div class="kpi-card">
-          <div class="kpi-label">Total</div>
-          <div class="kpi-value" id="ext-kpi-total">0</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Concluídas</div>
-          <div class="kpi-value" id="ext-kpi-concluidas">0</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Em Andamento</div>
-          <div class="kpi-value" id="ext-kpi-andamento">0</div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-label">Atrasadas</div>
-          <div class="kpi-value" id="ext-kpi-atrasadas">0</div>
-        </div>
-      </div>
+  <!-- HERO ABERTO: Título + Status + Prazos (igual ao padrão da página de detalhes) -->
+  <section class="detalhe-hero" id="ext-hero">
+    <div class="detalhe-hero-titulo">
+      <h1 id="ext-titulo">Carregando...</h1>
+      <span class="badge-status" id="ext-status">--</span>
     </div>
+    <div class="cal-prazos hidden" id="ext-prazos"></div>
+  </section>
 
-    <div class="view-tabs-container">
-      <div class="view-tabs">
-        <button class="tab-btn active" data-aba="tarefas" data-on-click="pages_execucao_tarefas.1" id="ext-btn-tab-resp">
-          <span class="material-symbols-outlined icon-sm">checklist</span> Responsabilidades
-        </button>
-        <button class="tab-btn" data-aba="riscos" data-on-click="pages_execucao_tarefas.2" id="ext-btn-tab-trat">
-          <span class="material-symbols-outlined icon-sm">shield</span> Ações de Tratamento
-        </button>
-      </div>
+  <!-- BOTÃO STICKY DO HERO: Abre o painel lateral de detalhes (#extp-panel) -->
+  <div class="detalhe-hero-acoes desktop-only-flex" id="ext-hero-acoes">
+    <button type="button" class="ds-icon-action" id="ext-btn-detalhes" data-on-click="pages_execucao_tarefas.24"
+            data-title="Detalhes do plano" aria-label="Detalhes do plano" aria-expanded="false">
+      <span class="material-symbols-outlined">right_panel_open</span>
+    </button>
+  </div>
+
+  <!-- LINHA DE ABAS DA PÁGINA (Responsabilidades / Ações de Tratamento) -->
+  <div class="view-tabs-container" id="ext-tabs-row">
+    <div class="view-tabs" role="tablist">
+      <button class="tab-btn active" data-aba="tarefas" data-on-click="pages_execucao_tarefas.1" id="ext-btn-tab-resp">
+        <span class="material-symbols-outlined icon-sm">checklist</span> Responsabilidades
+      </button>
+      <button class="tab-btn" data-aba="riscos" data-on-click="pages_execucao_tarefas.2" id="ext-btn-tab-trat">
+        <span class="material-symbols-outlined icon-sm">shield</span> Ações de Tratamento
+      </button>
     </div>
   </div>
 
   <!-- PAINEL: RESPONSABILIDADES -->
   <div id="ext-painel-tarefas">
 
-    <!-- Seção 1: modos de visualização + toolbar da seção -->
+    <!-- Barra de Modos de Visualização e Controles -->
     <div class="el-vis-section">
       <div class="elementos-toolbar">
+        <!-- Alternador Simplificado: Apenas Lista e Kanban -->
         <div class="view-mode-toggle">
-          <button class="mode-btn active" data-view="5w2h" data-on-click="pages_execucao_tarefas.3" id="ext-btn-modo-5w2h">
-            <span class="material-symbols-outlined icon-sm">table_chart</span> 5W2H
-          </button>
-          <button class="mode-btn" data-view="kanban" data-on-click="pages_execucao_tarefas.4" id="ext-btn-modo-kanban">
+          <button class="mode-btn active" data-view="kanban" data-on-click="pages_execucao_tarefas.4" id="ext-btn-modo-kanban" data-title="Visualização em Kanban">
             <span class="material-symbols-outlined icon-sm">view_kanban</span> Kanban
           </button>
-          <button class="mode-btn" data-view="planner" data-on-click="pages_execucao_tarefas.5" id="ext-btn-modo-planner">
-            <span class="material-symbols-outlined icon-sm">account_tree</span> Planner
-          </button>
-          <button class="mode-btn" data-view="gantt" data-on-click="pages_execucao_tarefas.6" id="ext-btn-modo-gantt">
-            <span class="material-symbols-outlined icon-sm">date_range</span> Gantt
+          <button class="mode-btn" data-view="lista" data-on-click="pages_execucao_tarefas.3" id="ext-btn-modo-lista" data-title="Visualização em Lista">
+            <span class="material-symbols-outlined icon-sm">format_list_bulleted</span> Lista
           </button>
         </div>
 
-        <div class="elem-main-toolbar tb-open" id="ext-sec-toolbar" style="position:relative;">
-          <button class="elem-mtb-trigger" id="ext-btn-sec-tb-trigger"
-                  data-on-click="pages_execucao_tarefas.7" data-title="Recolher">
-            <span class="material-symbols-outlined">chevron_right</span>
+        <!-- Seletor de Período / Exercício Plurianual -->
+        <div class="ext-periodo-wrap" id="ext-periodo-wrap" data-title="Selecione o exercício de apuração do plano">
+          <span class="material-symbols-outlined" style="font-size:16px;color:var(--ds-color-action)">event</span>
+          <label for="ext-seletor-ano" class="ext-periodo-label">Exercício:</label>
+          <select id="ext-seletor-ano" class="ext-select-periodo" data-on-change="pages_execucao_tarefas.28">
+            <!-- Opções preenchidas dinamicamente a partir dos anos do plano -->
+          </select>
+        </div>
+
+        <!-- Ações do Workspace -->
+        <div class="elem-main-toolbar" style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+          <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" id="ext-btn-kanban-cfg" data-on-click="pages_execucao_tarefas.29" data-title="Configurar colunas do Kanban">
+            <span class="material-symbols-outlined" style="font-size:16px">view_column</span> Colunas
           </button>
-          <div class="elem-mtb-panel" id="ext-sec-tb-panel">
-            <button class="elem-mtb-btn" data-on-click="pages_execucao_tarefas.8" data-title="Exportar (em desenvolvimento)">
-              <span class="material-symbols-outlined">download</span>
-            </button>
-          </div>
+          <button type="button" class="elem-tb-btn" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar dados">
+            <span class="material-symbols-outlined">refresh</span>
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- Seção 2: filtros + contadores + cards/tabela -->
+    <!-- Área de Filtros e Busca -->
     <div class="el-filtros-cards-section">
       <div class="el-filtros-area">
         <div class="elementos-filtros">
           <div class="filtro-busca-wrap">
             <span class="material-symbols-outlined filtro-search-icon">search</span>
             <input type="text" class="filtro-input" id="ext-busca"
-                   placeholder="Buscar tarefa ou código…" data-on-input="pages_execucao_tarefas.9">
+                   placeholder="Buscar elemento, código ou indicador…" data-on-input="pages_execucao_tarefas.9">
           </div>
-          <select class="filtro-select" id="ext-filtro-status" data-on-change="pages_execucao_tarefas.10">
+          <select class="filtro-select" id="ext-filtro-status" data-on-change="pages_execucao_tarefas.10" style="display:none;">
             <option value="todos">Todos os status</option>
             <option value="Não Iniciado">Não Iniciado</option>
             <option value="Em Andamento">Em Andamento</option>
@@ -19494,13 +19474,10 @@ uiRegistrarAcoes('pages_execucao_planos', {
         </div>
         <div class="el-tipo-contador">
           <div class="el-tipo-chips" id="ext-contador"></div>
-          <div class="el-tipo-actions">
-            <button class="elem-tb-btn" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar">
-              <span class="material-symbols-outlined">refresh</span>
-            </button>
-          </div>
         </div>
       </div>
+
+      <!-- Container Dinâmico (Kanban ou Lista) -->
       <div class="el-cards-area">
         <div id="ext-container"></div>
       </div>
@@ -19512,86 +19489,317 @@ uiRegistrarAcoes('pages_execucao_planos', {
     <div id="ext-riscos-container"></div>
   </div>
 
+  <!-- PAINEL LATERAL DE DETALHES (#extp-panel) -->
+  <aside class="detp-panel" id="extp-panel" aria-hidden="true">
+    <div class="detp-tabs">
+      <button type="button" class="detp-tab active" id="extp-tab-detalhes" data-on-click="pages_execucao_tarefas.25">Detalhes</button>
+      <button type="button" class="detp-tab" id="extp-tab-atividade" data-on-click="pages_execucao_tarefas.26">Atividade</button>
+      <button type="button" class="ds-icon-action ds-icon-action--sm detp-fechar" data-on-click="pages_execucao_tarefas.27"
+              data-title="Fechar" aria-label="Fechar painel de detalhes">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="detp-body">
+      <div id="extp-view-detalhes" class="detp-view"><!-- Injetado via JS --></div>
+      <div id="extp-view-atividade" class="detp-view hidden"><!-- Injetado via JS --></div>
+    </div>
+  </aside>
+
+  <!-- MODAL: CONFIGURAÇÃO DE COLUNAS DO KANBAN -->
+  <div id="ext-modal-colunas" class="ext-mini-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ext-modal-colunas-titulo">
+    <div class="ext-mini-card">
+      <div class="ext-mini-header">
+        <h4 id="ext-modal-colunas-titulo">Configurar Colunas do Kanban</h4>
+        <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.30" aria-label="Fechar">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="ext-mini-body">
+        <p style="font-size:0.84rem;color:var(--ds-color-text-muted);margin:0">
+          Personalize as colunas do seu quadro de execução. Os cards arrastados são organizados conforme sua preferência.
+        </p>
+        <div id="ext-colunas-lista" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto"></div>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <input type="text" id="ext-nova-coluna-titulo" class="filtro-input" placeholder="Nome da nova coluna…" style="flex:1" maxlength="40">
+          <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_execucao_tarefas.31">Adicionar</button>
+        </div>
+      </div>
+      <div class="ext-mini-footer">
+        <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="pages_execucao_tarefas.32">Restaurar padrão</button>
+        <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_execucao_tarefas.30">Concluir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINI MODAL: REGISTRAR EXECUÇÃO DE TRATAMENTO -->
+  <div id="ext-modal-registro" class="ext-mini-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ext-modal-reg-titulo">
+    <div class="ext-mini-card">
+      <div class="ext-mini-header">
+        <h4 id="ext-modal-reg-titulo">Registrar Execução de Tratamento</h4>
+        <button type="button" class="ds-icon-action ds-icon-action--sm" onclick="extFecharModalRegistro()" aria-label="Fechar">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="ext-mini-body">
+        <input type="hidden" id="ext-reg-id-tratamento">
+        <div class="ext-mini-field">
+          <label for="ext-reg-data">Data da execução *</label>
+          <input type="date" id="ext-reg-data" class="filtro-input">
+        </div>
+        <div class="ext-mini-field">
+          <label for="ext-reg-obs">Observação / Evidência</label>
+          <textarea id="ext-reg-obs" class="filtro-input" rows="3" placeholder="Descreva brevemente o que foi feito…"></textarea>
+        </div>
+      </div>
+      <div class="ext-mini-footer">
+        <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="extFecharModalRegistro()">Cancelar</button>
+        <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" onclick="extSalvarRegistro()">Salvar registro</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <style>
-/* #det-titulo (pages_plano_detalhe.html) é por ID, não por classe — não se
-   aplica aqui, então replicamos a mesma regra para #ext-titulo. */
-#ext-titulo { font-size: 1.5rem; color: var(--ds-primary-700); margin: 5px 0; }
-@media (max-width: 768px) { #ext-titulo { font-size: 1.25rem; } }
+/* ==========================================================================
+   ESTILOS ESPECÍFICOS: WORKSPACE DE REGISTRO DE EXECUÇÃO
+   ========================================================================== */
 
-/* --- Indicador de visibilidade somente-leitura (não é botão, sem dropdown) --- */
-#page-execucao-tarefas .ext-vis-readonly {
-  display: inline-flex; align-items: center; gap: 4px;
-  border: 1px solid var(--ds-color-border); border-radius: 4px;
-  padding: 2px 8px; font-size: 0.8rem; color: var(--ds-color-text-muted);
+/* --- Hero limpo (idêntico ao padrão de pages_plano_detalhe.html) --- */
+#page-execucao-tarefas .detalhe-hero {
+  display: flex; align-items: center; min-height: var(--det-tabs-h, 48px);
+  padding-right: var(--det-acoes-w, 240px);
+}
+#page-execucao-tarefas .detalhe-hero-titulo {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0;
+}
+#page-execucao-tarefas #ext-titulo {
+  font-size: 30px; line-height: 1.15; letter-spacing: -0.8px; font-weight: var(--ds-weight-bold);
+  color: var(--ds-color-text); margin: 0; overflow-wrap: anywhere;
+}
+#page-execucao-tarefas .badge-status {
+  border: none; background: var(--ds-color-surface-2); border-radius: var(--ds-radius-pill);
+  font-size: 13px; font-weight: var(--ds-weight-semibold); padding: 4px 12px;
+  display: inline-flex; align-items: center;
 }
 
-/* --- KPIs no header (mesma linha dos metadados) --- */
-#page-execucao-tarefas .info-kpis { display: flex; gap: 10px; flex-wrap: wrap; flex: 1; justify-content: flex-end; align-items: flex-start; }
+/* Botão sticky de ação do Hero */
+#page-execucao-tarefas .detalhe-hero-acoes {
+  position: sticky; top: var(--det-sticky-top, 0); z-index: 43;
+  width: max-content; margin-left: auto;
+  margin-top: calc(-1 * (var(--det-tabs-h, 48px) + 20px));
+  height: calc(var(--det-tabs-h, 48px) - 1px);
+  display: flex; align-items: center; gap: 8px; padding-left: 12px;
+  background: var(--ds-color-surface); box-shadow: none;
+}
 @media (max-width: 768px) {
-  #page-execucao-tarefas .info-kpis { justify-content: flex-start; width: 100%; }
+  #page-execucao-tarefas .detalhe-hero { padding-right: 0; min-height: auto; align-items: flex-start; flex-direction: column; }
+  #page-execucao-tarefas #ext-titulo { font-size: 24px; }
+  #page-execucao-tarefas .detalhe-hero-acoes { position: static; margin-top: 0; width: 100%; height: auto; padding: 0; justify-content: flex-end; }
+}
+
+/* --- Linha de abas --- */
+#page-execucao-tarefas .view-tabs-container {
+  margin-bottom: var(--ds-space-4);
+  border-bottom: 1px solid var(--ds-color-border);
+}
+
+/* --- Seletor de Período / Exercício Plurianual --- */
+#page-execucao-tarefas .ext-periodo-wrap {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border);
+  padding: 4px 10px; border-radius: var(--ds-r-md); font-size: 0.85rem;
+}
+#page-execucao-tarefas .ext-periodo-label {
+  font-weight: var(--ds-weight-semibold); color: var(--ds-color-text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.4px;
+}
+#page-execucao-tarefas .ext-select-periodo {
+  border: none; background: transparent; font-family: var(--ds-font-sans); font-size: 0.88rem;
+  font-weight: var(--ds-weight-semibold); color: var(--ds-color-action); cursor: pointer; outline: none;
 }
 
 /* --- Toggle "Somente colaborações" --- */
-#page-execucao-tarefas .ext-toggle-origem { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--ds-color-text-muted); cursor: pointer; white-space: nowrap; }
+#page-execucao-tarefas .ext-toggle-origem {
+  display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--ds-color-text-muted);
+  cursor: pointer; white-space: nowrap;
+}
 #page-execucao-tarefas .ext-toggle-origem input { position: absolute; opacity: 0; width: 0; height: 0; }
 #page-execucao-tarefas .ext-toggle-track { width: 30px; height: 16px; background: var(--ds-color-border); border-radius: 10px; position: relative; flex-shrink: 0; transition: background 0.15s; }
 #page-execucao-tarefas .ext-toggle-thumb { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--ds-color-surface); transition: left 0.15s; }
 #page-execucao-tarefas .ext-toggle-origem input:checked + .ext-toggle-track { background: var(--ds-color-action); }
 #page-execucao-tarefas .ext-toggle-origem input:checked + .ext-toggle-track .ext-toggle-thumb { left: 16px; }
 
-/* --- Kanban --- */
-#page-execucao-tarefas .kanban-board { display: flex; gap: 20px; padding: 4px 0 20px; overflow-x: auto; align-items: flex-start; }
+/* --- KANBAN BOARD E COLUNAS --- */
+#page-execucao-tarefas .kanban-board {
+  display: flex; gap: 16px; padding: 4px 0 24px; overflow-x: auto; align-items: flex-start;
+  min-height: 480px;
+}
 #page-execucao-tarefas .kanban-col {
-  min-width: 280px; max-width: 280px; background: var(--ds-color-surface-2);
-  border-radius: var(--ds-radius-md); border: 1px solid var(--ds-color-border);
-  display: flex; flex-direction: column; transition: box-shadow .15s, border-color .15s;
+  min-width: 320px; max-width: 340px; width: 330px; background: var(--ds-color-surface-2);
+  border-radius: var(--ds-r-lg); border: 1px solid var(--ds-color-border);
+  display: flex; flex-direction: column; flex-shrink: 0;
+  transition: box-shadow .15s, border-color .15s, background .15s;
 }
-#page-execucao-tarefas .kanban-col.exec-col-over { border-color: var(--ds-color-action); box-shadow: 0 0 0 2px var(--ds-color-action) inset; }
-#page-execucao-tarefas .kanban-header { padding: 12px 15px; font-weight: 600; color: var(--ds-color-text); display: flex; justify-content: space-between; align-items: center; }
-#page-execucao-tarefas .kanban-body { padding: 0 10px 10px; display: flex; flex-direction: column; gap: 10px; min-height: 60px; }
+#page-execucao-tarefas .kanban-col.exec-col-over {
+  border-color: var(--ds-color-action); box-shadow: 0 0 0 2px var(--ds-color-action) inset;
+  background: var(--ds-color-info-bg);
+}
+#page-execucao-tarefas .kanban-header {
+  padding: 12px 14px; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text);
+  display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--ds-color-border);
+}
+#page-execucao-tarefas .kanban-header-titulo {
+  display: flex; align-items: center; gap: 8px; font-size: 0.92rem;
+}
+#page-execucao-tarefas .kanban-body {
+  padding: 12px; display: flex; flex-direction: column; gap: 12px; min-height: 120px;
+}
 
-/* --- Planner --- */
-#page-execucao-tarefas .planner-board { display: flex; gap: 20px; padding: 4px 0 20px; overflow-x: auto; align-items: flex-start; }
-#page-execucao-tarefas .planner-bucket { min-width: 300px; max-width: 300px; background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-radius-md); display: flex; flex-direction: column; }
-#page-execucao-tarefas .planner-header { padding: 12px 15px; border-bottom: 1px solid var(--ds-color-border); background: var(--ds-color-surface-2); border-radius: var(--ds-radius-md) var(--ds-radius-md) 0 0; }
-#page-execucao-tarefas .bucket-title { font-weight: 700; color: var(--ds-color-action); font-size: 1rem; display: block; margin-bottom: 4px; }
-#page-execucao-tarefas .bucket-sub { font-size: 0.7rem; color: var(--ds-color-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-
-/* --- Cards (Kanban/Planner) --- */
+/* --- CARD PRINCIPAL (Elemento + Itens Ancorados) --- */
 #page-execucao-tarefas .task-card {
-  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: 6px;
-  padding: 12px; box-shadow: var(--ds-shadow-1); cursor: grab; transition: transform .1s, box-shadow .1s;
+  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md);
+  box-shadow: var(--ds-shadow-1); cursor: grab; transition: transform .18s var(--ds-ease-standard), box-shadow .18s var(--ds-ease-standard), border-color .18s;
+  display: flex; flex-direction: column; overflow: hidden; position: relative;
 }
-#page-execucao-tarefas .task-card:hover { transform: translateY(-2px); box-shadow: var(--ds-shadow-2); }
-#page-execucao-tarefas .task-card.exec-dragging { opacity: 0.4; }
-#page-execucao-tarefas .card-meta { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--ds-color-text-muted); margin-bottom: 6px; }
-#page-execucao-tarefas .card-code { font-weight: 700; background: var(--ds-color-surface-2); color: var(--ds-color-text); padding: 2px 5px; border-radius: 3px; border: 1px solid var(--ds-color-border); }
-#page-execucao-tarefas .card-title { font-weight: 600; color: var(--ds-color-text); font-size: 0.9rem; line-height: 1.4; margin-bottom: 8px; }
-#page-execucao-tarefas .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; padding-top: 8px; border-top: 1px dashed var(--ds-color-border); }
+#page-execucao-tarefas .task-card:hover {
+  transform: translateY(-2px); box-shadow: var(--ds-shadow-2); border-color: var(--ds-color-action);
+}
+#page-execucao-tarefas .task-card.exec-dragging {
+  opacity: 0.35; transform: scale(0.98); cursor: grabbing;
+}
 
-/* --- Pills de status --- */
-#page-execucao-tarefas .progress-pill { font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 12px; display: inline-flex; align-items: center; gap: 4px; }
-#page-execucao-tarefas .pill-green { background: var(--ds-color-success-bg); color: var(--ds-color-success-fg); }
-#page-execucao-tarefas .pill-blue { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
-#page-execucao-tarefas .pill-gray { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); }
+/* Corpo do Elemento no Card */
+#page-execucao-tarefas .card-main-content {
+  padding: 12px; display: flex; flex-direction: column; gap: 8px;
+}
+#page-execucao-tarefas .card-meta {
+  display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--ds-color-text-muted);
+}
+#page-execucao-tarefas .card-code {
+  font-weight: 700; background: var(--ds-color-surface-2); color: var(--ds-color-text);
+  padding: 2px 6px; border-radius: 4px; border: 1px solid var(--ds-color-border); font-size: 0.75rem;
+}
+#page-execucao-tarefas .card-title {
+  font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); font-size: 0.92rem; line-height: 1.38;
+}
+#page-execucao-tarefas .card-parent-title {
+  font-size: 0.75rem; color: var(--ds-color-text-muted); margin-top: -4px;
+}
 
+/* Barra de Progresso Físico no Card */
+#page-execucao-tarefas .card-prog-wrap {
+  display: flex; flex-direction: column; gap: 4px; margin-top: 4px;
+}
+#page-execucao-tarefas .card-prog-info {
+  display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;
+}
+#page-execucao-tarefas .card-prog-pct {
+  font-weight: var(--ds-weight-bold); color: var(--ds-color-action);
+}
+#page-execucao-tarefas .card-prog-track {
+  height: 6px; background: var(--ds-color-border); border-radius: 3px; overflow: hidden; position: relative;
+}
+#page-execucao-tarefas .card-prog-fill {
+  height: 100%; background: var(--ds-color-action); border-radius: 3px; transition: width .3s var(--ds-ease-standard);
+}
+
+/* Alerta de Meta Pendente no Card */
+#page-execucao-tarefas .ext-alerta-meta {
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  background: var(--ds-color-warning-bg); border: 1px solid var(--ds-color-warning);
+  border-radius: var(--ds-r-sm); font-size: 0.74rem; color: var(--ds-color-text);
+  font-weight: var(--ds-weight-medium);
+}
+#page-execucao-tarefas .ext-alerta-meta .material-symbols-outlined {
+  font-size: 16px; color: var(--ds-color-warning-fg);
+}
+
+/* Rodapé de Ações do Elemento */
+#page-execucao-tarefas .card-footer-actions {
+  display: flex; justify-content: space-between; align-items: center; padding-top: 8px;
+  border-top: 1px solid var(--ds-color-border);
+}
+#page-execucao-tarefas .card-btn-gaveta {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: var(--ds-weight-semibold);
+  color: var(--ds-color-action); background: none; border: none; cursor: pointer; padding: 4px 6px;
+  border-radius: 4px; transition: background .12s;
+}
+#page-execucao-tarefas .card-btn-gaveta:hover { background: var(--ds-sidebar-item-hover); }
+#page-execucao-tarefas .card-btn-gaveta .material-symbols-outlined { font-size: 16px; transition: transform .2s var(--ds-ease-standard); }
+#page-execucao-tarefas .card-btn-gaveta.aberto .material-symbols-outlined { transform: rotate(180deg); }
+
+/* --- GAVETA ANCORADA: INDICADORES "PENDENDO DO ELEMENTO" --- */
+#page-execucao-tarefas .ext-ancora-container {
+  background: var(--ds-color-surface-2); border-top: 1px dashed var(--ds-color-border);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+  position: relative; border-left: 3px solid var(--ds-color-action);
+}
+#page-execucao-tarefas .ext-ancora-item {
+  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-r-sm); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;
+  transition: border-color .15s, box-shadow .15s;
+}
+#page-execucao-tarefas .ext-ancora-item:hover {
+  border-color: var(--ds-color-action); box-shadow: var(--ds-shadow-1);
+}
+#page-execucao-tarefas .ext-ancora-header {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
+}
+#page-execucao-tarefas .ext-ancora-nome {
+  font-size: 0.82rem; font-weight: var(--ds-weight-medium); color: var(--ds-color-text); line-height: 1.3;
+}
+#page-execucao-tarefas .ext-ancora-meta-box {
+  display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; color: var(--ds-color-text-muted);
+}
+#page-execucao-tarefas .ext-ancora-resultado {
+  font-weight: var(--ds-weight-bold); color: var(--ds-color-text);
+}
+#page-execucao-tarefas .ext-ancora-resultado.atingido { color: var(--ds-color-success-fg); }
+#page-execucao-tarefas .ext-ancora-resultado.pendente { color: var(--ds-color-warning-fg); font-style: italic; }
+
+/* Subseção de Checklist de Tarefas Ancoradas */
+#page-execucao-tarefas .ext-ancora-tarefas-wrap {
+  border-top: 1px solid var(--ds-color-border); padding-top: 6px; margin-top: 4px;
+}
+#page-execucao-tarefas .ext-mini-tarefa-item {
+  display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 0.78rem; color: var(--ds-color-text);
+}
+#page-execucao-tarefas .ext-mini-tarefa-item.concluida {
+  text-decoration: line-through; color: var(--ds-color-text-muted);
+}
+
+/* Botões de Ação Mini */
 #page-execucao-tarefas .action-btn-mini {
   width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--ds-color-border); background: var(--ds-color-surface);
   display: inline-flex; align-items: center; justify-content: center; color: var(--ds-color-text-muted); cursor: pointer;
+  transition: all .15s;
 }
 #page-execucao-tarefas .action-btn-mini:hover { background: var(--ds-color-surface-2); color: var(--ds-color-action); border-color: var(--ds-color-action); }
 
-#page-execucao-tarefas .indicators-badge { font-size: 0.7rem; color: var(--ds-color-text-muted); display: flex; align-items: center; gap: 3px; }
-#page-execucao-tarefas .indicators-badge.has-items { color: var(--ds-color-action); font-weight: 600; cursor: pointer; }
+/* --- MODO LISTA: TABELA HIERÁRQUICA E LINHAS EXPANSÍVEIS --- */
+#page-execucao-tarefas .ext-tabela-lista {
+  width: 100%; border-collapse: separate; border-spacing: 0; background: var(--ds-color-surface);
+  border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md); overflow: hidden;
+}
+#page-execucao-tarefas .ext-tabela-lista th {
+  padding: 10px 14px; font-weight: var(--ds-weight-semibold); font-size: 0.82rem;
+  color: var(--ds-color-text-muted); background: var(--ds-color-surface-2);
+  border-bottom: 1px solid var(--ds-color-border); text-align: left;
+}
+#page-execucao-tarefas .ext-tabela-lista td {
+  padding: 12px 14px; border-bottom: 1px solid var(--ds-color-border);
+  font-size: 0.86rem; color: var(--ds-color-text); vertical-align: middle;
+  transition: background var(--ds-duration-fast) var(--ds-ease-standard);
+}
+#page-execucao-tarefas .ext-tabela-lista tbody tr.ext-linha-elemento:hover td {
+  background: var(--ds-sidebar-item-hover);
+}
+#page-execucao-tarefas .ext-linha-detalhes td {
+  background: var(--ds-color-surface-2); padding: 12px 18px; border-bottom: 1px solid var(--ds-color-border);
+}
 
-#page-execucao-tarefas .badge-count { background: var(--ds-color-border); padding: 2px 6px; border-radius: 10px; font-size: 0.75rem; color: var(--ds-color-text); }
-
-/* Hover de ordenação com o token de cor do design system, igual ao restante da página */
-#page-execucao-tarefas .th-sortable:hover { color: var(--ds-color-action); }
-
-/* --- Riscos e Tratamentos (leitura + registro) --- */
+/* --- Riscos e Tratamentos --- */
 #page-execucao-tarefas .ext-risco-card { background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-radius-md); padding: var(--ds-space-4); margin-bottom: var(--ds-space-4); }
 #page-execucao-tarefas .ext-risco-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--ds-space-3); margin-bottom: var(--ds-space-3); }
 #page-execucao-tarefas .ext-risco-titulo { font-weight: 600; color: var(--ds-color-text); font-size: 0.95rem; }
@@ -19613,30 +19821,48 @@ uiRegistrarAcoes('pages_execucao_planos', {
 #page-execucao-tarefas .ext-registro-del .material-symbols-outlined { font-size: 15px; }
 #page-execucao-tarefas .ext-registro-vazio { font-size: 0.76rem; color: var(--ds-color-text-muted); font-style: italic; }
 
-/* --- Estado vazio (reaproveitado por kanban/planner/riscos; 5W2H/Gantt usam .el-empty-state, global) --- */
+/* --- Estado Vazio --- */
 #page-execucao-tarefas .exl-vazio { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 16px; color: var(--ds-color-text-muted); }
 #page-execucao-tarefas .exl-vazio .material-symbols-outlined { font-size: 40px; opacity: 0.35; }
 #page-execucao-tarefas .exl-vazio p { font-size: 0.88rem; margin: 0; }
 
-/* --- Mini modal (registrar execução de tratamento) --- */
+/* --- Mini modais --- */
 .ext-mini-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1100;
   display: flex; align-items: center; justify-content: center; backdrop-filter: blur(3px);
 }
-.ext-mini-card { background: var(--ds-color-surface); width: 100%; max-width: 420px; border-radius: var(--ds-radius-md); box-shadow: var(--ds-shadow-3); }
+.ext-mini-card { background: var(--ds-color-surface); width: 100%; max-width: 440px; border-radius: var(--ds-radius-md); box-shadow: var(--ds-shadow-3); }
 .ext-mini-header { padding: 14px 18px; border-bottom: 1px solid var(--ds-color-border); display: flex; justify-content: space-between; align-items: center; }
 .ext-mini-header h4 { margin: 0; color: var(--ds-color-text); font-size: 1rem; }
 .ext-mini-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
 .ext-mini-field { display: flex; flex-direction: column; gap: 5px; }
 .ext-mini-field label { font-size: 0.85rem; font-weight: 500; color: var(--ds-color-text); }
 .ext-mini-footer { padding: 14px 18px; border-top: 1px solid var(--ds-color-border); display: flex; justify-content: flex-end; gap: 10px; }
-.ext-tar-cont { font-size: 11px; color: var(--ds-color-text-muted); white-space: nowrap; }
-.task-card.ext-card-fixo { cursor: pointer; }
 </style>
 
 <script>
-var estadoExecTarefas = { idPlano: null, dados: null, aba: 'tarefas', view: '5w2h', filtroStatus: 'todos', busca: '', somenteColaboracao: false, riscos: null, ordenacao: { coluna: null, direcao: 'asc' } };
-var EXEC_STATUS_TRILHAS = ['Não Iniciado', 'Em Andamento', 'Concluído'];
+var estadoExecTarefas = {
+  idPlano: null,
+  dados: null,
+  aba: 'tarefas',
+  view: 'kanban',
+  filtroStatus: 'todos',
+  busca: '',
+  somenteColaboracao: false,
+  anoSelecionado: 'todos',
+  gavetasAbertas: {},
+  tarefasAbertas: {},
+  riscos: null,
+  ordenacao: { coluna: null, direcao: 'asc' }
+};
+
+var EXEC_COLUNAS_PADRAO = [
+  { id: 'nao_iniciado', titulo: 'Não Iniciado', status: 'Não Iniciado', icone: 'radio_button_unchecked' },
+  { id: 'em_andamento', titulo: 'Em Andamento', status: 'Em Andamento', icone: 'timelapse' },
+  { id: 'concluido', titulo: 'Concluído', status: 'Concluído', icone: 'check_circle' },
+  { id: 'atrasado', titulo: 'Atrasado', status: 'Atrasado', icone: 'warning' }
+];
+
 var EXT_CORES_STATUS_PLANO = {
   'Em Execução':   ['var(--ds-status-execucao-bg)', 'var(--ds-status-execucao-fg)'],
   'Em Elaboração': ['var(--ds-status-elaboracao-bg)', 'var(--ds-status-elaboracao-fg)'],
@@ -19651,23 +19877,24 @@ var EXT_CORES_STATUS_PLANO = {
 
 function execTarefasCarregar() {
   document.getElementById('ext-titulo').textContent = 'Carregando…';
-  document.getElementById('ext-tipo').textContent = '';
   estadoExecTarefas.riscos = null;
+  estadoExecTarefas.gavetasAbertas = {};
+  estadoExecTarefas.tarefasAbertas = {};
 
-  // Reseta a UI de filtros/visualização para o estado padrão a cada plano
-  // aberto (a SPA reutiliza o mesmo DOM entre planos diferentes).
-  estadoExecTarefas.view = '5w2h';
+  // Reseta a UI de filtros/visualização para o estado padrão
+  estadoExecTarefas.view = estadoExecTarefas.view || 'kanban';
   estadoExecTarefas.filtroStatus = 'todos';
   estadoExecTarefas.busca = '';
   estadoExecTarefas.somenteColaboracao = false;
   estadoExecTarefas.ordenacao = { coluna: null, direcao: 'asc' };
+
   document.querySelectorAll('#page-execucao-tarefas .mode-btn').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.view === '5w2h');
+    b.classList.toggle('active', b.dataset.view === estadoExecTarefas.view);
   });
   var buscaEl = document.getElementById('ext-busca');
   if (buscaEl) buscaEl.value = '';
   var filtroStatusEl = document.getElementById('ext-filtro-status');
-  if (filtroStatusEl) { filtroStatusEl.value = 'todos'; filtroStatusEl.style.display = ''; }
+  if (filtroStatusEl) { filtroStatusEl.value = 'todos'; filtroStatusEl.style.display = (estadoExecTarefas.view === 'kanban') ? 'none' : ''; }
   var filtroColabEl = document.getElementById('ext-filtro-colaboracao');
   if (filtroColabEl) filtroColabEl.checked = false;
 
@@ -19678,7 +19905,6 @@ function execTarefasCarregar() {
     .withSuccessHandler(function(dados) {
       estadoExecTarefas.dados = dados;
       execTarefasRenderizarHeader(dados.plano);
-      execTarefasRenderizarKpis();
       if (typeof setBreadcrumb === 'function') {
         setBreadcrumb([
           { label: 'Execução', page: 'execucao' },
@@ -19694,90 +19920,173 @@ function execTarefasCarregar() {
     .apiGetTarefasExecucaoPlano(estadoExecTarefas.idPlano);
 }
 
-// Hook de recarregamento esperado por components_modal_resultado.html após
-// salvar (handleSalvarResultado checa esse nome exato) — nome fixo
-// intencional, não sufixar: é o contrato do modal compartilhado.
+// Hook de recarregamento esperado por components_modal_resultado.html após salvar
 function carregarDadosExecucao() {
   if (estadoExecTarefas.idPlano) execTarefasCarregar();
 }
 
-// --- HEADER (Padrão para Detalhamento) ---
+// --- HEADER E PAINEL LATERAL DE DETALHES ---
 
 function execTarefasRenderizarHeader(p) {
   document.getElementById('ext-titulo').innerText = p.nome || 'Sem Nome';
   if (typeof calPrazosRender === 'function') calPrazosRender('ext-prazos', estadoExecTarefas.idPlano);
-  document.getElementById('ext-tipo').innerText = p.tipo || '-';
-
-  var elUnidade = document.getElementById('ext-unidade');
-  var adicionais = p.responsaveisAdicionais || [];
-  var nomeRespHero = nomeRespExibicao(p.nomeUnidade || '-', p.categoria === 'PESSOAL' ? 'USER' : 'UNIDADE');
-  elUnidade.innerText = nomeRespHero + (adicionais.length ? ' +' + adicionais.length : '');
-  if (adicionais.length) {
-    elUnidade.setAttribute('data-title', 'Principal: ' + (p.nomeUnidade || '-')
-      + ' | Adicionais: ' + adicionais.map(function(a) { return a.nome; }).join(', '));
-  } else if (nomeRespHero !== (p.nomeUnidade || '-')) {
-    elUnidade.setAttribute('data-title', p.nomeUnidade);
-  } else {
-    elUnidade.removeAttribute('data-title');
-  }
-  document.getElementById('ext-vigencia').innerText = (p.anoInicio || '') + '-' + (p.anoFim || '');
-
-  var iconeResp = document.getElementById('ext-resp-icone');
-  if (iconeResp) iconeResp.textContent = p.categoria === 'PESSOAL' ? 'person' : 'apartment';
-
-  var visAtual = p.visibilidade || 'Público';
-  var visLabel = document.getElementById('ext-vis-label');
-  var visIcone = document.getElementById('ext-vis-icone');
-  if (visLabel) visLabel.textContent = visAtual;
-  if (visIcone) visIcone.textContent = visAtual === 'Privado' ? 'lock' : 'lock_open';
 
   var elStatus = document.getElementById('ext-status');
   elStatus.innerText = p.status || '-';
-  var cor = EXT_CORES_STATUS_PLANO[p.status] || ['#eee', '#555'];
+  var cor = EXT_CORES_STATUS_PLANO[p.status] || ['var(--ds-color-surface-2)', 'var(--ds-color-text)'];
   elStatus.style.background = cor[0];
   elStatus.style.color = cor[1];
-}
 
-function execTarefasRenderizarKpis() {
-  var tarefas = (estadoExecTarefas.dados && estadoExecTarefas.dados.tarefas) || [];
-  var concluidas = 0, andamento = 0, atrasadas = 0;
-  tarefas.forEach(function(t) {
-    if (t.status === 'Concluído') concluidas++;
-    else if (t.status === 'Em Andamento') andamento++;
-    if (_execEstaAtrasado(t)) atrasadas++;
-  });
-  document.getElementById('ext-kpi-total').textContent = tarefas.length;
-  document.getElementById('ext-kpi-concluidas').textContent = concluidas;
-  document.getElementById('ext-kpi-andamento').textContent = andamento;
-  document.getElementById('ext-kpi-atrasadas').textContent = atrasadas;
-}
+  // Configura o seletor de Exercício / Período Plurianual
+  var seletorAno = document.getElementById('ext-seletor-ano');
+  if (seletorAno) {
+    seletorAno.innerHTML = '';
+    var optTodos = document.createElement('option');
+    optTodos.value = 'todos';
+    optTodos.textContent = 'Todos os exercícios';
+    seletorAno.appendChild(optTodos);
 
-// --- TOOLBAR DA SEÇÃO DE RESPONSABILIDADES (Exportar — em desenvolvimento) ---
+    var anos = p.anosVigencia || [];
+    if (!anos.length && p.anoInicio && p.anoFim) {
+      for (var a = Number(p.anoInicio); a <= Number(p.anoFim); a++) anos.push(a);
+    }
+    var anoAtual = new Date().getFullYear();
+    var anoPadrao = anos.indexOf(anoAtual) > -1 ? anoAtual : (anos[0] || 'todos');
 
-function execTarefasToggleSecToolbar() {
-  var tb = document.getElementById('ext-sec-toolbar');
-  var btn = document.getElementById('ext-btn-sec-tb-trigger');
-  var ico = btn.querySelector('.material-symbols-outlined');
-  var abriu = tb.classList.toggle('tb-open');
-  ico.textContent = abriu ? 'chevron_right' : 'apps';
-  btn.dataset.title = abriu ? 'Recolher' : 'Opções de responsabilidades';
-  if (abriu) setTimeout(function() { document.addEventListener('click', _execFecharSecToolbar); }, 0);
-}
-function _execFecharSecToolbar(e) {
-  var tb = document.getElementById('ext-sec-toolbar');
-  if (!tb || tb.contains(e.target)) return;
-  tb.classList.remove('tb-open');
-  var btn = document.getElementById('ext-btn-sec-tb-trigger');
-  if (btn) {
-    btn.querySelector('.material-symbols-outlined').textContent = 'apps';
-    btn.dataset.title = 'Opções de responsabilidades';
+    anos.forEach(function(ano) {
+      var opt = document.createElement('option');
+      opt.value = String(ano);
+      opt.textContent = 'Exercício ' + ano;
+      if (String(ano) === String(anoPadrao)) opt.selected = true;
+      seletorAno.appendChild(opt);
+    });
+
+    estadoExecTarefas.anoSelecionado = String(anoPadrao);
   }
-  document.removeEventListener('click', _execFecharSecToolbar);
+
+  // Mantém os dados da barra lateral atualizados
+  _extpRenderDetalhes();
 }
-function execTarefasExportar() {
-  if (typeof showMessage === 'function') showMessage('info', 'Em desenvolvimento', 'A exportação de responsabilidades ainda está em desenvolvimento.');
-  else alert('Em desenvolvimento.');
+
+// Controle do Painel Lateral de Detalhes (#extp-panel)
+function extAbrirPainelDetalhes() {
+  var p = document.getElementById('extp-panel');
+  if (!p) return;
+  p.classList.add('aberto');
+  p.setAttribute('aria-hidden', 'false');
+  var btn = document.getElementById('ext-btn-detalhes');
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+  _extpRenderDetalhes();
 }
+function extFecharPainelDetalhes() {
+  var p = document.getElementById('extp-panel');
+  if (!p) return;
+  p.classList.remove('aberto');
+  p.setAttribute('aria-hidden', 'true');
+  var btn = document.getElementById('ext-btn-detalhes');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+function extAlternarPainelDetalhes() {
+  var p = document.getElementById('extp-panel');
+  if (!p) return;
+  if (p.classList.contains('aberto')) extFecharPainelDetalhes();
+  else extAbrirPainelDetalhes();
+}
+function _extpMudarAba(aba) {
+  var tabDet = document.getElementById('extp-tab-detalhes');
+  var tabAtiv = document.getElementById('extp-tab-atividade');
+  var viewDet = document.getElementById('extp-view-detalhes');
+  var viewAtiv = document.getElementById('extp-view-atividade');
+  if (tabDet) tabDet.classList.toggle('active', aba === 'detalhes');
+  if (tabAtiv) tabAtiv.classList.toggle('active', aba === 'atividade');
+  if (viewDet) viewDet.classList.toggle('hidden', aba !== 'detalhes');
+  if (viewAtiv) viewAtiv.classList.toggle('hidden', aba !== 'atividade');
+  if (aba === 'atividade') _extpRenderAtividade();
+  else _extpRenderDetalhes();
+}
+
+function _extpLinha(label, valor) {
+  return valor ? '<div class="detp-linha"><span class="detp-linha-label">' + label + '</span><span class="detp-linha-valor">' + valor + '</span></div>' : '';
+}
+
+function _extpRenderDetalhes() {
+  var container = document.getElementById('extp-view-detalhes');
+  if (!container || !estadoExecTarefas.dados || !estadoExecTarefas.dados.plano) return;
+  var p = estadoExecTarefas.dados.plano;
+
+  var catLabel = { 'INSTITUCIONAL': 'Institucional', 'PESSOAL': 'Pessoal', 'NEGOCIADO': 'Negociado' }[p.categoria] || p.categoria || '';
+  var vig = (p.anoInicio || p.anoFim) ? ((p.anoInicio || '') + (p.anoFim && p.anoFim !== p.anoInicio ? '–' + p.anoFim : '')) : '–';
+  var cor = EXT_CORES_STATUS_PLANO[p.status] || ['var(--ds-color-surface-2)', 'var(--ds-color-text)'];
+
+  var htmlSobre =
+    _extpLinha('Tipo', escapeHtml(p.tipo || '—') + (catLabel ? ' · ' + escapeHtml(catLabel) : '')) +
+    _extpLinha('Vigência', escapeHtml(vig)) +
+    _extpLinha('Status', p.status ? '<span class="badge-status" style="background:' + cor[0] + ';color:' + cor[1] + '">' + escapeHtml(p.status) + '</span>' : '') +
+    _extpLinha('Visibilidade', escapeHtml(p.visibilidade || 'Público'));
+
+  var responsaveis = [{ nome: p.nomeUnidade, tipo: p.tipoResponsavel, papel: 'Principal' }]
+    .concat((p.responsaveisAdicionais || []).map(function(a) { return { nome: a.nome, tipo: a.tipo, papel: 'Adicional' }; }));
+  var htmlResp = responsaveis.filter(function(r) { return r.nome && r.nome !== 'Não atribuído'; }).map(function(r) {
+    var icone = r.tipo === 'USER' ? 'person' : 'apartment';
+    return '<div class="detp-resp-item"><span class="material-symbols-outlined">' + icone + '</span>'
+      + '<span>' + escapeHtml(r.nome) + '</span><span class="detp-resp-papel">' + r.papel + '</span></div>';
+  }).join('');
+  if (!htmlResp) htmlResp = '<div style="font-size:0.85rem;color:var(--ds-color-text-muted)">Nenhum responsável atribuído.</div>';
+
+  var htmlRegistro =
+    _extpLinha('Criado por', p.criadoPor ? escapeHtml(p.criadoPor) : '') +
+    _extpLinha('Criado em', p.criadoEm ? escapeHtml(p.criadoEm) : '') +
+    _extpLinha('Alterado por', p.alteradoPor ? escapeHtml(p.alteradoPor) : '') +
+    _extpLinha('Alterado em', p.alteradoEm ? escapeHtml(p.alteradoEm) : '');
+
+  var secoes = [
+    { titulo: 'Sobre o plano', html: htmlSobre },
+    { titulo: 'Responsáveis', html: htmlResp },
+    { titulo: 'Registro', html: htmlRegistro }
+  ];
+  container.innerHTML = secoes
+    .filter(function(s) { return s.html; })
+    .map(function(s) { return '<div class="detp-secao"><div class="detp-secao-titulo">' + s.titulo + '</div>' + s.html + '</div>'; })
+    .join('');
+}
+
+function _extpRenderAtividade() {
+  var c = document.getElementById('extp-view-atividade');
+  if (!c || !estadoExecTarefas.dados) return;
+  var tarefas = estadoExecTarefas.dados.tarefas || [];
+  var concluidas = tarefas.filter(function(t) { return t.status === 'Concluído'; });
+  var andamento = tarefas.filter(function(t) { return t.status === 'Em Andamento'; });
+
+  var itens = [];
+  concluidas.slice(0, 5).forEach(function(t) {
+    itens.push('<div class="log-item-row"><span class="material-symbols-outlined" style="color:var(--ds-color-success-fg)">check_circle</span><div><div style="font-weight:600;font-size:0.85rem">' + escapeHtml(t.titulo) + '</div><div style="font-size:0.75rem;color:var(--ds-color-text-muted)">Concluído · ' + escapeHtml(t.percentual) + '%</div></div></div>');
+  });
+  andamento.slice(0, 5).forEach(function(t) {
+    itens.push('<div class="log-item-row"><span class="material-symbols-outlined" style="color:var(--ds-color-action)">timelapse</span><div><div style="font-weight:600;font-size:0.85rem">' + escapeHtml(t.titulo) + '</div><div style="font-size:0.75rem;color:var(--ds-color-text-muted)">Em andamento · ' + escapeHtml(t.percentual) + '%</div></div></div>');
+  });
+
+  if (!itens.length) {
+    c.innerHTML = '<div class="exl-vazio"><span class="material-symbols-outlined">history</span><p>Sem atividade recente neste plano.</p></div>';
+  } else {
+    c.innerHTML = '<div style="display:flex;flex-direction:column">' + itens.join('') + '</div>';
+  }
+}
+
+// Fechamento de painel lateral com tecla Esc
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  var modalCol = document.getElementById('ext-modal-colunas');
+  if (modalCol && !modalCol.classList.contains('hidden')) {
+    _execFecharModalColunasKanban();
+    e.preventDefault();
+    return;
+  }
+  var panel = document.getElementById('extp-panel');
+  if (panel && panel.classList.contains('aberto')) {
+    extFecharPainelDetalhes();
+    e.preventDefault();
+  }
+});
 
 // --- ABAS: RESPONSABILIDADES / AÇÕES DE TRATAMENTO ---
 
@@ -19791,34 +20100,53 @@ function execTarefasMudarAba(aba, semCarregarRiscos) {
   if (aba === 'riscos' && !semCarregarRiscos) _execCarregarRiscos();
 }
 
-// --- MODOS DE VISUALIZAÇÃO: 5W2H / KANBAN / PLANNER / GANTT ---
+// --- MODOS DE VISUALIZAÇÃO: APENAS LISTA E KANBAN ---
 
 function execTarefasSetView(view) {
   estadoExecTarefas.view = view;
   document.querySelectorAll('#page-execucao-tarefas .mode-btn').forEach(function(b) {
     b.classList.toggle('active', b.dataset.view === view);
   });
-  // Filtro de status não faz sentido no Kanban: os elementos já ficam
-  // organizados em colunas por status.
   var filtroStatusEl = document.getElementById('ext-filtro-status');
   if (filtroStatusEl) filtroStatusEl.style.display = (view === 'kanban') ? 'none' : '';
+  var btnCfg = document.getElementById('ext-btn-kanban-cfg');
+  if (btnCfg) btnCfg.classList.toggle('hidden', view !== 'kanban');
   execTarefasRenderizar();
 }
 
 function execTarefasFiltrar() {
   estadoExecTarefas.busca = document.getElementById('ext-busca').value.toLowerCase();
-  estadoExecTarefas.filtroStatus = document.getElementById('ext-filtro-status').value;
-  estadoExecTarefas.somenteColaboracao = document.getElementById('ext-filtro-colaboracao').checked;
+  var filtroStatusEl = document.getElementById('ext-filtro-status');
+  if (filtroStatusEl) estadoExecTarefas.filtroStatus = filtroStatusEl.value;
+  var colabEl = document.getElementById('ext-filtro-colaboracao');
+  if (colabEl) estadoExecTarefas.somenteColaboracao = colabEl.checked;
   execTarefasRenderizar();
 }
 
+function execTarefasMudarExercicio() {
+  var sel = document.getElementById('ext-seletor-ano');
+  if (sel) estadoExecTarefas.anoSelecionado = sel.value;
+  execTarefasRenderizar();
+}
+
+// Lista filtrada: LIMITA O REGISTRO DE EXECUÇÃO EXCLUSIVAMENTE A ELEMENTOS COM INDICADORES
 function _execListaFiltrada() {
-  if (!estadoExecTarefas.dados) return [];
+  if (!estadoExecTarefas.dados || !estadoExecTarefas.dados.tarefas) return [];
   var busca = estadoExecTarefas.busca, statusF = estadoExecTarefas.filtroStatus;
   var ignorarStatus = estadoExecTarefas.view === 'kanban';
   var somenteColaboracao = estadoExecTarefas.somenteColaboracao;
+
   return estadoExecTarefas.dados.tarefas.filter(function(t) {
-    if (busca && t.titulo.toLowerCase().indexOf(busca) === -1 && String(t.codigo || '').toLowerCase().indexOf(busca) === -1) return false;
+    // Regra do binômio: somente elementos que possuem indicadores associados
+    var inds = _execIndicadoresDoElemento(t.id);
+    if (!inds.length) return false;
+
+    if (busca) {
+      var matchTitulo = t.titulo && t.titulo.toLowerCase().indexOf(busca) > -1;
+      var matchCodigo = t.codigo && String(t.codigo).toLowerCase().indexOf(busca) > -1;
+      var matchInd = inds.some(function(i) { return i.nome && i.nome.toLowerCase().indexOf(busca) > -1; });
+      if (!matchTitulo && !matchCodigo && !matchInd) return false;
+    }
     if (!ignorarStatus && statusF !== 'todos' && t.status !== statusF) return false;
     if (somenteColaboracao && !t.origemColaboracao) return false;
     return true;
@@ -19829,17 +20157,16 @@ function execTarefasRenderizarContador(itens) {
   var el = document.getElementById('ext-contador');
   if (!el) return;
   var total = (estadoExecTarefas.dados && estadoExecTarefas.dados.tarefas.length) || 0;
-  el.textContent = itens.length + ' de ' + total + ' responsabilidade(s)';
+  el.textContent = itens.length + ' de ' + total + ' responsabilidade(s) com indicadores';
 }
 
 function execTarefasRenderizar() {
   var container = document.getElementById('ext-container');
   var itens = _execListaFiltrada();
   execTarefasRenderizarContador(itens);
-  if (estadoExecTarefas.view === '5w2h') _execRenderTabela5w2h(itens, container);
-  else if (estadoExecTarefas.view === 'kanban') _execRenderKanban(itens, container);
-  else if (estadoExecTarefas.view === 'gantt') _execRenderGantt(itens, container);
-  else _execRenderPlanner(itens, container);
+
+  if (estadoExecTarefas.view === 'lista') _execRenderTabelaLista(itens, container);
+  else _execRenderKanban(itens, container);
 }
 
 function _execVazioHTML(msg) {
@@ -19848,278 +20175,172 @@ function _execVazioHTML(msg) {
 
 function _execEstaAtrasado(t) {
   if (t.status === 'Concluído' || !t.fim) return false;
-  var partes = String(t.fim).split('/'); // dd/mm/yyyy
+  var partes = String(t.fim).split('/');
   if (partes.length !== 3) return false;
   var dataFim = new Date(partes[2], partes[1] - 1, partes[0]);
   return dataFim < new Date(new Date().toDateString());
 }
 
-function _execStatusPill(status) {
-  var map = {
-    'Não Iniciado': { cls: 'pill-gray', icon: 'radio_button_unchecked' },
-    'Em Andamento': { cls: 'pill-blue', icon: 'timelapse' },
-    'Concluído': { cls: 'pill-green', icon: 'check_circle' }
-  };
-  return map[status] || map['Não Iniciado'];
-}
-
 function _execIndicadoresDoElemento(idEl) {
-  return (estadoExecTarefas.dados.indicadores || []).filter(function(i) { return String(i.idElemento) === String(idEl); });
+  if (!estadoExecTarefas.dados || !estadoExecTarefas.dados.indicadores) return [];
+  return estadoExecTarefas.dados.indicadores.filter(function(i) { return String(i.idElemento) === String(idEl); });
 }
 
-// --- 5W2H (substitui a antiga Lista) ---
-
-function _execFormatarCusto(custo) {
-  if (!custo) return '-';
-  var v = parseFloat(String(custo).replace('R$', '').replace(',', '.'));
-  if (isNaN(v)) return escapeHtml(String(custo));
-  return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-}
-
-function _execRespHTML(quem) {
-  if (!quem || !quem.length) return '<span style="color:var(--ds-color-text-muted)">-</span>';
-  return '<div style="display:flex;flex-wrap:wrap;gap:4px">' + quem.map(function(q) {
-    var icone = q.tipo === 'USER' ? 'person' : 'apartment';
-    var nome = q.idResp || '';
-    var nomeCurto = nome.length > 25 ? nome.substring(0, 25) + '...' : nome;
-    return '<span class="meta-tag" data-title="Responsável: ' + escapeHtml(nome) + '">'
-      + '<span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">' + icone + '</span>' + escapeHtml(nomeCurto) + '</span>';
-  }).join('') + '</div>';
-}
-
-function _execParseDataBR(str) {
-  var partes = String(str || '').split('/');
-  if (partes.length !== 3) return 0;
-  return new Date(partes[2], partes[1] - 1, partes[0]).getTime();
-}
-
-function _execOrdenarPorColuna(col) {
-  if (estadoExecTarefas.ordenacao.coluna === col) {
-    estadoExecTarefas.ordenacao.direcao = estadoExecTarefas.ordenacao.direcao === 'asc' ? 'desc' : 'asc';
-  } else {
-    estadoExecTarefas.ordenacao.coluna = col;
-    estadoExecTarefas.ordenacao.direcao = 'asc';
-  }
-  execTarefasRenderizar();
-}
-
-function _execOrdenarTarefas(itens) {
-  var col = estadoExecTarefas.ordenacao.coluna, dir = estadoExecTarefas.ordenacao.direcao;
-  if (!col) return itens;
-  return itens.slice().sort(function(a, b) {
-    var va, vb;
-    switch (col) {
-      case 'codigo':      va = String(a.codigo || '').toLowerCase(); vb = String(b.codigo || '').toLowerCase(); break;
-      case 'titulo':      va = String(a.titulo || '').toLowerCase(); vb = String(b.titulo || '').toLowerCase(); break;
-      case 'responsavel': va = (a.quem && a.quem[0] ? a.quem[0].idResp : '').toLowerCase(); vb = (b.quem && b.quem[0] ? b.quem[0].idResp : '').toLowerCase(); break;
-      case 'prazo':       va = _execParseDataBR(a.fim); vb = _execParseDataBR(b.fim); break;
-      case 'custo':       va = Number(String(a.custo || '0').replace('R$', '').replace(',', '.')) || 0; vb = Number(String(b.custo || '0').replace('R$', '').replace(',', '.')) || 0; break;
-      default: return 0;
-    }
-    if (va < vb) return dir === 'asc' ? -1 : 1;
-    if (va > vb) return dir === 'asc' ? 1 : -1;
-    return 0;
+function _execTemMetaPendenteNoAno(ind, ano) {
+  if (!ind || !ind.metas || !ind.metas.length) return false;
+  var metasDoAno = (ano && ano !== 'todos') ? ind.metas.filter(function(m) { return Number(m.ano) === Number(ano); }) : ind.metas;
+  if (!metasDoAno.length) return false;
+  var resultados = ind.resultados || [];
+  return metasDoAno.some(function(m) {
+    return !resultados.some(function(r) { return String(r.idMeta) === String(m.id); });
   });
 }
 
-function _execAtualizarIconesOrdenacao() {
-  var col = estadoExecTarefas.ordenacao.coluna, dir = estadoExecTarefas.ordenacao.direcao;
-  ['codigo', 'titulo', 'responsavel', 'prazo', 'custo'].forEach(function(c) {
-    var el = document.getElementById('ext-sort-icon-' + c);
-    if (!el) return;
-    if (c === col) {
-      el.className = 'sort-icon material-symbols-outlined';
-      el.textContent = dir === 'asc' ? 'arrow_upward' : 'arrow_downward';
-    } else {
-      el.className = 'sort-icon';
-      el.textContent = '';
-    }
-  });
-}
+// --- GAVETA DE INDICADORES ANCORADOS ("PENDENDO DO ELEMENTO") ---
+function _execRenderIndicadoresAncoradosHTML(t, anoAtivo) {
+  var inds = _execIndicadoresDoElemento(t.id);
+  if (!inds.length) return '';
 
-function _execRenderTabela5w2h(itens, container) {
-  if (itens.length === 0) {
-    container.innerHTML = '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhuma responsabilidade encontrada</p><p>Ajuste os filtros ou aguarde novas atribuições.</p></div>';
-    return;
-  }
-  var ordenados = _execOrdenarTarefas(itens);
-  var linhas = ordenados.map(function(t) {
-    var inds = _execIndicadoresDoElemento(t.id);
-    var atrasado = _execEstaAtrasado(t);
-    var acaoLancamento = inds.length
-      ? '<button class="action-btn-mini" data-title="Lançar Resultado" data-on-click="pages_execucao_tarefas.12" data-aclick0="' + t.id + '"><span class="material-symbols-outlined" style="font-size:16px">monitoring</span></button>'
-      : '';
-    return '<tr>'
-      + '<td><span class="card-code">' + escapeHtml(t.codigo || '-') + '</span></td>'
-      + '<td><div style="font-weight:600">' + escapeHtml(t.titulo) + '</div>'
-      +     (t.tituloPai ? '<div style="font-size:0.75rem;color:var(--ds-color-text-muted)">' + escapeHtml(t.tituloPai) + '</div>' : '') + '</td>'
-      + '<td>' + _execRespHTML(t.quem) + '</td>'
-      + '<td><div style="' + (atrasado ? 'color:var(--ds-color-danger);font-weight:bold' : '') + '">' + escapeHtml(t.fim || '-')
-      +     (atrasado ? ' <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">warning</span>' : '') + '</div></td>'
-      + '<td style="font-family:monospace">' + _execFormatarCusto(t.custo) + '</td>'
-      + '<td><div style="display:flex;gap:5px;justify-content:flex-end">'
-      +   '<button class="action-btn-mini" data-title="Atualizar Progresso" data-on-click="pages_execucao_tarefas.13" data-aclick0="' + t.id + '"><span class="material-symbols-outlined" style="font-size:16px">edit_square</span></button>'
-      +   acaoLancamento
-      +   '<button class="action-btn-mini" data-title="Ver Plano" data-on-click="pages_execucao_tarefas.14" data-aclick0="' + t.idPlano + '"><span class="material-symbols-outlined" style="font-size:16px">visibility</span></button>'
-      + '</div></td>'
-      + '</tr>';
+  var linhas = inds.map(function(ind) {
+    var metas = ind.metas || [];
+    var resultados = ind.resultados || [];
+    var metaAno = (anoAtivo && anoAtivo !== 'todos')
+      ? metas.find(function(m) { return Number(m.ano) === Number(anoAtivo); })
+      : (metas[0] || null);
+
+    var resMeta = metaAno ? resultados.find(function(r) { return String(r.idMeta) === String(metaAno.id); }) : (resultados[0] || null);
+    var valorMetaFmt = metaAno ? (metaAno.valor + (ind.unidade ? ' ' + ind.unidade : '')) : 'Sem meta no ano';
+    var resFmt = resMeta ? (resMeta.valorAtingido + (ind.unidade ? ' ' + ind.unidade : '')) : 'Pendente';
+    var atingido = resMeta && metaAno && Number(resMeta.valorAtingido) >= Number(metaAno.valor);
+
+    return '<div class="ext-ancora-item">'
+      + '<div class="ext-ancora-header">'
+      +   '<div class="ext-ancora-nome"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:text-bottom;color:var(--ds-color-action);margin-right:4px">monitoring</span>' + escapeHtml(ind.nome) + '</div>'
+      +   '<div style="display:flex;gap:4px">'
+      +     '<button type="button" class="action-btn-mini" data-title="Lançar Resultado" data-on-click="pages_execucao_tarefas.35" data-aclick0="' + escapeHtml(String(t.id)) + '" data-aclick1="' + escapeHtml(String(ind.id)) + '">'
+      +       '<span class="material-symbols-outlined" style="font-size:15px">add_chart</span>'
+      +     '</button>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="ext-ancora-meta-box">'
+      +   '<span>Meta ' + (metaAno && metaAno.ano ? metaAno.ano : '') + ': <b>' + escapeHtml(valorMetaFmt) + '</b></span>'
+      +   '<span class="ext-ancora-resultado ' + (resMeta ? (atingido ? 'atingido' : '') : 'pendente') + '">Realizado: ' + escapeHtml(resFmt) + '</span>'
+      + '</div>'
+      + '</div>';
   }).join('');
 
-  container.innerHTML = '<div class="card table-container"><table class="table-full"><thead><tr>'
-    + '<th class="th-sortable" data-on-click="pages_execucao_tarefas.15">Cód.<span class="sort-icon" id="ext-sort-icon-codigo"></span></th>'
-    + '<th class="th-sortable" data-on-click="pages_execucao_tarefas.16">Elemento (O Quê)<span class="sort-icon" id="ext-sort-icon-titulo"></span></th>'
-    + '<th class="th-sortable" data-on-click="pages_execucao_tarefas.17">Responsável (Quem)<span class="sort-icon" id="ext-sort-icon-responsavel"></span></th>'
-    + '<th class="th-sortable" data-on-click="pages_execucao_tarefas.18">Prazo (Quando)<span class="sort-icon" id="ext-sort-icon-prazo"></span></th>'
-    + '<th class="th-sortable" data-on-click="pages_execucao_tarefas.19">Custo (Quanto)<span class="sort-icon" id="ext-sort-icon-custo"></span></th>'
-    + '<th style="text-align:right">Ações</th>'
-    + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
-  _execAtualizarIconesOrdenacao();
+  return '<div class="ext-ancora-container">'
+    + '<div style="font-size:0.73rem;font-weight:700;color:var(--ds-color-action);text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:4px">'
+    +   '<span class="material-symbols-outlined" style="font-size:14px">account_tree</span> Indicadores Ancorados (' + inds.length + ')'
+    + '</div>'
+    + linhas
+    + '</div>';
 }
 
-// --- GANTT (adaptado de renderizarGantt() em pages_plano_detalhe.html) ---
+// --- KANBAN COM COLUNAS PERSONALIZÁVEIS E ARRASTO SUAVE ---
 
-function _execRenderGantt(itens, container) {
-  if (itens.length === 0) {
-    container.innerHTML = '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">date_range</span><p class="el-esti">Nenhuma responsabilidade encontrada</p><p>Ajuste os filtros ou aguarde novas atribuições.</p></div>';
-    return;
-  }
-
-  var parseData = function(str) {
-    if (!str || typeof str !== 'string') return null;
-    var partes = str.split('/');
-    if (partes.length !== 3) return null;
-    var d = new Date(partes[2], partes[1] - 1, partes[0]);
-    return isNaN(d.getTime()) ? null : d;
-  };
-
-  var lista = [];
-  var minDate = new Date('2099-12-31');
-  var maxDate = new Date('1900-01-01');
-  itens.forEach(function(t) {
-    var dIni = parseData(t.inicio), dFim = parseData(t.fim);
-    if (dIni && dFim) {
-      if (dIni < minDate) minDate = dIni;
-      if (dFim > maxDate) maxDate = dFim;
-      lista.push({ t: t, dIni: dIni, dFim: dFim });
+function _execObterColunasKanban() {
+  if (!estadoExecTarefas.idPlano) return EXEC_COLUNAS_PADRAO.slice();
+  try {
+    var salvas = localStorage.getItem('samauma_kanban_colunas_' + estadoExecTarefas.idPlano);
+    if (salvas) {
+      var arr = JSON.parse(salvas);
+      if (Array.isArray(arr) && arr.length) return arr;
     }
-  });
-
-  if (lista.length === 0) {
-    container.innerHTML = '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">calendar_month</span><p class="el-esti">Nenhum item com datas definidas</p><p>Defina prazo de início/fim nos elementos para visualizar o cronograma.</p></div>';
-    return;
-  }
-
-  minDate.setDate(minDate.getDate() - 15);
-  maxDate.setDate(maxDate.getDate() + 15);
-  if (minDate.getTime() === maxDate.getTime()) maxDate.setDate(maxDate.getDate() + 30);
-
-  var totalTime = maxDate.getTime() - minDate.getTime();
-  var fmtMin = minDate.toLocaleDateString('pt-BR');
-  var fmtMax = maxDate.toLocaleDateString('pt-BR');
-
-  var html = '<div class="gantt-wrapper card"><table class="gantt-table">'
-    + '<tr class="gantt-header-row"><th class="gantt-col-task">Atividade</th>'
-    + '<th class="gantt-timeline-cell">Cronograma Global (' + fmtMin + ' a ' + fmtMax + ')</th></tr>';
-
-  lista.forEach(function(item) {
-    var t = item.t;
-    var offsetTime = item.dIni.getTime() - minDate.getTime();
-    var durationTime = Math.max(item.dFim.getTime() - item.dIni.getTime(), 0);
-    var leftPct = (offsetTime / totalTime) * 100;
-    var widthPct = (durationTime / totalTime) * 100;
-
-    var barClass = 'bar-operacional';
-    var tipoLower = String(t.tipo || '').toLowerCase();
-    if (tipoLower.indexOf('perspectiva') > -1 || tipoLower.indexOf('área de gestão') > -1 || tipoLower.indexOf('objetivo') > -1) barClass = 'bar-estratégico';
-    else if (tipoLower.indexOf('iniciativa') > -1 || tipoLower.indexOf('projeto') > -1) barClass = 'bar-tático';
-
-    var dias = Math.ceil(durationTime / (1000 * 60 * 60 * 24));
-
-    html += '<tr class="gantt-row">'
-      + '<td class="gantt-col-task" data-title="' + escapeHtml(t.titulo) + '">'
-      +   (t.codigo ? '<b>' + escapeHtml(t.codigo) + '</b> ' : '') + escapeHtml(String(t.titulo).substring(0, 30))
-      + '</td>'
-      + '<td class="gantt-timeline-cell">'
-      +   '<div class="gantt-bar ' + barClass + '" style="left:' + leftPct + '%;width:' + Math.max(widthPct, 0.5) + '%" '
-      +     'data-title="' + escapeHtml(t.inicio || '') + ' a ' + escapeHtml(t.fim || '') + ' (' + dias + ' dias) — ' + escapeHtml(t.status || '') + '">'
-      +     dias + 'd'
-      +   '</div>'
-      + '</td></tr>';
-  });
-
-  html += '</table></div>';
-  container.innerHTML = html;
+  } catch (e) {}
+  return EXEC_COLUNAS_PADRAO.slice();
 }
 
-// --- KANBAN (com drag-and-drop real entre trilhas) ---
+function _execSalvarColunasKanban(colunas) {
+  if (!estadoExecTarefas.idPlano) return;
+  try {
+    localStorage.setItem('samauma_kanban_colunas_' + estadoExecTarefas.idPlano, JSON.stringify(colunas));
+  } catch (e) {}
+}
+
 function _execRenderKanban(itens, container) {
+  var colunas = _execObterColunasKanban();
   var html = '<div class="kanban-board">';
-  EXEC_STATUS_TRILHAS.forEach(function(status) {
-    var itensCol = itens.filter(function(t) { return t.status === status; });
-    html += '<div class="kanban-col" data-status="' + status + '">'
-      + '<div class="kanban-header">' + escapeHtml(status) + ' <span class="badge-count">' + itensCol.length + '</span></div>'
-      + '<div class="kanban-body">' + itensCol.map(function(t) { return _execCriarCard(t); }).join('') + '</div>'
+
+  colunas.forEach(function(col) {
+    var statusAlvo = col.status || col.titulo;
+    var itensCol = itens.filter(function(t) {
+      if (col.id === 'atrasado') return _execEstaAtrasado(t) && t.status !== 'Concluído';
+      if (statusAlvo === 'Não Iniciado') return t.status === 'Não Iniciado' && !_execEstaAtrasado(t);
+      if (statusAlvo === 'Em Andamento') return t.status === 'Em Andamento' && !_execEstaAtrasado(t);
+      if (statusAlvo === 'Concluído') return t.status === 'Concluído';
+      return (t.colunaPersonalizada === col.id) || (t.status === statusAlvo);
+    });
+
+    html += '<div class="kanban-col" data-col-id="' + escapeHtml(col.id) + '">'
+      + '<div class="kanban-header">'
+      +   '<div class="kanban-header-titulo"><span class="material-symbols-outlined" style="font-size:17px;color:var(--ds-color-action)">' + (col.icone || 'circle') + '</span> ' + escapeHtml(col.titulo) + '</div>'
+      +   '<span class="badge-count">' + itensCol.length + '</span>'
+      + '</div>'
+      + '<div class="kanban-body">' + itensCol.map(function(t) { return _execCriarCardKanban(t); }).join('') + '</div>'
       + '</div>';
   });
+
   html += '</div>';
   container.innerHTML = html;
   _execAtivarDrag();
 }
 
-// --- PLANNER (agrupa por elemento-pai, decisão do usuário) ---
-function _execRenderPlanner(itens, container) {
-  if (itens.length === 0) { container.innerHTML = _execVazioHTML('Nenhuma responsabilidade encontrada.'); return; }
-  var grupos = {};
-  var ordem = [];
-  itens.forEach(function(t) {
-    var chave = (t.idPai && t.tituloPai) ? t.idPai : '__sem_pai__';
-    if (!grupos[chave]) { grupos[chave] = { titulo: t.tituloPai || 'Sem elemento superior', itens: [] }; ordem.push(chave); }
-    grupos[chave].itens.push(t);
-  });
-
-  var html = '<div class="planner-board">';
-  ordem.forEach(function(chave) {
-    var g = grupos[chave];
-    g.itens.sort(function(a, b) { return String(a.codigo || '').localeCompare(String(b.codigo || '')); });
-    html += '<div class="planner-bucket">'
-      + '<div class="planner-header"><span class="bucket-sub">Elemento superior</span>'
-      +   '<span class="bucket-title">' + escapeHtml(g.titulo) + '</span>'
-      +   '<span style="font-size:0.8rem;color:var(--ds-color-text-muted)">' + g.itens.length + ' tarefa(s)</span></div>'
-      + '<div class="kanban-body" style="padding:10px">' + g.itens.map(function(t) { return _execCriarCard(t); }).join('') + '</div>'
-      + '</div>';
-  });
-  html += '</div>';
-  container.innerHTML = html;
-}
-
-// --- Card compartilhado (kanban/planner) ---
-function _execCriarCard(t) {
-  var info = _execStatusPill(t.status);
+function _execCriarCardKanban(t) {
   var atrasado = _execEstaAtrasado(t);
   var inds = _execIndicadoresDoElemento(t.id);
-  var indBadge = inds.length
-    ? '<div class="indicators-badge has-items" data-title="Lançar Resultado" data-on-click="pages_execucao_tarefas.20" data-aclick0="' + t.id + '"><span class="material-symbols-outlined" style="font-size:16px">monitoring</span> ' + inds.length + '</div>'
-    : '<div class="indicators-badge"><span class="material-symbols-outlined" style="font-size:16px">check_box_outline_blank</span></div>';
+  var anoAtivo = estadoExecTarefas.anoSelecionado;
+  var temMetaPendente = inds.some(function(i) { return _execTemMetaPendenteNoAno(i, anoAtivo); });
+  var aberta = !!estadoExecTarefas.gavetasAbertas[t.id];
 
+  var pct = Number(t.percentual) || 0;
   var porTarefas = !!t.progressoPorTarefas;
-  var contTar = porTarefas ? '<span class="ext-tar-cont">' + (t.tarefasConcluidas || 0) + ' de ' + (t.tarefasTotal || 0) + '</span>' : '';
-  return '<div class="task-card' + (porTarefas ? ' ext-card-fixo' : '') + '"' + (porTarefas ? ' data-title="O progresso deste elemento vem das tarefas"' : ' draggable="true"') + ' data-id="' + escapeHtml(String(t.id)) + '" data-on-click="pages_execucao_tarefas.13" data-aclick0="' + t.id + '">'
-    + '<div class="card-meta"><span class="card-code">' + escapeHtml(t.codigo || 'S/N') + '</span>'
-    +   '<span' + (atrasado ? ' style="color:var(--ds-color-danger);font-weight:bold"' : '') + '>' + escapeHtml(t.fim || 'Sem prazo') + '</span></div>'
-    + '<div class="card-title">' + escapeHtml(t.titulo)
-    +   (t.origemColaboracao ? ' <span class="material-symbols-outlined" style="font-size:14px;vertical-align:text-bottom;color:var(--ds-color-action)" data-title="Você colabora nesta tarefa (fora do seu escopo normal)">diversity_3</span>' : '')
+  var contTar = porTarefas ? (t.tarefasConcluidas || 0) + ' de ' + (t.tarefasTotal || 0) + ' tarefas' : pct + '%';
+
+  var alertaPendenteHtml = temMetaPendente
+    ? '<div class="ext-alerta-meta" data-title="Existe meta pendente de medição neste período"><span class="material-symbols-outlined">priority_high</span> Meta pendente de medição</div>'
+    : '';
+
+  var gavetaHtml = aberta ? _execRenderIndicadoresAncoradosHTML(t, anoAtivo) : '';
+
+  return '<div class="task-card" draggable="true" data-id="' + escapeHtml(String(t.id)) + '">'
+    + '<div class="card-main-content">'
+    +   '<div class="card-meta">'
+    +     '<span class="card-code">' + escapeHtml(t.codigo || 'S/N') + '</span>'
+    +     '<span style="' + (atrasado ? 'color:var(--ds-color-danger-fg);font-weight:bold' : '') + '">'
+    +       (atrasado ? '<span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom">warning</span> ' : '')
+    +       escapeHtml(t.fim || 'Sem prazo')
+    +     '</span>'
+    +   '</div>'
+    +   '<div class="card-title">' + escapeHtml(t.titulo)
+    +     (t.origemColaboracao ? ' <span class="material-symbols-outlined" style="font-size:14px;vertical-align:text-bottom;color:var(--ds-color-action)" data-title="Você colabora nesta tarefa">diversity_3</span>' : '')
+    +   '</div>'
+    +   (t.tituloPai ? '<div class="card-parent-title">' + escapeHtml(t.tituloPai) + '</div>' : '')
+    +   '<div class="card-prog-wrap">'
+    +     '<div class="card-prog-info"><span>Progresso Físico</span><span class="card-prog-pct">' + contTar + '</span></div>'
+    +     '<div class="card-prog-track"><div class="card-prog-fill" style="width:' + pct + '%"></div></div>'
+    +   '</div>'
+    +   alertaPendenteHtml
+    +   '<div class="card-footer-actions">'
+    +     '<button type="button" class="card-btn-gaveta' + (aberta ? ' aberto' : '') + '" data-on-click="pages_execucao_tarefas.33" data-aclick0="' + escapeHtml(String(t.id)) + '">'
+    +       '<span class="material-symbols-outlined">expand_more</span> <span class="ext-gaveta-label">' + inds.length + ' indicador(es) ancorado(s)</span>'
+    +     '</button>'
+    +     '<div style="display:flex;gap:6px">'
+    +       '<button type="button" class="action-btn-mini" data-title="Atualizar Progresso Físico" data-on-click="pages_execucao_tarefas.13" data-aclick0="' + escapeHtml(String(t.id)) + '">'
+    +         '<span class="material-symbols-outlined" style="font-size:15px">edit_square</span>'
+    +       '</button>'
+    +       '<button type="button" class="action-btn-mini" data-title="Ver no Plano" data-on-click="pages_execucao_tarefas.14" data-aclick0="' + escapeHtml(String(t.idPlano)) + '">'
+    +         '<span class="material-symbols-outlined" style="font-size:15px">open_in_new</span>'
+    +       '</button>'
+    +     '</div>'
+    +   '</div>'
     + '</div>'
-    + '<div class="card-footer"><div style="display:flex;gap:6px;align-items:center"><div class="progress-pill ' + info.cls + '">' + t.percentual + '%</div>' + contTar + '</div>'
-    +   '<div style="display:flex;gap:10px;align-items:center">' + indBadge
-    +     '<button class="action-btn-mini" data-title="Ir para Plano" data-on-click="pages_execucao_tarefas.21" data-aclick0="' + t.idPlano + '"><span class="material-symbols-outlined" style="font-size:14px">arrow_forward</span></button>'
-    +   '</div></div>'
+    + gavetaHtml
     + '</div>';
 }
 
-// --- Drag-and-drop do Kanban: soltar um card noutra trilha persiste de
-// verdade (apiSalvarExecucaoEResultado), com atualização otimista da UI. ---
+// Drag and drop do Kanban
 var _execDragTaskId = null;
-
 function _execAtivarDrag() {
   document.querySelectorAll('#ext-container .task-card[draggable="true"]').forEach(function(card) {
     card.addEventListener('dragstart', function() {
@@ -20137,39 +20358,123 @@ function _execAtivarDrag() {
     col.addEventListener('drop', function(e) {
       e.preventDefault();
       col.classList.remove('exec-col-over');
-      if (_execDragTaskId) _execMoverTarefa(_execDragTaskId, col.dataset.status);
+      if (_execDragTaskId) _execMoverTarefa(_execDragTaskId, col.dataset.colId);
     });
   });
 }
 
-function _execMoverTarefa(idTarefa, novoStatus) {
+function _execMoverTarefa(idTarefa, idColuna) {
+  var colunas = _execObterColunasKanban();
+  var col = colunas.find(function(c) { return c.id === idColuna; }) || { id: idColuna, titulo: idColuna, status: idColuna };
   var tarefa = estadoExecTarefas.dados.tarefas.find(function(t) { return String(t.id) === String(idTarefa); });
-  if (!tarefa || tarefa.status === novoStatus || tarefa.progressoPorTarefas) return;
+  if (!tarefa) return;
 
-  var statusAnterior = tarefa.status, pctAnterior = tarefa.percentual;
+  var statusAnterior = tarefa.status;
+  var pctAnterior = tarefa.percentual;
+  var novoStatus = col.status || (col.id === 'concluido' ? 'Concluído' : (col.id === 'em_andamento' ? 'Em Andamento' : (col.id === 'nao_iniciado' ? 'Não Iniciado' : tarefa.status)));
   var novoPct = tarefa.percentual;
+
   if (novoStatus === 'Concluído') novoPct = 100;
   else if (novoStatus === 'Não Iniciado') novoPct = 0;
-  else if (novoStatus === 'Em Andamento' && novoPct === 0) novoPct = 10;
+  else if (novoStatus === 'Em Andamento' && Number(novoPct) === 0) novoPct = 10;
 
+  tarefa.colunaPersonalizada = col.id;
   tarefa.status = novoStatus;
   tarefa.percentual = novoPct;
-  execTarefasRenderizar(); // atualização otimista, sem esperar o servidor
-  execTarefasRenderizarKpis();
 
+  // Atualização otimista imediata na UI
+  execTarefasRenderizar();
+
+  // Alerta suave se houver meta pendente no período
+  var inds = _execIndicadoresDoElemento(tarefa.id);
+  var temMetaPendente = inds.some(function(i) { return _execTemMetaPendenteNoAno(i, estadoExecTarefas.anoSelecionado); });
+  if (novoStatus === 'Concluído' && temMetaPendente && typeof showMessage === 'function') {
+    showMessage('info', 'Meta pendente de medição', 'O elemento foi movido para Concluído, mas possui metas de indicadores pendentes no exercício ativo. Lembre-se de lançar os resultados.');
+  }
+
+  // Persiste assincronamente no servidor
   google.script.run
     .withFailureHandler(function(err) {
       tarefa.status = statusAnterior;
       tarefa.percentual = pctAnterior;
       execTarefasRenderizar();
-      execTarefasRenderizarKpis();
       if (typeof showMessage === 'function') showMessage('error', 'Erro ao mover tarefa', escapeHtml(err.message));
-      else alert('Erro: ' + err.message);
     })
     .apiSalvarExecucaoEResultado({ idElemento: idTarefa, status: novoStatus, percentual: novoPct });
 }
 
-// --- Ações compartilhadas com o modal de resultado ---
+// Alternar gaveta ancorada de um card
+function _execToggleGavetaCard(idElemento) {
+  estadoExecTarefas.gavetasAbertas[idElemento] = !estadoExecTarefas.gavetasAbertas[idElemento];
+  execTarefasRenderizar();
+}
+
+// --- MODO LISTA: TABELA HIERÁRQUICA COM LINHAS EXPANSÍVEIS ---
+
+function _execRenderTabelaLista(itens, container) {
+  if (itens.length === 0) {
+    container.innerHTML = '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhuma responsabilidade encontrada</p><p>Ajuste os filtros ou aguarde novas atribuições.</p></div>';
+    return;
+  }
+
+  var anoAtivo = estadoExecTarefas.anoSelecionado;
+  var linhas = itens.map(function(t) {
+    var atrasado = _execEstaAtrasado(t);
+    var inds = _execIndicadoresDoElemento(t.id);
+    var aberta = !!estadoExecTarefas.gavetasAbertas[t.id];
+    var pct = Number(t.percentual) || 0;
+
+    var linhaPrincipal = '<tr class="ext-linha-elemento">'
+      + '<td><span class="card-code">' + escapeHtml(t.codigo || '-') + '</span></td>'
+      + '<td><div style="font-weight:600">' + escapeHtml(t.titulo) + '</div>'
+      +     (t.tituloPai ? '<div style="font-size:0.75rem;color:var(--ds-color-text-muted)">' + escapeHtml(t.tituloPai) + '</div>' : '') + '</td>'
+      + '<td>' + _execRespHTML(t.quem) + '</td>'
+      + '<td><div style="' + (atrasado ? 'color:var(--ds-color-danger-fg);font-weight:bold' : '') + '">' + escapeHtml(t.fim || '-')
+      +     (atrasado ? ' <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">warning</span>' : '') + '</div></td>'
+      + '<td><div style="display:flex;align-items:center;gap:8px">'
+      +     '<div class="ds-kpi-track" style="width:70px"><div class="ds-kpi-fill ds-tone-info" style="width:' + pct + '%"></div></div>'
+      +     '<span style="font-size:0.75rem;font-weight:700">' + pct + '%</span>'
+      +   '</div></td>'
+      + '<td>'
+      +   '<button type="button" class="card-btn-gaveta' + (aberta ? ' aberto' : '') + '" data-on-click="pages_execucao_tarefas.33" data-aclick0="' + escapeHtml(String(t.id)) + '">'
+      +     '<span class="material-symbols-outlined">expand_more</span> ' + inds.length + ' indicador(es)'
+      +   '</button>'
+      + '</td>'
+      + '<td><div style="display:flex;gap:5px;justify-content:flex-end">'
+      +   '<button type="button" class="action-btn-mini" data-title="Atualizar Progresso Físico" data-on-click="pages_execucao_tarefas.13" data-aclick0="' + escapeHtml(String(t.id)) + '"><span class="material-symbols-outlined" style="font-size:15px">edit_square</span></button>'
+      +   '<button type="button" class="action-btn-mini" data-title="Ver no Plano" data-on-click="pages_execucao_tarefas.14" data-aclick0="' + escapeHtml(String(t.idPlano)) + '"><span class="material-symbols-outlined" style="font-size:15px">open_in_new</span></button>'
+      + '</div></td>'
+      + '</tr>';
+
+    var linhaDetalhes = aberta ? ('<tr class="ext-linha-detalhes"><td colspan="7">' + _execRenderIndicadoresAncoradosHTML(t, anoAtivo) + '</td></tr>') : '';
+
+    return linhaPrincipal + linhaDetalhes;
+  }).join('');
+
+  container.innerHTML = '<div class="card table-container"><table class="ext-tabela-lista"><thead><tr>'
+    + '<th style="width:80px">Cód.</th>'
+    + '<th>Elemento (O Quê)</th>'
+    + '<th>Responsável (Quem)</th>'
+    + '<th>Prazo (Quando)</th>'
+    + '<th style="width:130px">Progresso</th>'
+    + '<th>Indicadores</th>'
+    + '<th style="text-align:right;width:100px">Ações</th>'
+    + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
+}
+
+function _execRespHTML(quem) {
+  if (!quem || !quem.length) return '<span style="color:var(--ds-color-text-muted)">-</span>';
+  return '<div style="display:flex;flex-wrap:wrap;gap:4px">' + quem.map(function(q) {
+    var icone = q.tipo === 'USER' ? 'person' : 'apartment';
+    var nome = q.idResp || '';
+    var nomeCurto = nome.length > 22 ? nome.substring(0, 22) + '…' : nome;
+    return '<span class="meta-tag" data-title="Responsável: ' + escapeHtml(nome) + '">'
+      + '<span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">' + icone + '</span>' + escapeHtml(nomeCurto) + '</span>';
+  }).join('') + '</div>';
+}
+
+// --- MODAIS DE EXECUÇÃO: PROGRESSO FÍSICO E LANÇAMENTO DE RESULTADO ---
+
 function _execAbrirModalProgresso(idElemento) {
   var t = estadoExecTarefas.dados.tarefas.find(function(x) { return String(x.id) === String(idElemento); });
   if (!t) return;
@@ -20183,35 +20488,101 @@ function _execAbrirModalProgresso(idElemento) {
         t.progressoPorTarefas = st.progressoPorTarefas; t.tarefasTotal = st.total; t.tarefasConcluidas = st.concluidas;
         if (st.percentual !== undefined && st.percentual !== null) t.percentual = st.percentual;
         if (st.status) t.status = st.status;
-        execTarefasRenderizar(); execTarefasRenderizarKpis();
+        execTarefasRenderizar();
       }
     });
   }
 }
 
 function _execAbrirModalLancamento(idElemento) {
+  var inds = _execIndicadoresDoElemento(idElemento);
+  if (!inds.length) { _execAbrirModalProgresso(idElemento); return; }
+  _execAbrirModalLancamentoIndicador(idElemento, inds[0].id);
+}
+
+function _execAbrirModalLancamentoIndicador(idElemento, idIndicador) {
   var t = estadoExecTarefas.dados.tarefas.find(function(x) { return String(x.id) === String(idElemento); });
   if (!t) return;
   var inds = _execIndicadoresDoElemento(idElemento);
-  if (inds.length === 0) { _execAbrirModalProgresso(idElemento); return; }
-  var ind = inds[0];
+  var ind = inds.find(function(i) { return String(i.id) === String(idIndicador); }) || inds[0];
+  if (!ind) return;
+
   if (typeof abrirModalResultado === 'function') {
     abrirModalResultado({
-      idElemento: t.id, tituloElemento: t.titulo,
-      percentualAtual: Number(t.percentual) || 0, statusAtual: t.status || 'Não Iniciado',
-      idIndicador: ind.id, nomeIndicador: ind.nome + ' (' + ind.unidade + ')',
+      idElemento: t.id,
+      tituloElemento: t.titulo,
+      percentualAtual: Number(t.percentual) || 0,
+      statusAtual: t.status || 'Não Iniciado',
+      idIndicador: ind.id,
+      nomeIndicador: ind.nome + (ind.unidade ? ' (' + ind.unidade + ')' : ''),
       progressoPorTarefas: !!t.progressoPorTarefas
     });
   }
 }
 
+// --- MODAL DE CONFIGURAÇÃO DE COLUNAS DO KANBAN ---
+
+function _execAbrirModalColunasKanban() {
+  var modal = document.getElementById('ext-modal-colunas');
+  if (!modal) return;
+  _execRenderColunasListaModal();
+  modal.classList.remove('hidden');
+}
+
+function _execFecharModalColunasKanban() {
+  var modal = document.getElementById('ext-modal-colunas');
+  if (modal) modal.classList.add('hidden');
+}
+
+function _execRenderColunasListaModal() {
+  var listaEl = document.getElementById('ext-colunas-lista');
+  if (!listaEl) return;
+  var colunas = _execObterColunasKanban();
+
+  listaEl.innerHTML = colunas.map(function(col, idx) {
+    var podeExcluir = colunas.length > 2;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--ds-color-surface-2);border-radius:var(--ds-r-sm);border:1px solid var(--ds-color-border)">'
+      + '<span style="font-size:0.86rem;font-weight:600;color:var(--ds-color-text)">' + escapeHtml(col.titulo) + '</span>'
+      + (podeExcluir ? '<button type="button" class="action-btn-mini" data-title="Remover coluna" data-on-click="pages_execucao_tarefas.37" data-aclick0="' + escapeHtml(col.id) + '"><span class="material-symbols-outlined" style="font-size:15px;color:var(--ds-color-danger-fg)">delete</span></button>' : '<span></span>')
+      + '</div>';
+  }).join('');
+}
+
+function _execAdicionarColunaKanban() {
+  var input = document.getElementById('ext-nova-coluna-titulo');
+  if (!input || !input.value.trim()) return;
+  var titulo = input.value.trim();
+  var colunas = _execObterColunasKanban();
+  var idNovo = 'col_' + Date.now();
+  colunas.push({ id: idNovo, titulo: titulo, status: titulo, icone: 'view_column' });
+  _execSalvarColunasKanban(colunas);
+  input.value = '';
+  _execRenderColunasListaModal();
+  execTarefasRenderizar();
+}
+
+function _execExcluirColunaKanban(colId) {
+  var colunas = _execObterColunasKanban().filter(function(c) { return c.id !== colId; });
+  _execSalvarColunasKanban(colunas);
+  _execRenderColunasListaModal();
+  execTarefasRenderizar();
+}
+
+function _execRestaurarColunasKanbanPadrao() {
+  _execSalvarColunasKanban(EXEC_COLUNAS_PADRAO.slice());
+  _execRenderColunasListaModal();
+  execTarefasRenderizar();
+}
+
 // ==================================================================
-// ABA: AÇÕES DE TRATAMENTO (leitura + registro básico de execução)
+// ABA: AÇÕES DE TRATAMENTO
 // ==================================================================
 
 var _EXEC_CORES_NIVEL = {
-  RB: { bg: 'var(--ds-color-success-bg)', text: 'var(--ds-color-success-fg)' }, RM: { bg: 'var(--ds-color-warning-bg)', text: 'var(--ds-color-warning-fg)' },
-  RA: { bg: 'var(--ds-risk-alto-bg)', text: 'var(--ds-risk-alto-fg)' }, RE: { bg: 'var(--ds-color-danger-bg)', text: 'var(--ds-color-danger-fg)' }
+  RB: { bg: 'var(--ds-color-success-bg)', text: 'var(--ds-color-success-fg)' },
+  RM: { bg: 'var(--ds-color-warning-bg)', text: 'var(--ds-color-warning-fg)' },
+  RA: { bg: 'var(--ds-risk-alto-bg)', text: 'var(--ds-risk-alto-fg)' },
+  RE: { bg: 'var(--ds-color-danger-bg)', text: 'var(--ds-color-danger-fg)' }
 };
 
 function _execCarregarRiscos() {
@@ -20327,31 +20698,32 @@ function _execExcluirRegistro(id) {
   else if (confirm('Excluir este registro?')) confirmado();
 }
 
-// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
+// Registro das Ações de Delegação Global
 uiRegistrarAcoes('pages_execucao_tarefas', {
   '1': function (event) { execTarefasMudarAba('tarefas'); },
   '2': function (event) { execTarefasMudarAba('riscos'); },
-  '3': function (event) { execTarefasSetView('5w2h'); },
+  '3': function (event) { execTarefasSetView('lista'); },
   '4': function (event) { execTarefasSetView('kanban'); },
-  '5': function (event) { execTarefasSetView('planner'); },
-  '6': function (event) { execTarefasSetView('gantt'); },
-  '7': function (event) { execTarefasToggleSecToolbar(); },
-  '8': function (event) { execTarefasExportar(); },
   '9': function (event) { execTarefasFiltrar(); },
   '10': function (event) { execTarefasFiltrar(); },
   '11': function (event) { execTarefasCarregar(); },
   '12': function (event) { _execAbrirModalLancamento(uiArgJs(this.dataset.aclick0)); },
   '13': function (event) { _execAbrirModalProgresso(uiArgJs(this.dataset.aclick0)); },
   '14': function (event) { carregarDetalhesPlano(uiArgJs(this.dataset.aclick0)); },
-  '15': function (event) { _execOrdenarPorColuna('codigo'); },
-  '16': function (event) { _execOrdenarPorColuna('titulo'); },
-  '17': function (event) { _execOrdenarPorColuna('responsavel'); },
-  '18': function (event) { _execOrdenarPorColuna('prazo'); },
-  '19': function (event) { _execOrdenarPorColuna('custo'); },
-  '20': function (event) { event.stopPropagation();_execAbrirModalLancamento(uiArgJs(this.dataset.aclick0)); },
-  '21': function (event) { event.stopPropagation();carregarDetalhesPlano(uiArgJs(this.dataset.aclick0)); },
   '22': function (event) { _execExcluirRegistro(uiArgJs(this.dataset.aclick0)); },
-  '23': function (event) { _execAbrirModalRegistro(uiArgJs(this.dataset.aclick0)); }
+  '23': function (event) { _execAbrirModalRegistro(uiArgJs(this.dataset.aclick0)); },
+  '24': function (event) { extAlternarPainelDetalhes(); },
+  '25': function (event) { _extpMudarAba('detalhes'); },
+  '26': function (event) { _extpMudarAba('atividade'); },
+  '27': function (event) { extFecharPainelDetalhes(); },
+  '28': function (event) { execTarefasMudarExercicio(); },
+  '29': function (event) { _execAbrirModalColunasKanban(); },
+  '30': function (event) { _execFecharModalColunasKanban(); },
+  '31': function (event) { _execAdicionarColunaKanban(); },
+  '32': function (event) { _execRestaurarColunasKanbanPadrao(); },
+  '33': function (event) { event.stopPropagation(); _execToggleGavetaCard(uiArgJs(this.dataset.aclick0)); },
+  '35': function (event) { event.stopPropagation(); _execAbrirModalLancamentoIndicador(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
+  '37': function (event) { _execExcluirColunaKanban(uiArgJs(this.dataset.aclick0)); }
 });
 </script>
 
