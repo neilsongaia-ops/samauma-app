@@ -1415,6 +1415,10 @@ if (!window._uiDelegacaoAtiva) {
               <span class="material-symbols-outlined" aria-hidden="true">corporate_fare</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Planejamento Institucional</span></span>
             </button>
+            <button type="button" class="nav-submenu-item" data-nav-rota="colaboracao" data-on-click="components_header.13">
+              <span class="material-symbols-outlined" aria-hidden="true">diversity_3</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Colaboração</span></span>
+            </button>
             <button type="button" class="nav-submenu-item" data-nav-rota="calendario" data-on-click="components_header.36">
               <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Calendário</span></span>
@@ -1449,16 +1453,8 @@ if (!window._uiDelegacaoAtiva) {
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Execução de Planos</span></span>
             </button>
             <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
-              <span class="material-symbols-outlined" aria-hidden="true">shield</span>
-              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Gestão de Riscos</span></span>
-            </button>
-            <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
               <span class="material-symbols-outlined" aria-hidden="true">payments</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Execução Orçamentária</span></span>
-            </button>
-            <button type="button" class="nav-submenu-item" data-nav-rota="colaboracao" data-on-click="components_header.13">
-              <span class="material-symbols-outlined" aria-hidden="true">diversity_3</span>
-              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Colaborar em Elementos</span></span>
             </button>
             </div>
           </div>
@@ -21145,12 +21141,12 @@ uiRegistrarAcoes('pages_execucao_tarefas', {
 <div id="page-colaboracao" class="page-content hidden">
 
   <!-- Sem botão voltar: página alcançada direto pelo menu em cascata
-       "Execução" (components_header.html), sem hub pai. -->
+       "Planejamento" (components_header.html), sem hub pai. -->
   <div class="detalhe-header">
     <div class="plano-info-grid">
       <div class="info-main">
         <span class="badge-tipo">COLABORAÇÃO</span>
-        <h1>Colaborar em Elementos de Outros Planos</h1>
+        <h1>Colaboração</h1>
         <div class="meta-row">
           <span style="font-size:0.85rem">Solicite participar de elementos abertos por outros planos, mesmo fora do seu escopo de Unidade — sujeito a aceite de quem já é responsável.</span>
         </div>
@@ -28575,8 +28571,8 @@ function navigate(pageName, extra) {
     case 'colaboracao':
       document.getElementById('page-colaboracao').classList.remove('hidden');
       setBreadcrumb([
-        { label: 'Execução' },
-        { label: 'Colaborar em Elementos' }
+        { label: 'Planejamento' },
+        { label: 'Colaboração' }
       ]);
       if (typeof initColaboracao === 'function') initColaboracao();
       break;
