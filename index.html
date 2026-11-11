@@ -1402,6 +1402,27 @@ if (!window._uiDelegacaoAtiva) {
           </div>
         </div>
 
+        <div class="nav-item-group" id="navgroup-gestao-resultados">
+          <button type="button" class="nav-item nav-item-parent" aria-label="Gestão de Resultados" data-title="Gestão de Resultados"
+            data-on-click="components_header.37" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-gestao-resultados">
+            <span class="material-symbols-outlined nav-item-icon" aria-hidden="true">monitoring</span>
+            <span class="nav-item-label">Gestão de Resultados</span>
+            <span class="material-symbols-outlined nav-caret" aria-hidden="true">expand_more</span>
+          </button>
+          <div class="nav-submenu" id="submenu-gestao-resultados" data-label="Gestão de Resultados" role="group" aria-label="Gestão de Resultados">
+            <div class="nav-submenu-inner">
+            <button type="button" class="nav-submenu-item" data-nav-rota="gestao-resultados" data-on-click="components_header.38">
+              <span class="material-symbols-outlined" aria-hidden="true">monitoring</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Painel Geral</span></span>
+            </button>
+            <button type="button" class="nav-submenu-item" data-nav-rota="validacao-resultados" data-on-click="components_header.39">
+              <span class="material-symbols-outlined" aria-hidden="true">fact_check</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Validação de Resultados</span></span>
+            </button>
+            </div>
+          </div>
+        </div>
+
         <div class="nav-item-group" id="navgroup-planejamento">
           <button type="button" class="nav-item nav-item-parent" aria-label="Planejamento" data-title="Planejamento"
             data-on-click="components_header.9" aria-haspopup="true" aria-expanded="false" aria-controls="submenu-planejamento">
@@ -1413,7 +1434,7 @@ if (!window._uiDelegacaoAtiva) {
             <div class="nav-submenu-inner">
             <button type="button" class="nav-submenu-item" data-nav-rota="planos" data-on-click="components_header.10">
               <span class="material-symbols-outlined" aria-hidden="true">corporate_fare</span>
-              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Planejamento Institucional</span></span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Planos</span></span>
             </button>
             <button type="button" class="nav-submenu-item" data-nav-rota="colaboracao" data-on-click="components_header.13">
               <span class="material-symbols-outlined" aria-hidden="true">diversity_3</span>
@@ -1450,7 +1471,7 @@ if (!window._uiDelegacaoAtiva) {
             <div class="nav-submenu-inner">
             <button type="button" class="nav-submenu-item" data-nav-rota="execucao-planos" data-on-click="components_header.12">
               <span class="material-symbols-outlined" aria-hidden="true">checklist</span>
-              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Execução de Planos</span></span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Lançamentos</span></span>
             </button>
             <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
               <span class="material-symbols-outlined" aria-hidden="true">payments</span>
@@ -2439,7 +2460,10 @@ uiRegistrarAcoes('components_header', {
   '32': function (event) { ntfToggleSino(event); },
   '33': function (event) { alternarTema(); },
   '34': function (event) { if(event.target===this) window[this.dataset.fechar](); },
-  '35': function (event) { fecharPerfil(); }
+  '35': function (event) { fecharPerfil(); },
+  '37': function (event) { toggleNavSubmenu('gestao-resultados', event); },
+  '38': function (event) { navigate('gestao-resultados'); navAposEscolherSubmenu(); fecharMenuMobile(); },
+  '39': function (event) { navigate('validacao-resultados'); navAposEscolherSubmenu(); fecharMenuMobile(); }
 });
 </script>
 
@@ -10668,7 +10692,7 @@ uiRegistrarAcoes('pages_home', {
 
 
   <section class="pll-hero">
-    <h1>Planos institucionais</h1>
+    <h1>Planos</h1>
   </section>
   <!-- Botão FORA do hero (irmão, não filho): um sticky só gruda dentro da área de
        conteúdo do próprio pai — dentro do hero (baixinho) ele descolava e sumia assim que
@@ -16367,7 +16391,7 @@ function carregarDetalhesPlano(idPlano, metaOtimista) {
     if (metaOtimista.nome) {
       setBreadcrumb([
         { label: 'Planejamento', page: 'planejamento' },
-        { label: 'Planejamento Institucional', page: 'planos' },
+        { label: 'Planos', page: 'planos' },
         { label: metaOtimista.nome }
       ]);
     }
@@ -16391,7 +16415,7 @@ function carregarDetalhesPlano(idPlano, metaOtimista) {
 
       setBreadcrumb([
         { label: 'Planejamento', page: 'planejamento' },
-        { label: 'Planejamento Institucional', page: 'planos' },
+        { label: 'Planos', page: 'planos' },
         { label: res.plano.nome }
       ]);
 
@@ -18245,7 +18269,7 @@ uiRegistrarAcoes('plano', {
 
   <!-- Hero: só o título (30px desktop, 26px mobile; rola com a página) -->
   <section class="exl-hero">
-    <h1>Execução de planos</h1>
+    <h1>Lançamentos</h1>
   </section>
 
   <!-- Abas estilo Gmail: Todos, Meus planos, Minha unidade, Colaborações -->
@@ -20150,7 +20174,7 @@ function execTarefasCarregar() {
       if (typeof setBreadcrumb === 'function') {
         setBreadcrumb([
           { label: 'Execução', page: 'execucao' },
-          { label: 'Execução de Planos', page: 'execucao-planos' },
+          { label: 'Lançamentos', page: 'execucao-planos' },
           { label: dados.plano.nome }
         ]);
       }
@@ -28526,7 +28550,7 @@ function navigate(pageName, extra) {
       document.getElementById('page-planos').classList.remove('hidden');
       setBreadcrumb([
         { label: 'Planejamento' },
-        { label: 'Planejamento Institucional' }
+        { label: 'Planos' }
       ]);
       if (typeof initPlanos === 'function') initPlanos();
       break;
@@ -28544,7 +28568,7 @@ function navigate(pageName, extra) {
       document.getElementById('page-plano-detalhe').classList.remove('hidden');
       setBreadcrumb([
         { label: 'Planejamento' },
-        { label: 'Planejamento Institucional', page: 'planos' },
+        { label: 'Planos', page: 'planos' },
         { label: '…' }
       ]);
       break;
@@ -28553,7 +28577,7 @@ function navigate(pageName, extra) {
       document.getElementById('page-execucao-planos').classList.remove('hidden');
       setBreadcrumb([
         { label: 'Execução' },
-        { label: 'Execução de Planos' }
+        { label: 'Lançamentos' }
       ]);
       if (typeof initExecucaoPlanos === 'function') initExecucaoPlanos();
       break;
@@ -28563,7 +28587,7 @@ function navigate(pageName, extra) {
       document.getElementById('page-execucao-tarefas').classList.remove('hidden');
       setBreadcrumb([
         { label: 'Execução' },
-        { label: 'Execução de Planos', page: 'execucao-planos' },
+        { label: 'Lançamentos', page: 'execucao-planos' },
         { label: '…' }
       ]);
       break;
