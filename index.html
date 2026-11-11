@@ -7286,6 +7286,32 @@ uiRegistrarAcoes('components_modal_registro_tratamento', {
 });
 </script>
 
+<!-- MODAL: CONFIGURAÇÃO DE COLUNAS DO KANBAN (pages_execucao_tarefas.html). Vive FORA de #main-content -->
+<div id="ext-modal-colunas" class="ext-mini-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ext-modal-colunas-titulo">
+  <div class="ext-mini-card">
+    <div class="ext-mini-header">
+      <h4 id="ext-modal-colunas-titulo">Configurar Colunas do Kanban</h4>
+      <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.30" aria-label="Fechar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="ext-mini-body">
+      <p style="font-size:0.84rem;color:var(--ds-color-text-muted);margin:0">
+        Personalize as colunas do seu quadro de execução. Os cards arrastados são organizados conforme sua preferência.
+      </p>
+      <div id="ext-colunas-lista" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto"></div>
+      <div style="display:flex;gap:8px;margin-top:6px">
+        <input type="text" id="ext-nova-coluna-titulo" class="filtro-input ds-input" placeholder="Nome da nova coluna…" style="flex:1" maxlength="40">
+        <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_execucao_tarefas.31">Adicionar</button>
+      </div>
+    </div>
+    <div class="ext-mini-footer">
+      <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="pages_execucao_tarefas.32">Restaurar padrão</button>
+      <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_execucao_tarefas.30">Concluir</button>
+    </div>
+  </div>
+</div>
+
     <!-- ARQUIVO: components_modal_marketplace_apps.html -->
 <!-- Modal para adicionar/instalar apps disponíveis do catálogo no plano atual -->
 
@@ -21383,7 +21409,7 @@ uiRegistrarAcoes('pages_execucao_planos', {
      - Suporte a planos plurianuais com seletor de exercício/período. -->
 <div id="page-execucao-tarefas" class="page-content hidden">
 
-  <!-- HERO ABERTO: Título + Status + Prazos (igual ao padrão da página de detalhes) -->
+  <!-- HERO ABERTO: Título + Status + Prazos (clone do padrão da página de detalhes) -->
   <section class="detalhe-hero" id="ext-hero">
     <div class="detalhe-hero-titulo">
       <h1 id="ext-titulo">Carregando...</h1>
@@ -21392,7 +21418,8 @@ uiRegistrarAcoes('pages_execucao_planos', {
     <div class="cal-prazos hidden" id="ext-prazos"></div>
   </section>
 
-  <!-- BOTÃO STICKY DO HERO: Abre o painel lateral de detalhes (#extp-panel) -->
+  <!-- BOTÃO STICKY DO HERO: FORA do hero (irmão, não filho), para que o sticky dure na página toda.
+       Em repouso, a margem negativa o sobrepõe à linha do título. Ao rolar, sobe e para no topo. -->
   <div class="detalhe-hero-acoes desktop-only-flex" id="ext-hero-acoes">
     <button type="button" class="ds-icon-action" id="ext-btn-detalhes" data-on-click="pages_execucao_tarefas.24"
             data-title="Detalhes do plano" aria-label="Detalhes do plano" aria-expanded="false">
@@ -21400,105 +21427,115 @@ uiRegistrarAcoes('pages_execucao_planos', {
     </button>
   </div>
 
-  <!-- LINHA DE ABAS DA PÁGINA (Responsabilidades / Ações de Tratamento) -->
+  <!-- LINHA DE ABAS DA PÁGINA (Responsabilidades / Ações de Tratamento)
+       Sticky no topo de <main>; para quando sua linha base alinha com a base do botão de ações. -->
   <div class="view-tabs-container" id="ext-tabs-row">
-    <div class="view-tabs" role="tablist">
-      <button class="tab-btn active" data-aba="tarefas" data-on-click="pages_execucao_tarefas.1" id="ext-btn-tab-resp">
-        <span class="material-symbols-outlined icon-sm">checklist</span> Responsabilidades
-      </button>
-      <button class="tab-btn" data-aba="riscos" data-on-click="pages_execucao_tarefas.2" id="ext-btn-tab-trat">
-        <span class="material-symbols-outlined icon-sm">shield</span> Ações de Tratamento
-      </button>
+    <div class="view-tabs-scroll-wrap">
+      <div class="view-tabs" id="ext-tabs-scroll" role="tablist">
+        <button class="tab-btn active" data-aba="tarefas" data-on-click="pages_execucao_tarefas.1" id="ext-btn-tab-resp">
+          <span class="material-symbols-outlined icon-sm">checklist</span> Responsabilidades
+          <span class="ds-tab-count hidden" id="ext-tab-count-resp">0</span>
+        </button>
+        <button class="tab-btn" data-aba="riscos" data-on-click="pages_execucao_tarefas.2" id="ext-btn-tab-trat">
+          <span class="material-symbols-outlined icon-sm">shield</span> Ações de Tratamento
+          <span class="ds-tab-count hidden" id="ext-tab-count-trat">0</span>
+        </button>
+      </div>
     </div>
   </div>
 
-  <!-- PAINEL: RESPONSABILIDADES -->
-  <div id="ext-painel-tarefas">
+  <!-- CONTAINER DE CONTEÚDO (direto no main-content, sem .ds-pasta) -->
+  <div class="detalhe-content-area" id="ext-content-area">
 
-    <!-- Barra de Filtros Unificada: Busca, Filtro Status, Colaboração, Limpar + Exercício e Modos de Visualização -->
-    <div class="ext-filtros" id="ext-filtros">
-      <div class="ext-filtros-normal" id="ext-filtros-normal">
+    <!-- PAINEL: RESPONSABILIDADES -->
+    <div id="ext-painel-tarefas">
 
-        <!-- Busca expansível (estilo Drive / Samaúma) -->
-        <div class="ext-search" id="ext-search-wrap">
-          <button type="button" class="ds-icon-action" id="ext-search-toggle" data-on-click="pages_execucao_tarefas.5"
-                  data-title="Buscar" aria-label="Buscar responsabilidade">
-            <span class="material-symbols-outlined">search</span>
-          </button>
-          <div class="ext-search-caixa hidden" id="ext-search-caixa">
-            <span class="material-symbols-outlined ext-search-icon" aria-hidden="true">search</span>
-            <input type="text" class="ds-input ext-search-input" id="ext-busca"
-                   placeholder="Buscar elemento, código ou indicador…" data-on-input="pages_execucao_tarefas.9"
-                   aria-label="Buscar elemento, código ou indicador">
-            <button type="button" class="ext-search-clear hidden" id="ext-btn-limpar-busca"
-                    data-on-click="pages_execucao_tarefas.6" data-title="Limpar busca" aria-label="Limpar busca">
+      <!-- Barra de Filtros Unificada: Busca, Filtro Status, Colaboração, Limpar + Exercício e Modos de Visualização -->
+      <div class="ext-filtros" id="ext-filtros">
+        <div class="ext-filtros-normal" id="ext-filtros-normal">
+
+          <!-- Busca expansível (estilo Drive / Samaúma) -->
+          <div class="ext-search" id="ext-search-wrap">
+            <button type="button" class="ds-icon-action" id="ext-search-toggle" data-on-click="pages_execucao_tarefas.5"
+                    data-title="Buscar" aria-label="Buscar responsabilidade">
+              <span class="material-symbols-outlined">search</span>
+            </button>
+            <div class="ext-search-caixa hidden" id="ext-search-caixa">
+              <span class="material-symbols-outlined ext-search-icon" aria-hidden="true">search</span>
+              <input type="text" class="ds-input ext-search-input" id="ext-busca"
+                     placeholder="Buscar elemento, código ou indicador…" data-on-input="pages_execucao_tarefas.9"
+                     aria-label="Buscar elemento, código ou indicador">
+              <button type="button" class="ext-search-clear hidden" id="ext-btn-limpar-busca"
+                      data-on-click="pages_execucao_tarefas.6" data-title="Limpar busca" aria-label="Limpar busca">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Filtro Status (dropdown estilo Drive via abrirMenuSelecao) -->
+          <div class="ext-filtro" data-filtro="status" id="ext-filtro-wrap-status">
+            <button type="button" class="ext-filtro-btn" id="ext-filtro-btn-status" data-on-click="pages_execucao_tarefas.10"
+                    aria-haspopup="menu" aria-expanded="false">
+              <span id="ext-filtro-label-status">Status</span>
+              <span class="material-symbols-outlined">expand_more</span>
+            </button>
+            <button type="button" class="ext-filtro-x hidden" id="ext-filtro-x-status" data-on-click="pages_execucao_tarefas.38"
+                    data-title="Remover filtro de status" aria-label="Remover filtro de status">
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
+
+          <!-- Toggle: Somente colaborações -->
+          <label class="ext-toggle-origem" data-title="Mostra só as responsabilidades que você assumiu por colaboração externa (fora do seu escopo normal de Unidade)">
+            <input type="checkbox" id="ext-filtro-colaboracao" data-on-change="pages_execucao_tarefas.8">
+            <span class="ext-toggle-track"><span class="ext-toggle-thumb"></span></span>
+            <span>Somente colaborações</span>
+          </label>
+
+          <!-- Limpar filtros -->
+          <button type="button" class="ext-limpar-link hidden" id="ext-btn-limpar-filtros"
+                  data-on-click="pages_execucao_tarefas.7" aria-label="Limpar filtros">
+            Limpar filtros
+          </button>
+
+          <!-- Spacer empurra os controles para a direita na mesma linha base -->
+          <div style="flex:1"></div>
+
+          <!-- Seletor de Período / Exercício Plurianual (dropdown na mesma linha base) -->
+          <div class="ext-filtro ext-periodo-filtro" id="ext-periodo-wrap" data-filtro="exercicio">
+            <button type="button" class="ext-filtro-btn" id="ext-filtro-btn-exercicio" data-on-click="pages_execucao_tarefas.28"
+                    aria-haspopup="menu" aria-expanded="false" data-title="Selecione o exercício de apuração do plano">
+              <span class="material-symbols-outlined" style="font-size:18px;color:var(--ds-color-action)">event</span>
+              <span id="ext-filtro-label-exercicio">Exercício</span>
+              <span class="material-symbols-outlined">expand_more</span>
+            </button>
+          </div>
+
+          <!-- Alternador Simplificado de Visualização: Apenas Lista e Kanban (à direita, mesma linha base) -->
+          <div class="det-modos" role="group" aria-label="Modo de visualização">
+            <button type="button" class="det-modo ativo" data-view="kanban" data-on-click="pages_execucao_tarefas.4"
+                    id="ext-btn-modo-kanban" data-title="Visualização em Kanban" aria-label="Visualização em Kanban" aria-pressed="true">
+              <span class="material-symbols-outlined">view_kanban</span>
+            </button>
+            <button type="button" class="det-modo" data-view="lista" data-on-click="pages_execucao_tarefas.3"
+                    id="ext-btn-modo-lista" data-title="Visualização em Lista" aria-label="Visualização em Lista" aria-pressed="false">
+              <span class="material-symbols-outlined">format_list_bulleted</span>
+            </button>
+          </div>
+
         </div>
-
-        <!-- Filtro Status (dropdown estilo Drive via abrirMenuSelecao) -->
-        <div class="ext-filtro" data-filtro="status" id="ext-filtro-wrap-status">
-          <button type="button" class="ext-filtro-btn" id="ext-filtro-btn-status" data-on-click="pages_execucao_tarefas.10"
-                  aria-haspopup="menu" aria-expanded="false">
-            <span id="ext-filtro-label-status">Status</span>
-            <span class="material-symbols-outlined">expand_more</span>
-          </button>
-          <button type="button" class="ext-filtro-x hidden" id="ext-filtro-x-status" data-on-click="pages_execucao_tarefas.38"
-                  data-title="Remover filtro de status" aria-label="Remover filtro de status">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-
-        <!-- Toggle: Somente colaborações -->
-        <label class="ext-toggle-origem" data-title="Mostra só as responsabilidades que você assumiu por colaboração externa (fora do seu escopo normal de Unidade)">
-          <input type="checkbox" id="ext-filtro-colaboracao" data-on-change="pages_execucao_tarefas.8">
-          <span class="ext-toggle-track"><span class="ext-toggle-thumb"></span></span>
-          <span>Somente colaborações</span>
-        </label>
-
-        <!-- Limpar filtros -->
-        <button type="button" class="ext-limpar-link hidden" id="ext-btn-limpar-filtros"
-                data-on-click="pages_execucao_tarefas.7" aria-label="Limpar filtros">
-          Limpar filtros
-        </button>
-
-        <!-- Spacer empurra os controles para a direita na mesma linha base -->
-        <div style="flex:1"></div>
-
-        <!-- Seletor de Período / Exercício Plurianual (dropdown na mesma linha base) -->
-        <div class="ext-filtro ext-periodo-filtro" id="ext-periodo-wrap" data-filtro="exercicio">
-          <button type="button" class="ext-filtro-btn" id="ext-filtro-btn-exercicio" data-on-click="pages_execucao_tarefas.28"
-                  aria-haspopup="menu" aria-expanded="false" data-title="Selecione o exercício de apuração do plano">
-            <span class="material-symbols-outlined" style="font-size:18px;color:var(--ds-color-action)">event</span>
-            <span id="ext-filtro-label-exercicio">Exercício</span>
-            <span class="material-symbols-outlined">expand_more</span>
-          </button>
-        </div>
-
-        <!-- Alternador Simplificado de Visualização: Apenas Lista e Kanban (à direita, mesma linha base) -->
-        <div class="det-modos" role="group" aria-label="Modo de visualização">
-          <button type="button" class="det-modo ativo" data-view="kanban" data-on-click="pages_execucao_tarefas.4"
-                  id="ext-btn-modo-kanban" data-title="Visualização em Kanban" aria-label="Visualização em Kanban" aria-pressed="true">
-            <span class="material-symbols-outlined">view_kanban</span>
-          </button>
-          <button type="button" class="det-modo" data-view="lista" data-on-click="pages_execucao_tarefas.3"
-                  id="ext-btn-modo-lista" data-title="Visualização em Lista" aria-label="Visualização em Lista" aria-pressed="false">
-            <span class="material-symbols-outlined">format_list_bulleted</span>
-          </button>
-        </div>
-
       </div>
+
+      <!-- Container Dinâmico (Kanban ou Lista) -->
+      <div id="ext-container"></div>
     </div>
 
-    <!-- Container Dinâmico (Kanban ou Lista) -->
-    <div id="ext-container"></div>
-  </div>
+    <!-- PAINEL: AÇÕES DE TRATAMENTO -->
+    <div id="ext-painel-riscos" class="hidden">
+      <div id="ext-riscos-container"></div>
+    </div>
 
-  <!-- PAINEL: AÇÕES DE TRATAMENTO -->
-  <div id="ext-painel-riscos" class="hidden">
-    <div id="ext-riscos-container"></div>
-  </div>
+  </div><!-- /.detalhe-content-area -->
 
   <!-- PAINEL LATERAL DE DETALHES (#extp-panel) -->
   <aside class="detp-panel" id="extp-panel" aria-hidden="true">
@@ -21516,79 +21553,34 @@ uiRegistrarAcoes('pages_execucao_planos', {
     </div>
   </aside>
 
-  <!-- MODAL: CONFIGURAÇÃO DE COLUNAS DO KANBAN -->
-  <div id="ext-modal-colunas" class="ext-mini-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ext-modal-colunas-titulo">
-    <div class="ext-mini-card">
-      <div class="ext-mini-header">
-        <h4 id="ext-modal-colunas-titulo">Configurar Colunas do Kanban</h4>
-        <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.30" aria-label="Fechar">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-      <div class="ext-mini-body">
-        <p style="font-size:0.84rem;color:var(--ds-color-text-muted);margin:0">
-          Personalize as colunas do seu quadro de execução. Os cards arrastados são organizados conforme sua preferência.
-        </p>
-        <div id="ext-colunas-lista" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto"></div>
-        <div style="display:flex;gap:8px;margin-top:6px">
-          <input type="text" id="ext-nova-coluna-titulo" class="filtro-input ds-input" placeholder="Nome da nova coluna…" style="flex:1" maxlength="40">
-          <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_execucao_tarefas.31">Adicionar</button>
-        </div>
-      </div>
-      <div class="ext-mini-footer">
-        <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="pages_execucao_tarefas.32">Restaurar padrão</button>
-        <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_execucao_tarefas.30">Concluir</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MINI MODAL: REGISTRAR EXECUÇÃO DE TRATAMENTO -->
-  <div id="ext-modal-registro" class="ext-mini-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ext-modal-reg-titulo">
-    <div class="ext-mini-card">
-      <div class="ext-mini-header">
-        <h4 id="ext-modal-reg-titulo">Registrar Execução de Tratamento</h4>
-        <button type="button" class="ds-icon-action ds-icon-action--sm" onclick="extFecharModalRegistro()" aria-label="Fechar">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-      <div class="ext-mini-body">
-        <input type="hidden" id="ext-reg-id-tratamento">
-        <div class="ext-mini-field">
-          <label for="ext-reg-data">Data da execução *</label>
-          <input type="date" id="ext-reg-data" class="filtro-input ds-input">
-        </div>
-        <div class="ext-mini-field">
-          <label for="ext-reg-obs">Observação / Evidência</label>
-          <textarea id="ext-reg-obs" class="filtro-input ds-input" rows="3" placeholder="Descreva brevemente o que foi feito…"></textarea>
-        </div>
-      </div>
-      <div class="ext-mini-footer">
-        <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="extFecharModalRegistro()">Cancelar</button>
-        <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" onclick="extSalvarRegistro()">Salvar registro</button>
-      </div>
-    </div>
-  </div>
-
 </div>
 
 <style>
 /* ==========================================================================
    ESTILOS ESPECÍFICOS: WORKSPACE DE REGISTRO DE EXECUÇÃO
+   Padrão rigorosamente clonado de pages_plano_detalhe.html.
+   Hero aberto → abas estilo Gmail (sticky) → barra de filtros (sticky) → conteúdo direto no main.
+   Sem sobreposições, sem frestas de scroll e sem vazamento de cards por trás da barra.
    ========================================================================== */
 
 #page-execucao-tarefas {
-  --ext-sticky-top: 0px;
-  --ext-tabs-h: 44px;
-  --ext-acoes-w: 48px;
+  --det-tabs-h: 44px;
+  --det-sticky-top: -20px;
+  --det-acoes-w: 64px;
+  --det-el-filtros-h: 56px;
+  --ext-tabs-h: var(--det-tabs-h);
+  --ext-sticky-top: var(--det-sticky-top);
+  --ext-acoes-w: var(--det-acoes-w);
 }
+#page-execucao-tarefas > * { margin-bottom: 20px; }
+#page-execucao-tarefas > *:last-child { margin-bottom: 0; }
 
 /* --- Hero limpo (idêntico ao padrão de pages_plano_detalhe.html) --- */
 #page-execucao-tarefas .detalhe-hero {
   display: flex;
   align-items: center;
-  min-height: var(--ext-tabs-h);
-  padding-right: var(--ext-acoes-w);
-  margin-bottom: 20px;
+  min-height: var(--det-tabs-h);
+  padding-right: var(--det-acoes-w, 64px);
 }
 #page-execucao-tarefas .detalhe-hero-titulo {
   display: flex;
@@ -21618,15 +21610,19 @@ uiRegistrarAcoes('pages_execucao_planos', {
   line-height: 1.4;
 }
 
-/* Botão sticky de ação do Hero */
+/* Botão sticky de ação do Hero: irmão direto de #page-execucao-tarefas (não filho do hero).
+   Sticky top: var(--det-sticky-top) (-20px).
+   Em repouso: a margem negativa puxa para a linha do título.
+   Ao rolar: o título some; os botões sobem e param no topo de <main> sem fresta;
+   as abas sobem e param com a linha base alinhada à base do botão. */
 #page-execucao-tarefas .detalhe-hero-acoes {
   position: sticky;
-  top: var(--ext-sticky-top);
+  top: var(--det-sticky-top);
   z-index: 43;
   width: max-content;
   margin-left: auto;
-  margin-top: calc(-1 * (var(--ext-tabs-h) + 20px));
-  height: calc(var(--ext-tabs-h) - 1px);
+  margin-top: calc(-1 * (var(--det-tabs-h) + 20px));
+  height: calc(var(--det-tabs-h) - 1px);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -21640,7 +21636,6 @@ uiRegistrarAcoes('pages_execucao_planos', {
     min-height: auto;
     align-items: flex-start;
     flex-direction: column;
-    margin-bottom: 12px;
   }
   #page-execucao-tarefas #ext-titulo { font-size: 26px; }
   #page-execucao-tarefas .detalhe-hero-acoes {
@@ -21653,72 +21648,133 @@ uiRegistrarAcoes('pages_execucao_planos', {
   }
 }
 
-/* --- Linha de abas estilo Gmail / Planejamento Institucional --- */
+/* --- Linha de abas estilo Gmail / Planejamento Institucional / Detalhe do Plano ---
+   Sticky top: var(--det-sticky-top) (-20px), z-index 42 (logo abaixo das ações 43).
+   Linha base contínua (border-bottom), sublinhado colorido na aba ativa.
+   Reserva de espaço à direita (--det-acoes-w) para as ações sticky ficarem ao lado.
+   Fundo opaco sólido var(--ds-color-surface) para vedar completamente o conteúdo que rola por baixo. */
 #page-execucao-tarefas .view-tabs-container {
   position: sticky;
-  top: var(--ext-sticky-top);
+  top: var(--det-sticky-top);
   z-index: 42;
   display: flex;
   align-items: flex-start;
-  padding-right: var(--ext-acoes-w);
+  gap: 4px;
+  padding-right: var(--det-acoes-w, 64px);
   background: var(--ds-color-surface);
   border: none;
   border-bottom: 1px solid var(--ds-color-border);
   box-shadow: none;
   margin: 0;
-  margin-bottom: var(--ds-space-3);
   padding-top: 0;
   padding-bottom: 0;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-radius: 0;
 }
+#page-execucao-tarefas .view-tabs-scroll-wrap { position: relative; flex: 1 1 auto; min-width: 0; }
 #page-execucao-tarefas .view-tabs {
   display: flex;
   align-items: center;
   gap: 0;
   width: 100%;
+  max-width: none;
+  overflow-x: auto;
+  scrollbar-width: none;
   padding: 0;
   margin: 0;
   background: none;
   border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
-#page-execucao-tarefas .view-tabs .tab-btn {
+#page-execucao-tarefas .view-tabs::-webkit-scrollbar { display: none; }
+
+#page-execucao-tarefas .tab-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: var(--ext-tabs-h);
-  padding: 0 16px;
+  gap: 6px;
+  padding: 12px 16px;
+  margin-bottom: -1px;
+  min-height: 0;
   background: none;
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
   color: var(--ds-color-text-muted);
   font-family: var(--ds-font-sans);
   font-size: var(--ds-text-sm);
   font-weight: var(--ds-weight-medium);
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
+  box-shadow: none;
+  position: relative;
+  transition: color var(--ds-duration-fast) var(--ds-ease-standard), background var(--ds-duration-fast) var(--ds-ease-standard);
 }
-#page-execucao-tarefas .view-tabs .tab-btn:hover {
+#page-execucao-tarefas .tab-btn:hover {
   color: var(--ds-color-text);
   background: var(--ds-sidebar-item-hover);
 }
-#page-execucao-tarefas .view-tabs .tab-btn.active {
+#page-execucao-tarefas .tab-btn.active {
   color: var(--ds-color-action);
   font-weight: var(--ds-weight-semibold);
   border-bottom-color: var(--ds-color-action);
   background: none;
+  box-shadow: none;
+}
+[data-ds-theme="dark"] #page-execucao-tarefas .tab-btn.active { color: var(--ds-color-action); }
+body.high-contrast #page-execucao-tarefas .view-tabs-container { border-bottom-color: #fff; }
+body.high-contrast #page-execucao-tarefas .tab-btn.active { border-bottom-color: #fff; color: #fff; }
+#page-execucao-tarefas .tab-btn .material-symbols-outlined,
+#page-execucao-tarefas .tab-btn .icon-sm { font-size: 18px; }
+#page-execucao-tarefas .tab-btn .ds-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: var(--ds-weight-bold);
+  padding: 1px 6px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-color-surface-2);
+  color: var(--ds-color-text-muted);
+}
+#page-execucao-tarefas .tab-btn.active .ds-tab-count {
+  background: var(--ds-color-info-bg);
+  color: var(--ds-color-info-fg);
+}
+#page-execucao-tarefas .tab-btn .ds-tab-count.hidden { display: none; }
+
+@media (max-width: 768px) {
+  #page-execucao-tarefas .view-tabs-container {
+    position: static;
+    padding-right: 0;
+  }
 }
 
-/* --- Barra de filtros unificada (estilo Drive / Samaúma) --- */
+/* --- Barra de filtros unificada (estilo Drive / Samaúma) ---
+   Escada sticky rigorosa: cola imediatamente abaixo das abas
+   top: calc(var(--det-sticky-top) + var(--det-tabs-h)); z-index: 41;
+   Fundo 100% opaco para vedar completamente os cards e linhas de tabela. */
 #page-execucao-tarefas .ext-filtros {
+  position: sticky;
+  top: calc(var(--det-sticky-top) + var(--det-tabs-h));
+  z-index: 41;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 0;
-  margin-bottom: var(--ds-space-3);
-  position: sticky;
-  top: var(--ext-sticky-top);
-  z-index: 41;
+  padding: 10px 0;
+  margin-bottom: 20px;
   background: var(--ds-color-surface);
+}
+#page-execucao-tarefas .ext-filtros::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 4px;
+  background: var(--ds-color-surface);
+  pointer-events: none;
 }
 #page-execucao-tarefas .ext-filtros-normal {
   display: flex;
@@ -21726,6 +21782,16 @@ uiRegistrarAcoes('pages_execucao_planos', {
   gap: 8px;
   width: 100%;
   flex-wrap: wrap;
+}
+
+/* Conteúdo diretamente no main-content (sem pasta) */
+#page-execucao-tarefas .detalhe-content-area {
+  padding: 0 0 80px;
+  max-width: none;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 /* Busca expansível */
@@ -21998,12 +22064,15 @@ uiRegistrarAcoes('pages_execucao_planos', {
   border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md);
 }
 #page-execucao-tarefas .ext-tabela-lista {
-  width: 100%; border-collapse: collapse; font-family: var(--ds-font-sans);
+  width: 100%; border-collapse: separate; border-spacing: 0; font-family: var(--ds-font-sans);
 }
-#page-execucao-tarefas .ext-tabela-lista th {
+#page-execucao-tarefas .ext-tabela-lista thead th {
+  position: sticky;
+  top: calc(var(--det-sticky-top) + var(--det-tabs-h) + var(--det-el-filtros-h, 56px) - 2px);
+  z-index: 40;
   padding: 10px 14px; font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs);
   text-transform: uppercase; letter-spacing: 0.04em; color: var(--ds-color-text-muted);
-  background: var(--ds-color-surface-2); border-bottom: 1px solid var(--ds-color-border); text-align: left;
+  background: var(--ds-color-surface-2); border-bottom: 2px solid var(--ds-color-border); text-align: left;
 }
 #page-execucao-tarefas .ext-tabela-lista td {
   padding: 12px 14px; border-bottom: 1px solid var(--ds-color-border);
