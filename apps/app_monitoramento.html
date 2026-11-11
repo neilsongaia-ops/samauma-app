@@ -1366,7 +1366,6 @@ function _monitFiltrosHTML(modo) {
     +   '<button type="button" class="det-modo' + (modo === 'desempenho' ? ' ativo' : '') + '" data-on-click="mon.9"'
     +     ' data-title="Desempenho — eficácia das metas" aria-label="Desempenho" aria-pressed="' + (modo === 'desempenho') + '">'
     +     '<span class="material-symbols-outlined">military_tech</span></button>'
-    +   monValBotaoModoHTML(modo)
     + '</div>'
     + '</div>';
 }
@@ -1648,9 +1647,7 @@ function monValCarregar() {
 function monValPode() { return !!(_monVal.dados && _monVal.dados.podeValidar); }
 function monValQtd() { return ((_monVal.dados && _monVal.dados.itens) || []).length; }
 function monValBotaoModoHTML(modo) {
-  return '<button type="button" class="det-modo' + (modo === 'validar' ? ' ativo' : '') + (monValPode() ? '' : ' hidden') + '" id="monit-modo-validar" data-on-click="mon.24"'
-    + ' data-title="Para validar — resultados lançados aguardando validação" aria-label="Para validar" aria-pressed="' + (modo === 'validar') + '">'
-    + '<span class="material-symbols-outlined">fact_check</span><span class="ds-tab-count" id="monit-validar-cont">' + monValQtd() + '</span></button>';
+  return '';
 }
 function monValAtualizarBotaoModo() {
   var b = document.getElementById('monit-modo-validar');

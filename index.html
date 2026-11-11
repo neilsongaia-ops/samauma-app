@@ -10681,6 +10681,1981 @@ uiRegistrarAcoes('pages_home', {
 });
 </script>
 
+       <!-- ARQUIVO: pages_monitoramento_corporativo.html -->
+<style>
+/* Estilos específicos do Painel Geral de Gestão de Resultados */
+#page-gestao-resultados {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-md, 16px);
+  padding: var(--ds-spacing-lg, 24px);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.moncorp-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-sm, 12px);
+}
+
+.moncorp-hero-titulos h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ds-color-text, #1e293b);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.moncorp-hero-desc {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  color: var(--ds-color-text-muted, #64748b);
+}
+
+/* 4 KPIs Executivos do Topo */
+.moncorp-kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.moncorp-kpi-card {
+  padding: 16px 20px;
+  border-radius: var(--ds-radius-lg, 12px);
+  background: var(--ds-color-surface, #ffffff);
+  border: 1px solid var(--ds-color-border, #e2e8f0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.moncorp-kpi-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.moncorp-kpi-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.moncorp-kpi-rotulo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ds-color-text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.moncorp-kpi-icone {
+  font-size: 22px;
+  color: var(--ds-color-primary, #1b4d3e);
+}
+
+.moncorp-kpi-valor-linha {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.moncorp-kpi-num {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ds-color-text, #1e293b);
+}
+
+.moncorp-kpi-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--ds-radius-sm, 6px);
+}
+
+.moncorp-kpi-sub {
+  font-size: 12px;
+  color: var(--ds-color-text-muted, #64748b);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Barra de Progresso nos KPIs */
+.moncorp-kpi-prog-wrap {
+  width: 100%;
+  height: 6px;
+  background: var(--ds-color-surface-2, #f1f5f9);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.moncorp-kpi-prog-bar {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--ds-color-primary, #1b4d3e);
+  transition: width 0.4s ease;
+}
+
+/* Mini gráfico de barras empilhadas ou badges para Indicadores */
+.moncorp-faixas-indicadores {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.moncorp-faixa-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Barra de Filtros Transversais estilo Drive */
+.moncorp-barra-filtros {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-lg, 12px);
+  background: var(--ds-color-surface, #ffffff);
+  border: 1px solid var(--ds-color-border, #e2e8f0);
+}
+
+.moncorp-busca-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 240px;
+  flex: 1;
+}
+
+.moncorp-busca-wrap .material-symbols-outlined {
+  position: absolute;
+  left: 10px;
+  font-size: 20px;
+  color: var(--ds-color-text-muted, #64748b);
+  pointer-events: none;
+}
+
+.moncorp-busca-input {
+  width: 100%;
+  padding: 8px 32px 8px 36px;
+  font-size: 13px;
+  border-radius: var(--ds-radius-md, 8px);
+  border: 1px solid var(--ds-color-border, #e2e8f0);
+  background: var(--ds-color-surface-2, #f8fafc);
+  color: var(--ds-color-text, #1e293b);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.moncorp-busca-input:focus {
+  border-color: var(--ds-color-primary, #1b4d3e);
+  background: var(--ds-color-surface, #ffffff);
+}
+
+.moncorp-busca-limpar {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ds-color-text-muted, #64748b);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+/* Abas de Conteúdo Transversal */
+.moncorp-tabs-wrap {
+  display: flex;
+  border-bottom: 2px solid var(--ds-color-border, #e2e8f0);
+  gap: 8px;
+}
+
+.moncorp-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ds-color-text-muted, #64748b);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.moncorp-tab-btn:hover {
+  color: var(--ds-color-text, #1e293b);
+}
+
+.moncorp-tab-btn.ativo {
+  color: var(--ds-color-primary, #1b4d3e);
+  font-weight: 600;
+  border-bottom-color: var(--ds-color-primary, #1b4d3e);
+}
+
+.moncorp-tab-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--ds-color-surface-2, #f1f5f9);
+  color: var(--ds-color-text-muted, #64748b);
+}
+
+.moncorp-tab-btn.ativo .moncorp-tab-badge {
+  background: var(--ds-color-primary-subtle, rgba(27, 77, 62, 0.12));
+  color: var(--ds-color-primary, #1b4d3e);
+}
+
+/* Tabelas das Abas */
+.moncorp-tabela-wrap {
+  background: var(--ds-color-surface, #ffffff);
+  border-radius: var(--ds-radius-lg, 12px);
+  border: 1px solid var(--ds-color-border, #e2e8f0);
+  overflow-x: auto;
+}
+
+.moncorp-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.moncorp-tabela th {
+  padding: 12px 14px;
+  font-weight: 600;
+  color: var(--ds-color-text-muted, #64748b);
+  background: var(--ds-color-surface-2, #f8fafc);
+  border-bottom: 1px solid var(--ds-color-border, #e2e8f0);
+  white-space: nowrap;
+}
+
+.moncorp-tabela td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ds-color-border, #e2e8f0);
+  color: var(--ds-color-text, #1e293b);
+  vertical-align: middle;
+}
+
+.moncorp-tabela tbody tr:hover {
+  background: var(--ds-sidebar-item-hover, rgba(0, 0, 0, 0.03));
+}
+
+.moncorp-link-plano {
+  font-weight: 600;
+  color: var(--ds-color-primary, #1b4d3e);
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.moncorp-link-plano:hover {
+  text-decoration: underline;
+}
+
+.moncorp-mini-progresso {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 140px;
+}
+
+.moncorp-mini-progresso-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--ds-color-surface-2, #f1f5f9);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.moncorp-mini-progresso-fill {
+  height: 100%;
+  background: var(--ds-color-primary, #1b4d3e);
+  border-radius: 3px;
+}
+
+/* Badge Nível de Risco */
+.moncorp-risco-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--ds-radius-sm, 6px);
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.moncorp-risco-extremo { background: #fee2e2; color: #b91c1c; }
+.moncorp-risco-alto { background: #ffedd5; color: #c2410c; }
+.moncorp-risco-medio { background: #fef9c3; color: #a16207; }
+.moncorp-risco-baixo { background: #dcfce7; color: #15803d; }
+
+.moncorp-paginacao-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ds-color-border, #e2e8f0);
+  background: var(--ds-color-surface-2, #f8fafc);
+  font-size: 13px;
+  color: var(--ds-color-text-muted, #64748b);
+  border-bottom-left-radius: var(--ds-radius-lg, 12px);
+  border-bottom-right-radius: var(--ds-radius-lg, 12px);
+}
+</style>
+
+<div id="page-gestao-resultados" class="page-content hidden">
+
+  <!-- Hero Executivo -->
+  <section class="moncorp-hero">
+    <div class="moncorp-hero-titulos">
+      <h1>
+        <span class="material-symbols-outlined" style="font-size:32px;color:var(--ds-color-primary,#1b4d3e);">monitoring</span>
+        Gestão de Resultados
+      </h1>
+      <p class="moncorp-hero-desc">
+        Painel executivo com visão holística e transversal de planos, elementos, indicadores e riscos de toda a organização.
+      </p>
+    </div>
+    <div>
+      <button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_monitoramento_corporativo.1" aria-label="Atualizar monitoramento">
+        <span class="material-symbols-outlined">refresh</span> Atualizar
+      </button>
+    </div>
+  </section>
+
+  <!-- 4 KPIs Executivos do Topo -->
+  <section class="moncorp-kpis-grid" id="moncorp-kpis-container" aria-label="Indicadores Chave de Gestão">
+    <!-- Card 1: Total de Planos -->
+    <div class="moncorp-kpi-card">
+      <div class="moncorp-kpi-cab">
+        <span class="moncorp-kpi-rotulo">Total de Planos</span>
+        <span class="material-symbols-outlined moncorp-kpi-icone">corporate_fare</span>
+      </div>
+      <div class="moncorp-kpi-valor-linha">
+        <span class="moncorp-kpi-num" id="moncorp-kpi-total-planos">0</span>
+      </div>
+      <div class="moncorp-kpi-sub" id="moncorp-kpi-planos-sub">
+        Carregando planos...
+      </div>
+    </div>
+
+    <!-- Card 2: Progresso Médio -->
+    <div class="moncorp-kpi-card">
+      <div class="moncorp-kpi-cab">
+        <span class="moncorp-kpi-rotulo">Progresso Físico Médio</span>
+        <span class="material-symbols-outlined moncorp-kpi-icone">trending_up</span>
+      </div>
+      <div class="moncorp-kpi-valor-linha">
+        <span class="moncorp-kpi-num" id="moncorp-kpi-progresso">0%</span>
+      </div>
+      <div class="moncorp-kpi-prog-wrap">
+        <div class="moncorp-kpi-prog-bar" id="moncorp-kpi-progresso-bar" style="width: 0%;"></div>
+      </div>
+      <div class="moncorp-kpi-sub" id="moncorp-kpi-progresso-sub">
+        Média dos elementos dos planos
+      </div>
+    </div>
+
+    <!-- Card 3: IEG Médio Institucional -->
+    <div class="moncorp-kpi-card">
+      <div class="moncorp-kpi-cab">
+        <span class="moncorp-kpi-rotulo">IEG Médio Institucional</span>
+        <span class="material-symbols-outlined moncorp-kpi-icone">military_tech</span>
+      </div>
+      <div class="moncorp-kpi-valor-linha">
+        <span class="moncorp-kpi-num" id="moncorp-kpi-ieg">—</span>
+        <span class="moncorp-kpi-badge hidden" id="moncorp-kpi-ieg-badge">Excelente</span>
+      </div>
+      <div class="moncorp-kpi-sub" id="moncorp-kpi-ieg-sub">
+        Índice de Eficácia da Gestão
+      </div>
+    </div>
+
+    <!-- Card 4: Saúde dos Indicadores -->
+    <div class="moncorp-kpi-card">
+      <div class="moncorp-kpi-cab">
+        <span class="moncorp-kpi-rotulo">Saúde dos Indicadores</span>
+        <span class="material-symbols-outlined moncorp-kpi-icone">speed</span>
+      </div>
+      <div class="moncorp-kpi-valor-linha">
+        <span class="moncorp-kpi-num" id="moncorp-kpi-total-indicadores">0</span>
+        <span style="font-size:12px;color:var(--ds-color-text-muted,#64748b);">apurados</span>
+      </div>
+      <div class="moncorp-faixas-indicadores" id="moncorp-kpi-faixas">
+        <!-- Badges das faixas de apuração -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Barra de Filtros Transversais estilo Drive -->
+  <div class="moncorp-barra-filtros" id="moncorp-barra-filtros">
+    <div class="moncorp-busca-wrap">
+      <span class="material-symbols-outlined">search</span>
+      <input type="text" id="moncorp-filtro-busca" class="moncorp-busca-input" placeholder="Buscar planos, elementos, indicadores ou riscos..." data-on-input="pages_monitoramento_corporativo.2">
+      <button type="button" id="moncorp-busca-limpar-btn" class="moncorp-busca-limpar hidden" data-on-click="pages_monitoramento_corporativo.3" aria-label="Limpar busca">
+        <span class="material-symbols-outlined" style="font-size:18px;">close</span>
+      </button>
+    </div>
+
+    <!-- Filtro por Exercício/Ano -->
+    <div class="el-filtro">
+      <button type="button" class="el-filtro-btn" id="moncorp-filtro-ano-btn" data-on-click="pages_monitoramento_corporativo.4">
+        <span id="moncorp-filtro-ano-rotulo">Exercício: Todos</span>
+        <span class="material-symbols-outlined" style="font-size:18px;">expand_more</span>
+      </button>
+      <button type="button" class="el-filtro-x hidden" id="moncorp-filtro-ano-x" data-on-click="pages_monitoramento_corporativo.5" aria-label="Limpar filtro de exercício">
+        <span class="material-symbols-outlined" style="font-size:15px;">close</span>
+      </button>
+    </div>
+
+    <!-- Filtro por Unidade -->
+    <div class="el-filtro">
+      <button type="button" class="el-filtro-btn" id="moncorp-filtro-unidade-btn" data-on-click="pages_monitoramento_corporativo.6">
+        <span id="moncorp-filtro-unidade-rotulo">Unidade: Todas</span>
+        <span class="material-symbols-outlined" style="font-size:18px;">expand_more</span>
+      </button>
+      <button type="button" class="el-filtro-x hidden" id="moncorp-filtro-unidade-x" data-on-click="pages_monitoramento_corporativo.7" aria-label="Limpar filtro de unidade">
+        <span class="material-symbols-outlined" style="font-size:15px;">close</span>
+      </button>
+    </div>
+
+    <!-- Filtro por Tipo de Plano -->
+    <div class="el-filtro">
+      <button type="button" class="el-filtro-btn" id="moncorp-filtro-tipo-btn" data-on-click="pages_monitoramento_corporativo.8">
+        <span id="moncorp-filtro-tipo-rotulo">Tipo: Todos</span>
+        <span class="material-symbols-outlined" style="font-size:18px;">expand_more</span>
+      </button>
+      <button type="button" class="el-filtro-x hidden" id="moncorp-filtro-tipo-x" data-on-click="pages_monitoramento_corporativo.9" aria-label="Limpar filtro de tipo de plano">
+        <span class="material-symbols-outlined" style="font-size:15px;">close</span>
+      </button>
+    </div>
+
+    <button type="button" class="el-limpar-link hidden" id="moncorp-limpar-todos-filtros" data-on-click="pages_monitoramento_corporativo.10">
+      Limpar filtros
+    </button>
+  </div>
+
+  <!-- 4 Abas de Conteúdo Transversal -->
+  <div class="moncorp-tabs-wrap" role="tablist" aria-label="Visões do Monitoramento Corporativo">
+    <button type="button" class="moncorp-tab-btn ativo" id="moncorp-tab-btn-planos" data-on-click="pages_monitoramento_corporativo.11" role="tab" aria-selected="true" aria-controls="moncorp-conteudo-planos">
+      <span class="material-symbols-outlined" style="font-size:18px;">corporate_fare</span>
+      Planos <span class="moncorp-tab-badge" id="moncorp-badge-planos">0</span>
+    </button>
+    <button type="button" class="moncorp-tab-btn" id="moncorp-tab-btn-elementos" data-on-click="pages_monitoramento_corporativo.12" role="tab" aria-selected="false" aria-controls="moncorp-conteudo-elementos">
+      <span class="material-symbols-outlined" style="font-size:18px;">schema</span>
+      Elementos <span class="moncorp-tab-badge" id="moncorp-badge-elementos">0</span>
+    </button>
+    <button type="button" class="moncorp-tab-btn" id="moncorp-tab-btn-indicadores" data-on-click="pages_monitoramento_corporativo.13" role="tab" aria-selected="false" aria-controls="moncorp-conteudo-indicadores">
+      <span class="material-symbols-outlined" style="font-size:18px;">speed</span>
+      Indicadores <span class="moncorp-tab-badge" id="moncorp-badge-indicadores">0</span>
+    </button>
+    <button type="button" class="moncorp-tab-btn" id="moncorp-tab-btn-riscos" data-on-click="pages_monitoramento_corporativo.14" role="tab" aria-selected="false" aria-controls="moncorp-conteudo-riscos">
+      <span class="material-symbols-outlined" style="font-size:18px;">warning</span>
+      Riscos <span class="moncorp-tab-badge" id="moncorp-badge-riscos">0</span>
+    </button>
+  </div>
+
+  <!-- Container da Tabela Ativa -->
+  <div class="moncorp-tabela-wrap" id="moncorp-tabela-wrap">
+    <table class="moncorp-tabela" id="moncorp-tabela">
+      <thead id="moncorp-thead">
+        <!-- Cabeçalho dinâmico conforme a aba ativa -->
+      </thead>
+      <tbody id="moncorp-tbody">
+        <!-- Linhas dinâmicas -->
+      </tbody>
+    </table>
+    <!-- Paginação -->
+    <div class="moncorp-paginacao-wrap" id="moncorp-paginacao">
+      <span id="moncorp-paginacao-info">Exibindo 0 de 0</span>
+      <div style="display:flex;gap:6px;">
+        <button type="button" class="ds-btn ds-btn--secondary" id="moncorp-pag-ant" data-on-click="pages_monitoramento_corporativo.15" disabled>
+          <span class="material-symbols-outlined">chevron_left</span> Anterior
+        </button>
+        <button type="button" class="ds-btn ds-btn--secondary" id="moncorp-pag-prox" data-on-click="pages_monitoramento_corporativo.16" disabled>
+          Próxima <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// pages_monitoramento_corporativo.html — Painel Geral Transversal de Gestão de Resultados
+var _corpSDK = (typeof _corpSDK !== 'undefined' ? _corpSDK : criarSamaumaSDK());
+
+var moncorpEstado = {
+  carregando: false,
+  erro: '',
+  dados: null, // { resumo, planos, elementos, indicadores, riscos }
+  abaAtiva: 'planos', // 'planos' | 'elementos' | 'indicadores' | 'riscos'
+  filtros: {
+    busca: '',
+    ano: '',
+    idUnidade: '',
+    tipoPlano: ''
+  },
+  pagina: 1,
+  porPagina: 25
+};
+
+function initMonitoramentoCorporativo() {
+  moncorpCarregarDados();
+}
+
+function moncorpCarregarDados() {
+  moncorpEstado.carregando = true;
+  moncorpEstado.erro = '';
+  moncorpRenderizarTabela();
+
+  var payload = {
+    busca: moncorpEstado.filtros.busca || '',
+    ano: moncorpEstado.filtros.ano || '',
+    tipoPlano: moncorpEstado.filtros.tipoPlano || '',
+    idUnidade: moncorpEstado.filtros.idUnidade || ''
+  };
+
+  _corpSDK.chamar('apiGetMonitoramentoCorporativo', payload).then(function (res) {
+    moncorpEstado.carregando = false;
+    moncorpEstado.dados = res || { resumo: {}, planos: [], elementos: [], indicadores: [], riscos: [] };
+    moncorpRenderizarKpis();
+    moncorpAtualizarBadgesAbas();
+    moncorpRenderizarTabela();
+  }, function (err) {
+    moncorpEstado.carregando = false;
+    moncorpEstado.erro = (err && err.message) || String(err);
+    moncorpRenderizarTabela();
+  });
+}
+
+function moncorpRenderizarKpis() {
+  if (!moncorpEstado.dados || !moncorpEstado.dados.resumo) return;
+  var r = moncorpEstado.dados.resumo;
+
+  // 1. Total de Planos
+  var elPlanos = document.getElementById('moncorp-kpi-total-planos');
+  if (elPlanos) elPlanos.textContent = r.totalPlanos || 0;
+  var elPlanosSub = document.getElementById('moncorp-kpi-planos-sub');
+  if (elPlanosSub) {
+    elPlanosSub.textContent = (r.totalElementos || 0) + ' elementos · ' + (r.totalIndicadores || 0) + ' indicadores vinculados';
+  }
+
+  // 2. Progresso Médio
+  var elProg = document.getElementById('moncorp-kpi-progresso');
+  var pVal = typeof r.mediaProgresso === 'number' ? r.mediaProgresso : 0;
+  if (elProg) elProg.textContent = pVal + '%';
+  var elProgBar = document.getElementById('moncorp-kpi-progresso-bar');
+  if (elProgBar) elProgBar.style.width = Math.min(100, Math.max(0, pVal)) + '%';
+  var elProgSub = document.getElementById('moncorp-kpi-progresso-sub');
+  if (elProgSub && r.elementosPorStatus) {
+    var s = r.elementosPorStatus;
+    elProgSub.textContent = (s.concluido || 0) + ' concluídos · ' + (s.emAndamento || 0) + ' em andamento · ' + (s.naoIniciado || 0) + ' não iniciados';
+  }
+
+  // 3. IEG Médio Institucional
+  var elIeg = document.getElementById('moncorp-kpi-ieg');
+  var elBadgeIeg = document.getElementById('moncorp-kpi-ieg-badge');
+  if (elIeg) {
+    elIeg.textContent = (r.mediaIeg !== null && r.mediaIeg !== undefined) ? r.mediaIeg : '—';
+  }
+  if (elBadgeIeg) {
+    if (r.mediaIeg !== null && r.mediaIeg !== undefined) {
+      elBadgeIeg.classList.remove('hidden');
+      var conc = 'Regular';
+      var cor = 'var(--ds-color-warning-fg,#a16207)';
+      var bg = 'var(--ds-color-warning-bg,#fef9c3)';
+      if (r.mediaIeg >= 9) { conc = 'Excelente'; cor = '#15803d'; bg = '#dcfce7'; }
+      else if (r.mediaIeg >= 7) { conc = 'Bom'; cor = '#1d4ed8'; bg = '#dbeafe'; }
+      else if (r.mediaIeg < 5) { conc = 'Insuficiente'; cor = '#b91c1c'; bg = '#fee2e2'; }
+      elBadgeIeg.textContent = conc;
+      elBadgeIeg.style.color = cor;
+      elBadgeIeg.style.backgroundColor = bg;
+    } else {
+      elBadgeIeg.classList.add('hidden');
+    }
+  }
+
+  // 4. Saúde dos Indicadores
+  var elInd = document.getElementById('moncorp-kpi-total-indicadores');
+  if (elInd) elInd.textContent = r.totalIndicadores || 0;
+  var elFaixas = document.getElementById('moncorp-kpi-faixas');
+  if (elFaixas && r.indicadoresPorFaixa) {
+    var f = r.indicadoresPorFaixa;
+    elFaixas.innerHTML =
+      '<span class="moncorp-faixa-chip" style="background:#dcfce7;color:#15803d;" title="Superado">' + (f.superado || 0) + ' superados</span>' +
+      '<span class="moncorp-faixa-chip" style="background:#dbeafe;color:#1d4ed8;" title="Atingido">' + (f.atingido || 0) + ' atingidos</span>' +
+      '<span class="moncorp-faixa-chip" style="background:#ffedd5;color:#c2410c;" title="Parcial">' + (f.parcial || 0) + ' parciais</span>' +
+      '<span class="moncorp-faixa-chip" style="background:#fee2e2;color:#b91c1c;" title="Não Atingido">' + (f.naoAtingido || 0) + ' não atingidos</span>' +
+      '<span class="moncorp-faixa-chip" style="background:#f1f5f9;color:#64748b;" title="Sem Apuração">' + (f.semApuracao || 0) + ' sem apuração</span>';
+  }
+}
+
+function moncorpAtualizarBadgesAbas() {
+  if (!moncorpEstado.dados) return;
+  var p = document.getElementById('moncorp-badge-planos');
+  var e = document.getElementById('moncorp-badge-elementos');
+  var i = document.getElementById('moncorp-badge-indicadores');
+  var r = document.getElementById('moncorp-badge-riscos');
+
+  if (p) p.textContent = (moncorpEstado.dados.planos || []).length;
+  if (e) e.textContent = (moncorpEstado.dados.elementos || []).length;
+  if (i) i.textContent = (moncorpEstado.dados.indicadores || []).length;
+  if (r) r.textContent = (moncorpEstado.dados.riscos || []).length;
+}
+
+function moncorpObterListaAbaAtiva() {
+  if (!moncorpEstado.dados) return [];
+  switch (moncorpEstado.abaAtiva) {
+    case 'planos': return moncorpEstado.dados.planos || [];
+    case 'elementos': return moncorpEstado.dados.elementos || [];
+    case 'indicadores': return moncorpEstado.dados.indicadores || [];
+    case 'riscos': return moncorpEstado.dados.riscos || [];
+    default: return [];
+  }
+}
+
+function moncorpRenderizarTabela() {
+  var thead = document.getElementById('moncorp-thead');
+  var tbody = document.getElementById('moncorp-tbody');
+  if (!thead || !tbody) return;
+
+  if (moncorpEstado.carregando) {
+    thead.innerHTML = '';
+    tbody.innerHTML = '<tr><td colspan="8" style="padding:48px;text-align:center;">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : 'Carregando dados transversais...') + '</td></tr>';
+    moncorpAtualizarPaginacao(0);
+    return;
+  }
+
+  if (moncorpEstado.erro) {
+    thead.innerHTML = '';
+    tbody.innerHTML = '<tr><td colspan="8" style="padding:48px;text-align:center;color:var(--ds-color-danger-fg,#b91c1c);">' +
+      '<span class="material-symbols-outlined" style="font-size:36px;display:block;margin-bottom:8px;">error</span>' +
+      escapeHtml(moncorpEstado.erro) + '</td></tr>';
+    moncorpAtualizarPaginacao(0);
+    return;
+  }
+
+  var listaCompleta = moncorpObterListaAbaAtiva();
+  var total = listaCompleta.length;
+
+  if (total === 0) {
+    thead.innerHTML = '';
+    tbody.innerHTML = '<tr><td colspan="8"><div style="padding:48px;text-align:center;color:var(--ds-color-text-muted,#64748b);">' +
+      '<span class="material-symbols-outlined" style="font-size:48px;color:var(--ds-color-primary,#1b4d3e);opacity:0.6;margin-bottom:8px;">search_off</span>' +
+      '<div style="font-size:16px;font-weight:600;color:var(--ds-color-text,#1e293b);">Nenhum item localizado</div>' +
+      '<p style="margin:4px 0 0 0;">Não foram encontrados registros para o recorte e filtros selecionados.</p>' +
+      '</div></td></tr>';
+    moncorpAtualizarPaginacao(0);
+    return;
+  }
+
+  var inicio = (moncorpEstado.pagina - 1) * moncorpEstado.porPagina;
+  var itens = listaCompleta.slice(inicio, inicio + moncorpEstado.porPagina);
+
+  switch (moncorpEstado.abaAtiva) {
+    case 'planos':
+      moncorpRenderizarAbaPlanos(thead, tbody, itens);
+      break;
+    case 'elementos':
+      moncorpRenderizarAbaElementos(thead, tbody, itens);
+      break;
+    case 'indicadores':
+      moncorpRenderizarAbaIndicadores(thead, tbody, itens);
+      break;
+    case 'riscos':
+      moncorpRenderizarAbaRiscos(thead, tbody, itens);
+      break;
+  }
+
+  moncorpAtualizarPaginacao(total);
+}
+
+function moncorpRenderizarAbaPlanos(thead, tbody, itens) {
+  thead.innerHTML = '<tr>' +
+    '<th>Plano Institucional</th>' +
+    '<th>Tipo / Vigência</th>' +
+    '<th>Unidade Responsável</th>' +
+    '<th>Responsável</th>' +
+    '<th style="width:160px;">Progresso Físico</th>' +
+    '<th>IEG</th>' +
+    '<th>Escopo</th>' +
+    '<th style="text-align:right;">Ações</th>' +
+    '</tr>';
+
+  var html = '';
+  itens.forEach(function (p) {
+    var id = escapeHtml(String(p.id));
+    var prog = typeof p.progresso === 'number' ? p.progresso : 0;
+    var temIeg = p.ieg !== null && p.ieg !== undefined;
+    var corIeg = p.corIeg || 'var(--ds-color-text-muted,#64748b)';
+    var vigencia = (p.anoInicio ? p.anoInicio : '') + (p.anoFim ? ' – ' + p.anoFim : '');
+
+    html += '<tr>' +
+      '<td>' +
+        '<a class="moncorp-link-plano" data-on-click="pages_monitoramento_corporativo.17" data-id="' + id + '" title="Abrir detalhes do plano">' +
+          escapeHtml(p.nome) +
+        '</a>' +
+      '</td>' +
+      '<td>' +
+        '<span class="valres-badge-plano">' + escapeHtml(p.tipo || 'Plano') + '</span>' +
+        (vigencia ? '<div style="font-size:11px;color:var(--ds-color-text-muted,#64748b);margin-top:2px;">' + escapeHtml(vigencia) + '</div>' : '') +
+      '</td>' +
+      '<td>' + escapeHtml(p.unidade || '—') + '</td>' +
+      '<td>' + escapeHtml(p.responsavel || '—') + '</td>' +
+      '<td>' +
+        '<div class="moncorp-mini-progresso">' +
+          '<div class="moncorp-mini-progresso-bar">' +
+            '<div class="moncorp-mini-progresso-fill" style="width:' + Math.min(100, Math.max(0, prog)) + '%;"></div>' +
+          '</div>' +
+          '<span style="font-weight:600;font-size:12px;">' + prog + '%</span>' +
+        '</div>' +
+      '</td>' +
+      '<td>' +
+        (temIeg ?
+          '<div style="display:flex;align-items:center;gap:6px;">' +
+            '<span style="font-weight:700;color:' + escapeHtml(corIeg) + ';">' + p.ieg + '</span>' +
+            (p.conceitoIeg ? '<span style="font-size:11px;color:' + escapeHtml(corIeg) + ';">(' + escapeHtml(p.conceitoIeg) + ')</span>' : '') +
+          '</div>' :
+          '<span style="color:var(--ds-color-text-muted,#64748b);font-size:12px;">Não apurado</span>') +
+      '</td>' +
+      '<td>' +
+        '<div style="font-size:11px;color:var(--ds-color-text-muted,#64748b);">' +
+          (p.qtdElementos || 0) + ' elem. · ' + (p.qtdIndicadores || 0) + ' ind. · ' + (p.qtdRiscos || 0) + ' risc.' +
+        '</div>' +
+      '</td>' +
+      '<td style="text-align:right;">' +
+        '<button type="button" class="ds-icon-action" data-on-click="pages_monitoramento_corporativo.17" data-id="' + id + '" data-title="Abrir este plano" aria-label="Abrir este plano">' +
+          '<span class="material-symbols-outlined">open_in_new</span>' +
+        '</button>' +
+      '</td>' +
+    '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function moncorpRenderizarAbaElementos(thead, tbody, itens) {
+  thead.innerHTML = '<tr>' +
+    '<th>Código & Título</th>' +
+    '<th>Plano Vinculado</th>' +
+    '<th>Tipo</th>' +
+    '<th>Responsável</th>' +
+    '<th>Prazo</th>' +
+    '<th>Status</th>' +
+    '<th style="width:140px;">Conclusão</th>' +
+    '<th style="text-align:right;">Ações</th>' +
+    '</tr>';
+
+  var html = '';
+  itens.forEach(function (e) {
+    var idEl = escapeHtml(String(e.id));
+    var idP = escapeHtml(String(e.idPlano));
+    var pct = typeof e.percentual === 'number' ? e.percentual : 0;
+
+    html += '<tr>' +
+      '<td>' +
+        (e.codigo ? '<span style="font-family:monospace;font-weight:700;color:var(--ds-color-primary,#1b4d3e);margin-right:6px;">' + escapeHtml(e.codigo) + '</span>' : '') +
+        '<span style="font-weight:500;">' + escapeHtml(e.titulo) + '</span>' +
+      '</td>' +
+      '<td>' +
+        '<a class="moncorp-link-plano" data-on-click="pages_monitoramento_corporativo.17" data-id="' + idP + '" title="Abrir plano">' +
+          escapeHtml(e.nomePlano || 'Plano #' + idP) +
+        '</a>' +
+      '</td>' +
+      '<td><span class="valres-badge-plano">' + escapeHtml(e.tipo || 'Elemento') + '</span></td>' +
+      '<td>' + escapeHtml(e.responsavel || '—') + '</td>' +
+      '<td>' + escapeHtml(e.prazo || e.fim || '—') + '</td>' +
+      '<td><span class="ds-badge">' + escapeHtml(e.status || 'Não Iniciado') + '</span></td>' +
+      '<td>' +
+        '<div class="moncorp-mini-progresso">' +
+          '<div class="moncorp-mini-progresso-bar">' +
+            '<div class="moncorp-mini-progresso-fill" style="width:' + Math.min(100, Math.max(0, pct)) + '%;"></div>' +
+          '</div>' +
+          '<span style="font-weight:600;font-size:12px;">' + pct + '%</span>' +
+        '</div>' +
+      '</td>' +
+      '<td style="text-align:right;">' +
+        '<button type="button" class="ds-icon-action" data-on-click="pages_monitoramento_corporativo.18" data-id="' + idEl + '" data-title="Ver detalhes do elemento" aria-label="Ver detalhes do elemento">' +
+          '<span class="material-symbols-outlined">right_panel_open</span>' +
+        '</button>' +
+      '</td>' +
+    '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function moncorpRenderizarAbaIndicadores(thead, tbody, itens) {
+  thead.innerHTML = '<tr>' +
+    '<th>Indicador</th>' +
+    '<th>Plano & Elemento Vinculado</th>' +
+    '<th>Frequência</th>' +
+    '<th>Alcance %</th>' +
+    '<th>Conceito / Pontos</th>' +
+    '<th>Responsável</th>' +
+    '<th style="text-align:center;">Evidências</th>' +
+    '</tr>';
+
+  var html = '';
+  itens.forEach(function (i) {
+    var idInd = escapeHtml(String(i.id));
+    var idP = escapeHtml(String(i.idPlano));
+    var alcance = typeof i.alcance === 'number' ? i.alcance + '%' : (i.alcance || '—');
+    var cor = i.cor || 'var(--ds-color-text-muted,#64748b)';
+
+    html += '<tr>' +
+      '<td>' +
+        '<div style="font-weight:600;">' + escapeHtml(i.nomeIndicador) + '</div>' +
+        (i.unidadeMedida ? '<div style="font-size:11px;color:var(--ds-color-text-muted,#64748b);">Unidade: ' + escapeHtml(i.unidadeMedida) + '</div>' : '') +
+      '</td>' +
+      '<td>' +
+        '<a class="moncorp-link-plano" data-on-click="pages_monitoramento_corporativo.17" data-id="' + idP + '" title="Abrir plano">' +
+          escapeHtml(i.nomePlano || 'Plano #' + idP) +
+        '</a>' +
+        (i.tituloElem ? '<div style="font-size:11px;color:var(--ds-color-text-muted,#64748b);margin-top:2px;">' + escapeHtml(i.tituloElem) + '</div>' : '') +
+      '</td>' +
+      '<td>' + escapeHtml(i.frequencia || '—') + '</td>' +
+      '<td><span style="font-weight:700;">' + escapeHtml(String(alcance)) + '</span></td>' +
+      '<td>' +
+        '<div style="display:flex;align-items:center;gap:6px;">' +
+          '<span style="font-weight:600;color:' + escapeHtml(cor) + ';">' + escapeHtml(i.conceito || 'Não apurado') + '</span>' +
+          (i.pontos !== undefined && i.pontos !== null ? '<span style="font-size:11px;color:var(--ds-color-text-muted,#64748b);">(' + i.pontos + ' pts)</span>' : '') +
+        '</div>' +
+      '</td>' +
+      '<td>' + escapeHtml(i.responsavel || '—') + '</td>' +
+      '<td style="text-align:center;">' +
+        '<button type="button" class="ds-icon-action" data-on-click="pages_monitoramento_corporativo.19" data-ind="' + idInd + '" data-nome="' + escapeHtml(i.nomeIndicador || '') + '" data-title="Ver histórico e evidências" aria-label="Ver histórico e evidências">' +
+          '<span class="material-symbols-outlined" style="color:var(--ds-color-primary,#1b4d3e);">attach_file</span>' +
+        '</button>' +
+      '</td>' +
+    '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function moncorpRenderizarAbaRiscos(thead, tbody, itens) {
+  thead.innerHTML = '<tr>' +
+    '<th>Código & Evento de Risco</th>' +
+    '<th>Objeto Analisado</th>' +
+    '<th>Plano & Unidade</th>' +
+    '<th>Nível de Risco</th>' +
+    '<th>Prob. × Impacto</th>' +
+    '<th>Tratamentos</th>' +
+    '<th>Responsável</th>' +
+    '</tr>';
+
+  var html = '';
+  itens.forEach(function (r) {
+    var idP = escapeHtml(String(r.idPlano));
+    var niv = (r.nivelRisco || '').toLowerCase();
+    var clsNivel = 'moncorp-risco-baixo';
+    if (niv === 'extremo') clsNivel = 'moncorp-risco-extremo';
+    else if (niv === 'alto') clsNivel = 'moncorp-risco-alto';
+    else if (niv === 'médio' || niv === 'medio') clsNivel = 'moncorp-risco-medio';
+
+    html += '<tr>' +
+      '<td>' +
+        (r.codigo ? '<span style="font-family:monospace;font-weight:700;color:var(--ds-color-primary,#1b4d3e);margin-right:6px;">' + escapeHtml(r.codigo) + '</span>' : '') +
+        '<span style="font-weight:500;">' + escapeHtml(r.risco) + '</span>' +
+      '</td>' +
+      '<td>' + escapeHtml(r.objetoAnalisado || '—') + '</td>' +
+      '<td>' +
+        '<a class="moncorp-link-plano" data-on-click="pages_monitoramento_corporativo.17" data-id="' + idP + '" title="Abrir plano">' +
+          escapeHtml(r.nomePlano || 'Plano #' + idP) +
+        '</a>' +
+        (r.unidadePlano ? '<div style="font-size:11px;color:var(--ds-color-text-muted,#64748b);">' + escapeHtml(r.unidadePlano) + '</div>' : '') +
+      '</td>' +
+      '<td>' +
+        '<span class="moncorp-risco-badge ' + clsNivel + '">' + escapeHtml(r.nivelRisco || 'Baixo') + '</span>' +
+      '</td>' +
+      '<td>' + escapeHtml(r.probabilidade || '—') + ' × ' + escapeHtml(r.impacto || '—') + '</td>' +
+      '<td>' +
+        '<span class="ds-badge" style="font-size:11px;">' + (r.qtdTratamentos || 0) + ' ação(ões)</span>' +
+      '</td>' +
+      '<td>' + escapeHtml(r.responsavel || '—') + '</td>' +
+    '</tr>';
+  });
+  tbody.innerHTML = html;
+}
+
+function moncorpAtualizarPaginacao(total) {
+  var pInfo = document.getElementById('moncorp-paginacao-info');
+  var bAnt = document.getElementById('moncorp-pag-ant');
+  var bProx = document.getElementById('moncorp-pag-prox');
+  if (!pInfo || !bAnt || !bProx) return;
+
+  var totalPags = Math.ceil(total / moncorpEstado.porPagina) || 1;
+  var inicio = total > 0 ? (moncorpEstado.pagina - 1) * moncorpEstado.porPagina + 1 : 0;
+  var fim = Math.min(total, moncorpEstado.pagina * moncorpEstado.porPagina);
+
+  pInfo.textContent = 'Exibindo ' + inicio + '–' + fim + ' de ' + total + ' registros';
+  bAnt.disabled = moncorpEstado.pagina <= 1;
+  bProx.disabled = moncorpEstado.pagina >= totalPags;
+}
+
+function moncorpTrocarAba(novaAba) {
+  if (moncorpEstado.abaAtiva === novaAba) return;
+  moncorpEstado.abaAtiva = novaAba;
+  moncorpEstado.pagina = 1;
+
+  var abas = ['planos', 'elementos', 'indicadores', 'riscos'];
+  abas.forEach(function (a) {
+    var btn = document.getElementById('moncorp-tab-btn-' + a);
+    if (btn) {
+      var ativo = (a === novaAba);
+      btn.classList.toggle('ativo', ativo);
+      btn.setAttribute('aria-selected', ativo ? 'true' : 'false');
+    }
+  });
+
+  moncorpRenderizarTabela();
+}
+
+function moncorpAbrirMenuAno(gatilho, ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  if (typeof abrirMenuSelecao !== 'function') return;
+
+  var anos = {};
+  ((moncorpEstado.dados && moncorpEstado.dados.planos) || []).forEach(function (p) {
+    if (p.anoInicio) anos[String(p.anoInicio)] = true;
+    if (p.anoFim) anos[String(p.anoFim)] = true;
+  });
+  // Adiciona ano corrente se não estiver na lista
+  anos['2026'] = true;
+
+  var itens = [{
+    label: 'Todos os exercícios',
+    ativo: !moncorpEstado.filtros.ano,
+    onclick: "moncorpEscolherAno('')"
+  }];
+
+  Object.keys(anos).sort().reverse().forEach(function (a) {
+    itens.push({
+      label: a,
+      ativo: String(moncorpEstado.filtros.ano) === String(a),
+      onclick: "moncorpEscolherAno('" + escapeJsAttr(a) + "')"
+    });
+  });
+
+  abrirMenuSelecao(gatilho, [{ itens: itens }]);
+}
+
+function moncorpEscolherAno(ano) {
+  moncorpEstado.filtros.ano = ano;
+  var rot = document.getElementById('moncorp-filtro-ano-rotulo');
+  var btnX = document.getElementById('moncorp-filtro-ano-x');
+  var btn = document.getElementById('moncorp-filtro-ano-btn');
+
+  if (ano) {
+    if (rot) rot.textContent = 'Exercício: ' + ano;
+    if (btnX) btnX.classList.remove('hidden');
+    if (btn) btn.classList.add('el-filtro-btn--ativo');
+  } else {
+    if (rot) rot.textContent = 'Exercício: Todos';
+    if (btnX) btnX.classList.add('hidden');
+    if (btn) btn.classList.remove('el-filtro-btn--ativo');
+  }
+
+  moncorpVerificarFiltrosAtivos();
+  moncorpCarregarDados();
+}
+
+function moncorpAbrirMenuUnidade(gatilho, ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  if (typeof abrirMenuSelecao !== 'function') return;
+
+  var unidades = {};
+  ((moncorpEstado.dados && moncorpEstado.dados.planos) || []).forEach(function (p) {
+    if (p.unidade) unidades[p.unidade] = true;
+  });
+
+  var itens = [{
+    label: 'Todas as unidades',
+    ativo: !moncorpEstado.filtros.idUnidade,
+    onclick: "moncorpEscolherUnidade('')"
+  }];
+
+  Object.keys(unidades).sort(function (a, b) { return a.localeCompare(b, 'pt'); }).forEach(function (u) {
+    itens.push({
+      label: u,
+      ativo: moncorpEstado.filtros.idUnidade === u,
+      onclick: "moncorpEscolherUnidade('" + escapeJsAttr(u) + "')"
+    });
+  });
+
+  abrirMenuSelecao(gatilho, [{ itens: itens }]);
+}
+
+function moncorpEscolherUnidade(u) {
+  moncorpEstado.filtros.idUnidade = u;
+  var rot = document.getElementById('moncorp-filtro-unidade-rotulo');
+  var btnX = document.getElementById('moncorp-filtro-unidade-x');
+  var btn = document.getElementById('moncorp-filtro-unidade-btn');
+
+  if (u) {
+    if (rot) rot.textContent = 'Unidade: ' + u;
+    if (btnX) btnX.classList.remove('hidden');
+    if (btn) btn.classList.add('el-filtro-btn--ativo');
+  } else {
+    if (rot) rot.textContent = 'Unidade: Todas';
+    if (btnX) btnX.classList.add('hidden');
+    if (btn) btn.classList.remove('el-filtro-btn--ativo');
+  }
+
+  moncorpVerificarFiltrosAtivos();
+  moncorpCarregarDados();
+}
+
+function moncorpAbrirMenuTipo(gatilho, ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  if (typeof abrirMenuSelecao !== 'function') return;
+
+  var tipos = {};
+  ((moncorpEstado.dados && moncorpEstado.dados.planos) || []).forEach(function (p) {
+    if (p.tipo) tipos[p.tipo] = true;
+  });
+
+  var itens = [{
+    label: 'Todos os tipos',
+    ativo: !moncorpEstado.filtros.tipoPlano,
+    onclick: "moncorpEscolherTipo('')"
+  }];
+
+  Object.keys(tipos).sort().forEach(function (t) {
+    itens.push({
+      label: t,
+      ativo: moncorpEstado.filtros.tipoPlano === t,
+      onclick: "moncorpEscolherTipo('" + escapeJsAttr(t) + "')"
+    });
+  });
+
+  abrirMenuSelecao(gatilho, [{ itens: itens }]);
+}
+
+function moncorpEscolherTipo(t) {
+  moncorpEstado.filtros.tipoPlano = t;
+  var rot = document.getElementById('moncorp-filtro-tipo-rotulo');
+  var btnX = document.getElementById('moncorp-filtro-tipo-x');
+  var btn = document.getElementById('moncorp-filtro-tipo-btn');
+
+  if (t) {
+    if (rot) rot.textContent = 'Tipo: ' + t;
+    if (btnX) btnX.classList.remove('hidden');
+    if (btn) btn.classList.add('el-filtro-btn--ativo');
+  } else {
+    if (rot) rot.textContent = 'Tipo: Todos';
+    if (btnX) btnX.classList.add('hidden');
+    if (btn) btn.classList.remove('el-filtro-btn--ativo');
+  }
+
+  moncorpVerificarFiltrosAtivos();
+  moncorpCarregarDados();
+}
+
+function moncorpVerificarFiltrosAtivos() {
+  var f = moncorpEstado.filtros;
+  var temFiltro = !!(f.busca || f.ano || f.idUnidade || f.tipoPlano);
+  var btnLimpar = document.getElementById('moncorp-limpar-todos-filtros');
+  if (btnLimpar) btnLimpar.classList.toggle('hidden', !temFiltro);
+}
+
+function moncorpLimparTodosFiltros() {
+  moncorpEstado.filtros.busca = '';
+  var inp = document.getElementById('moncorp-filtro-busca');
+  if (inp) inp.value = '';
+  var btnLimparBusca = document.getElementById('moncorp-busca-limpar-btn');
+  if (btnLimparBusca) btnLimparBusca.classList.add('hidden');
+
+  moncorpEscolherAno('');
+  moncorpEscolherUnidade('');
+  moncorpEscolherTipo('');
+}
+
+// Registro das Ações do Módulo via Delegação de Eventos (app_ui_acoes)
+uiRegistrarAcoes('pages_monitoramento_corporativo', {
+  '1': function (event) { moncorpCarregarDados(); },
+  '2': function (event) {
+    moncorpEstado.filtros.busca = this.value || '';
+    var btnL = document.getElementById('moncorp-busca-limpar-btn');
+    if (btnL) btnL.classList.toggle('hidden', !moncorpEstado.filtros.busca);
+    moncorpVerificarFiltrosAtivos();
+    moncorpCarregarDados();
+  },
+  '3': function (event) {
+    var inp = document.getElementById('moncorp-filtro-busca');
+    if (inp) { inp.value = ''; inp.focus(); }
+    moncorpEstado.filtros.busca = '';
+    this.classList.add('hidden');
+    moncorpVerificarFiltrosAtivos();
+    moncorpCarregarDados();
+  },
+  '4': function (event) { moncorpAbrirMenuAno(this, event); },
+  '5': function (event) { moncorpEscolherAno(''); },
+  '6': function (event) { moncorpAbrirMenuUnidade(this, event); },
+  '7': function (event) { moncorpEscolherUnidade(''); },
+  '8': function (event) { moncorpAbrirMenuTipo(this, event); },
+  '9': function (event) { moncorpEscolherTipo(''); },
+  '10': function (event) { moncorpLimparTodosFiltros(); },
+  '11': function (event) { moncorpTrocarAba('planos'); },
+  '12': function (event) { moncorpTrocarAba('elementos'); },
+  '13': function (event) { moncorpTrocarAba('indicadores'); },
+  '14': function (event) { moncorpTrocarAba('riscos'); },
+  '15': function (event) {
+    if (moncorpEstado.pagina > 1) {
+      moncorpEstado.pagina--;
+      moncorpRenderizarTabela();
+    }
+  },
+  '16': function (event) {
+    moncorpEstado.pagina++;
+    moncorpRenderizarTabela();
+  },
+  '17': function (event) {
+    var id = this.dataset.id;
+    if (typeof carregarDetalhesPlano === 'function') {
+      carregarDetalhesPlano(id);
+    }
+  },
+  '18': function (event) {
+    var id = this.dataset.id;
+    if (typeof abrirDetalhesElementoPainel === 'function') {
+      abrirDetalhesElementoPainel(id);
+    }
+  },
+  '19': function (event) {
+    var idInd = this.dataset.ind;
+    var nome = this.dataset.nome || '';
+    if (typeof abrirModalEvidenciasIndicador === 'function') {
+      abrirModalEvidenciasIndicador(idInd, nome);
+    }
+  }
+});
+</script>
+
+       <!-- ARQUIVO: pages_execucao_validacao.html -->
+<style>
+/* Estilos específicos da Central de Validação de Resultados */
+#page-validacao-resultados {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-spacing-md, 16px);
+  padding: var(--ds-spacing-lg, 24px);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.valres-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--ds-spacing-sm, 12px);
+}
+
+.valres-hero-titulos h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ds-color-text, #1e293b);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.valres-hero-desc {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  color: var(--ds-color-text-muted, #64748b);
+}
+
+.valres-barra-filtros {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-lg, 12px);
+  background: var(--ds-color-surface, #ffffff);
+  border: 1px solid var(--ds-color-border, #e2e8f0);
+}
+
+.valres-busca-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 260px;
+  flex: 1;
+}
+
+.valres-busca-wrap .material-symbols-outlined {
+  position: absolute;
+  left: 10px;
+  font-size: 20px;
+  color: var(--ds-color-text-muted, #64748b);
+  pointer-events: none;
+}
+
+.valres-busca-input {
+  width: 100%;
+  padding: 8px 32px 8px 36px;
+  font-size: 13px;
+  border-radius: var(--ds-radius-md, 8px);
+  border: 1px solid var(--ds-color-border, #e2e8f0);
+  background: var(--ds-color-surface-2, #f8fafc);
+  color: var(--ds-color-text, #1e293b);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.valres-busca-input:focus {
+  border-color: var(--ds-color-primary, #1b4d3e);
+  background: var(--ds-color-surface, #ffffff);
+}
+
+.valres-busca-limpar {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--ds-color-text-muted, #64748b);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.valres-barra-selecao {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--ds-radius-md, 8px);
+  background: var(--ds-color-primary, #1b4d3e);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: valresFadeIn 0.2s ease-out;
+}
+
+@keyframes valresFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.valres-selecao-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.valres-selecao-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.valres-tabela-wrap {
+  background: var(--ds-color-surface, #ffffff);
+  border-radius: var(--ds-radius-lg, 12px);
+  border: 1px solid var(--ds-color-border, #e2e8f0);
+  overflow-x: auto;
+}
+
+.valres-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.valres-tabela th {
+  padding: 12px 14px;
+  font-weight: 600;
+  color: var(--ds-color-text-muted, #64748b);
+  background: var(--ds-color-surface-2, #f8fafc);
+  border-bottom: 1px solid var(--ds-color-border, #e2e8f0);
+  white-space: nowrap;
+}
+
+.valres-tabela td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ds-color-border, #e2e8f0);
+  color: var(--ds-color-text, #1e293b);
+  vertical-align: middle;
+}
+
+.valres-tabela tbody tr:hover {
+  background: var(--ds-sidebar-item-hover, rgba(0, 0, 0, 0.03));
+}
+
+.valres-col-check {
+  width: 40px;
+  text-align: center;
+}
+
+.valres-col-acoes {
+  width: 90px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.valres-btn-acao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ds-radius-sm, 6px);
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.valres-btn-acao:hover:not(:disabled) {
+  background: var(--ds-color-surface-2, #f1f5f9);
+}
+
+.valres-btn-acao--validar {
+  color: var(--ds-color-success-fg, #15803d);
+}
+
+.valres-btn-acao--validar:hover:not(:disabled) {
+  background: var(--ds-color-success-bg, #dcfce7);
+  border-color: var(--ds-color-success-fg, #15803d);
+}
+
+.valres-btn-acao--rejeitar {
+  color: var(--ds-color-danger-fg, #b91c1c);
+}
+
+.valres-btn-acao--rejeitar:hover:not(:disabled) {
+  background: var(--ds-color-danger-bg, #fee2e2);
+  border-color: var(--ds-color-danger-fg, #b91c1c);
+}
+
+.valres-btn-acao:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.valres-badge-plano {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: var(--ds-radius-xs, 4px);
+  background: var(--ds-color-surface-2, #f1f5f9);
+  color: var(--ds-color-text-muted, #475569);
+  margin-top: 2px;
+}
+
+.valres-analise-box {
+  max-width: 240px;
+  font-size: 12px;
+  color: var(--ds-color-text-muted, #64748b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.valres-vazio {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--ds-color-text-muted, #64748b);
+}
+
+.valres-vazio .material-symbols-outlined {
+  font-size: 48px;
+  color: var(--ds-color-primary, #1b4d3e);
+  margin-bottom: 12px;
+  opacity: 0.8;
+}
+
+.valres-vazio-t {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ds-color-text, #1e293b);
+  margin-bottom: 4px;
+}
+</style>
+
+<div id="page-validacao-resultados" class="page-content hidden">
+
+  <!-- Hero executivo da central de validação -->
+  <section class="valres-hero">
+    <div class="valres-hero-titulos">
+      <h1>
+        <span class="material-symbols-outlined" style="font-size:32px;color:var(--ds-color-primary,#1b4d3e);">fact_check</span>
+        Validação de Resultados
+        <span class="ds-badge ds-badge--info" id="valres-badge-total" style="font-size:13px;">0 pendentes</span>
+      </h1>
+      <p class="valres-hero-desc">
+        Central de despacho unificada para validação e auditoria de medições dos indicadores de todos os planos institucionais.
+      </p>
+    </div>
+    <div>
+      <button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_execucao_validacao.1" aria-label="Atualizar lista">
+        <span class="material-symbols-outlined">refresh</span> Atualizar
+      </button>
+    </div>
+  </section>
+
+  <!-- Barra de Ações em Lote (exibida quando há seleção ativa) -->
+  <div class="valres-barra-selecao hidden" id="valres-barra-selecao">
+    <div class="valres-selecao-info">
+      <button type="button" class="ds-icon-action" style="color:#ffffff;" data-on-click="pages_execucao_validacao.2" aria-label="Cancelar seleção" data-title="Cancelar seleção">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      <span id="valres-selecao-texto">0 selecionados</span>
+    </div>
+    <div class="valres-selecao-acoes">
+      <button type="button" class="ds-btn ds-btn--primary" style="background:#ffffff;color:var(--ds-color-primary,#1b4d3e);font-weight:600;" data-on-click="pages_execucao_validacao.3">
+        <span class="material-symbols-outlined">done_all</span> Validar selecionados
+      </button>
+    </div>
+  </div>
+
+  <!-- Barra de Filtros estilo Drive -->
+  <div class="valres-barra-filtros" id="valres-barra-filtros">
+    <div class="valres-busca-wrap">
+      <span class="material-symbols-outlined">search</span>
+      <input type="text" id="valres-filtro-busca" class="valres-busca-input" placeholder="Buscar por indicador, plano, autor ou análise..." data-on-input="pages_execucao_validacao.4">
+      <button type="button" id="valres-busca-limpar-btn" class="valres-busca-limpar hidden" data-on-click="pages_execucao_validacao.5" aria-label="Limpar busca">
+        <span class="material-symbols-outlined" style="font-size:18px;">close</span>
+      </button>
+    </div>
+
+    <!-- Filtro por Plano -->
+    <div class="el-filtro">
+      <button type="button" class="el-filtro-btn" id="valres-filtro-plano-btn" data-on-click="pages_execucao_validacao.6">
+        <span id="valres-filtro-plano-rotulo">Plano: Todos</span>
+        <span class="material-symbols-outlined" style="font-size:18px;">expand_more</span>
+      </button>
+      <button type="button" class="el-filtro-x hidden" id="valres-filtro-plano-x" data-on-click="pages_execucao_validacao.7" aria-label="Limpar filtro de plano">
+        <span class="material-symbols-outlined" style="font-size:15px;">close</span>
+      </button>
+    </div>
+
+    <button type="button" class="el-limpar-link hidden" id="valres-limpar-todos-filtros" data-on-click="pages_execucao_validacao.8">
+      Limpar filtros
+    </button>
+  </div>
+
+  <!-- Tabela de Resultados para Validar -->
+  <div class="valres-tabela-wrap">
+    <table class="valres-tabela" id="valres-tabela">
+      <thead>
+        <tr>
+          <th class="valres-col-check">
+            <input type="checkbox" id="valres-check-todos" data-on-change="pages_execucao_validacao.9" aria-label="Selecionar todos">
+          </th>
+          <th>Indicador / Plano</th>
+          <th>Período</th>
+          <th>Valor Aferido / Meta</th>
+          <th>Lançado por</th>
+          <th>Análise Qualitativa</th>
+          <th style="text-align:center;">Evidências</th>
+          <th class="valres-col-acoes" aria-label="Ações de validação">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="valres-tbody">
+        <!-- Renderizado dinamicamente -->
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Modal de Rejeição de Resultado (estruturado para mover ao body) -->
+<div id="valres-modal-rejeitar" class="modal-overlay hidden" data-fechar="valresFecharRejeitar" data-on-click="pages_execucao_validacao.10">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="valres-modal-t" style="max-width:500px;">
+    <div class="modal-header">
+      <h3 id="valres-modal-t" style="margin:0;font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px;">
+        <span class="material-symbols-outlined" style="color:var(--ds-color-danger-fg,#b91c1c);">block</span>
+        Rejeitar resultado de medição
+      </h3>
+      <button type="button" class="ds-icon-action" data-on-click="pages_execucao_validacao.11" aria-label="Fechar modal">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--ds-color-text-muted,#64748b);margin-top:0;">
+        Informe a justificativa fundamentada da rejeição. O responsável pelo lançamento será notificado e poderá realizar a correção e reenvio.
+      </p>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <label class="ds-label" for="valres-motivo-txt" style="margin:0;">Justificativa obrigatória <span style="color:var(--ds-color-danger-fg,#b91c1c);">*</span></label>
+        <span id="valres-motivo-contador" style="font-size:11px;color:var(--ds-color-text-muted,#64748b);">0/1000</span>
+      </div>
+      <textarea id="valres-motivo-txt" class="ds-input" rows="4" maxlength="1000" placeholder="Descreva claramente o motivo da rejeição (mínimo 10 caracteres)..." data-on-input="pages_execucao_validacao.12" style="width:100%;box-sizing:border-box;resize:vertical;"></textarea>
+      <span id="valres-motivo-erro" style="color:var(--ds-color-danger-fg,#b91c1c);font-size:12px;margin-top:4px;display:block;" role="alert"></span>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;">
+      <button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_execucao_validacao.11">Cancelar</button>
+      <button type="button" class="ds-btn ds-btn--danger" id="valres-btn-confirmar-rejeitar" data-on-click="pages_execucao_validacao.13">
+        <span class="material-symbols-outlined">block</span> Confirmar Rejeição
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// pages_execucao_validacao.html — Central Transversal de Validação de Resultados
+var _valresSDK = (typeof _valresSDK !== 'undefined' ? _valresSDK : criarSamaumaSDK());
+
+var valresEstado = {
+  carregando: false,
+  erro: '',
+  dados: null, // { podeValidar: bool, exigeValidacao: bool, itens: [] }
+  selecionados: new Set(),
+  busca: '',
+  filtroPlano: '',
+  idRejeitar: null
+};
+
+function initValidacaoResultados() {
+  valresGarantirModalNoBody();
+  valresCarregarDados();
+}
+
+function valresGarantirModalNoBody() {
+  var m = document.getElementById('valres-modal-rejeitar');
+  if (m && m.parentElement !== document.body) {
+    document.body.appendChild(m);
+  }
+}
+
+function valresCarregarDados() {
+  valresEstado.carregando = true;
+  valresEstado.erro = '';
+  valresRenderizarTabela();
+
+  _valresSDK.chamar('apiGetResultadosParaValidar').then(function (res) {
+    valresEstado.carregando = false;
+    valresEstado.dados = res || { podeValidar: true, exigeValidacao: true, itens: [] };
+    
+    // Limpa seleção de itens que não estão mais presentes
+    var idsVivos = {};
+    (valresEstado.dados.itens || []).forEach(function (i) { idsVivos[String(i.id)] = true; });
+    valresEstado.selecionados.forEach(function (id) {
+      if (!idsVivos[id]) valresEstado.selecionados.delete(id);
+    });
+
+    valresAtualizarBadges();
+    valresRenderizarTabela();
+  }, function (err) {
+    valresEstado.carregando = false;
+    valresEstado.erro = (err && err.message) || String(err);
+    valresRenderizarTabela();
+  });
+}
+
+function valresAtualizarBadges() {
+  var b = document.getElementById('valres-badge-total');
+  var total = (valresEstado.dados && valresEstado.dados.itens) ? valresEstado.dados.itens.length : 0;
+  if (b) {
+    b.textContent = total + (total === 1 ? ' pendente' : ' pendentes');
+    b.className = 'ds-badge ' + (total > 0 ? 'ds-badge--warning' : 'ds-badge--success');
+  }
+}
+
+function valresObterItensFiltrados() {
+  if (!valresEstado.dados || !valresEstado.dados.itens) return [];
+  var itens = valresEstado.dados.itens;
+  var b = valresEstado.busca.toLowerCase().trim();
+  var pl = valresEstado.filtroPlano;
+
+  return itens.filter(function (i) {
+    if (pl && String(i.idPlano) !== String(pl)) return false;
+    if (b) {
+      var txt = (String(i.nomeIndicador || '') + ' ' +
+                 String(i.nomePlano || '') + ' ' +
+                 String(i.tipoPlano || '') + ' ' +
+                 String(i.autorNome || '') + ' ' +
+                 String(i.autorEmail || '') + ' ' +
+                 String(i.periodo || '') + ' ' +
+                 String(i.analise || '')).toLowerCase();
+      if (txt.indexOf(b) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function valresRenderizarTabela() {
+  var tb = document.getElementById('valres-tbody');
+  if (!tb) return;
+
+  if (valresEstado.carregando) {
+    tb.innerHTML = '<tr><td colspan="8" style="padding:40px;text-align:center;">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : 'Carregando pendências...') + '</td></tr>';
+    return;
+  }
+
+  if (valresEstado.erro) {
+    tb.innerHTML = '<tr><td colspan="8" style="padding:40px;text-align:center;color:var(--ds-color-danger-fg,#b91c1c);">' +
+      '<span class="material-symbols-outlined" style="font-size:36px;display:block;margin-bottom:8px;">error</span>' +
+      escapeHtml(valresEstado.erro) + '</td></tr>';
+    return;
+  }
+
+  if (!valresEstado.dados || valresEstado.dados.podeValidar === false) {
+    tb.innerHTML = '<tr><td colspan="8"><div class="valres-vazio">' +
+      '<span class="material-symbols-outlined">lock</span>' +
+      '<div class="valres-vazio-t">Sem permissão de validação</div>' +
+      '<p>Você não possui atribuição de validador nos planos institucionais ativos.</p>' +
+      '</div></td></tr>';
+    return;
+  }
+
+  var itens = valresObterItensFiltrados();
+
+  if (itens.length === 0) {
+    var temFiltro = valresEstado.busca || valresEstado.filtroPlano;
+    tb.innerHTML = '<tr><td colspan="8"><div class="valres-vazio">' +
+      '<span class="material-symbols-outlined">' + (temFiltro ? 'filter_alt_off' : 'task_alt') + '</span>' +
+      '<div class="valres-vazio-t">' + (temFiltro ? 'Nenhum resultado encontrado' : 'Nenhuma pendência de validação!') + '</div>' +
+      '<p>' + (temFiltro ? 'Tente ajustar os termos da busca ou os filtros aplicados.' : 'Todos os resultados lançados já foram validados ou não há medições pendentes.') + '</p>' +
+      '</div></td></tr>';
+    valresAtualizarSelecao();
+    return;
+  }
+
+  var html = '';
+  itens.forEach(function (i) {
+    var id = String(i.id);
+    var sel = valresEstado.selecionados.has(id);
+    var pode = !!i.podeValidarEste;
+    var valorFormatado = (typeof _fmtNumBR === 'function' && typeof i.valor === 'number') ? _fmtNumBR(i.valor) : String(i.valor != null ? i.valor : '—');
+    var metaFormatada = (typeof _fmtNumBR === 'function' && typeof i.valorMeta === 'number') ? _fmtNumBR(i.valorMeta) : (i.valorMeta != null ? String(i.valorMeta) : '—');
+    var un = i.unidadeMedida ? (i.unidadeMedida === '%' ? '%' : ' ' + i.unidadeMedida) : '';
+    var dataAfer = i.dataAfericao ? (typeof _dataBR === 'function' ? _dataBR(i.dataAfericao) : i.dataAfericao) : '';
+    var lancado = i.lancadoEm ? (typeof _isoParaBR === 'function' ? _isoParaBR(i.lancadoEm.slice(0, 10)) : i.lancadoEm.slice(0, 10)) : '';
+
+    html += '<tr data-id="' + escapeHtml(id) + '">' +
+      '<td class="valres-col-check">' +
+        '<input type="checkbox" class="valres-item-check" data-id="' + escapeHtml(id) + '" ' + (sel ? 'checked' : '') + ' ' + (pode ? '' : 'disabled') + ' data-on-change="pages_execucao_validacao.14">' +
+      '</td>' +
+      '<td>' +
+        '<div style="font-weight:600;color:var(--ds-color-text,#1e293b);">' + escapeHtml(i.nomeIndicador || 'Indicador sem nome') + '</div>' +
+        '<div style="font-size:12px;color:var(--ds-color-text-muted,#64748b);display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;">' +
+          '<span>' + escapeHtml(i.nomePlano || 'Plano') + '</span>' +
+          (i.tipoPlano ? '<span class="valres-badge-plano">' + escapeHtml(i.tipoPlano) + '</span>' : '') +
+        '</div>' +
+      '</td>' +
+      '<td>' +
+        '<div>' + escapeHtml(i.periodo || '—') + '</div>' +
+        (dataAfer ? '<div style="font-size:11px;color:var(--ds-color-text-muted,#64748b);">Aferido em ' + escapeHtml(dataAfer) + '</div>' : '') +
+      '</td>' +
+      '<td>' +
+        '<div style="font-weight:600;">' + escapeHtml(valorFormatado + un) + '</div>' +
+        '<div style="font-size:11px;color:var(--ds-color-text-muted,#64748b);">Meta: ' + escapeHtml(metaFormatada + un) + '</div>' +
+      '</td>' +
+      '<td>' +
+        '<div>' + escapeHtml(i.autorNome || i.autorEmail || '—') + '</div>' +
+        (lancado ? '<div style="font-size:11px;color:var(--ds-color-text-muted,#64748b);">Lançado em ' + escapeHtml(lancado) + '</div>' : '') +
+      '</td>' +
+      '<td>' +
+        (i.analise ? '<div class="valres-analise-box" title="' + escapeHtml(i.analise) + '">' + escapeHtml(i.analise) + '</div>' : '<span style="color:var(--ds-color-text-muted,#64748b);font-size:12px;">—</span>') +
+      '</td>' +
+      '<td style="text-align:center;">' +
+        (i.temEvidencia ?
+          '<button type="button" class="ds-icon-action" data-on-click="pages_execucao_validacao.15" data-ind="' + escapeHtml(String(i.idIndicador)) + '" data-nome="' + escapeHtml(i.nomeIndicador || '') + '" data-title="Ver evidências anexadas" aria-label="Ver evidências anexadas">' +
+            '<span class="material-symbols-outlined" style="color:var(--ds-color-primary,#1b4d3e);">attach_file</span>' +
+          '</button>' :
+          '<span style="color:var(--ds-color-text-muted,#64748b);font-size:12px;">—</span>') +
+      '</td>' +
+      '<td class="valres-col-acoes">' +
+        '<button type="button" class="valres-btn-acao valres-btn-acao--validar" data-on-click="pages_execucao_validacao.16" data-id="' + escapeHtml(id) + '" ' + (pode ? '' : 'disabled') + ' data-title="Aprovar resultado" aria-label="Aprovar resultado">' +
+          '<span class="material-symbols-outlined" style="font-size:20px;">check</span>' +
+        '</button>' +
+        '<button type="button" class="valres-btn-acao valres-btn-acao--rejeitar" data-on-click="pages_execucao_validacao.17" data-id="' + escapeHtml(id) + '" ' + (pode ? '' : 'disabled') + ' data-title="Rejeitar resultado" aria-label="Rejeitar resultado">' +
+          '<span class="material-symbols-outlined" style="font-size:20px;">close</span>' +
+        '</button>' +
+      '</td>' +
+    '</tr>';
+  });
+
+  tb.innerHTML = html;
+  valresAtualizarSelecao();
+}
+
+function valresAtualizarSelecao() {
+  var itens = valresObterItensFiltrados();
+  var selecionaveis = itens.filter(function (i) { return !!i.podeValidarEste; });
+  var n = selecionaveis.length;
+  var q = 0;
+  selecionaveis.forEach(function (i) {
+    if (valresEstado.selecionados.has(String(i.id))) q++;
+  });
+
+  var chkTout = document.getElementById('valres-check-todos');
+  if (chkTout) {
+    chkTout.checked = n > 0 && q === n;
+    chkTout.indeterminate = q > 0 && q < n;
+    chkTout.disabled = n === 0;
+  }
+
+  var barra = document.getElementById('valres-barra-selecao');
+  var txt = document.getElementById('valres-selecao-texto');
+  if (barra) {
+    if (q > 0) {
+      barra.classList.remove('hidden');
+      if (txt) txt.textContent = q + (q === 1 ? ' resultado selecionado' : ' resultados selecionados');
+    } else {
+      barra.classList.add('hidden');
+    }
+  }
+}
+
+function valresAlternarItem(id, selecionado) {
+  if (selecionado) valresEstado.selecionados.add(String(id));
+  else valresEstado.selecionados.delete(String(id));
+  valresAtualizarSelecao();
+}
+
+function valresAlternarTodos(selecionar) {
+  var itens = valresObterItensFiltrados();
+  itens.forEach(function (i) {
+    if (i.podeValidarEste) {
+      if (selecionar) valresEstado.selecionados.add(String(i.id));
+      else valresEstado.selecionados.delete(String(i.id));
+    }
+  });
+  valresRenderizarTabela();
+}
+
+function valresCancelarSelecao() {
+  valresEstado.selecionados.clear();
+  valresRenderizarTabela();
+}
+
+function valresDecidir(ids, decisao, justificativa, gatilhoBtn) {
+  if (!ids || ids.length === 0) return;
+  var idsStr = ids.map(String);
+
+  // Remoção otimista da tela
+  var backupItens = valresEstado.dados.itens.slice();
+  valresEstado.dados.itens = backupItens.filter(function (i) {
+    return idsStr.indexOf(String(i.id)) === -1;
+  });
+  idsStr.forEach(function (id) { valresEstado.selecionados.delete(id); });
+  valresAtualizarBadges();
+  valresRenderizarTabela();
+
+  var promessas = idsStr.map(function (id) {
+    return _valresSDK.chamar('apiValidarResultado', id, decisao, justificativa || '');
+  });
+
+  return uiExecutarComTrava(gatilhoBtn || null, function () {
+    return Promise.all(promessas).then(function () {
+      if (typeof showMessage === 'function') {
+        var msg = decisao === 'Validado'
+          ? (idsStr.length === 1 ? 'Resultado validado com sucesso.' : idsStr.length + ' resultados validados com sucesso.')
+          : 'Resultado rejeitado.';
+        showMessage('success', 'Sucesso', msg);
+      }
+      valresCarregarDados();
+    }, function (err) {
+      // Rollback em caso de erro
+      valresEstado.dados.itens = backupItens;
+      valresAtualizarBadges();
+      valresRenderizarTabela();
+      if (typeof showMessage === 'function') {
+        showMessage('error', 'Falha na validação', escapeHtml((err && err.message) || String(err)));
+      }
+    });
+  });
+}
+
+function valresValidarLote(btn) {
+  var ids = Array.from(valresEstado.selecionados);
+  if (!ids.length) return;
+  valresDecidir(ids, 'Validado', '', btn);
+}
+
+function valresAbrirModalRejeitar(id) {
+  valresGarantirModalNoBody();
+  valresEstado.idRejeitar = String(id);
+  var m = document.getElementById('valres-modal-rejeitar');
+  var txt = document.getElementById('valres-motivo-txt');
+  var erro = document.getElementById('valres-motivo-erro');
+  var c = document.getElementById('valres-motivo-contador');
+  if (txt) { txt.value = ''; }
+  if (erro) { erro.textContent = ''; }
+  if (c) { c.textContent = '0/1000'; }
+  if (m) {
+    m.classList.remove('hidden');
+    if (typeof bloquearFundo === 'function') bloquearFundo();
+    setTimeout(function () { if (txt) txt.focus(); }, 50);
+  }
+}
+
+function valresFecharRejeitar() {
+  var m = document.getElementById('valres-modal-rejeitar');
+  if (m) m.classList.add('hidden');
+  if (typeof desbloquearFundo === 'function') desbloquearFundo();
+}
+
+function valresConfirmarRejeitar(btn) {
+  var txt = document.getElementById('valres-motivo-txt');
+  var erro = document.getElementById('valres-motivo-erro');
+  var motivo = txt ? txt.value.trim() : '';
+
+  if (motivo.length < 10) {
+    if (erro) erro.textContent = 'A justificativa é obrigatória e deve ter entre 10 e 1.000 caracteres.';
+    if (txt) txt.focus();
+    return;
+  }
+
+  valresFecharRejeitar();
+  valresDecidir([valresEstado.idRejeitar], 'Rejeitado', motivo, btn);
+}
+
+function valresAbrirMenuPlanos(gatilho, ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  if (typeof abrirMenuSelecao !== 'function') return;
+
+  var planosMapa = {};
+  ((valresEstado.dados && valresEstado.dados.itens) || []).forEach(function (i) {
+    if (i.idPlano) {
+      planosMapa[String(i.idPlano)] = i.nomePlano || ('Plano #' + i.idPlano);
+    }
+  });
+
+  var itens = [{
+    label: 'Todos os planos',
+    ativo: !valresEstado.filtroPlano,
+    onclick: "valresEscolherPlano('')"
+  }];
+
+  Object.keys(planosMapa).sort(function (a, b) {
+    return planosMapa[a].localeCompare(planosMapa[b], 'pt');
+  }).forEach(function (idP) {
+    itens.push({
+      label: planosMapa[idP],
+      ativo: String(valresEstado.filtroPlano) === String(idP),
+      onclick: "valresEscolherPlano('" + escapeJsAttr(idP) + "')"
+    });
+  });
+
+  abrirMenuSelecao(gatilho, [{ itens: itens }]);
+}
+
+function valresEscolherPlano(idP) {
+  valresEstado.filtroPlano = idP;
+  var rot = document.getElementById('valres-filtro-plano-rotulo');
+  var btnX = document.getElementById('valres-filtro-plano-x');
+  var btnPlano = document.getElementById('valres-filtro-plano-btn');
+
+  if (idP) {
+    var item = ((valresEstado.dados && valresEstado.dados.itens) || []).find(function (x) { return String(x.idPlano) === String(idP); });
+    if (rot) rot.textContent = 'Plano: ' + (item ? item.nomePlano : '#' + idP);
+    if (btnX) btnX.classList.remove('hidden');
+    if (btnPlano) btnPlano.classList.add('el-filtro-btn--ativo');
+  } else {
+    if (rot) rot.textContent = 'Plano: Todos';
+    if (btnX) btnX.classList.add('hidden');
+    if (btnPlano) btnPlano.classList.remove('el-filtro-btn--ativo');
+  }
+
+  valresVerificarFiltrosAtivos();
+  valresRenderizarTabela();
+}
+
+function valresVerificarFiltrosAtivos() {
+  var temFiltro = !!(valresEstado.busca || valresEstado.filtroPlano);
+  var btnLimpar = document.getElementById('valres-limpar-todos-filtros');
+  if (btnLimpar) btnLimpar.classList.toggle('hidden', !temFiltro);
+}
+
+function valresLimparTodosFiltros() {
+  valresEstado.busca = '';
+  var inp = document.getElementById('valres-filtro-busca');
+  if (inp) inp.value = '';
+  var btnLimparBusca = document.getElementById('valres-busca-limpar-btn');
+  if (btnLimparBusca) btnLimparBusca.classList.add('hidden');
+
+  valresEscolherPlano('');
+}
+
+// Registro das Ações do Módulo via Delegação de Eventos (app_ui_acoes)
+uiRegistrarAcoes('pages_execucao_validacao', {
+  '1': function (event) { valresCarregarDados(); },
+  '2': function (event) { valresCancelarSelecao(); },
+  '3': function (event) { valresValidarLote(this); },
+  '4': function (event) {
+    valresEstado.busca = this.value || '';
+    var btnL = document.getElementById('valres-busca-limpar-btn');
+    if (btnL) btnL.classList.toggle('hidden', !valresEstado.busca);
+    valresVerificarFiltrosAtivos();
+    valresRenderizarTabela();
+  },
+  '5': function (event) {
+    var inp = document.getElementById('valres-filtro-busca');
+    if (inp) { inp.value = ''; inp.focus(); }
+    valresEstado.busca = '';
+    this.classList.add('hidden');
+    valresVerificarFiltrosAtivos();
+    valresRenderizarTabela();
+  },
+  '6': function (event) { valresAbrirMenuPlanos(this, event); },
+  '7': function (event) { valresEscolherPlano(''); },
+  '8': function (event) { valresLimparTodosFiltros(); },
+  '9': function (event) { valresAlternarTodos(this.checked); },
+  '10': function (event) { if (event.target === this) valresFecharRejeitar(); },
+  '11': function (event) { valresFecharRejeitar(); },
+  '12': function (event) {
+    var c = document.getElementById('valres-motivo-contador');
+    if (c) c.textContent = this.value.length + '/1000';
+    var err = document.getElementById('valres-motivo-erro');
+    if (err && this.value.trim().length >= 10) err.textContent = '';
+  },
+  '13': function (event) { valresConfirmarRejeitar(this); },
+  '14': function (event) { valresAlternarItem(this.dataset.id, this.checked); },
+  '15': function (event) {
+    var idInd = this.dataset.ind;
+    var nome = this.dataset.nome || '';
+    if (typeof abrirModalEvidenciasIndicador === 'function') {
+      abrirModalEvidenciasIndicador(idInd, nome);
+    }
+  },
+  '16': function (event) {
+    var id = this.dataset.id;
+    valresDecidir([id], 'Validado', '', this);
+  },
+  '17': function (event) {
+    var id = this.dataset.id;
+    valresAbrirModalRejeitar(id);
+  }
+});
+</script>
+
        <!-- ARQUIVO: pages_planos_lista.html -->
 <div id="page-planos" class="page-content hidden">
 
@@ -28539,6 +30514,24 @@ function navigate(pageName, extra) {
       document.getElementById('page-home').classList.remove('hidden');
       setBreadcrumb([{ label: 'Início' }]);
       if (typeof initHome === 'function') initHome();
+      break;
+
+    case 'gestao-resultados':
+      document.getElementById('page-gestao-resultados').classList.remove('hidden');
+      setBreadcrumb([
+        { label: 'Gestão de Resultados' },
+        { label: 'Painel Geral' }
+      ]);
+      if (typeof initMonitoramentoCorporativo === 'function') initMonitoramentoCorporativo();
+      break;
+
+    case 'validacao-resultados':
+      document.getElementById('page-validacao-resultados').classList.remove('hidden');
+      setBreadcrumb([
+        { label: 'Gestão de Resultados' },
+        { label: 'Validação de Resultados' }
+      ]);
+      if (typeof initValidacaoResultados === 'function') initValidacaoResultados();
       break;
 
     // As antigas páginas de hub (Planejamento/Execução/Avaliação/
