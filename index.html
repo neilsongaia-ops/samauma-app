@@ -1471,7 +1471,7 @@ if (!window._uiDelegacaoAtiva) {
             <div class="nav-submenu-inner">
             <button type="button" class="nav-submenu-item" data-nav-rota="execucao-planos" data-on-click="components_header.12">
               <span class="material-symbols-outlined" aria-hidden="true">checklist</span>
-              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Lançamentos</span></span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Registros de Execução</span></span>
             </button>
             <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
               <span class="material-symbols-outlined" aria-hidden="true">payments</span>
@@ -20244,7 +20244,7 @@ uiRegistrarAcoes('plano', {
 
   <!-- Hero: só o título (30px desktop, 26px mobile; rola com a página) -->
   <section class="exl-hero">
-    <h1>Lançamentos</h1>
+    <h1>Registros de Execução</h1>
   </section>
 
   <!-- Abas estilo Gmail: Todos, Meus planos, Minha unidade, Colaborações -->
@@ -22149,7 +22149,7 @@ function execTarefasCarregar() {
       if (typeof setBreadcrumb === 'function') {
         setBreadcrumb([
           { label: 'Execução', page: 'execucao' },
-          { label: 'Lançamentos', page: 'execucao-planos' },
+          { label: 'Registros de Execução', page: 'execucao-planos' },
           { label: dados.plano.nome }
         ]);
       }
@@ -30570,7 +30570,7 @@ function navigate(pageName, extra) {
       document.getElementById('page-execucao-planos').classList.remove('hidden');
       setBreadcrumb([
         { label: 'Execução' },
-        { label: 'Lançamentos' }
+        { label: 'Registros de Execução' }
       ]);
       if (typeof initExecucaoPlanos === 'function') initExecucaoPlanos();
       break;
@@ -30580,7 +30580,7 @@ function navigate(pageName, extra) {
       document.getElementById('page-execucao-tarefas').classList.remove('hidden');
       setBreadcrumb([
         { label: 'Execução' },
-        { label: 'Lançamentos', page: 'execucao-planos' },
+        { label: 'Registros de Execução', page: 'execucao-planos' },
         { label: '…' }
       ]);
       break;
