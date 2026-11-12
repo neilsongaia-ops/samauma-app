@@ -1471,6 +1471,13 @@ function _uiExecAcao(el, tipo, ev) {
   // Trava de envio (uiAlvoTrava/uiExecutarComTrava em app_ui_utils): repetição com o alvo ainda travado é ignorada.
   var alvo = typeof uiAlvoTrava === 'function' ? uiAlvoTrava(el, tipo, ev) : null;
   if (alvo && uiBotaoTravado(alvo)) { ev.preventDefault(); ev.stopPropagation(); return; }
+  // Debounce imediato contra duplo clique rápido (descarta novo clique no mesmo alvo em menos de 400ms)
+  if (tipo === 'click' && alvo) {
+    var agora = Date.now();
+    var ult = +alvo.dataset.uiUltimoClique || 0;
+    if (agora - ult < 400) { ev.preventDefault(); ev.stopPropagation(); return; }
+    alvo.dataset.uiUltimoClique = String(agora);
+  }
   // Simulação fiel do bubbling na delegação: currentTarget aponta para o elemento dono do handler
   if (ev) {
     try { Object.defineProperty(ev, 'currentTarget', { value: el, configurable: true }); } catch (_) {}
@@ -9677,7 +9684,7 @@ function _uiTravaCss() {
     + '@media (prefers-reduced-motion: reduce){.ui-btn-spinner{animation-duration:2s}}';
   (document.head || document.documentElement).appendChild(s);
 }
-function _uiEhBotao(el) { return !!(el && el.matches && el.matches('button, input[type="submit"], input[type="button"], a.btn')); }
+function _uiEhBotao(el) { return !!(el && el.matches && el.matches('button, input[type="submit"], input[type="button"], a.btn, .ds-btn, a.ds-btn, .csis-btn-sec, .acoes-btn')); }
 // Trava o elemento e devolve liberar() (idempotente; travas sobrepostas são contadas).
 // Botão: desabilita + spinner. Outro elemento (campo com Enter): só marca, e a delegação ignora repetições.
 function uiTravarBotao(btn) {
@@ -9721,7 +9728,14 @@ function uiBotaoTravado(el) { return !!(el && el.dataset && el.dataset.uiTrava);
 // no Enter de um campo, o próprio campo. O confirmar do showConfirm fica de fora: o diálogo fecha antes da ação.
 function uiAlvoTrava(el, tipo, ev) {
   if (!el || (el.closest && el.closest('.sys-overlay'))) return null;
-  if (tipo === 'click') return _uiEhBotao(el) ? el : null;
+  if (tipo === 'click') {
+    if (_uiEhBotao(el)) return el;
+    if (el.closest) {
+      var b = el.closest('button, input[type="submit"], input[type="button"], a.btn, .ds-btn, a.ds-btn, .csis-btn-sec, .acoes-btn');
+      if (b) return b;
+    }
+    return null;
+  }
   if (tipo === 'submit') {
     var f = el.tagName === 'FORM' ? el : null;
     if (!f) return null;
@@ -9751,8 +9765,12 @@ function uiExecutarComTrava(alvo, fn) {
         if (typeof nome !== 'string') return undefined;
         return function () {
           var okF = ok, falhaF = falha;
-          if (_uiTravaAlvo && _UI_ROTAS_ESCRITA.has(nome)) {
-            var liberar = uiTravarBotao(_uiTravaAlvo);
+          var alvo = _uiTravaAlvo;
+          if (!alvo && typeof document !== 'undefined' && document.activeElement && _uiEhBotao(document.activeElement)) {
+            alvo = document.activeElement;
+          }
+          if (alvo && _UI_ROTAS_ESCRITA.has(nome)) {
+            var liberar = uiTravarBotao(alvo);
             okF = function () { liberar(); if (ok) return ok.apply(this, arguments); };
             falhaF = function (e) { liberar(); if (falha) return falha.apply(this, arguments); console.error(e); };
           }
@@ -21725,7 +21743,7 @@ uiRegistrarAcoes('pages_execucao_planos', {
     <div class="ext-mini-card">
       <div class="ext-mini-header">
         <h4 id="ext-modal-reg-titulo">Registrar Execução de Tratamento</h4>
-        <button type="button" class="ds-icon-action ds-icon-action--sm" onclick="extFecharModalRegistro()" aria-label="Fechar">
+        <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.39" aria-label="Fechar">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
@@ -21741,8 +21759,8 @@ uiRegistrarAcoes('pages_execucao_planos', {
         </div>
       </div>
       <div class="ext-mini-footer">
-        <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" onclick="extFecharModalRegistro()">Cancelar</button>
-        <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" onclick="extSalvarRegistro()">Salvar registro</button>
+        <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="pages_execucao_tarefas.39">Cancelar</button>
+        <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_execucao_tarefas.40">Salvar registro</button>
       </div>
     </div>
   </div>
@@ -23264,7 +23282,9 @@ uiRegistrarAcoes('pages_execucao_tarefas', {
   '33': function (event) { event.stopPropagation(); _execToggleGavetaCard(uiArgJs(this.dataset.aclick0)); },
   '35': function (event) { event.stopPropagation(); _execAbrirModalLancamentoIndicador(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
   '37': function (event) { _execExcluirColunaKanban(uiArgJs(this.dataset.aclick0)); },
-  '38': function (event) { extLimparFiltroStatus(); }
+  '38': function (event) { extLimparFiltroStatus(); },
+  '39': function (event) { extFecharModalRegistro(); },
+  '40': function (event) { extSalvarRegistro(); }
 });
 </script>
        <!-- ARQUIVO: pages_colaboracao.html -->
