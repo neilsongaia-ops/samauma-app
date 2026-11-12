@@ -461,6 +461,10 @@ body.high-contrast .wizard-msg-vazio { background: #111; }
   --ds-color-text-ui:       #202124;
   --ds-color-text-ui-muted: #5f6368;
   --ds-color-border-ui:     #dadce0;
+  /* Aliases de texto legados para compatibilidade */
+  --text:                   var(--ds-color-text-ui);
+  --text-light:             var(--ds-color-text-ui-muted);
+  --text-dark:              var(--ds-color-text-ui);
   /* Feedback sólido (ícones/texto de status) — NÃO muda no tema escuro, como antes */
   --ds-color-success-solid: #1e8e3e;
   --ds-color-warning-solid: #f9ab00;
@@ -537,6 +541,7 @@ body.high-contrast .wizard-msg-vazio { background: #111; }
   /* -- Movimento -- */
   --ds-duration-fast: 120ms;
   --ds-duration-base: 200ms;
+  --ds-duration-normal: var(--ds-duration-base);
   --ds-duration-slow: 320ms;
   --ds-ease-standard:  cubic-bezier(.4, 0, .2, 1);
   --ds-ease-emphasized: cubic-bezier(.2, 0, 0, 1);
@@ -607,6 +612,9 @@ body.high-contrast .wizard-msg-vazio { background: #111; }
   --ds-color-surface-2: #202020;
   --ds-color-text: #ededed;
   --ds-color-text-muted: #a3a3a3;
+  --text: var(--ds-color-text);
+  --text-light: var(--ds-color-text-muted);
+  --text-dark: var(--ds-color-text);
   --ds-color-border: #333333;
   --ds-color-border-strong: #474747;
   --ds-color-heading: #cfe0ff;
