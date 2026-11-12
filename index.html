@@ -26425,6 +26425,13 @@ function csisHtmlConteudo(mod, sec) {
   return topo + erro + corpo + rod;
 }
 
+function csisFormatarBytes(b) {
+  if (!b || b <= 0) return '0 B';
+  var u = ['B', 'KB', 'MB', 'GB', 'TB'];
+  var i = Math.floor(Math.log(b) / Math.log(1024));
+  return (b / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + u[i];
+}
+
 // ---------- carregar / salvar ----------
 function csisCarregar(mod, sec) {
   var k = csisChave(mod, sec), apis = sec.apis || {};
@@ -26434,6 +26441,9 @@ function csisCarregar(mod, sec) {
     _csis.carregando[k] = false;
     _csis.dados[k] = r || {}; _csis.salvos[k] = JSON.stringify(_csis.dados[k]); _csis.erro[k] = '';
     csisRenderConteudo();
+    if (sec.fonte === 'ARMAZENAMENTO' && apis.testar && !_csis.teste['tipo']) {
+      csisTestar('tipo');
+    }
   }, function (e) { _csis.carregando[k] = false; _csis.erro[k] = (e && e.message) || String(e); _csis.dados[k] = { valores: {}, travas: {} }; csisRenderConteudo(); });
 }
 function csisDados() { var mod = csisModulo(), sec = csisSecao(mod); return _csis.dados[csisChave(mod, sec)]; }
@@ -26494,7 +26504,23 @@ function csisHtmlParametros(sec, d) {
       var tr = !!d.travas[p.chave], tip = tr ? (p.tipo === 'NUMERO' ? 'Travado: vira teto para todos os planos' : 'Travado: imposto a todos os planos') : 'Cada plano pode mudar. Clique para travar.';
       ctl += '<button type="button" class="csis-trava' + (tr ? ' on' : '') + '" aria-pressed="' + tr + '" data-title="' + tip + '" aria-label="' + tip + '" data-on-click="pages_config_sistema.9" data-aclick0="' + ch + '"><span class="material-symbols-outlined">' + (tr ? 'lock' : 'lock_open') + '</span></button>';
     }
-    return '<div class="csis-linha' + (ativo ? '' : ' inativa') + '"><span class="csis-rotulo">' + escapeHtml(p.rotulo) + (p.obrigatorio ? ' *' : '') + csisInfo(p.descricao) + '</span><div class="csis-ctl">' + ctl + '</div></div>';
+    var cotaHtml = '';
+    if (p.testar && t && t.ok === true && t.limiteBytes > 0) {
+      var pct = Math.min(100, Math.max(0, Math.round((t.usadoBytes / t.limiteBytes) * 100)));
+      var tom = pct >= 80 ? 'ds-tone-danger' : 'ds-tone-info';
+      var txtUso = csisFormatarBytes(t.usadoBytes) + ' de ' + csisFormatarBytes(t.limiteBytes) + ' (' + pct + '%)';
+      cotaHtml = '<div style="flex: 1 1 100%; margin-top: 10px; padding: 12px 14px; background: var(--ds-sidebar-item-hover); border-radius: var(--ds-r-md); border: 1px solid var(--ds-color-border);">'
+        + '<div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px;">'
+        + '<span style="font-weight: 500; color: var(--ds-color-text); display: flex; align-items: center; gap: 6px;">'
+        + '<span class="material-symbols-outlined" style="font-size: 18px; color: var(--ds-color-text-muted);">pie_chart</span>'
+        + 'Uso do armazenamento'
+        + '</span>'
+        + '<span style="font-weight: 600; color: var(--ds-color-text);">' + escapeHtml(txtUso) + '</span>'
+        + '</div>'
+        + '<div class="ds-kpi-track" style="height: 8px;"><div class="ds-kpi-fill ' + tom + '" style="width: ' + pct + '%;"></div></div>'
+        + '</div>';
+    }
+    return '<div class="csis-linha' + (ativo ? '' : ' inativa') + '"><span class="csis-rotulo">' + escapeHtml(p.rotulo) + (p.obrigatorio ? ' *' : '') + csisInfo(p.descricao) + '</span><div class="csis-ctl">' + ctl + '</div>' + cotaHtml + '</div>';
   }).join('');
 }
 function csisAlternar(chave) { var d = csisDados(), p = csisParam(chave); if (p.fixo) return; d.valores[chave] = !d.valores[chave]; csisAposMudar(p); }
@@ -26531,8 +26557,19 @@ function csisTestar(chave) {
   var sec = csisSecao(), d = csisDados();
   _csis.teste[chave] = { testando: true }; csisRenderConteudo();
   csisApi(csisModulo(), sec, 'testar', [d.valores[chave]], function (r) {
-    _csis.teste[chave] = { ok: !!(r && r.ok), msg: r && r.ok ? 'Conexão ok' : ((r && r.mensagem) || 'Falhou') }; csisRenderConteudo();
-  }, function (e) { _csis.teste[chave] = { ok: false, msg: (e && e.message) || 'Falhou' }; csisRenderConteudo(); });
+    var dados = r && r.dados ? r.dados : r;
+    var ok = !!(r && r.ok) || !!(dados && dados.ok);
+    _csis.teste[chave] = {
+      ok: ok,
+      msg: ok ? 'Conexão ok' : ((dados && dados.mensagem) || (r && r.mensagem) || 'Falhou'),
+      usadoBytes: dados && dados.usadoBytes != null ? Number(dados.usadoBytes) : null,
+      limiteBytes: dados && dados.limiteBytes != null ? Number(dados.limiteBytes) : null,
+    };
+    csisRenderConteudo();
+  }, function (e) {
+    _csis.teste[chave] = { ok: false, msg: (e && e.message) || 'Falhou' };
+    csisRenderConteudo();
+  });
 }
 
 // ---------- painel: lista (catálogo de opções; salva na hora) ----------
