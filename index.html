@@ -946,6 +946,136 @@ body.high-contrast {
 .ds-tab-count { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text-muted); font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: var(--ds-radius-pill); }
 .ds-tab-btn.active .ds-tab-count { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
 
+/* ---- Abas de Navegação de Página / Escopo Principal (estilo Linha / Gmail) — .ds-tabs-nav ---- */
+.ds-tabs-nav {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  background: var(--ds-color-surface);
+  border: none;
+  border-bottom: 1px solid var(--ds-color-border);
+  box-shadow: none;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  padding-left: 0 !important;
+  width: 100%;
+}
+.ds-tabs-nav--sticky {
+  position: sticky;
+  top: var(--det-sticky-top, var(--pll-sticky-top, -20px));
+  z-index: 42;
+}
+.ds-tabs-nav--acoes {
+  padding-right: var(--det-acoes-w, var(--pll-acoes-w, 64px));
+}
+.ds-tabs-nav__scroll-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+}
+.ds-tabs-nav__scroll {
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0;
+  margin: 0;
+}
+.ds-tabs-nav__scroll::-webkit-scrollbar {
+  display: none;
+}
+.ds-tabs-nav__list {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+.ds-tabs-nav__item,
+.ds-tabs-nav .ds-tab-btn,
+.ds-tabs-nav .tab-btn,
+.ds-tabs-nav .pll-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  margin: 0;
+  margin-bottom: -1px;
+  min-height: 0;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  color: var(--ds-color-text-muted);
+  font-family: var(--ds-font-sans);
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  box-sizing: border-box;
+  box-shadow: none;
+  position: relative;
+  text-decoration: none;
+  transition: color var(--ds-duration-fast) var(--ds-ease-standard), background var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.ds-tabs-nav__item:hover,
+.ds-tabs-nav .ds-tab-btn:hover,
+.ds-tabs-nav .tab-btn:hover,
+.ds-tabs-nav .pll-tab-btn:hover {
+  color: var(--ds-color-text);
+  background: var(--ds-sidebar-item-hover);
+}
+.ds-tabs-nav__item.active,
+.ds-tabs-nav .ds-tab-btn.active,
+.ds-tabs-nav .tab-btn.active,
+.ds-tabs-nav .pll-tab-btn.active {
+  color: var(--ds-color-action);
+  font-weight: var(--ds-weight-semibold);
+  border-bottom-color: var(--ds-color-action);
+  background: none;
+  box-shadow: none;
+}
+[data-ds-theme="dark"] .ds-tabs-nav__item.active,
+[data-ds-theme="dark"] .ds-tabs-nav .ds-tab-btn.active,
+[data-ds-theme="dark"] .ds-tabs-nav .tab-btn.active,
+[data-ds-theme="dark"] .ds-tabs-nav .pll-tab-btn.active {
+  color: var(--ds-color-action);
+}
+body.high-contrast .ds-tabs-nav { border-bottom-color: #fff; }
+body.high-contrast .ds-tabs-nav__item.active,
+body.high-contrast .ds-tabs-nav .tab-btn.active,
+body.high-contrast .ds-tabs-nav .pll-tab-btn.active {
+  border-bottom-color: #fff;
+  color: #fff;
+}
+.ds-tabs-nav__item .material-symbols-outlined,
+.ds-tabs-nav__item .icon-sm,
+.ds-tabs-nav .tab-btn .material-symbols-outlined,
+.ds-tabs-nav .tab-btn .icon-sm,
+.ds-tabs-nav .pll-tab-btn .material-symbols-outlined {
+  font-size: 18px;
+}
+.ds-tabs-nav__item .ds-tab-count,
+.ds-tabs-nav .tab-btn .ds-tab-count,
+.ds-tabs-nav .pll-tab-btn .ds-tab-count {
+  margin-left: 4px;
+  background: var(--ds-sidebar-item-hover);
+  color: var(--ds-color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: var(--ds-radius-pill);
+}
+.ds-tabs-nav__item.active .ds-tab-count,
+.ds-tabs-nav .tab-btn.active .ds-tab-count,
+.ds-tabs-nav .pll-tab-btn.active .ds-tab-count {
+  background: var(--ds-color-info-bg);
+  color: var(--ds-color-info-fg);
+}
+
 /* ---- Classes legadas reveste-das ---- */
 .btn { border-radius: var(--ds-r-sm); }
 .btn-primary { background-color: var(--ds-color-action); color: var(--ds-color-on-action); box-shadow: var(--ds-shadow-2); }
@@ -12712,10 +12842,10 @@ uiRegistrarAcoes('pages_execucao_validacao', {
        colaterais sutis toda vez que algo mudava aqui (borda residual, cor de fundo
        herdada, margem legada). Tabela e filtros agora são filhos diretos de #page-planos,
        sem intermediário. -->
-  <div class="pll-tabs-row" id="pll-tabs-row">
-    <div class="pll-tabs-scroll-wrap">
-      <div class="pll-tabs-scroll" id="pll-tabs-scroll">
-        <div class="pll-tabs" id="planos-tabs" role="tablist" aria-label="Escopo da lista de planos"></div>
+  <div class="pll-tabs-row ds-tabs-nav ds-tabs-nav--sticky" id="pll-tabs-row">
+    <div class="pll-tabs-scroll-wrap ds-tabs-nav__scroll-wrap">
+      <div class="pll-tabs-scroll ds-tabs-nav__scroll" id="pll-tabs-scroll">
+        <div class="pll-tabs ds-tabs-nav__list" id="planos-tabs" role="tablist" aria-label="Escopo da lista de planos"></div>
       </div>
       <button type="button" class="pll-tabs-arrow pll-tabs-arrow--start hidden" id="pll-tabs-arrow-start"
               data-on-click="pages_planos_lista.2" data-title="Ver abas anteriores" aria-label="Ver abas anteriores">
@@ -13549,7 +13679,7 @@ function _renderizarAbas() {
   estadoPlanos.abas.forEach(function(aba) {
     var ativa = aba.key === estadoPlanos.abaAtiva;
     bar.insertAdjacentHTML('beforeend',
-      '<button type="button" role="tab" aria-selected="' + ativa + '" class="pll-tab-btn' + (ativa ? ' active' : '') + '" data-on-click="pages_planos_lista.26" data-aclick0="' + aba.key + '">' +
+      '<button type="button" role="tab" aria-selected="' + ativa + '" class="ds-tabs-nav__item pll-tab-btn' + (ativa ? ' active' : '') + '" data-on-click="pages_planos_lista.26" data-aclick0="' + aba.key + '">' +
         '<span class="material-symbols-outlined">' + aba.icon + '</span>' +
         '<span>' + escapeHtml(aba.label) + '</span>' +
         '<span class="ds-tab-count" id="tab-count-' + aba.key + '">' + (contagem[aba.key] || 0) + '</span>' +
@@ -17598,11 +17728,11 @@ body.high-contrast .el-chip-meta {
 #page-plano-detalhe .view-tabs-container {
   position: sticky; top: var(--det-sticky-top); z-index: 42;
   display: flex; align-items: flex-start; gap: 4px;
-  padding-right: var(--det-acoes-w, 240px);
   background: var(--ds-color-surface);
   border: none;
   border-bottom: 1px solid var(--ds-color-border);
-  box-shadow: none; margin: 0; padding-top: 0; padding-bottom: 0;
+  box-shadow: none; margin: 0; padding: 0; padding-left: 0;
+  padding-right: var(--det-acoes-w, 240px);
   -webkit-backdrop-filter: none; backdrop-filter: none;
   border-radius: 0;
 }
@@ -21429,14 +21559,14 @@ uiRegistrarAcoes('pages_execucao_planos', {
 
   <!-- LINHA DE ABAS DA PÁGINA (Responsabilidades / Ações de Tratamento)
        Sticky no topo de <main>; para quando sua linha base alinha com a base do botão de ações. -->
-  <div class="view-tabs-container" id="ext-tabs-row">
-    <div class="view-tabs-scroll-wrap">
-      <div class="view-tabs" id="ext-tabs-scroll" role="tablist">
-        <button class="tab-btn active" data-aba="tarefas" data-on-click="pages_execucao_tarefas.1" id="ext-btn-tab-resp">
+  <div class="view-tabs-container ds-tabs-nav ds-tabs-nav--sticky ds-tabs-nav--acoes" id="ext-tabs-row">
+    <div class="view-tabs-scroll-wrap ds-tabs-nav__scroll-wrap">
+      <div class="view-tabs ds-tabs-nav__list" id="ext-tabs-scroll" role="tablist">
+        <button class="tab-btn ds-tabs-nav__item active" data-aba="tarefas" data-on-click="pages_execucao_tarefas.1" id="ext-btn-tab-resp">
           <span class="material-symbols-outlined icon-sm">checklist</span> Responsabilidades
           <span class="ds-tab-count hidden" id="ext-tab-count-resp">0</span>
         </button>
-        <button class="tab-btn" data-aba="riscos" data-on-click="pages_execucao_tarefas.2" id="ext-btn-tab-trat">
+        <button class="tab-btn ds-tabs-nav__item" data-aba="riscos" data-on-click="pages_execucao_tarefas.2" id="ext-btn-tab-trat">
           <span class="material-symbols-outlined icon-sm">shield</span> Ações de Tratamento
           <span class="ds-tab-count hidden" id="ext-tab-count-trat">0</span>
         </button>
@@ -21660,14 +21790,14 @@ uiRegistrarAcoes('pages_execucao_planos', {
   display: flex;
   align-items: flex-start;
   gap: 4px;
+  padding: 0;
+  padding-left: 0;
   padding-right: var(--det-acoes-w, 64px);
   background: var(--ds-color-surface);
   border: none;
   border-bottom: 1px solid var(--ds-color-border);
   box-shadow: none;
   margin: 0;
-  padding-top: 0;
-  padding-bottom: 0;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   border-radius: 0;
