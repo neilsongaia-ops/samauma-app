@@ -1076,457 +1076,6 @@ body.high-contrast .ds-tabs-nav .pll-tab-btn.active {
   color: var(--ds-color-info-fg);
 }
 
-/* ==========================================================================
-   COMPONENTES CANÔNICOS OFICIAIS DO DESIGN SYSTEM SAMAÚMA
-   Princípio da Fonte Única da Verdade — Mesma Função, Mesma Classe (.ds-*)
-   ========================================================================== */
-
-/* 1. ---- Busca Expansível estilo Drive — .ds-search-box ---- */
-.ds-search-box {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-.ds-search-box__caixa,
-.ds-search-box__box {
-  position: relative;
-  display: flex;
-  align-items: center;
-  min-width: 220px;
-}
-.ds-search-box__caixa.hidden,
-.ds-search-box__box.hidden {
-  display: none;
-}
-.ds-search-box__icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 20px;
-  color: var(--ds-color-text-muted);
-  pointer-events: none;
-}
-.ds-search-box__input {
-  width: 100%;
-  min-width: 200px;
-  height: 36px;
-  padding: 8px 36px 8px 40px;
-  font-family: var(--ds-font-sans);
-  font-size: var(--ds-text-sm);
-  border-radius: var(--ds-r-md, var(--ds-radius-md, 8px));
-  border: 1px solid var(--ds-color-border);
-  background: var(--ds-color-surface-2, #f8fafc);
-  color: var(--ds-color-text);
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color var(--ds-duration-fast) var(--ds-ease-standard), background var(--ds-duration-fast) var(--ds-ease-standard), width var(--ds-duration-base) var(--ds-ease-standard);
-}
-.ds-search-box__input:focus {
-  border-color: var(--ds-color-action, var(--ds-color-primary));
-  background: var(--ds-color-surface);
-  box-shadow: 0 0 0 1px var(--ds-color-action, var(--ds-color-primary));
-}
-[data-ds-theme="dark"] .ds-search-box__input {
-  background: var(--ds-color-surface-2);
-}
-.ds-search-box__clear {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  background: none;
-  border: none;
-  border-radius: var(--ds-r-md, 6px);
-  color: var(--ds-color-text-muted);
-  transition: background var(--ds-duration-fast), color var(--ds-duration-fast);
-}
-.ds-search-box__clear:hover {
-  background: var(--ds-sidebar-item-hover);
-  color: var(--ds-color-text);
-}
-.ds-search-box__clear .material-symbols-outlined {
-  font-size: 18px;
-}
-.ds-search-box__clear.hidden {
-  display: none;
-}
-
-/* 2. ---- Barra de Filtros e Pastilhas estilo Drive — .ds-filter-bar & .ds-chip-filter ---- */
-.ds-filter-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 10px 0;
-  background: var(--ds-color-surface);
-  box-sizing: border-box;
-}
-.ds-filter-bar--sticky {
-  position: sticky;
-  top: calc(var(--det-sticky-top, var(--pll-sticky-top, -20px)) + var(--det-tabs-h, var(--pll-tabs-h, 44px)));
-  z-index: 41;
-}
-.ds-filter-bar--sticky::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -3px;
-  height: 4px;
-  background: var(--ds-color-surface);
-  pointer-events: none;
-}
-.ds-filter-bar__group {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.ds-chip-filter {
-  display: inline-flex;
-  align-items: stretch;
-}
-.ds-chip-filter__btn,
-.ds-chip-filter button:first-child:not(.ds-chip-filter__clear) {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 36px;
-  padding: 0 12px;
-  background: var(--ds-color-surface);
-  border: 1px solid var(--ds-color-border);
-  border-radius: var(--ds-r-lg, var(--ds-radius-lg, 10px));
-  color: var(--ds-color-text);
-  font-family: var(--ds-font-sans);
-  font-size: var(--ds-text-sm);
-  font-weight: var(--ds-weight-medium);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background var(--ds-duration-fast), border-color var(--ds-duration-fast), color var(--ds-duration-fast);
-  box-sizing: border-box;
-}
-.ds-chip-filter__btn:hover,
-.ds-chip-filter button:first-child:hover {
-  background: var(--ds-sidebar-item-hover);
-}
-.ds-chip-filter__btn .material-symbols-outlined,
-.ds-chip-filter button:first-child .material-symbols-outlined {
-  font-size: 18px;
-  color: var(--ds-color-text-muted);
-}
-.ds-chip-filter--active .ds-chip-filter__btn,
-.ds-chip-filter__btn--active,
-.ds-chip-filter.ativo .ds-chip-filter__btn {
-  background: var(--ds-color-info-bg);
-  color: var(--ds-color-info-fg);
-  border-color: var(--ds-color-info-bg);
-  font-weight: var(--ds-weight-semibold);
-}
-.ds-chip-filter--active .ds-chip-filter__btn .material-symbols-outlined,
-.ds-chip-filter__btn--active .material-symbols-outlined {
-  color: var(--ds-color-info-fg);
-}
-.ds-chip-filter:has(.ds-chip-filter__clear:not(.hidden)) .ds-chip-filter__btn,
-.ds-chip-filter:has(.pll-filtro-x:not(.hidden)) .pll-filtro-btn,
-.ds-chip-filter:has(.ext-filtro-x:not(.hidden)) .ext-filtro-btn {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  border-right-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
-}
-.ds-chip-filter__clear,
-.ds-chip-filter .pll-filtro-x,
-.ds-chip-filter .ext-filtro-x {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  padding: 0;
-  background: var(--ds-color-info-bg);
-  color: var(--ds-color-info-fg);
-  cursor: pointer;
-  border: 1px solid var(--ds-color-info-bg);
-  border-left-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
-  border-top-right-radius: var(--ds-r-lg, var(--ds-radius-lg, 10px));
-  border-bottom-right-radius: var(--ds-r-lg, var(--ds-radius-lg, 10px));
-  transition: filter var(--ds-duration-fast);
-}
-.ds-chip-filter__clear:hover,
-.ds-chip-filter .pll-filtro-x:hover,
-.ds-chip-filter .ext-filtro-x:hover {
-  filter: brightness(0.94);
-}
-.ds-chip-filter__clear .material-symbols-outlined,
-.ds-chip-filter .pll-filtro-x .material-symbols-outlined,
-.ds-chip-filter .ext-filtro-x .material-symbols-outlined {
-  font-size: 15px;
-}
-.ds-chip-filter__clear.hidden,
-.ds-chip-filter .pll-filtro-x.hidden,
-.ds-chip-filter .ext-filtro-x.hidden {
-  display: none;
-}
-
-/* 3. ---- Cabeçalho de Tela / Hero — .ds-page-hero ---- */
-.ds-page-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: var(--det-tabs-h, 44px);
-  margin-bottom: 20px;
-  gap: 16px;
-  position: relative;
-  box-sizing: border-box;
-}
-.ds-page-hero__titles,
-.ds-page-hero-titles {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-.ds-page-hero__title,
-.ds-page-hero-title {
-  font-size: 30px;
-  line-height: 1.15;
-  letter-spacing: -0.8px;
-  font-weight: var(--ds-weight-bold);
-  color: var(--ds-color-text);
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-.ds-page-hero__desc,
-.ds-page-hero-desc {
-  margin: 0;
-  font-size: 14px;
-  color: var(--ds-color-text-muted);
-  line-height: 1.4;
-}
-.ds-page-hero__actions,
-.ds-page-hero-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-/* 4. ---- Moldura e Tabela de Dados com Cabeçalho Sticky — .ds-data-table-wrap & .ds-data-table ---- */
-.ds-data-table-wrap {
-  background: var(--ds-color-surface);
-  border-radius: var(--ds-r-xl, var(--ds-radius-lg, 12px));
-  border: 1px solid var(--ds-color-border);
-  overflow-x: auto;
-  box-sizing: border-box;
-}
-.ds-data-table {
-  width: 100%;
-  margin: 0;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: var(--ds-text-sm, 13px);
-  font-family: var(--ds-font-sans);
-}
-.ds-data-table thead th,
-.ds-data-table--sticky-header thead th {
-  position: sticky;
-  top: calc(var(--det-sticky-top, var(--pll-sticky-top, -20px)) + var(--det-tabs-h, var(--pll-tabs-h, 44px)) + var(--det-filtros-h, var(--pll-filtros-h, 56px)));
-  z-index: 40;
-  padding: 12px 16px;
-  text-align: left;
-  white-space: nowrap;
-  font-size: var(--ds-text-xs, 11px);
-  font-weight: var(--ds-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ds-color-text-muted);
-  background: var(--ds-color-surface);
-  border-bottom: 2px solid var(--ds-color-border);
-  box-sizing: border-box;
-}
-.ds-data-table tbody td {
-  padding: 14px 16px;
-  vertical-align: middle;
-  border-bottom: 1px solid var(--ds-glass-border, var(--ds-color-border));
-  font-size: var(--ds-text-base, 14px);
-  color: var(--ds-color-text);
-  box-sizing: border-box;
-}
-.ds-data-table tbody tr {
-  transition: background var(--ds-duration-fast) var(--ds-ease-standard);
-}
-.ds-data-table tbody tr:last-child td {
-  border-bottom: none;
-}
-.ds-data-table tbody tr:hover td {
-  background: var(--ds-sidebar-item-hover);
-}
-.ds-data-table tbody tr.selecionada td {
-  background: var(--ds-sidebar-item-active);
-}
-.ds-data-table .ds-col-check,
-.ds-data-table .col-check {
-  width: 48px;
-  text-align: left;
-  padding: 14px 0 14px 16px;
-}
-.ds-data-table thead .ds-col-check,
-.ds-data-table thead .col-check {
-  padding-top: 12px;
-  padding-bottom: 12px;
-}
-.ds-data-table input[type="checkbox"] {
-  display: block;
-  margin: 0;
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-.ds-data-table .ds-col-acoes,
-.ds-data-table .col-acoes {
-  width: 1%;
-  white-space: nowrap;
-  text-align: right;
-}
-
-/* 5. ---- Painel Lateral de Detalhes / Gaveta Flyout — .ds-drawer ---- */
-.ds-drawer {
-  position: fixed;
-  top: var(--ds-header-height, 56px);
-  right: 0;
-  bottom: 0;
-  width: 380px;
-  max-width: 92vw;
-  background: var(--ds-color-surface);
-  border-left: 1px solid var(--ds-color-border);
-  box-shadow: var(--ds-shadow-3, var(--ds-shadow-lg));
-  z-index: var(--ds-z-drawer, 500);
-  display: flex;
-  flex-direction: column;
-  transform: translateX(100%);
-  transition: transform var(--ds-duration-base) var(--ds-ease-standard);
-  box-sizing: border-box;
-}
-.ds-drawer.aberto,
-.ds-drawer--open {
-  transform: translateX(0);
-}
-.ds-drawer__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 10px 10px 16px;
-  border-bottom: 1px solid var(--ds-color-border);
-  flex-shrink: 0;
-  min-height: 57px;
-}
-.ds-drawer__tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-}
-.ds-drawer__body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.ds-drawer__footer {
-  padding: 12px 16px;
-  border-top: 1px solid var(--ds-color-border);
-  background: var(--ds-color-surface);
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex-shrink: 0;
-}
-@media (max-width: 768px) {
-  .ds-drawer {
-    width: 100vw;
-    max-width: 100vw;
-    top: 0;
-  }
-}
-
-/* 6. ---- Barra de Ações em Lote — .ds-bulk-actions-bar ---- */
-.ds-bulk-actions-bar {
-  position: sticky;
-  top: 0;
-  z-index: 45;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 16px;
-  border-radius: var(--ds-r-md, var(--ds-radius-md, 8px));
-  background: var(--ds-color-primary, #1b4d3e);
-  color: #ffffff;
-  box-shadow: var(--ds-shadow-2, 0 4px 12px rgba(0, 0, 0, 0.15));
-  animation: dsFadeIn 0.2s ease-out;
-  box-sizing: border-box;
-}
-@keyframes dsFadeIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.ds-bulk-actions-bar__info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  font-weight: var(--ds-weight-medium, 500);
-}
-.ds-bulk-actions-bar__count {
-  font-weight: var(--ds-weight-semibold, 600);
-}
-.ds-bulk-actions-bar__divider {
-  width: 1px;
-  align-self: stretch;
-  margin: 2px 4px;
-  background: rgba(255, 255, 255, 0.3);
-}
-.ds-bulk-actions-bar__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.ds-bulk-actions-bar.hidden {
-  display: none !important;
-}
-body.high-contrast .ds-bulk-actions-bar {
-  background: #000;
-  border: 1px solid #fff;
-  color: #fff;
-}
-
-/* ---- Pontes de Compatibilidade (Aliasing Legado) ---- */
-.pll-search, .ext-search, .cal-search { position: relative; display: inline-flex; align-items: center; }
-.pll-search-caixa, .ext-search-caixa, .cal-search-caixa { position: relative; display: flex; align-items: center; }
-.pll-search-icon, .ext-search-icon, .cal-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--ds-color-text-muted); pointer-events: none; }
-.pll-search-input, .ext-search-input, .cal-search-input { width: 220px; max-width: 60vw; padding-left: 42px; padding-right: 38px; height: 36px; box-sizing: border-box; }
-.pll-search-clear, .ext-search-clear, .cal-search-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; background: none; border: none; border-radius: var(--ds-r-md, 6px); color: var(--ds-color-text-muted); }
-
-.pll-filtro, .ext-filtro { display: inline-flex; align-items: stretch; }
-.pll-filtro-btn, .ext-filtro-btn { display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px; background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg, 10px); color: var(--ds-color-text); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); cursor: pointer; white-space: nowrap; box-sizing: border-box; }
-.pll-filtro-btn:hover, .ext-filtro-btn:hover { background: var(--ds-sidebar-item-hover); }
-.pll-filtro-btn--ativo, .ext-filtro-btn--ativo { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); border-color: var(--ds-color-info-bg); font-weight: var(--ds-weight-semibold); }
-.pll-filtro-x, .ext-filtro-x { display: inline-flex; align-items: center; justify-content: center; width: 26px; padding: 0; background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); cursor: pointer; border: 1px solid var(--ds-color-info-bg); border-left-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent); border-top-right-radius: var(--ds-r-lg, 10px); border-bottom-right-radius: var(--ds-r-lg, 10px); }
-
-.detalhe-hero, .pll-hero, .cal-hero { display: flex; align-items: center; justify-content: space-between; min-height: var(--det-tabs-h, 44px); margin-bottom: 20px; gap: 16px; }
-
 /* ---- Classes legadas reveste-das ---- */
 .btn { border-radius: var(--ds-r-sm); }
 .btn-primary { background-color: var(--ds-color-action); color: var(--ds-color-on-action); box-shadow: var(--ds-shadow-2); }
@@ -11636,17 +11185,17 @@ uiRegistrarAcoes('pages_home', {
 <div id="page-gestao-resultados" class="page-content hidden">
 
   <!-- Hero Executivo -->
-  <section class="moncorp-hero ds-page-hero">
-    <div class="moncorp-hero-titulos ds-page-hero__titles">
-      <h1 class="ds-page-hero__title">
+  <section class="moncorp-hero">
+    <div class="moncorp-hero-titulos">
+      <h1>
         <span class="material-symbols-outlined" style="font-size:32px;color:var(--ds-color-primary,#1b4d3e);">monitoring</span>
         Gestão de Resultados
       </h1>
-      <p class="moncorp-hero-desc ds-page-hero__desc">
+      <p class="moncorp-hero-desc">
         Painel executivo com visão holística e transversal de planos, elementos, indicadores e riscos de toda a organização.
       </p>
     </div>
-    <div class="ds-page-hero__actions">
+    <div>
       <button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_monitoramento_corporativo.1" aria-label="Atualizar monitoramento">
         <span class="material-symbols-outlined">refresh</span> Atualizar
       </button>
@@ -11718,44 +11267,44 @@ uiRegistrarAcoes('pages_home', {
   </section>
 
   <!-- Barra de Filtros Transversais estilo Drive -->
-  <div class="moncorp-barra-filtros ds-filter-bar" id="moncorp-barra-filtros">
-    <div class="moncorp-busca-wrap ds-search-box">
-      <span class="material-symbols-outlined ds-search-box__icon">search</span>
-      <input type="text" id="moncorp-filtro-busca" class="moncorp-busca-input ds-search-box__input" placeholder="Buscar planos, elementos, indicadores ou riscos..." data-on-input="pages_monitoramento_corporativo.2">
-      <button type="button" id="moncorp-busca-limpar-btn" class="moncorp-busca-limpar ds-search-box__clear hidden" data-on-click="pages_monitoramento_corporativo.3" aria-label="Limpar busca">
+  <div class="moncorp-barra-filtros" id="moncorp-barra-filtros">
+    <div class="moncorp-busca-wrap">
+      <span class="material-symbols-outlined">search</span>
+      <input type="text" id="moncorp-filtro-busca" class="moncorp-busca-input" placeholder="Buscar planos, elementos, indicadores ou riscos..." data-on-input="pages_monitoramento_corporativo.2">
+      <button type="button" id="moncorp-busca-limpar-btn" class="moncorp-busca-limpar hidden" data-on-click="pages_monitoramento_corporativo.3" aria-label="Limpar busca">
         <span class="material-symbols-outlined" style="font-size:18px;">close</span>
       </button>
     </div>
 
     <!-- Filtro por Exercício/Ano -->
-    <div class="el-filtro ds-chip-filter">
-      <button type="button" class="el-filtro-btn ds-chip-filter__btn" id="moncorp-filtro-ano-btn" data-on-click="pages_monitoramento_corporativo.4">
+    <div class="el-filtro">
+      <button type="button" class="el-filtro-btn" id="moncorp-filtro-ano-btn" data-on-click="pages_monitoramento_corporativo.4">
         <span id="moncorp-filtro-ano-rotulo">Exercício: Todos</span>
         <span class="material-symbols-outlined" style="font-size:18px;">expand_more</span>
       </button>
-      <button type="button" class="el-filtro-x ds-chip-filter__clear hidden" id="moncorp-filtro-ano-x" data-on-click="pages_monitoramento_corporativo.5" aria-label="Limpar filtro de exercício">
+      <button type="button" class="el-filtro-x hidden" id="moncorp-filtro-ano-x" data-on-click="pages_monitoramento_corporativo.5" aria-label="Limpar filtro de exercício">
         <span class="material-symbols-outlined" style="font-size:15px;">close</span>
       </button>
     </div>
 
     <!-- Filtro por Unidade -->
-    <div class="el-filtro ds-chip-filter">
-      <button type="button" class="el-filtro-btn ds-chip-filter__btn" id="moncorp-filtro-unidade-btn" data-on-click="pages_monitoramento_corporativo.6">
+    <div class="el-filtro">
+      <button type="button" class="el-filtro-btn" id="moncorp-filtro-unidade-btn" data-on-click="pages_monitoramento_corporativo.6">
         <span id="moncorp-filtro-unidade-rotulo">Unidade: Todas</span>
         <span class="material-symbols-outlined" style="font-size:18px;">expand_more</span>
       </button>
-      <button type="button" class="el-filtro-x ds-chip-filter__clear hidden" id="moncorp-filtro-unidade-x" data-on-click="pages_monitoramento_corporativo.7" aria-label="Limpar filtro de unidade">
+      <button type="button" class="el-filtro-x hidden" id="moncorp-filtro-unidade-x" data-on-click="pages_monitoramento_corporativo.7" aria-label="Limpar filtro de unidade">
         <span class="material-symbols-outlined" style="font-size:15px;">close</span>
       </button>
     </div>
 
     <!-- Filtro por Tipo de Plano -->
-    <div class="el-filtro ds-chip-filter">
-      <button type="button" class="el-filtro-btn ds-chip-filter__btn" id="moncorp-filtro-tipo-btn" data-on-click="pages_monitoramento_corporativo.8">
+    <div class="el-filtro">
+      <button type="button" class="el-filtro-btn" id="moncorp-filtro-tipo-btn" data-on-click="pages_monitoramento_corporativo.8">
         <span id="moncorp-filtro-tipo-rotulo">Tipo: Todos</span>
         <span class="material-symbols-outlined" style="font-size:18px;">expand_more</span>
       </button>
-      <button type="button" class="el-filtro-x ds-chip-filter__clear hidden" id="moncorp-filtro-tipo-x" data-on-click="pages_monitoramento_corporativo.9" aria-label="Limpar filtro de tipo de plano">
+      <button type="button" class="el-filtro-x hidden" id="moncorp-filtro-tipo-x" data-on-click="pages_monitoramento_corporativo.9" aria-label="Limpar filtro de tipo de plano">
         <span class="material-symbols-outlined" style="font-size:15px;">close</span>
       </button>
     </div>
@@ -11766,28 +11315,28 @@ uiRegistrarAcoes('pages_home', {
   </div>
 
   <!-- 4 Abas de Conteúdo Transversal -->
-  <div class="moncorp-tabs-wrap ds-tabs-nav" role="tablist" aria-label="Visões do Monitoramento Corporativo">
-    <button type="button" class="moncorp-tab-btn ds-tabs-nav__item ativo" id="moncorp-tab-btn-planos" data-on-click="pages_monitoramento_corporativo.11" role="tab" aria-selected="true" aria-controls="moncorp-conteudo-planos">
+  <div class="moncorp-tabs-wrap" role="tablist" aria-label="Visões do Monitoramento Corporativo">
+    <button type="button" class="moncorp-tab-btn ativo" id="moncorp-tab-btn-planos" data-on-click="pages_monitoramento_corporativo.11" role="tab" aria-selected="true" aria-controls="moncorp-conteudo-planos">
       <span class="material-symbols-outlined" style="font-size:18px;">corporate_fare</span>
-      Planos <span class="moncorp-tab-badge ds-tab-count" id="moncorp-badge-planos">0</span>
+      Planos <span class="moncorp-tab-badge" id="moncorp-badge-planos">0</span>
     </button>
-    <button type="button" class="moncorp-tab-btn ds-tabs-nav__item" id="moncorp-tab-btn-elementos" data-on-click="pages_monitoramento_corporativo.12" role="tab" aria-selected="false" aria-controls="moncorp-conteudo-elementos">
+    <button type="button" class="moncorp-tab-btn" id="moncorp-tab-btn-elementos" data-on-click="pages_monitoramento_corporativo.12" role="tab" aria-selected="false" aria-controls="moncorp-conteudo-elementos">
       <span class="material-symbols-outlined" style="font-size:18px;">schema</span>
-      Elementos <span class="moncorp-tab-badge ds-tab-count" id="moncorp-badge-elementos">0</span>
+      Elementos <span class="moncorp-tab-badge" id="moncorp-badge-elementos">0</span>
     </button>
-    <button type="button" class="moncorp-tab-btn ds-tabs-nav__item" id="moncorp-tab-btn-indicadores" data-on-click="pages_monitoramento_corporativo.13" role="tab" aria-selected="false" aria-controls="moncorp-conteudo-indicadores">
+    <button type="button" class="moncorp-tab-btn" id="moncorp-tab-btn-indicadores" data-on-click="pages_monitoramento_corporativo.13" role="tab" aria-selected="false" aria-controls="moncorp-conteudo-indicadores">
       <span class="material-symbols-outlined" style="font-size:18px;">speed</span>
-      Indicadores <span class="moncorp-tab-badge ds-tab-count" id="moncorp-badge-indicadores">0</span>
+      Indicadores <span class="moncorp-tab-badge" id="moncorp-badge-indicadores">0</span>
     </button>
-    <button type="button" class="moncorp-tab-btn ds-tabs-nav__item" id="moncorp-tab-btn-riscos" data-on-click="pages_monitoramento_corporativo.14" role="tab" aria-selected="false" aria-controls="moncorp-conteudo-riscos">
+    <button type="button" class="moncorp-tab-btn" id="moncorp-tab-btn-riscos" data-on-click="pages_monitoramento_corporativo.14" role="tab" aria-selected="false" aria-controls="moncorp-conteudo-riscos">
       <span class="material-symbols-outlined" style="font-size:18px;">warning</span>
-      Riscos <span class="moncorp-tab-badge ds-tab-count" id="moncorp-badge-riscos">0</span>
+      Riscos <span class="moncorp-tab-badge" id="moncorp-badge-riscos">0</span>
     </button>
   </div>
 
   <!-- Container da Tabela Ativa -->
-  <div class="moncorp-tabela-wrap ds-data-table-wrap" id="moncorp-tabela-wrap">
-    <table class="moncorp-tabela ds-data-table ds-data-table--sticky-header" id="moncorp-tabela">
+  <div class="moncorp-tabela-wrap" id="moncorp-tabela-wrap">
+    <table class="moncorp-tabela" id="moncorp-tabela">
       <thead id="moncorp-thead">
         <!-- Cabeçalho dinâmico conforme a aba ativa -->
       </thead>
@@ -12717,18 +12266,18 @@ uiRegistrarAcoes('pages_monitoramento_corporativo', {
 <div id="page-validacao-resultados" class="page-content hidden">
 
   <!-- Hero executivo da central de validação -->
-  <section class="valres-hero ds-page-hero">
-    <div class="valres-hero-titulos ds-page-hero__titles">
-      <h1 class="ds-page-hero__title">
+  <section class="valres-hero">
+    <div class="valres-hero-titulos">
+      <h1>
         <span class="material-symbols-outlined" style="font-size:32px;color:var(--ds-color-primary,#1b4d3e);">fact_check</span>
         Validação de Resultados
         <span class="ds-badge ds-badge--info" id="valres-badge-total" style="font-size:13px;">0 pendentes</span>
       </h1>
-      <p class="valres-hero-desc ds-page-hero__desc">
+      <p class="valres-hero-desc">
         Central de despacho unificada para validação e auditoria de medições dos indicadores de todos os planos institucionais.
       </p>
     </div>
-    <div class="ds-page-hero__actions">
+    <div>
       <button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_execucao_validacao.1" aria-label="Atualizar lista">
         <span class="material-symbols-outlined">refresh</span> Atualizar
       </button>
@@ -12736,14 +12285,14 @@ uiRegistrarAcoes('pages_monitoramento_corporativo', {
   </section>
 
   <!-- Barra de Ações em Lote (exibida quando há seleção ativa) -->
-  <div class="valres-barra-selecao ds-bulk-actions-bar hidden" id="valres-barra-selecao">
-    <div class="valres-selecao-info ds-bulk-actions-bar__info">
+  <div class="valres-barra-selecao hidden" id="valres-barra-selecao">
+    <div class="valres-selecao-info">
       <button type="button" class="ds-icon-action" style="color:#ffffff;" data-on-click="pages_execucao_validacao.2" aria-label="Cancelar seleção" data-title="Cancelar seleção">
         <span class="material-symbols-outlined">close</span>
       </button>
-      <span id="valres-selecao-texto" class="ds-bulk-actions-bar__count">0 selecionados</span>
+      <span id="valres-selecao-texto">0 selecionados</span>
     </div>
-    <div class="valres-selecao-acoes ds-bulk-actions-bar__actions">
+    <div class="valres-selecao-acoes">
       <button type="button" class="ds-btn ds-btn--primary" style="background:#ffffff;color:var(--ds-color-primary,#1b4d3e);font-weight:600;" data-on-click="pages_execucao_validacao.3">
         <span class="material-symbols-outlined">done_all</span> Validar selecionados
       </button>
@@ -12751,22 +12300,22 @@ uiRegistrarAcoes('pages_monitoramento_corporativo', {
   </div>
 
   <!-- Barra de Filtros estilo Drive -->
-  <div class="valres-barra-filtros ds-filter-bar" id="valres-barra-filtros">
-    <div class="valres-busca-wrap ds-search-box">
-      <span class="material-symbols-outlined ds-search-box__icon">search</span>
-      <input type="text" id="valres-filtro-busca" class="valres-busca-input ds-search-box__input" placeholder="Buscar por indicador, plano, autor ou análise..." data-on-input="pages_execucao_validacao.4">
-      <button type="button" id="valres-busca-limpar-btn" class="valres-busca-limpar ds-search-box__clear hidden" data-on-click="pages_execucao_validacao.5" aria-label="Limpar busca">
+  <div class="valres-barra-filtros" id="valres-barra-filtros">
+    <div class="valres-busca-wrap">
+      <span class="material-symbols-outlined">search</span>
+      <input type="text" id="valres-filtro-busca" class="valres-busca-input" placeholder="Buscar por indicador, plano, autor ou análise..." data-on-input="pages_execucao_validacao.4">
+      <button type="button" id="valres-busca-limpar-btn" class="valres-busca-limpar hidden" data-on-click="pages_execucao_validacao.5" aria-label="Limpar busca">
         <span class="material-symbols-outlined" style="font-size:18px;">close</span>
       </button>
     </div>
 
     <!-- Filtro por Plano -->
-    <div class="el-filtro ds-chip-filter">
-      <button type="button" class="el-filtro-btn ds-chip-filter__btn" id="valres-filtro-plano-btn" data-on-click="pages_execucao_validacao.6">
+    <div class="el-filtro">
+      <button type="button" class="el-filtro-btn" id="valres-filtro-plano-btn" data-on-click="pages_execucao_validacao.6">
         <span id="valres-filtro-plano-rotulo">Plano: Todos</span>
         <span class="material-symbols-outlined" style="font-size:18px;">expand_more</span>
       </button>
-      <button type="button" class="el-filtro-x ds-chip-filter__clear hidden" id="valres-filtro-plano-x" data-on-click="pages_execucao_validacao.7" aria-label="Limpar filtro de plano">
+      <button type="button" class="el-filtro-x hidden" id="valres-filtro-plano-x" data-on-click="pages_execucao_validacao.7" aria-label="Limpar filtro de plano">
         <span class="material-symbols-outlined" style="font-size:15px;">close</span>
       </button>
     </div>
@@ -12777,8 +12326,8 @@ uiRegistrarAcoes('pages_monitoramento_corporativo', {
   </div>
 
   <!-- Tabela de Resultados para Validar -->
-  <div class="valres-tabela-wrap ds-data-table-wrap">
-    <table class="valres-tabela ds-data-table ds-data-table--sticky-header" id="valres-tabela">
+  <div class="valres-tabela-wrap">
+    <table class="valres-tabela" id="valres-tabela">
       <thead>
         <tr>
           <th class="valres-col-check">
@@ -13273,14 +12822,14 @@ uiRegistrarAcoes('pages_execucao_validacao', {
        as abas sobem e param com a base alinhada à base do botão. -->
 
 
-  <section class="pll-hero ds-page-hero">
-    <h1 class="ds-page-hero__title">Planos</h1>
+  <section class="pll-hero">
+    <h1>Planos</h1>
   </section>
   <!-- Botão FORA do hero (irmão, não filho): um sticky só gruda dentro da área de
        conteúdo do próprio pai — dentro do hero (baixinho) ele descolava e sumia assim que
        o título saía da tela. Como filho direto de #page-planos (que ocupa a página toda),
        ele gruda no topo e fica lá. A margem negativa o sobrepõe à linha do título. -->
-  <div class="pll-hero-acoes ds-page-hero__actions" id="pll-hero-acoes">
+  <div class="pll-hero-acoes" id="pll-hero-acoes">
     <button type="button" class="ds-btn ds-btn--primary pll-btn-novo" data-on-click="pages_planos_lista.1">
       <span class="material-symbols-outlined">add</span> Novo plano
     </button>
@@ -13312,53 +12861,53 @@ uiRegistrarAcoes('pages_execucao_validacao', {
   <!-- Barra de filtros: busca (expansível), Tipo/Ano/Status (viram chip + x ao serem
        selecionados) e Limpar filtros; ↻/⬇ à direita. Vira barra de seleção em lote quando
        algum item é marcado (mesma posição — nunca as duas ao mesmo tempo). -->
-  <div class="pll-filtros ds-filter-bar ds-filter-bar--sticky" id="pll-filtros-card">
+  <div class="pll-filtros" id="pll-filtros-card">
 
-    <div class="pll-filtros-normal ds-filter-bar__group" id="pll-filtros-normal">
-      <div class="pll-search ds-search-box" id="pll-search-wrap">
+    <div class="pll-filtros-normal" id="pll-filtros-normal">
+      <div class="pll-search" id="pll-search-wrap">
         <button type="button" class="ds-icon-action" id="pll-search-toggle" data-on-click="pages_planos_lista.4"
                 data-title="Buscar plano" aria-label="Buscar plano">
           <span class="material-symbols-outlined">search</span>
         </button>
-        <div class="pll-search-caixa ds-search-box__caixa hidden" id="pll-search-caixa">
-          <span class="material-symbols-outlined pll-search-icon ds-search-box__icon" aria-hidden="true">search</span>
-          <input type="text" id="filtro-busca" class="ds-input pll-search-input ds-search-box__input"
+        <div class="pll-search-caixa hidden" id="pll-search-caixa">
+          <span class="material-symbols-outlined pll-search-icon" aria-hidden="true">search</span>
+          <input type="text" id="filtro-busca" class="ds-input pll-search-input"
             placeholder="Buscar plano pelo nome…" data-on-input="pages_planos_lista.5" aria-label="Buscar plano pelo nome">
-          <button type="button" id="btn-limpar-busca" class="pll-search-clear ds-search-box__clear hidden" data-on-click="pages_planos_lista.6"
+          <button type="button" id="btn-limpar-busca" class="pll-search-clear hidden" data-on-click="pages_planos_lista.6"
             data-title="Limpar busca" aria-label="Limpar busca">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
       </div>
 
-      <div class="pll-filtro ds-chip-filter" data-filtro="tipo">
-        <button type="button" class="pll-filtro-btn ds-chip-filter__btn" id="pll-filtro-btn-tipo" data-on-click="pages_planos_lista.7"
+      <div class="pll-filtro" data-filtro="tipo">
+        <button type="button" class="pll-filtro-btn" id="pll-filtro-btn-tipo" data-on-click="pages_planos_lista.7"
                 aria-haspopup="menu" aria-expanded="false">
           <span id="pll-filtro-label-tipo">Tipo</span><span class="material-symbols-outlined">expand_more</span>
         </button>
-        <button type="button" class="pll-filtro-x ds-chip-filter__clear hidden" id="pll-filtro-x-tipo" data-on-click="pages_planos_lista.8"
+        <button type="button" class="pll-filtro-x hidden" id="pll-filtro-x-tipo" data-on-click="pages_planos_lista.8"
                 data-title="Remover filtro de tipo" aria-label="Remover filtro de tipo">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div class="pll-filtro ds-chip-filter" data-filtro="ano">
-        <button type="button" class="pll-filtro-btn ds-chip-filter__btn" id="pll-filtro-btn-ano" data-on-click="pages_planos_lista.9"
+      <div class="pll-filtro" data-filtro="ano">
+        <button type="button" class="pll-filtro-btn" id="pll-filtro-btn-ano" data-on-click="pages_planos_lista.9"
                 aria-haspopup="menu" aria-expanded="false">
           <span id="pll-filtro-label-ano">Ano</span><span class="material-symbols-outlined">expand_more</span>
         </button>
-        <button type="button" class="pll-filtro-x ds-chip-filter__clear hidden" id="pll-filtro-x-ano" data-on-click="pages_planos_lista.10"
+        <button type="button" class="pll-filtro-x hidden" id="pll-filtro-x-ano" data-on-click="pages_planos_lista.10"
                 data-title="Remover filtro de ano" aria-label="Remover filtro de ano">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div class="pll-filtro ds-chip-filter" data-filtro="status">
-        <button type="button" class="pll-filtro-btn ds-chip-filter__btn" id="pll-filtro-btn-status" data-on-click="pages_planos_lista.11"
+      <div class="pll-filtro" data-filtro="status">
+        <button type="button" class="pll-filtro-btn" id="pll-filtro-btn-status" data-on-click="pages_planos_lista.11"
                 aria-haspopup="menu" aria-expanded="false">
           <span id="pll-filtro-label-status">Status</span><span class="material-symbols-outlined">expand_more</span>
         </button>
-        <button type="button" class="pll-filtro-x ds-chip-filter__clear hidden" id="pll-filtro-x-status" data-on-click="pages_planos_lista.12"
+        <button type="button" class="pll-filtro-x hidden" id="pll-filtro-x-status" data-on-click="pages_planos_lista.12"
                 data-title="Remover filtro de status" aria-label="Remover filtro de status">
           <span class="material-symbols-outlined">close</span>
         </button>
@@ -13373,7 +12922,7 @@ uiRegistrarAcoes('pages_execucao_validacao', {
          mas a PAGINAÇÃO (abaixo, fora dos dois) continua visível nos dois modos, pra dar
          pra navegar entre páginas e continuar selecionando itens de outras páginas sem
          perder a seleção atual — pedido explícito do usuário. -->
-    <div class="pll-filtros-selecao ds-bulk-actions-bar hidden" id="pll-filtros-selecao">
+    <div class="pll-filtros-selecao hidden" id="pll-filtros-selecao">
       <button type="button" class="ds-icon-action" data-on-click="pages_planos_lista.14" data-title="Cancelar seleção" aria-label="Cancelar seleção">
         <span class="material-symbols-outlined">close</span>
       </button>
@@ -13408,8 +12957,8 @@ uiRegistrarAcoes('pages_execucao_validacao', {
   <div class="pll-tabela-card" id="pll-tabela-card">
 
     <!-- Tabela -->
-    <div class="table-container pll-table-wrap ds-data-table-wrap">
-      <table class="pll-tabela ds-data-table ds-data-table--sticky-header" id="tabela-planos">
+    <div class="table-container pll-table-wrap">
+      <table class="pll-tabela" id="tabela-planos">
         <thead>
           <tr>
             <th class="pll-col-check">
@@ -21991,9 +21540,9 @@ uiRegistrarAcoes('pages_execucao_planos', {
 <div id="page-execucao-tarefas" class="page-content hidden">
 
   <!-- HERO ABERTO: Título + Status + Prazos (clone do padrão da página de detalhes) -->
-  <section class="detalhe-hero ds-page-hero" id="ext-hero">
-    <div class="detalhe-hero-titulo ds-page-hero__titles">
-      <h1 id="ext-titulo" class="ds-page-hero__title">Carregando...</h1>
+  <section class="detalhe-hero" id="ext-hero">
+    <div class="detalhe-hero-titulo">
+      <h1 id="ext-titulo">Carregando...</h1>
       <span class="badge-status" id="ext-status">--</span>
     </div>
     <div class="cal-prazos hidden" id="ext-prazos"></div>
@@ -22001,7 +21550,7 @@ uiRegistrarAcoes('pages_execucao_planos', {
 
   <!-- BOTÃO STICKY DO HERO: FORA do hero (irmão, não filho), para que o sticky dure na página toda.
        Em repouso, a margem negativa o sobrepõe à linha do título. Ao rolar, sobe e para no topo. -->
-  <div class="detalhe-hero-acoes ds-page-hero__actions desktop-only-flex" id="ext-hero-acoes">
+  <div class="detalhe-hero-acoes desktop-only-flex" id="ext-hero-acoes">
     <button type="button" class="ds-icon-action" id="ext-btn-detalhes" data-on-click="pages_execucao_tarefas.24"
             data-title="Detalhes do plano" aria-label="Detalhes do plano" aria-expanded="false">
       <span class="material-symbols-outlined">right_panel_open</span>
@@ -22032,21 +21581,21 @@ uiRegistrarAcoes('pages_execucao_planos', {
     <div id="ext-painel-tarefas">
 
       <!-- Barra de Filtros Unificada: Busca, Filtro Status, Colaboração, Limpar + Exercício e Modos de Visualização -->
-      <div class="ext-filtros ds-filter-bar ds-filter-bar--sticky" id="ext-filtros">
-        <div class="ext-filtros-normal ds-filter-bar__group" id="ext-filtros-normal">
+      <div class="ext-filtros" id="ext-filtros">
+        <div class="ext-filtros-normal" id="ext-filtros-normal">
 
           <!-- Busca expansível (estilo Drive / Samaúma) -->
-          <div class="ext-search ds-search-box" id="ext-search-wrap">
+          <div class="ext-search" id="ext-search-wrap">
             <button type="button" class="ds-icon-action" id="ext-search-toggle" data-on-click="pages_execucao_tarefas.5"
                     data-title="Buscar" aria-label="Buscar responsabilidade">
               <span class="material-symbols-outlined">search</span>
             </button>
-            <div class="ext-search-caixa ds-search-box__caixa hidden" id="ext-search-caixa">
-              <span class="material-symbols-outlined ext-search-icon ds-search-box__icon" aria-hidden="true">search</span>
-              <input type="text" class="ds-input ext-search-input ds-search-box__input" id="ext-busca"
+            <div class="ext-search-caixa hidden" id="ext-search-caixa">
+              <span class="material-symbols-outlined ext-search-icon" aria-hidden="true">search</span>
+              <input type="text" class="ds-input ext-search-input" id="ext-busca"
                      placeholder="Buscar elemento, código ou indicador…" data-on-input="pages_execucao_tarefas.9"
                      aria-label="Buscar elemento, código ou indicador">
-              <button type="button" class="ext-search-clear ds-search-box__clear hidden" id="ext-btn-limpar-busca"
+              <button type="button" class="ext-search-clear hidden" id="ext-btn-limpar-busca"
                       data-on-click="pages_execucao_tarefas.6" data-title="Limpar busca" aria-label="Limpar busca">
                 <span class="material-symbols-outlined">close</span>
               </button>
@@ -22054,13 +21603,13 @@ uiRegistrarAcoes('pages_execucao_planos', {
           </div>
 
           <!-- Filtro Status (dropdown estilo Drive via abrirMenuSelecao) -->
-          <div class="ext-filtro ds-chip-filter" data-filtro="status" id="ext-filtro-wrap-status">
-            <button type="button" class="ext-filtro-btn ds-chip-filter__btn" id="ext-filtro-btn-status" data-on-click="pages_execucao_tarefas.10"
+          <div class="ext-filtro" data-filtro="status" id="ext-filtro-wrap-status">
+            <button type="button" class="ext-filtro-btn" id="ext-filtro-btn-status" data-on-click="pages_execucao_tarefas.10"
                     aria-haspopup="menu" aria-expanded="false">
               <span id="ext-filtro-label-status">Status</span>
               <span class="material-symbols-outlined">expand_more</span>
             </button>
-            <button type="button" class="ext-filtro-x ds-chip-filter__clear hidden" id="ext-filtro-x-status" data-on-click="pages_execucao_tarefas.38"
+            <button type="button" class="ext-filtro-x hidden" id="ext-filtro-x-status" data-on-click="pages_execucao_tarefas.38"
                     data-title="Remover filtro de status" aria-label="Remover filtro de status">
               <span class="material-symbols-outlined">close</span>
             </button>
@@ -22083,8 +21632,8 @@ uiRegistrarAcoes('pages_execucao_planos', {
           <div style="flex:1"></div>
 
           <!-- Seletor de Período / Exercício Plurianual (dropdown na mesma linha base) -->
-          <div class="ext-filtro ext-periodo-filtro ds-chip-filter" id="ext-periodo-wrap" data-filtro="exercicio">
-            <button type="button" class="ext-filtro-btn ds-chip-filter__btn" id="ext-filtro-btn-exercicio" data-on-click="pages_execucao_tarefas.28"
+          <div class="ext-filtro ext-periodo-filtro" id="ext-periodo-wrap" data-filtro="exercicio">
+            <button type="button" class="ext-filtro-btn" id="ext-filtro-btn-exercicio" data-on-click="pages_execucao_tarefas.28"
                     aria-haspopup="menu" aria-expanded="false" data-title="Selecione o exercício de apuração do plano">
               <span class="material-symbols-outlined" style="font-size:18px;color:var(--ds-color-action)">event</span>
               <span id="ext-filtro-label-exercicio">Exercício</span>
@@ -22119,16 +21668,8 @@ uiRegistrarAcoes('pages_execucao_planos', {
   </div><!-- /.detalhe-content-area -->
 
   <!-- PAINEL LATERAL DE DETALHES (#extp-panel) -->
-  <aside class="detp-panel ds-drawer" id="extp-panel" aria-hidden="true">
-    <div class="detp-tabs ds-drawer__header">
-      <button type="button" class="detp-tab active" id="extp-tab-detalhes" data-on-click="pages_execucao_tarefas.25">Detalhes</button>
-      <button type="button" class="detp-tab" id="extp-tab-atividade" data-on-click="pages_execucao_tarefas.26">Atividade</button>
-      <button type="button" class="ds-icon-action ds-icon-action--sm detp-fechar" data-on-click="pages_execucao_tarefas.27"
-              data-title="Fechar" aria-label="Fechar painel de detalhes">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-    <div class="detp-body ds-drawer__body">
+  <aside class="detp-panel" id="extp-panel" aria-hidden="true">
+    <div class="detp-tabs">
       <button type="button" class="detp-tab active" id="extp-tab-detalhes" data-on-click="pages_execucao_tarefas.25">Detalhes</button>
       <button type="button" class="detp-tab" id="extp-tab-atividade" data-on-click="pages_execucao_tarefas.26">Atividade</button>
       <button type="button" class="ds-icon-action ds-icon-action--sm detp-fechar" data-on-click="pages_execucao_tarefas.27"
