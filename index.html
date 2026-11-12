@@ -1048,6 +1048,82 @@ body.high-contrast .ds-tabs-nav__item.active {
   padding-left: 0 !important;
 }
 
+/* ---- Unificação canônica: .view-tabs-container e .view-tabs espelham .ds-tabs-nav ----
+   Garante que qualquer tela usando a estrutura legada ou moderna utilize rigorosamente
+   as mesmas regras e dimensões, centralizando a manutenção no Design System. */
+.view-tabs-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  background: var(--ds-color-surface);
+  border: none;
+  border-bottom: 1px solid var(--ds-color-border);
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+  padding-left: 0 !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border-radius: 0;
+}
+.view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.view-tabs::-webkit-scrollbar {
+  display: none;
+}
+.view-tabs .tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  margin-bottom: -1px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  color: var(--ds-color-text-muted);
+  font-family: var(--ds-font-sans);
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: none;
+  position: relative;
+  transition: color var(--ds-duration-fast) var(--ds-ease-standard), background var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.view-tabs .tab-btn:hover {
+  color: var(--ds-color-text);
+  background: var(--ds-sidebar-item-hover);
+}
+.view-tabs .tab-btn.active {
+  color: var(--ds-color-action);
+  font-weight: var(--ds-weight-semibold);
+  border-bottom-color: var(--ds-color-action);
+  background: none;
+  box-shadow: none;
+}
+[data-ds-theme="dark"] .view-tabs .tab-btn.active {
+  color: var(--ds-color-action);
+}
+body.high-contrast .view-tabs-container {
+  border-bottom-color: #fff;
+}
+body.high-contrast .view-tabs .tab-btn.active {
+  border-bottom-color: #fff;
+  color: #fff;
+}
+
 /* ---- Classes legadas reveste-das ---- */
 .btn { border-radius: var(--ds-r-sm); }
 .btn-primary { background-color: var(--ds-color-action); color: var(--ds-color-on-action); box-shadow: var(--ds-shadow-2); }
@@ -21758,60 +21834,12 @@ uiRegistrarAcoes('pages_execucao_planos', {
   }
 }
 
-/* --- Linha de abas estilo Gmail / Planejamento Institucional --- */
+/* --- Linha de abas estilo Gmail / Planejamento Institucional (estilo canônico unificado em styles_design_system.html) --- */
 #page-execucao-tarefas .view-tabs-container {
   position: sticky;
   top: var(--ext-sticky-top);
   z-index: 42;
-  display: flex;
-  align-items: flex-start;
   padding-right: var(--ext-acoes-w);
-  padding-left: 0 !important;
-  background: var(--ds-color-surface);
-  border: none;
-  border-bottom: 1px solid var(--ds-color-border);
-  box-shadow: none;
-  margin: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-#page-execucao-tarefas .view-tabs {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  width: 100%;
-  padding: 0;
-  margin: 0;
-  background: none;
-  border: none;
-}
-#page-execucao-tarefas .view-tabs .tab-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: var(--ext-tabs-h);
-  padding: 0 16px;
-  margin-bottom: -1px;
-  background: none;
-  border: none;
-  border-bottom: 3px solid transparent;
-  color: var(--ds-color-text-muted);
-  font-family: var(--ds-font-sans);
-  font-size: var(--ds-text-sm);
-  font-weight: var(--ds-weight-medium);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-}
-#page-execucao-tarefas .view-tabs .tab-btn:hover {
-  color: var(--ds-color-text);
-  background: var(--ds-sidebar-item-hover);
-}
-#page-execucao-tarefas .view-tabs .tab-btn.active {
-  color: var(--ds-color-action);
-  font-weight: var(--ds-weight-semibold);
-  border-bottom-color: var(--ds-color-action);
-  background: none;
 }
 
 /* --- Barra de filtros unificada (estilo Drive / Samaúma) --- */
