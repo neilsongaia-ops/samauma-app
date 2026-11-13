@@ -39,6 +39,7 @@
         <div class="wizard-steps-viewport">
         <form id="form-risco" data-on-submit="risco.3" novalidate>
           <input type="hidden" id="risco-id-edicao">
+          <input type="hidden" id="risco-ultima-alteracao">
           <input type="hidden" id="risco-id-elemento">
 
           <!-- ETAPA 1: IDENTIFICAÇÃO -->
@@ -891,7 +892,7 @@ function salvarRisco(event) {
     responsaveis:        respsRisco
   };
   var idEdicao = document.getElementById('risco-id-edicao').value;
-  if (idEdicao) dados.id = idEdicao;
+  if (idEdicao) { dados.id = idEdicao; dados.ultimaAlteracao = document.getElementById('risco-ultima-alteracao').value; }
 
   if (typeof mostrarLoader === 'function') mostrarLoader();
   var metodo = idEdicao ? 'apiAtualizarRisco' : 'apiSalvarRisco';
@@ -2532,6 +2533,7 @@ function abrirModalRisco(risco) {
   var planoNome = (_rscCtx && _rscCtx.plano && _rscCtx.plano.nome) || '';
   if (eyebrow) eyebrow.textContent = planoNome;
   document.getElementById('risco-id-edicao').value    = risco ? risco.id : '';
+  document.getElementById('risco-ultima-alteracao').value = risco ? risco.ultimaAlteracao : '';
   document.getElementById('risco-id-elemento').value  = risco ? (risco.idElemento || '') : '';
   _popularElementosRisco(risco ? risco.idElemento : '');
   document.getElementById('risco-descricao').value = risco ? risco.risco : '';

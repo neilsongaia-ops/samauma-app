@@ -1641,6 +1641,7 @@ var _elCarregado = false;
 // Caches
 let cacheUnidadesEl = [];
 let cacheUsuariosEl = [];
+let _elUltimaAlteracao = 0; // carimbo (ultimaAlteracao) do elemento aberto para edição: o servidor só grava se ninguém alterou depois
 let unidadesContextoPermitidoEl = [];
 let seletorRespElemento = null;
 let seletorIndicarColaboradorElemento = null;
@@ -1823,6 +1824,7 @@ function abrirModalEdicaoElemento(idElemento) {
       _resetarToggleDatas();
 
       document.getElementById('input-el-id-edicao').value   = el.id;
+      _elUltimaAlteracao = el.ultimaAlteracao;
       document.getElementById('input-el-id-plano').value    = el.idPlano;
       document.getElementById('input-el-pai-interno').value = el.idPai || '';
       document.getElementById('titulo-modal-elemento').innerText = 'Editar elemento';
@@ -1995,6 +1997,7 @@ function handleSalvarElemento(e) {
 
   if (idEdicao) {
     dados.id = idEdicao;
+    dados.ultimaAlteracao = _elUltimaAlteracao;
     _elementosSDK.chamar('apiAtualizarElemento', dados).then(function() {
         _wizardElTalvezIndicarColaboradores(idEdicao, function(avisoFalhas) {
           esconderLoader();

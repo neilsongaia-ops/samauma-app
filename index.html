@@ -50,16 +50,62 @@
   }
 
   // ---- Chamada ao servidor ----
+  // Cada chamada leva uma chave de idempotência nova (rota autenticada) e a repete se a rede falhar: o servidor devolve a resposta da primeira
+  // execução em vez de executar duas vezes (docs/arquitetura_servidor.md, "Idempotência"). Rota pública não usa chave.
+  var TENTATIVAS = 3;
+  function novaChave() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+    var b = new Uint8Array(16); window.crypto.getRandomValues(b);
+    return Array.prototype.map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+  }
   function enviar(nome, args, aoResponder, aoFalhar) {
-    fetch(URL_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // "simples": sem preflight de CORS
-      body: JSON.stringify({ fn: nome, args: args, token: lerToken() }),
-      redirect: 'follow'
-    }).then(function (r) { return r.json(); }).then(aoResponder, function () {
-      aoFalhar(new Error('Sem conexão com o servidor. Verifique a internet e tente novamente.'));
+    var chave = ROTAS_PUBLICAS[nome] ? '' : novaChave();
+    (function tentar(n) {
+      fetch(URL_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // "simples": sem preflight de CORS
+        body: JSON.stringify({ fn: nome, args: args, token: lerToken(), chaveIdempotencia: chave }),
+        redirect: 'follow'
+      }).then(function (r) { return r.json(); }).then(aoResponder, function () {
+        if (n < TENTATIVAS) { setTimeout(function () { tentar(n + 1); }, 800 * n); return; }
+        aoFalhar(new Error('Sem conexão com o servidor. Verifique a internet e tente novamente.'));
+      });
+    })(1);
+  }
+
+  // ---- Envio de arquivos ----
+  // O JSON da API tem teto de 1 MB: arquivo nunca vai nele. Pede-se um bilhete por arquivo (o servidor autoriza e confere limites) e os bytes
+  // crus vão para `?up=<bilhete>`. A repetição de um bilhete devolve o mesmo resultado, então a nova tentativa depois de uma queda é segura.
+  function pedirBilhetes(tipo, arquivos, alvo) {
+    return new Promise(function (resolve, reject) {
+      var lista = arquivos.map(function (f) { return { nome: f.name, mimeType: f.type, tamanho: f.size }; });
+      chamar('apiPrepararUploadArquivo', [Object.assign({ tipo: tipo, arquivos: lista }, alvo || {})], resolve, reject);
     });
   }
+  function enviarBytes(bilhete, arquivo) {
+    return new Promise(function (resolve, reject) {
+      (function tentar(n) {
+        fetch(URL_API + '?up=' + encodeURIComponent(bilhete), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: arquivo })
+          .then(function (r) { return r.json(); }).then(function (j) {
+            if (j && j.ok) resolve(j.dados); else reject(new Error((j && j.erro) || 'Falha no envio do arquivo.'));
+          }, function () {
+            if (n < TENTATIVAS) { setTimeout(function () { tentar(n + 1); }, 800 * n); return; }
+            reject(new Error('Sem conexão com o servidor. Verifique a internet e tente novamente.'));
+          });
+      })(1);
+    });
+  }
+  /** tipo: 'EVIDENCIA' | 'ANEXO_MENSAGEM' | 'IMAGEM_MENSAGEM'; arquivos: File[]; alvo: campos extras do pedido. Promise da lista de respostas, na ordem dos arquivos. */
+  window.SamaumaArquivos = {
+    enviar: function (tipo, arquivos, alvo) {
+      return pedirBilhetes(tipo, arquivos, alvo).then(function (r) {
+        var respostas = [];
+        return arquivos.reduce(function (cadeia, arquivo, i) {
+          return cadeia.then(function () { return enviarBytes(r.bilhetes[i].bilhete, arquivo); }).then(function (d) { respostas.push(d); });
+        }, Promise.resolve()).then(function () { return respostas; });
+      });
+    }
+  };
 
   // Os apps instaláveis são arquivos estáticos (apps/<nome>.html, gerados por scripts/build_frontend.js), não chamadas ao servidor.
   var ARQUIVO_APP = { metas: 'app_indicadores', desempenho: 'app_monitoramento' };
@@ -2682,7 +2728,7 @@ uiRegistrarAcoes('components_header', {
       label: 'Responsáveis (Quem)',      // opcional; rótulo acima do campo
       helpText: 'Explicação...',         // opcional; ícone (i) com tooltip ao lado do rótulo
       getUnidades: function(){ return cacheUnidadesX; },        // [{id, nome, sigla}]
-      getUsuarios: function(){ return cacheUsuariosX; },// [{id, nome, siape, idUnidadeLotacao}]
+      getUsuarios: function(){ return cacheUsuariosX; },// [{id, nome, siape, idsUnidades}]
       filtroCompetencia: true,           // aplica usuarioLogado.unidadesComCompetencia
       filtroUnidades: fn(lista)=>lista,      // filtro extra opcional (ex.: subárvore da Unidade do plano)
       filtroUsuarios: fn(lista)=>lista,  // filtro extra opcional
@@ -4454,10 +4500,7 @@ function _plwConteudo(kind, filtro) {
   var campo = _plwEl(PLW_CONTROLE[kind]), q2 = campo.value.trim(), nq2 = _plwNorm(q2);
   var comp = _plwCompetencia(), meuId = _plwMeuId();
   var uLog = (typeof usuarioLogado !== 'undefined' && usuarioLogado) ? usuarioLogado : null;
-  var lotacoesLogado = ((uLog && uLog.idsUnidades && uLog.idsUnidades.length)
-    ? uLog.idsUnidades
-    : ((uLog && (uLog.idUnidade || uLog.idUnidadeLotacao)) ? [uLog.idUnidade || uLog.idUnidadeLotacao] : [])).map(String);
-  var lotacoesSet = new Set(lotacoesLogado);
+  var lotacoesSet = new Set(((uLog && uLog.idsUnidades) || []).map(String));
   var principal = _plwEstado.resp ? _plwEstado.resp.tipo + ':' + _plwEstado.resp.id : '';
   var selKeys = kind === 'resp' ? [principal] : _plwEstado.adic.map(function(r) { return r.tipo + ':' + r.id; });
   var lim = filtro === 'todos' ? 6 : 30;
@@ -4698,6 +4741,7 @@ function abrirModalEdicaoPlano(idPlano) {
 
       _plwResetar(true);
       _plwEl('input-plano-id-edicao').value = plano.id;
+      _plwEstado.ultimaAlteracao = plano.ultimaAlteracao; // o servidor só grava se ninguém alterou o plano depois
       _plwEl('modal-plano-titulo').textContent = 'Editar plano de gestão';
       _plwEl('texto-btn-salvar-plano').textContent = 'Salvar alterações';
       _plwEl('plw-btn-salvar-ico').textContent = 'save';
@@ -4864,6 +4908,7 @@ function handleSalvarPlano(e) {
   mostrarLoader();
   if (idEdicao) {
     dadosPlano.id = idEdicao;
+    dadosPlano.ultimaAlteracao = _plwEstado.ultimaAlteracao;
     google.script.run
       .withSuccessHandler(function() {
         esconderLoader();
@@ -5161,6 +5206,9 @@ uiRegistrarAcoes('components_modal_plano', {
 <script>
 // Variável global para armazenar arquivos selecionados
 let arquivosSelecionados = [];
+// Arquivos já enviados ao servidor nesta abertura do modal: { assinatura, recibo }. Se salvar falhar depois do envio, tentar de novo não envia outra vez.
+let _resEnvioEvid = null;
+function _resAssinaturaArquivos() { return arquivosSelecionados.map(function (f) { return f.name + ':' + f.size + ':' + f.lastModified; }).join('|'); }
 // Limites das evidências (config do administrador); o servidor confere de novo — aqui só avisamos antes de ler os arquivos.
 let limitesEvidenciaRes = null;
 function carregarLimitesEvidenciaRes() {
@@ -5176,6 +5224,7 @@ function abrirModalResultado(dados) {
   // 1. Resetar Form e Variáveis
   document.getElementById('form-lancar-resultado').reset();
   arquivosSelecionados = [];
+  _resEnvioEvid = null;
   atualizarListaArquivos();
   carregarLimitesEvidenciaRes();
   toggleEvidenceMode('upload'); // Reset para upload
@@ -5393,15 +5442,21 @@ async function handleSalvarResultado(e) {
     dataAfericao: form.dataAfericao.value,
     valorApurado: valorApurado,
     linkEvidencia: modoLink ? link : '',
-    analise: form.analise.value,
-    arquivos: []
+    analise: form.analise.value
   };
   if (!document.getElementById('wrapper-progresso').classList.contains('hidden')) { dados.status = form.status.value; dados.percentual = form.percentual.value; }
   const btnSubmit = e.submitter || document.getElementById('res-btn-salvar');
   const liberar = uiTravarBotao(btnSubmit);
   if (idIndicador && !modoLink && arquivosSelecionados.length > 0) {
-    try { dados.arquivos = await Promise.all(arquivosSelecionados.map(lerArquivoParaBase64)); }
-    catch (err) { liberar(); _resErro('geral', 'Erro ao ler arquivos: ' + err.message); return; }
+    const assinatura = _resAssinaturaArquivos();
+    if (!_resEnvioEvid || _resEnvioEvid.assinatura !== assinatura) {
+      try {
+        const alvo = d0.idResultado ? { idResultado: String(d0.idResultado) } : { idElemento: dados.idElemento, idIndicador: dados.idIndicador };
+        const envios = await SamaumaArquivos.enviar('EVIDENCIA', arquivosSelecionados, alvo);
+        _resEnvioEvid = { assinatura: assinatura, recibo: envios[envios.length - 1].recibo };
+      } catch (err) { liberar(); _resErro('geral', 'Não foi possível enviar os arquivos: ' + err.message); return; }
+    }
+    dados.evidenciaRecibo = _resEnvioEvid.recibo;
   }
   const ok2 = function () {
     liberar(); fecharModalResultado();
@@ -5413,24 +5468,6 @@ async function handleSalvarResultado(e) {
   const falha = function (err) { liberar(); _resErroServidor(err.message); };
   if (d0.idResultado) google.script.run.withSuccessHandler(ok2).withFailureHandler(falha).apiCorrigirResultado(String(d0.idResultado), dados);
   else google.script.run.withSuccessHandler(ok2).withFailureHandler(falha).apiSalvarExecucaoEResultado(dados);
-}
-
-// Helper: Converte File para Objeto { nome, mimeType, bytes (base64 sem header) }
-function lerArquivoParaBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result; // data:image/png;base64,.....
-      const base64 = result.split(',')[1]; // Pega só o conteúdo
-      resolve({
-        nome: file.name,
-        mimeType: file.type,
-        bytes: base64
-      });
-    };
-    reader.onerror = error => reject(error);
-    reader.readAsDataURL(file);
-  });
 }
 
 // Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
@@ -7783,7 +7820,8 @@ var _cfg = {
   grupo: null, grupoMobile: null, busca: '', salvando: null, erros: {}, abertas: {},
   tSalvo: null, tNums: {},        // tNums[chave]: timer do salvamento adiado de campos numéricos
   rascunho: {},                   // rascunho[chave]: valor numérico ainda não enviado/confirmado (a tela mostra este)
-  fila: [], enviando: false       // fila de gravações (uma por vez; segue em segundo plano se o painel fechar)
+  fila: [], enviando: false,      // fila de gravações (uma por vez; segue em segundo plano se o painel fechar)
+  carimbos: {}                    // carimbos[idPlano]: ultimaAlteracao do plano; o servidor só grava se ninguém alterou depois (cada resposta traz o novo)
 };
 var CFG_ATRASO_NUMERO_MS = 1500;  // espera após o último clique/tecla antes de gravar (Apps Script é lento por chamada)
 
@@ -7868,7 +7906,7 @@ function _cfgCarregar() {
   google.script.run
     .withSuccessHandler(function (resp) {
       if (!_cfg.ativo || _cfg.idPlano !== idPlano) return;
-      _cfg.dados = resp; _cfg.carregando = false;
+      _cfg.dados = resp; _cfg.carregando = false; _cfg.carimbos[idPlano] = resp.ultimaAlteracao;
       var gs = (resp.grupos || []).slice().sort(function (a, b) { return a.ordem - b.ordem; });
       if (!_cfg.grupo && gs.length) _cfg.grupo = gs[0].chave;
       _cfgRenderTudo();
@@ -7910,6 +7948,9 @@ function _cfgDrenar() {
   google.script.run
     .withSuccessHandler(function (resp) {
       _cfg.enviando = false;
+      _cfg.carimbos[f.idPlano] = resp.ultimaAlteracao;
+      // o detalhe do plano aberto usa o mesmo carimbo nas ações de trâmite: acompanha a gravação feita aqui
+      if (typeof dadosDetalhados !== 'undefined' && dadosDetalhados && dadosDetalhados.plano && String(dadosDetalhados.plano.id) === String(f.idPlano)) dadosDetalhados.plano.ultimaAlteracao = resp.ultimaAlteracao;
       if (visivel()) {
         _cfg.salvando = null; _cfg.dados = resp;
         // O rascunho só cai se continua igual ao que foi gravado (se o usuário seguiu clicando, o novo valor permanece)
@@ -7932,7 +7973,7 @@ function _cfgDrenar() {
       }
       _cfgDrenar();
     })
-    .apiSalvarConfigPlano(f.idPlano, [Object.assign({ chave: f.chave }, f.alteracao)]);
+    .apiSalvarConfigPlano(f.idPlano, [Object.assign({ chave: f.chave }, f.alteracao)], _cfg.carimbos[f.idPlano]);
 }
 function _cfgTemPendente() { return Object.keys(_cfg.tNums).some(function (k) { return !!_cfg.tNums[k]; }); }
 // Ao fechar o painel: envia já o que ainda aguardava o atraso (valida o intervalo como no commit normal)
@@ -9642,26 +9683,19 @@ function uiEscopoRespLiberado(chave) {
 // Pessoa (usuário da lista de responsáveis ou o logado) está lotada em alguma das unidades do conjunto?
 // Vale a união dos vínculos ativos (`idsUnidades`), igual à validação do servidor. `conjunto`: Set de ids em texto.
 function uiUsuarioEmUnidades(usuario, conjunto) {
-  if (!usuario || !conjunto) return false;
-  var ids = (usuario.idsUnidades && usuario.idsUnidades.length)
-    ? usuario.idsUnidades
-    : ((usuario.idUnidadeLotacao || usuario.idUnidade) ? [usuario.idUnidadeLotacao || usuario.idUnidade] : []);
-  return ids.some(function(id) { return conjunto.has(String(id)); });
+  return ((usuario && usuario.idsUnidades) || []).some(function(id) { return conjunto.has(String(id)); });
 }
 // Siglas das unidades da pessoa, separadas por " · " (para exibir ao lado do nome).
 function uiSiglasUnidadesUsuario(usuario, unidades) {
   var porId = {};
   (unidades || []).forEach(function(x) { porId[String(x.id)] = x.sigla; });
-  var ids = (usuario && usuario.idsUnidades && usuario.idsUnidades.length)
-    ? usuario.idsUnidades
-    : ((usuario && (usuario.idUnidadeLotacao || usuario.idUnidade)) ? [usuario.idUnidadeLotacao || usuario.idUnidade] : []);
-  return ids.map(function(id) { return porId[String(id)]; }).filter(Boolean).join(' · ');
+  return ((usuario && usuario.idsUnidades) || []).map(function(id) { return porId[String(id)]; }).filter(Boolean).join(' · ');
 }
 // Ids (string) das unidades no escopo: lotações do usuário logado + descendentes (via idPai). null = sem filtro.
 function uiEscopoRespIdsUnidades(unidades, chave) {
   if (uiEscopoRespLiberado(chave)) return null;
   var u = (typeof usuarioLogado !== 'undefined') ? usuarioLogado : null;
-  var raizes = ((u && u.idsUnidades && u.idsUnidades.length) ? u.idsUnidades : (u && (u.idUnidadeLotacao || u.idUnidade) ? [u.idUnidadeLotacao || u.idUnidade] : [])).map(String);
+  var raizes = ((u && u.idsUnidades) || []).map(String);
   if (!raizes.length) return null;
   var filhos = {};
   (unidades || []).forEach(function(x) {
@@ -13692,10 +13726,7 @@ function _montarAbas() {
 function _classificarPlano(p) {
   if (p.status === 'Excluído') return 'lixeira';
   var email = ((usuarioLogado && usuarioLogado.email) || '').toLowerCase().trim();
-  var idsUnidades = (usuarioLogado && usuarioLogado.idsUnidades && usuarioLogado.idsUnidades.length)
-    ? usuarioLogado.idsUnidades
-    : ((usuarioLogado && (usuarioLogado.idUnidade || usuarioLogado.idUnidadeLotacao)) ? [usuarioLogado.idUnidade || usuarioLogado.idUnidadeLotacao] : []);
-  var setUnidades = new Set(idsUnidades.map(function(x) { return String(x).trim(); }));
+  var setUnidades = new Set(((usuarioLogado && usuarioLogado.idsUnidades) || []).map(function(x) { return String(x).trim(); }));
   if (email && (p.criadoPor || '').toLowerCase().trim() === email) return 'meus';
   if (setUnidades.size && p.tipoResponsavel === 'UNIDADE' &&
       setUnidades.has(String(p.idResponsavelRaw || '').trim())) return 'unidade';
@@ -14394,7 +14425,7 @@ function executarAcaoLotePlanos(acao) {
   }
   if (acao === 'restaurar') {
     showConfirm('Restaurar planos?', 'Restaurar os ' + ids.length + ' planos selecionados? Cada um volta ao status de antes da exclusão.',
-      function() { _pllExecutarLoteSequencial(ids, function(id) { return ['apiTramitarPlano', Number(id), 'RESTAURAR', '']; }, 'Restaurados'); });
+      function() { _pllExecutarLoteSequencial(ids, function(id) { return ['apiTramitarPlano', Number(id), 'RESTAURAR', '', _pllCarimbo(id)]; }, 'Restaurados'); });
   }
   if (acao === 'excluirDefinitivo') {
     var nomes = estadoPlanos.dadosBrutos.filter(function(p) { return estadoPlanos.selecionados.has(String(p.id)); })
@@ -14407,6 +14438,12 @@ function executarAcaoLotePlanos(acao) {
 }
 
 // Executa em sequência (um por vez) e relata sucessos/falhas no fim
+// Carimbo (ultimaAlteracao) do plano na lista carregada: o servidor só muda o status se ninguém alterou o plano depois
+function _pllCarimbo(id) {
+  var p = estadoPlanos.dadosBrutos.find(function(x) { return String(x.id) === String(id); });
+  return p ? p.ultimaAlteracao : 0;
+}
+
 function _pllExecutarLoteSequencial(ids, chamada, rotuloOk) {
   mostrarLoader();
   var ok = 0, falhas = [], i = 0;
@@ -14480,7 +14517,7 @@ function pllRestaurarPlano(id, nomePlano, aoConcluir) {
         });
       })
       .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro ao restaurar', escapeHtml((err && err.message) || String(err))); })
-      .apiTramitarPlano(Number(id), 'RESTAURAR', '');
+      .apiTramitarPlano(Number(id), 'RESTAURAR', '', _pllCarimbo(id));
   });
 }
 
@@ -26533,10 +26570,10 @@ function csisHtmlParametros(sec, d) {
       ctl += '<button type="button" class="csis-trava' + (tr ? ' on' : '') + '" aria-pressed="' + tr + '" data-title="' + tip + '" aria-label="' + tip + '" data-on-click="pages_config_sistema.9" data-aclick0="' + ch + '"><span class="material-symbols-outlined">' + (tr ? 'lock' : 'lock_open') + '</span></button>';
     }
     var cotaHtml = '';
-    if (p.testar && t && t.ok === true && t.limiteBytes > 0) {
-      var pct = Math.min(100, Math.max(0, Math.round((t.usadoBytes / t.limiteBytes) * 100)));
+    if (p.testar && d.uso && d.uso.limiteBytes > 0) {
+      var pct = Math.min(100, Math.max(0, Math.round((d.uso.usadoBytes / d.uso.limiteBytes) * 100)));
       var tom = pct >= 80 ? 'ds-tone-danger' : 'ds-tone-info';
-      var txtUso = csisFormatarBytes(t.usadoBytes) + ' de ' + csisFormatarBytes(t.limiteBytes) + ' (' + pct + '%)';
+      var txtUso = csisFormatarBytes(d.uso.usadoBytes) + ' de ' + csisFormatarBytes(d.uso.limiteBytes) + ' (' + pct + '%)';
       cotaHtml = '<div style="flex: 1 1 100%; margin-top: 10px; padding: 12px 14px; background: var(--ds-sidebar-item-hover); border-radius: var(--ds-r-md); border: 1px solid var(--ds-color-border);">'
         + '<div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 8px;">'
         + '<span style="font-weight: 500; color: var(--ds-color-text); display: flex; align-items: center; gap: 6px;">'
@@ -26590,8 +26627,6 @@ function csisTestar(chave) {
     _csis.teste[chave] = {
       ok: ok,
       msg: ok ? 'Conexão ok' : ((dados && dados.mensagem) || (r && r.mensagem) || 'Falhou'),
-      usadoBytes: dados && dados.usadoBytes != null ? Number(dados.usadoBytes) : null,
-      limiteBytes: dados && dados.limiteBytes != null ? Number(dados.limiteBytes) : null,
     };
     csisRenderConteudo();
   }, function (e) {
@@ -27624,7 +27659,7 @@ uiRegistrarAcoes('pages_notificacoes', {
 
        <!-- ARQUIVO: pages_mensagens_enviadas.html
      Mensagens da administração: editor (nova / editar rascunho ou agendada) com autosave de rascunho. A lista vive em pages_mensagens.html. ADMIN/DEV e dirigentes de unidade; o servidor recusa os demais.
-     Anexos: chips .ds-chip abaixo do corpo (apiEnviarAnexoMensagem, um arquivo por chamada); limites de apiGetOpcoesMensagem().limites.
+     Anexos: chips .ds-chip abaixo do corpo (envio de arquivos por bilhete, um arquivo por vez); limites de apiGetOpcoesMensagem().limites.
      Prefixo de globais: mse. Helpers compartilhados (chamadas, switch, erros) em components_notificacoes.html (ntf). -->
 
 <div id="page-mensagens-enviadas" class="page-content hidden">
@@ -28108,13 +28143,9 @@ function mseArquivo(inp) {
   if (file.size > L.imagemMaxBytes) { _mse.imgErro = 'Imagem acima de ' + Math.round(L.imagemMaxBytes / 1048576) + ' MB.'; return mseAtualizar(); }
   if (corpo.querySelectorAll('img').length >= L.imagensMax) { _mse.imgErro = 'Limite de ' + L.imagensMax + ' imagens por mensagem.'; return mseAtualizar(); }
   _mse.imgErro = ''; mseAtualizar();
-  var rd = new FileReader();
-  rd.onload = function () {
-    ntfChamar('apiEnviarImagemMensagem', [{ nome: file.name, dataUrl: rd.result }], function (r) {
-      corpo.focus(); document.execCommand('insertHTML', false, '<img src="' + escapeHtml(r.url) + '" alt="">'); mseAtualizar();
-    });
-  };
-  rd.readAsDataURL(file);
+  SamaumaArquivos.enviar('IMAGEM_MENSAGEM', [file]).then(function (rs) {
+    corpo.focus(); document.execCommand('insertHTML', false, '<img src="' + escapeHtml(rs[0].url) + '" alt="">'); mseAtualizar();
+  }, function (e) { _mse.imgErro = (e && e.message) || 'Não foi possível enviar a imagem.'; mseAtualizar(); });
 }
 
 // ---- salvar / publicar ----
@@ -28216,22 +28247,16 @@ function mseAdicionarAnexos(files) {
   });
   mseRenderAnexos(); mseAtualizar();
 }
-// um arquivo por chamada; bytes em base64 sem o prefixo data:
+// um arquivo por vez, pelo envio de arquivos (bilhete + bytes crus)
 function mseEnviarAnexo(x, file) {
-  var rd = new FileReader();
-  rd.onload = function () {
-    var b64 = String(rd.result).replace(/^data:[^,]*,/, '');
-    ntfChamar('apiEnviarAnexoMensagem', [{ nome: file.name, mimeType: file.type || 'application/octet-stream', bytes: b64 }], function (r) {
-      var y = _mse.anexos.find(function (k) { return k.id === x.id; }); if (!y) return; // removido durante o envio
-      Object.assign(y, { ref: r.ref, nome: r.nome, mime: r.mime, tamanho: r.tamanho, url: r.url, sig: r.sig, st: 'ok' });
-      mseRenderAnexos(); mseAtualizar();
-    }, function (e) {
-      var y = _mse.anexos.find(function (k) { return k.id === x.id; }); if (!y) return;
-      y.st = 'erro'; y.erro = (e && e.message) || String(e || ''); mseRenderAnexos(); mseAtualizar();
-    });
-  };
-  rd.onerror = function () { x.st = 'erro'; x.erro = 'Não foi possível ler o arquivo.'; mseRenderAnexos(); mseAtualizar(); };
-  rd.readAsDataURL(file);
+  SamaumaArquivos.enviar('ANEXO_MENSAGEM', [file]).then(function (rs) {
+    var r = rs[0], y = _mse.anexos.find(function (k) { return k.id === x.id; }); if (!y) return; // removido durante o envio
+    Object.assign(y, { ref: r.ref, nome: r.nome, mime: r.mime, tamanho: r.tamanho, url: r.url, sig: r.sig, st: 'ok' });
+    mseRenderAnexos(); mseAtualizar();
+  }, function (e) {
+    var y = _mse.anexos.find(function (k) { return k.id === x.id; }); if (!y) return;
+    y.st = 'erro'; y.erro = (e && e.message) || String(e || ''); mseRenderAnexos(); mseAtualizar();
+  });
 }
 function mseTemArquivos(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') !== -1; }
 function mseDragOver(e) { if (!mseTemArquivos(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; document.getElementById('mse-campo-corpo').classList.add('arrastando'); }
@@ -28589,7 +28614,6 @@ let usuariosCurrentPage = 1;
 let usuariosItemsPerPage = 10;
 let usuariosSelecionados = new Set();
 let usuariosOrdenacao = { coluna: null, direcao: 'asc' };
-let usuariosSiglaUnidade = {}; // id da unidade → sigla (lotação exibe todas as unidades da pessoa: idsUnidades)
 let usuariosAba = 'lista';
 
 // Inicializador (pode ser chamado no Roteamento)
@@ -28634,9 +28658,6 @@ function carregarOpcoesAuxiliares() {
     .withSuccessHandler(dados => {
       popularSelectUsuarios('user-filtro-papel', dados.papeis, 'id', 'nome');
       popularSelectUsuarios('user-filtro-unidade', dados.unidades, 'id', 'sigla');
-      usuariosSiglaUnidade = {};
-      (dados.unidades || []).forEach(function (x) { usuariosSiglaUnidade[String(x.id)] = x.sigla || x.nome || ''; });
-      if (usuariosCache && usuariosCache.length) atualizarTabelaUsuarios();
     })
     .withFailureHandler(err => console.error('Erro ao carregar filtros:', err))
     .apiGetDadosAuxiliaresUsuarios();
@@ -28751,11 +28772,9 @@ function _atualizarIconesOrdenacaoUsuarios() {
   });
 }
 
-// Todas as unidades da pessoa (idsUnidades); idUnidadeLotacao/unidadeNome ficam só como reserva
+// Siglas de todas as unidades da pessoa, montadas pelo servidor
 function _usuariosLotacaoTexto(u) {
-  var ids = (u.idsUnidades && u.idsUnidades.length) ? u.idsUnidades : (u.idUnidadeLotacao ? [u.idUnidadeLotacao] : []);
-  var siglas = ids.map(function (id) { return usuariosSiglaUnidade[String(id)] || ''; }).filter(Boolean);
-  return siglas.length ? siglas.join(' · ') : (u.unidadeNome || '');
+  return u.unidadeNome || '';
 }
 
 function atualizarTabelaUsuarios() {

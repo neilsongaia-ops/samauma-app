@@ -622,6 +622,7 @@ var _indConfig = { vinculoIndicadorLimite: null, elementosLimite: null }; // res
 var _IND_GRUPO_MESMO_PLANO = '__mesmo_plano__';
 var _IND_ROTULO_LIGACAO = { PAI: 'Elemento pai', FILHO: 'Elemento filho', RELACIONADO: 'Relacionado' };
 var _indwizEdicao = false;
+var _indUltimaAlteracao = 0; // carimbo (ultimaAlteracao) do indicador aberto para edição: o servidor só grava se ninguém alterou depois
 var estadoWizardInd = { atual: 1, passos: [1, 2, 3, 4], transicionando: false };
 var INDWIZ_TITULOS = [
   { titulo: 'Identificação', desc: 'Nome e onde se encaixa' },
@@ -873,7 +874,7 @@ function handleSalvarIndicador(e) {
   var idEdicaoEl = document.getElementById('input-ind-id-edicao');
   var idEdicao = idEdicaoEl ? idEdicaoEl.value : '';
   var acao = idEdicao ? 'apiAtualizarIndicador' : 'apiSalvarIndicador';
-  if (idEdicao) dados.id = idEdicao;
+  if (idEdicao) { dados.id = idEdicao; dados.ultimaAlteracao = _indUltimaAlteracao; }
 
   _indicadoresSDK.chamar(acao, dados).then(function() {
     esconderLoader();
@@ -920,7 +921,7 @@ function handleSalvarMetas(e) {
     metas.push({ inicio: inp.getAttribute('data-inicio'), valor: inp.value });
   });
   mostrarLoader();
-  _indicadoresSDK.chamar('apiSalvarMetasPeriodo', { idIndicador: idInd, ano: ano, metas: metas }).then(function() {
+  _indicadoresSDK.chamar('apiSalvarMetasPeriodo', { idIndicador: idInd, ano: ano, metas: metas, ultimaAlteracao: _metaGrade.ultimaAlteracao }).then(function() {
     esconderLoader();
     fecharModalMeta();
     carregarAbaIndicadores();
@@ -2460,6 +2461,7 @@ function abrirModalEdicaoIndicador(idIndicador) {
     return;
   }
 
+  _indUltimaAlteracao = ind.ultimaAlteracao;
   var form = document.getElementById('form-novo-indicador');
   if (form) form.reset();
   var inputEl = document.getElementById('input-ind-id-elemento');
