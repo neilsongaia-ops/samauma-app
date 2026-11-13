@@ -7,7 +7,6 @@
 <style>
 /* ── VÍNCULOS: lista única (reaproveita .el-tabela / .el-toggle-btn / acoesLinhaHTML do host) ──
    Classes próprias (.vinc-lista, .vinc-row, .vinc-c-*). Situação = só ícone colorido + faixa lateral. */
-#view-vinculos .el-tabela thead th { top: calc(var(--det-sticky-top) + var(--det-tabs-h) + 56px); }
 .vinc-lista { --vinc-azul: var(--ds-color-info-fg); --vinc-verde: var(--ds-color-success-fg); --vinc-ambar: var(--ds-color-warning-fg);
   --vinc-roxo: var(--ds-color-pending); --vinc-vermelho: var(--ds-color-danger-fg); }
 .vinc-row--superior    { --vinc-cor: var(--vinc-azul); }
@@ -1059,7 +1058,7 @@ function renderizarTabelaVinculos() {
   var busca = estadoVinculos.busca;
 
   container.innerHTML =
-    '<div id="vinc-filtros" class="el-filtros">'
+    '<div id="vinc-filtros" class="el-filtros ds-pagina__filtros">'
     +   '<div class="el-search" id="vinc-search-wrap">'
     +     '<button type="button" class="ds-icon-action' + (busca ? ' hidden' : '') + '" id="vinc-search-toggle" data-on-click="vinc.11" data-title="Buscar" aria-label="Buscar">'
     +       '<span class="material-symbols-outlined">search</span></button>'
@@ -1093,7 +1092,7 @@ function renderizarTabelaVinculos() {
     +   '</div>'
     + '</div>'
 
-    + '<div id="vinc-filtros-selecao" class="el-filtros-selecao hidden">'
+    + '<div id="vinc-filtros-selecao" class="el-filtros-selecao ds-pagina__filtros hidden">'
     +   '<button type="button" class="ds-icon-action" data-on-click="vinc.19" data-title="Cancelar seleção" aria-label="Cancelar seleção">'
     +     '<span class="material-symbols-outlined">close</span></button>'
     +   '<span class="el-selecao-texto" id="vinc-selecao-texto">0 selecionados</span>'
@@ -1404,6 +1403,7 @@ function _vincAtualizarSelecao(listaVisivel) {
   if (barra) barra.innerHTML = _vincAcoesLoteHTML(selecionados);
   var all = document.getElementById('chk-select-all-vinc');
   if (all) { all.checked = listaVisivel.length > 0 && n === listaVisivel.length; all.indeterminate = n > 0 && n < listaVisivel.length; }
+  uiPaginaMedir(document.getElementById('page-plano-detalhe'));
 }
 
 // Ações da barra de seleção: só aparecem as que TODOS os itens selecionados aceitam (as "unico" só com 1 item).

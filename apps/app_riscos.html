@@ -176,7 +176,7 @@
     <div class="modal-header">
       <div>
         <h3 id="modal-trat-form-titulo">Nova Ação de Tratamento</h3>
-        <p id="modal-trat-form-risco-desc" style="font-size:0.82rem;color:var(--ds-color-text-ui-muted);margin:2px 0 0;max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></p>
+        <p id="modal-trat-form-risco-desc" style="font-size:0.82rem;color:var(--ds-color-text-muted);margin:2px 0 0;max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></p>
       </div>
       <button class="btn-icon-close" data-on-click="risco.12">
         <span class="material-symbols-outlined">close</span>
@@ -222,7 +222,7 @@
           </div>
           <div class="form-group" style="flex:1;margin-bottom:0">
             <label style="font-size:0.82rem;font-weight:600">Data de Referência *
-              <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;cursor:help;color:var(--ds-color-text-ui-muted)" data-title="Data a partir da qual a periodicidade é contada (base para calcular os próximos lembretes). Se a periodicidade for 'Pontual', esta é a data-limite da ação.">info</span>
+              <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle;cursor:help;color:var(--ds-color-text-muted)" data-title="Data a partir da qual a periodicidade é contada (base para calcular os próximos lembretes). Se a periodicidade for 'Pontual', esta é a data-limite da ação.">info</span>
             </label>
             <input type="date" id="trat-data-referencia" class="form-control">
           </div>
@@ -317,13 +317,13 @@
 .wiz-rail-item-desc { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); margin-top: 2px; line-height: 1.3; }
 
 .wiz-rail-footer { flex-shrink: 0; }
-.wiz-rail-progress { height: 4px; border-radius: var(--ds-radius-pill); background: var(--ds-color-surface-2); overflow: hidden; margin-bottom: 6px; }
-.wiz-rail-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-radius-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
+.wiz-rail-progress { height: 4px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); overflow: hidden; margin-bottom: 6px; }
+.wiz-rail-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-r-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
 .wiz-rail-footer span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 
 .wiz-mobile-progress { display: none; padding: 14px 16px 0; gap: 6px; flex-direction: column; }
-.wiz-mobile-progress-track { height: 4px; border-radius: var(--ds-radius-pill); background: var(--ds-color-surface-2); overflow: hidden; }
-.wiz-mobile-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-radius-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
+.wiz-mobile-progress-track { height: 4px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); overflow: hidden; }
+.wiz-mobile-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-r-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
 .wiz-mobile-progress span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 
 .wiz-content { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; max-height: 90vh; }
@@ -352,7 +352,7 @@ body.high-contrast .wiz-rail-item.wiz-rail-atual { background: #222; }
 
 .trat-item {
   display: flex; align-items: center; gap: 10px; padding: 6px 10px;
-  border: 1px solid var(--ds-color-border-ui); border-radius: 6px; margin-bottom: 5px; background: var(--ds-color-surface);
+  border: 1px solid var(--ds-color-border); border-radius: 6px; margin-bottom: 5px; background: var(--ds-color-surface);
 }
 .trat-item:last-child { margin-bottom: 0; }
 .trat-num {
@@ -360,9 +360,9 @@ body.high-contrast .wiz-rail-item.wiz-rail-atual { background: #222; }
   display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; flex-shrink: 0;
 }
 .trat-body { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; row-gap: 2px; }
-.trat-acao { font-weight: 600; color: var(--ds-color-text-ui); font-size: 0.84rem; white-space: nowrap; }
-.trat-desc { font-size: 0.78rem; color: var(--ds-color-text-ui-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
-.trat-meta { font-size: 0.74rem; color: var(--ds-color-text-ui-muted); display: flex; gap: 10px; flex-wrap: wrap; }
+.trat-acao { font-weight: 600; color: var(--ds-color-text); font-size: 0.84rem; white-space: nowrap; }
+.trat-desc { font-size: 0.78rem; color: var(--ds-color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
+.trat-meta { font-size: 0.74rem; color: var(--ds-color-text-muted); display: flex; gap: 10px; flex-wrap: wrap; }
 @media (max-width: 640px) {
   .trat-body { flex-direction: column; align-items: flex-start; gap: 3px; }
   .trat-desc { max-width: 100%; white-space: normal; }
@@ -382,7 +382,7 @@ body.high-contrast .wiz-rail-item.wiz-rail-atual { background: #222; }
 
 .risco-nat-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .risco-nat-chip {
-  padding: 6px 12px; border-radius: var(--ds-radius-pill); border: 1px solid var(--ds-color-border);
+  padding: 6px 12px; border-radius: var(--ds-r-pill); border: 1px solid var(--ds-color-border);
   background: var(--ds-color-surface); color: var(--ds-color-text); font-size: 0.82rem; cursor: pointer; transition: all 0.15s;
 }
 .risco-nat-chip:hover { background: var(--ds-sidebar-item-hover); }
@@ -434,9 +434,9 @@ body.high-contrast .risco-nat-chip.active { background: #000; border-color: #fff
 }
 .rsc-nivel-linha:hover { background: var(--ds-sidebar-item-hover); }
 .rsc-nivel-linha.is-sel { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); }
-.rsc-nivel-tag { display: inline-flex; justify-content: center; padding: 3px 12px; border-radius: var(--ds-radius-pill); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); }
-.rsc-barra { height: 6px; border-radius: var(--ds-radius-pill); background: var(--ds-sidebar-item-hover); overflow: hidden; }
-.rsc-barra-fill { display: block; height: 100%; border-radius: var(--ds-radius-pill); }
+.rsc-nivel-tag { display: inline-flex; justify-content: center; padding: 3px 12px; border-radius: var(--ds-r-pill); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); }
+.rsc-barra { height: 6px; border-radius: var(--ds-r-pill); background: var(--ds-sidebar-item-hover); overflow: hidden; }
+.rsc-barra-fill { display: block; height: 100%; border-radius: var(--ds-r-pill); }
 .rsc-nivel-n { text-align: right; font-size: var(--ds-text-base); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
 .rsc-alerta {
   display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: var(--ds-r-lg);
@@ -464,7 +464,6 @@ body.high-contrast .risco-nat-chip.active { background: #000; border-color: #fff
 .det-split .det-split-main.hidden + .det-split-seta { border-radius: var(--ds-r-sm); border-left: 0; }
 
 /* ── RISCOS: tabela (reaproveita .el-tabela) ─────────────────── */
-#view-riscos .el-tabela thead th { top: calc(var(--det-sticky-top) + var(--det-tabs-h) + 56px - 2px); }
 .rsc-tabela col.rsc-col-risco,  .rsc-tabela .rsc-col-risco  { width: auto; max-width: 0; overflow: hidden; }
 .rsc-tabela col.rsc-col-nivel,  .rsc-tabela .rsc-col-nivel  { width: 104px; }
 .rsc-tabela col.rsc-col-pi,     .rsc-tabela .rsc-col-pi     { width: 190px; }
@@ -483,7 +482,7 @@ tr.is-open .rsc-seta { transform: rotate(90deg); }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .rsc-sub { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rsc-alerta-ico { font-size: 16px; flex-shrink: 0; }
-.rsc-nivel-pill { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: var(--ds-radius-pill);
+.rsc-nivel-pill { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: var(--ds-r-pill);
   font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); white-space: nowrap; }
 .rsc-pi { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rsc-resp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
@@ -1131,7 +1130,7 @@ function _riscosRenderPainel(r) {
 
   var painelHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;margin:-4px -4px 14px 0">'
-    +   '<span class="detp-tab active" style="pointer-events:none">Detalhes do risco</span>'
+    +   '<span class="ds-tabs-painel__item active" style="pointer-events:none">Detalhes do risco</span>'
     +   '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.55" data-title="Fechar" aria-label="Fechar painel de detalhes"><span class="material-symbols-outlined">close</span></button>'
     + '</div>'
     + '<div class="detp-secao">'
@@ -1615,7 +1614,7 @@ function _renderChipsNaturezaRisco(selecionadas) {
   const cont = document.getElementById('risco-nat-chips');
   if (!cont) return;
   if (!_cacheNaturezasRisco || !_cacheNaturezasRisco.length) {
-    cont.innerHTML = '<span style="font-size:0.82rem;color:var(--ds-color-text-ui-muted)">Nenhuma natureza cadastrada — configure em Configurações do Sistema → Planejamento → Riscos.</span>';
+    cont.innerHTML = '<span style="font-size:0.82rem;color:var(--ds-color-text-muted)">Nenhuma natureza cadastrada — configure em Configurações do Sistema → Planejamento → Riscos.</span>';
     return;
   }
   cont.innerHTML = _cacheNaturezasRisco.map(function(n) {
@@ -1889,7 +1888,7 @@ function renderizarSecaoRiscos() {
     +   '</section>'
     + '</div>'
 
-    + '<div id="riscos-filtros" class="el-filtros">'
+    + '<div id="riscos-filtros" class="el-filtros ds-pagina__filtros">'
     +   '<div class="el-search" id="riscos-search-wrap">'
     +     '<button type="button" class="ds-icon-action' + (estadoRiscos.busca ? ' hidden' : '') + '" id="riscos-search-toggle" data-on-click="risco.21" data-title="Buscar" aria-label="Buscar">'
     +       '<span class="material-symbols-outlined">search</span></button>'
@@ -1926,7 +1925,7 @@ function renderizarSecaoRiscos() {
     +   '</div>'
     + '</div>'
 
-    + '<div id="riscos-filtros-selecao" class="el-filtros-selecao hidden">'
+    + '<div id="riscos-filtros-selecao" class="el-filtros-selecao ds-pagina__filtros hidden">'
     +   '<button type="button" class="ds-icon-action" data-on-click="risco.30" data-title="Cancelar seleção" aria-label="Cancelar seleção">'
     +     '<span class="material-symbols-outlined">close</span></button>'
     +   '<span class="el-selecao-texto" id="riscos-selecao-texto">0 selecionados</span>'
@@ -2307,7 +2306,7 @@ function _riscosAtualizarSelecao(listaCompleta) {
     }
     acoesCont.innerHTML = htmlAcoes;
   }
-  if (typeof detAtualizarOffsetsSticky === 'function') detAtualizarOffsetsSticky();
+  uiPaginaMedir(document.getElementById('page-plano-detalhe'));
 }
 
 function _riscoTratItemHTML(t, idRisco, podeEditar) {

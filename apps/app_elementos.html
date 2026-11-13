@@ -74,13 +74,13 @@
 .wiz-rail-item-desc { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); margin-top: 2px; line-height: 1.3; }
 
 .wiz-rail-footer { flex-shrink: 0; }
-.wiz-rail-progress { height: 4px; border-radius: var(--ds-radius-pill); background: var(--ds-color-surface-2); overflow: hidden; margin-bottom: 6px; }
-.wiz-rail-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-radius-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
+.wiz-rail-progress { height: 4px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); overflow: hidden; margin-bottom: 6px; }
+.wiz-rail-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-r-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
 .wiz-rail-footer span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 
 .wiz-mobile-progress { display: none; padding: 14px 16px 0; gap: 6px; flex-direction: column; }
-.wiz-mobile-progress-track { height: 4px; border-radius: var(--ds-radius-pill); background: var(--ds-color-surface-2); overflow: hidden; }
-.wiz-mobile-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-radius-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
+.wiz-mobile-progress-track { height: 4px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); overflow: hidden; }
+.wiz-mobile-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-r-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
 .wiz-mobile-progress span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 
 .wiz-content { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; max-height: 90vh; }
@@ -127,7 +127,7 @@ body.high-contrast .wiz-rail-item.wiz-rail-atual { background: #222; }
 .elwiz-tags-legenda { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); margin-right: 6px; }
 .elwiz-tags-row { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .elwiz-tags-row .el-tipo-tag {
-  padding: 4px 12px; border-radius: var(--ds-radius-pill); background: var(--ds-color-surface-2); color: var(--ds-color-text);
+  padding: 4px 12px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); color: var(--ds-color-text);
   font-size: var(--ds-text-xs); cursor: pointer; white-space: nowrap;
   border: 1px solid #d0d8f0; font-weight: 600; width: fit-content; /* herdados da antiga regra global .el-tipo-tag */
 }
@@ -166,7 +166,7 @@ body.high-contrast .el-peso-bola.cheia { background: var(--ds-color-action); bor
 /* Botão "Usar vigência do plano / do elemento superior" */
 .btn-herdar-datas {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 12px; border-radius: var(--ds-radius-pill); font-size: 0.8rem;
+  padding: 5px 12px; border-radius: var(--ds-r-pill); font-size: 0.8rem;
   border: 1px solid var(--ds-color-border); background: var(--ds-color-surface-2);
   color: var(--ds-color-text-muted); cursor: pointer; transition: all 0.15s;
 }
@@ -313,7 +313,7 @@ body.org-fs-active, body.org-fs-active #main-content { overflow: hidden !importa
 .org-toggle {
   position: absolute; transform: translate(-50%, -50%); z-index: 3;
   height: 20px; min-width: 20px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; gap: 1px;
-  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border-strong); border-radius: var(--ds-radius-pill);
+  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border-strong); border-radius: var(--ds-r-pill);
   font-family: var(--ds-font-sans); font-size: 11px; font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted);
   cursor: pointer; box-shadow: var(--ds-shadow-1);
 }
@@ -338,7 +338,7 @@ body.org-fs-active, body.org-fs-active #main-content { overflow: hidden !importa
 .org-ghost-sub { margin-left: auto; font-size: 11px; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text-muted); }
 .org-ghost-titulo { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .org-ghost-acao {
-  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--ds-radius-pill);
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: var(--ds-r-pill);
   font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); box-shadow: var(--ds-shadow-2);
   background: var(--ds-color-surface); color: var(--ds-color-text-muted); max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -360,7 +360,7 @@ body.org-fs-active, body.org-fs-active #main-content { overflow: hidden !importa
 
 .org-aviso {
   position: absolute; left: 12px; top: 12px; z-index: 6; display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: var(--ds-radius-pill); background: var(--ds-color-surface); box-shadow: var(--ds-shadow-1);
+  padding: 6px 12px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface); box-shadow: var(--ds-shadow-1);
   font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); color: var(--ds-color-text-muted);
 }
 .org-aviso.hidden { display: none; }
@@ -448,7 +448,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
   width: 100%;
   height: 52px;
   position: sticky;
-  top: calc(var(--det-sticky-top, -20px) + var(--det-tabs-h, 44px) + var(--det-el-filtros-h, 56px) - 2px);
+  top: calc(var(--ds-pagina-topo-tabela) - 2px);
   z-index: 35;
   background: var(--ds-color-surface);
   border-bottom: 2px solid var(--ds-color-border);
@@ -1287,7 +1287,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
            próprio com id="view-elementos" aqui, para não duplicar esse id no DOM. -->
 
       <!-- Barra de filtros (padrão pll): busca expansível + chip-buttons + modos + ações -->
-      <div id="el-filtros-normal" class="el-filtros">
+      <div id="el-filtros-normal" class="el-filtros ds-pagina__filtros">
         <!-- Busca expansível -->
         <div class="el-search" id="el-search-wrap">
           <button type="button" class="ds-icon-action" id="el-search-toggle" data-on-click="el.22" data-title="Buscar" aria-label="Buscar">
@@ -1362,7 +1362,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
       </div>
 
       <!-- Barra de seleção em lote (oculta por padrão) -->
-      <div id="el-filtros-selecao" class="el-filtros-selecao hidden">
+      <div id="el-filtros-selecao" class="el-filtros-selecao ds-pagina__filtros hidden">
         <button type="button" class="ds-icon-action" data-on-click="el.36" data-title="Cancelar seleção" aria-label="Cancelar seleção">
           <span class="material-symbols-outlined">close</span>
         </button>
@@ -4500,7 +4500,7 @@ function _elAtualizarSelecaoVisual() {
         : '';
     }
   }
-  if (typeof detAtualizarOffsetsSticky === 'function') detAtualizarOffsetsSticky();
+  uiPaginaMedir(document.getElementById('page-plano-detalhe'));
 }
 
 // --- Gerenciamento inteligente de atalhos de teclado na página de detalhes ---
