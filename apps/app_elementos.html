@@ -4016,7 +4016,7 @@ function criarNoDOM(item) {
           ${respHtml}
           ${indicadorTagHtml}
           ${custoHtml}
-          ${item.fim ? `<span class="meta-tag"><span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">event</span>Até ${item.fim}</span>` : ''}
+          ${uiChipPrazoHTML(item.fim)}
           ${(item.solicitacoesColaboracaoPendentes && item.solicitacoesColaboracaoPendentes.length) ? `<span class="meta-tag" style="background: var(--ds-color-warning-bg);color: var(--ds-color-warning-fg);border-color:color-mix(in srgb, var(--ds-color-warning-fg) 40%, transparent);cursor:pointer" data-on-click="el.74" data-aclick0="${item.id}"><span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">group_add</span>${item.solicitacoesColaboracaoPendentes.length} solicitação(ões) de colaboração</span>` : ''}
         </div>
       </div>
@@ -5127,6 +5127,7 @@ function renderizarTabelaEstrutura() {
     var qtdInd = Number(no.qtdIndicadores || 0);
 
     var chipsList = [];
+    if (no.fim) chipsList.push(uiChipPrazoHTML(no.fim));
     if (custoFmt) {
       chipsList.push('<span class="el-chip-meta el-chip-custo" data-title="Custo estimado: ' + escapeHtml(custoFmt) + '"><span class="material-symbols-outlined">payments</span><span class="el-chip-meta-txt">' + escapeHtml(custoFmt) + '</span></span>');
     }
@@ -5342,7 +5343,7 @@ function renderizarOrganograma() {
         + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '') + '</span>';
     }
     var nInd = Number(el.qtdIndicadores || 0);
-    var indHtml = nInd ? '<span class="el-chip-meta el-chip-ind" data-title="' + nInd + (nInd === 1 ? ' indicador' : ' indicadores') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + nInd + '</span></span>' : '';
+    var indHtml = uiChipPrazoHTML(el.fim) + (nInd ? '<span class="el-chip-meta el-chip-ind" data-title="' + nInd + (nInd === 1 ? ' indicador' : ' indicadores') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + nInd + '</span></span>' : '');
 
     var acoes = acoesLinhaHTML('org-tb-' + id, [
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },

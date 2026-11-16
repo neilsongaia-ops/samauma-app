@@ -1342,6 +1342,9 @@ td > .acoes-linha:only-child { display: flex; }
 .ds-alerta-atraso { display: inline-flex; align-items: center; color: var(--ds-color-danger-fg); cursor: help; vertical-align: middle; }
 .ds-alerta-atraso .material-symbols-outlined { font-size: 16px; }
 .ds-valor-alerta { display: inline-flex; align-items: center; gap: 2px; }
+/* Prazo final do elemento: pílula com ícone de calendário (cor própria, diferente dos chips de vínculo e indicador) + data final. uiChipPrazoHTML(dataBR). */
+.ds-chip-prazo { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-pill); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); line-height: 1.25; white-space: nowrap; color: var(--ds-color-text); cursor: default; }
+.ds-chip-prazo .material-symbols-outlined { font-size: 14px; color: var(--ds-color-success); }
 .acoes-btn {
   width: 32px; height: 32px; padding: 0; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
@@ -9761,6 +9764,12 @@ function uiAlertaAtrasoHTML(texto) {
 function uiAlternarTudoHTML(tudoExpandido, atributosClique) {
   var rotulo = tudoExpandido ? 'Recolher tudo' : 'Expandir tudo';
   return '<button type="button" class="ds-icon-action ds-icon-action--sm" ' + atributosClique + ' data-title="' + rotulo + '" aria-label="' + rotulo + '"><span class="material-symbols-outlined">' + (tudoExpandido ? 'unfold_less' : 'unfold_more') + '</span></button>';
+}
+
+// Prazo final de um elemento (.ds-chip-prazo): ícone de calendário + data final (dd/mm/aaaa). Vazio quando não há data.
+function uiChipPrazoHTML(dataBR) {
+  if (!dataBR) return '';
+  return '<span class="ds-chip-prazo" data-title="Prazo final: ' + escapeHtml(dataBR) + '"><span class="material-symbols-outlined">event</span><span>' + escapeHtml(dataBR) + '</span></span>';
 }
 
 function uiProgressoHTML(pct, dica) {
@@ -21505,7 +21514,7 @@ function _execLinhaHTML(n) {
   var caminho = _execCaminho(n).join(' › ');
 
   var chips = [];
-  if (t && t.fim) chips.push(_execChipHTML('event', '', 'Prazo final: ' + t.fim));
+  if (t && t.fim) chips.push(uiChipPrazoHTML(t.fim));
   if (n.progressoRejeitado) chips.push(_execChipHTML('error', '', 'Último lançamento de progresso rejeitado' + (n.progressoRejeitado.motivo ? ': ' + n.progressoRejeitado.motivo : '') + '. O percentual mostrado é o validado.'));
   if (n.progressoPendente) chips.push(_execChipHTML('hourglass_top', '', 'Lançamento de progresso aguardando validação; o percentual mostrado é o validado.'));
   if (t && t.tarefasTotal > 0) chips.push(_execChipHTML('checklist', t.tarefasConcluidas + ' de ' + t.tarefasTotal, 'Itens da lista de verificação concluídos', '', 'ext-cont-' + id));
