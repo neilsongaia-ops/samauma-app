@@ -1341,6 +1341,7 @@ td > .acoes-linha:only-child { display: flex; }
 .ds-linha-clicavel:hover > td { background: var(--ds-sidebar-item-hover); }
 .ds-alerta-atraso { display: inline-flex; align-items: center; color: var(--ds-color-danger-fg); cursor: help; vertical-align: middle; }
 .ds-alerta-atraso .material-symbols-outlined { font-size: 16px; }
+.ds-valor-alerta { display: inline-flex; align-items: center; gap: 2px; }
 .acoes-btn {
   width: 32px; height: 32px; padding: 0; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
@@ -19961,7 +19962,6 @@ uiRegistrarAcoes('plano', {
 #page-execucao-planos .exl-vig-sub { display: none; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 
 /* Vigência e Indicador de Atraso */
-#page-execucao-planos .exl-vig-wrap { display: inline-flex; align-items: center; gap: 2px; }
 #page-execucao-planos .exl-vig { color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); white-space: nowrap; }
 
 /* Responsável */
@@ -20574,7 +20574,7 @@ function _execRenderizarTabela(planos) {
       + ' title="Clique para selecionar, duplo clique para registrar a execução">'
       + chkTd
       + planoTd
-      + '<td class="exl-col-vig exl-nowrap"><div class="exl-vig-wrap"><span class="exl-vig">' + escapeHtml(vigencia) + '</span>' + alertaHtml + '</div></td>'
+      + '<td class="exl-col-vig exl-nowrap"><div class="ds-valor-alerta"><span class="exl-vig">' + escapeHtml(vigencia) + '</span>' + alertaHtml + '</div></td>'
       + '<td class="exl-col-resp exl-nowrap">' + respHtml + '</td>'
       + '<td class="exl-col-status exl-nowrap">' + statusHtml + '</td>'
       + '<td class="exl-col-tarefas exl-nowrap">' + tarefasHtml + '</td>'
@@ -21192,6 +21192,13 @@ function _extpRenderDetalhes() {
 function _extpRenderAtividade() {
   var c = document.getElementById('extp-view-atividade');
   if (!c || !estadoExecTarefas.dados) return;
+  // com um elemento aberto na barra lateral, a atividade é o histórico dos lançamentos de progresso dele
+  var idEl = estadoExecTarefas.painelElemento;
+  if (idEl) {
+    c.innerHTML = '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Histórico de progresso</div><div id="ext-historico-host-' + escapeHtml(idEl) + '">' + spinnerListaHTML('') + '</div></div>';
+    _execMontarHistorico(idEl);
+    return;
+  }
   var tarefas = estadoExecTarefas.dados.tarefas || [];
   var concluidas = tarefas.filter(function(t) { return t.status === 'Concluído'; });
   var andamento = tarefas.filter(function(t) { return t.status === 'Em Andamento'; });
@@ -21479,7 +21486,7 @@ function _execProgressoHTML(n, t) {
   var dica = n.porLista ? 'O progresso vem da lista de verificação' : '';
   if (n.progressoEsperado !== null && n.progressoEsperado !== undefined) dica += (dica ? ' · ' : '') + 'Esperado hoje: ' + Math.round(n.progressoEsperado) + '%';
   var alerta = n.atrasado ? uiAlertaAtrasoHTML('Atrasado: o realizado está abaixo do esperado' + (n.progressoEsperado !== null && n.progressoEsperado !== undefined ? ' (' + Math.round(n.progressoEsperado) + '% esperado)' : '')) : '';
-  return alerta ? '<div class="ds-cluster">' + uiProgressoHTML(n.percentual, dica) + alerta + '</div>' : uiProgressoHTML(n.percentual, dica);
+  return alerta ? '<div class="ds-valor-alerta">' + uiProgressoHTML(n.percentual, dica) + alerta + '</div>' : uiProgressoHTML(n.percentual, dica);
 }
 
 function _execAcoesHTML(n, id) {
@@ -21499,6 +21506,7 @@ function _execLinhaHTML(n) {
 
   var chips = [];
   if (t && t.fim) chips.push(_execChipHTML('event', '', 'Prazo final: ' + t.fim));
+  if (n.progressoRejeitado) chips.push(_execChipHTML('error', '', 'Último lançamento de progresso rejeitado' + (n.progressoRejeitado.motivo ? ': ' + n.progressoRejeitado.motivo : '') + '. O percentual mostrado é o validado.'));
   if (n.progressoPendente) chips.push(_execChipHTML('hourglass_top', '', 'Lançamento de progresso aguardando validação; o percentual mostrado é o validado.'));
   if (t && t.tarefasTotal > 0) chips.push(_execChipHTML('checklist', t.tarefasConcluidas + ' de ' + t.tarefasTotal, 'Itens da lista de verificação concluídos', '', 'ext-cont-' + id));
   if (n.temIndicador) chips.push(_execChipHTML('speed', inds.length ? String(inds.length) : '', 'Elemento com indicador', 'el-chip-ind'));
@@ -21530,11 +21538,9 @@ function _execDetalheHTML(n, id) {
   var inds = _execIndicadoresDoElemento(id);
   var lista = n.papel === 'FOLHA'
     ? '<div class="ds-stack ds-stack--2"><div id="ext-lista-host-' + escapeHtml(id) + '"></div></div>' : '';
-  var historico = n.papel === 'FOLHA'
-    ? '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Histórico de progresso</div><div id="ext-historico-host-' + escapeHtml(id) + '">' + spinnerListaHTML('') + '</div></div>' : '';
   var indicadores = inds.length
     ? '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Indicadores</div>' + inds.map(function(ind) { return _execIndicadorHTML(id, ind); }).join('') + '</div>' : '';
-  return '<div class="ds-stack ds-stack--3">' + lista + historico + indicadores + '</div>';
+  return '<div class="ds-stack ds-stack--3">' + lista + indicadores + '</div>';
 }
 
 function _execIndicadorHTML(idElemento, ind) {
@@ -21577,10 +21583,9 @@ function execTarefasRenderizar() {
   uiPaginaMedir(document.getElementById('page-execucao-tarefas'));
 }
 
-// Lista de verificação (componente de components_tarefas_elemento.html) e histórico de cada linha aberta; a contagem na linha acompanha a lista.
+// Lista de verificação (componente de components_tarefas_elemento.html) de cada linha aberta; a contagem na linha acompanha a lista.
 function _execMontarLista() {
   Object.keys(estadoExecTarefas.abertas).forEach(function(id) {
-    _execMontarHistorico(id);
     if (!document.getElementById('ext-lista-host-' + id) || typeof telMontar !== 'function') return;
     telMontar('ext-lista-host-' + id, id, function(st) {
       var t = _execTarefaDe(id);
