@@ -1323,6 +1323,24 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
    .acoes-linha/.acoes-btn: ações de linha + ⋮ (acoesLinhaHTML). .acoes-menu: o ÚNICO popover do sistema — menu de ações
    (acoesLinhaMenu) e lista suspensa de seleção com check e bolinha de cor (abrirMenuSelecao). */
 .acoes-linha { display: inline-flex; align-items: center; justify-content: flex-end; gap: 2px; flex-shrink: 0; }
+/* Lista em tabela — o que toda lista compartilha. Coluna de ações: ícones SEMPRE à direita da célula (a ação de linha sozinha na célula ocupa a largura toda;
+   senão o inline-flex fica à esquerda), sem borda nenhuma nos ícones (regra abaixo), com o cabeçalho (.ds-th-acoes: atualizar, exportar, imprimir, ordenar) alinhado igual. Cabeçalho ordenável: .ds-th-ord +
+   .ds-th-ord__icone (seta). Linha que abre ao clicar: .ds-linha-clicavel. Alerta de atraso: .ds-alerta-atraso (ícone solto, nunca dentro de badge). */
+td > .acoes-linha:only-child { display: flex; }
+.ds-col-acoes { width: 208px; white-space: nowrap; text-align: right; }
+@media (max-width: 768px) { .ds-col-acoes { width: 48px; } }
+.ds-th-acoes { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+/* Ícone na coluna de ações (cabeçalho ou célula) é SEMPRE sem borda, fundo e sombra — igual ao .acoes-btn; só o hover destaca. */
+.ds-col-acoes .ds-icon-action, .ds-th-acoes .ds-icon-action { width: 28px; height: 28px; background: none; border-color: transparent; box-shadow: none; color: var(--ds-color-text-muted); }
+.ds-col-acoes .ds-icon-action:hover, .ds-th-acoes .ds-icon-action:hover { background: var(--ds-sidebar-item-hover); border-color: transparent; box-shadow: none; color: var(--ds-color-action); }
+.ds-th-ord { cursor: pointer; user-select: none; white-space: nowrap; }
+.ds-th-ord:hover { color: var(--ds-color-action); }
+.ds-th-ord__icone { font-size: 14px; vertical-align: middle; margin-left: 3px; color: var(--ds-color-action); }
+.ds-th-ord__icone:empty { display: none; }
+.ds-linha-clicavel { cursor: pointer; }
+.ds-linha-clicavel:hover > td { background: var(--ds-sidebar-item-hover); }
+.ds-alerta-atraso { display: inline-flex; align-items: center; color: var(--ds-color-danger-fg); cursor: help; vertical-align: middle; }
+.ds-alerta-atraso .material-symbols-outlined { font-size: 16px; }
 .acoes-btn {
   width: 32px; height: 32px; padding: 0; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
@@ -5454,42 +5472,44 @@ uiRegistrarAcoes('components_modal_resultado', {
 body.high-contrast .tel-item.tel-sobre { box-shadow: inset 0 2px 0 #fff; }
 </style>
 <script>
-var _tel = { idElemento: null, dados: null, arrastando: null, aoMudar: null };
+// Uma instância por elemento (várias podem estar abertas ao mesmo tempo): _telInst[idElemento]; a seção carrega data-tel e os controles acham a instância por ela.
+var _telInst = {};
+function _telDe(el) { var s = el.closest('[data-tel]'); return s ? _telInst[s.dataset.tel] : null; }
+function _telQ(I, sel) { return I.host.querySelector(sel); }
 
 // Monta a seção em #hostId e carrega. aoMudar({ percentual, status, progressoPorTarefas, total, concluidas }) avisa quem abriu.
 function telMontar(hostId, idElemento, aoMudar) {
   var host = document.getElementById(hostId);
   if (!host) return;
-  _tel.idElemento = String(idElemento); _tel.dados = null; _tel.aoMudar = aoMudar || null;
-  host.innerHTML = '<div class="tel-sec" id="tel-sec">'
-    + '<div class="tel-cab"><span class="tel-cab-t">Lista de verificação</span><span class="tel-cont" id="tel-cont"></span></div>'
-    + '<div id="tel-corpo">' + spinnerListaHTML('') + '</div>'
-    + '<span class="tel-erro" id="tel-erro" role="alert"></span></div>';
-  var id = _tel.idElemento;
+  var I = _telInst[String(idElemento)] = { idElemento: String(idElemento), dados: null, arrastando: null, aoMudar: aoMudar || null, host: host };
+  host.innerHTML = '<div class="tel-sec" data-tel="' + escapeHtml(I.idElemento) + '">'
+    + '<div class="tel-cab"><span class="tel-cab-t">Lista de verificação</span><span class="tel-cont"></span></div>'
+    + '<div data-tel-corpo>' + spinnerListaHTML('') + '</div>'
+    + '<span class="tel-erro" role="alert"></span></div>';
   google.script.run
-    .withSuccessHandler(function (r) { if (id !== _tel.idElemento) return; _tel.dados = r || { tarefas: [] }; telRender(); _telAvisar(); })
-    .withFailureHandler(function (err) { if (id !== _tel.idElemento) return; document.getElementById('tel-corpo').innerHTML = ''; telErro(err.message); })
-    .apiGetTarefasElemento(id);
+    .withSuccessHandler(function (r) { if (_telInst[I.idElemento] !== I) return; I.dados = r || { tarefas: [] }; telRender(I); _telAvisar(I); })
+    .withFailureHandler(function (err) { if (_telInst[I.idElemento] !== I) return; _telQ(I, '[data-tel-corpo]').innerHTML = ''; telErro(I, err.message); })
+    .apiGetTarefasElemento(I.idElemento);
 }
-function telErro(msg) { var e = document.getElementById('tel-erro'); if (e) e.textContent = msg || ''; }
-function _telTarefas() { return ((_tel.dados && _tel.dados.tarefas) || []).slice().sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0); }); }
-function _telAvisar() {
-  var t = _telTarefas(), d = _tel.dados || {};
-  if (_tel.aoMudar) _tel.aoMudar({ percentual: d.percentual, status: d.status, progressoPorTarefas: !!d.progressoPorTarefas, total: t.length, concluidas: t.filter(function (x) { return x.concluida; }).length });
+function telErro(I, msg) { var e = _telQ(I, '.tel-erro'); if (e) e.textContent = msg || ''; }
+function _telTarefas(I) { return ((I.dados && I.dados.tarefas) || []).slice().sort(function (a, b) { return (a.ordem || 0) - (b.ordem || 0); }); }
+function _telAvisar(I) {
+  var t = _telTarefas(I), d = I.dados || {};
+  if (I.aoMudar) I.aoMudar({ percentual: d.percentual, status: d.status, progressoPorTarefas: !!d.progressoPorTarefas, total: t.length, concluidas: t.filter(function (x) { return x.concluida; }).length });
 }
-function telRender() {
-  var d = _tel.dados || {}, t = _telTarefas(), feitas = t.filter(function (x) { return x.concluida; }).length;
+function telRender(I) {
+  var d = I.dados || {}, t = _telTarefas(I), feitas = t.filter(function (x) { return x.concluida; }).length;
   var edita = !!d.podeEditar, conclui = edita && d.podeConcluir !== false;
-  document.getElementById('tel-cont').textContent = t.length ? feitas + ' de ' + t.length : '';
+  _telQ(I, '.tel-cont').textContent = t.length ? feitas + ' de ' + t.length : '';
   var motivoChk = !conclui && edita ? ' data-title="O plano não permite alterar a lista neste status"' : '';
   var MOTIVO_TRAVADA = 'Este item já contou em um progresso validado: não pode ser reaberto, renomeado nem apagado.';
-  var h = '<div class="tel-lista" id="tel-lista">' + t.map(function (x, i) {
+  var h = '<div class="tel-lista">' + t.map(function (x, i) {
     var quem = x.concluida && x.concluidaPorNome ? 'Concluída por ' + x.concluidaPorNome + (x.concluidaEm ? ' em ' + (typeof _isoParaBR === 'function' ? _isoParaBR(String(x.concluidaEm).slice(0, 10)) : x.concluidaEm) : '') : '';
     var trava = !!x.travada;
-    var acoes = edita && !trava ? acoesLinhaHTML('tel-' + x.id, [
-      { icone: 'arrow_upward', rotulo: 'Mover para cima', oculto: i === 0, onclick: "telMover('" + escapeJsAttr(x.id) + "',-1)" },
-      { icone: 'arrow_downward', rotulo: 'Mover para baixo', oculto: i === t.length - 1, onclick: "telMover('" + escapeJsAttr(x.id) + "',1)" },
-      { icone: 'delete', rotulo: 'Excluir', perigo: true, onclick: "telExcluir('" + escapeJsAttr(x.id) + "')" }
+    var acoes = edita && !trava ? acoesLinhaHTML('tel-' + I.idElemento + '-' + x.id, [
+      { icone: 'arrow_upward', rotulo: 'Mover para cima', oculto: i === 0, onclick: "telMover('" + escapeJsAttr(I.idElemento) + "','" + escapeJsAttr(x.id) + "',-1)" },
+      { icone: 'arrow_downward', rotulo: 'Mover para baixo', oculto: i === t.length - 1, onclick: "telMover('" + escapeJsAttr(I.idElemento) + "','" + escapeJsAttr(x.id) + "',1)" },
+      { icone: 'delete', rotulo: 'Excluir', perigo: true, onclick: "telExcluir('" + escapeJsAttr(I.idElemento) + "','" + escapeJsAttr(x.id) + "')" }
     ], { maxDireto: 0 }) : '';
     return '<div class="tel-item' + (x.concluida ? ' tel-item--feita' : '') + '" data-id="' + escapeHtml(x.id) + '"' + (edita ? ' draggable="true"' : '') + (trava ? ' data-title="' + escapeHtml(MOTIVO_TRAVADA) + '"' : (quem ? ' data-title="' + escapeHtml(quem) + '"' : '')) + '>'
       + (edita ? '<span class="material-symbols-outlined tel-alca" aria-hidden="true">drag_indicator</span>' : '')
@@ -5498,81 +5518,182 @@ function telRender() {
       + '<input type="date" class="tel-data" value="' + escapeHtml(x.dataPrevista || '') + '"' + (edita ? '' : ' disabled') + ' data-on-change="components_tarefas_elemento.4" data-id="' + escapeHtml(x.id) + '" aria-label="Data prevista">'
       + acoes + '</div>';
   }).join('') + '</div>';
-  if (edita) h += '<label class="tel-novo"><span class="material-symbols-outlined" aria-hidden="true">add</span><input type="text" id="tel-novo" maxlength="300" placeholder="Adicionar item" data-on-keydown="components_tarefas_elemento.5" aria-label="Adicionar item"></label>';
+  if (edita) h += '<label class="tel-novo"><span class="material-symbols-outlined" aria-hidden="true">add</span><input type="text" data-tel-novo maxlength="300" placeholder="Adicionar item" data-on-keydown="components_tarefas_elemento.5" aria-label="Adicionar item"></label>';
   if (!t.length && !edita) h = '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhum item</p></div>';
-  document.getElementById('tel-corpo').innerHTML = h;
-  if (edita) _telAtivarArraste();
+  _telQ(I, '[data-tel-corpo]').innerHTML = h;
+  if (edita) _telAtivarArraste(I);
 }
-function _telAplicar(r) {
+function _telAplicar(I, r) {
   if (!r) return;
-  if (r.tarefa) { var l = _tel.dados.tarefas, i = l.findIndex(function (x) { return String(x.id) === String(r.tarefa.id) || x._tmp === r.tarefa._tmp; }); if (i >= 0) l[i] = r.tarefa; }
-  if (r.percentual !== undefined) _tel.dados.percentual = r.percentual;
-  if (r.status !== undefined) _tel.dados.status = r.status;
-  if (r.progressoPorTarefas !== undefined) _tel.dados.progressoPorTarefas = r.progressoPorTarefas;
+  if (r.tarefa) { var l = I.dados.tarefas, i = l.findIndex(function (x) { return String(x.id) === String(r.tarefa.id) || x._tmp === r.tarefa._tmp; }); if (i >= 0) l[i] = r.tarefa; }
+  if (r.percentual !== undefined) I.dados.percentual = r.percentual;
+  if (r.status !== undefined) I.dados.status = r.status;
+  if (r.progressoPorTarefas !== undefined) I.dados.progressoPorTarefas = r.progressoPorTarefas;
 }
-function _telOtimista(mudar, rota, args, depois) {
-  var copia = JSON.parse(JSON.stringify(_tel.dados));
-  mudar(); telErro(''); telRender(); _telAvisar();
-  var r = google.script.run.withSuccessHandler(function (res) { if (depois) depois(res); else _telAplicar(res); telRender(); _telAvisar(); })
-    .withFailureHandler(function (err) { _tel.dados = copia; telRender(); _telAvisar(); telErro(err.message); });
+function _telOtimista(I, mudar, rota, args, depois) {
+  var copia = JSON.parse(JSON.stringify(I.dados));
+  mudar(); telErro(I, ''); telRender(I); _telAvisar(I);
+  var r = google.script.run.withSuccessHandler(function (res) { if (depois) depois(res); else _telAplicar(I, res); telRender(I); _telAvisar(I); })
+    .withFailureHandler(function (err) { I.dados = copia; telRender(I); _telAvisar(I); telErro(I, err.message); });
   r[rota].apply(r, args);
 }
-function _telAchar(id) { return _tel.dados.tarefas.filter(function (x) { return String(x.id) === String(id); })[0]; }
-function telConcluir(id, on) {
-  var x = _telAchar(id); if (!x) return;
-  _telOtimista(function () { x.concluida = on; }, 'apiConcluirTarefaElemento', [String(id), !!on]);
+function _telAchar(I, id) { return I.dados.tarefas.filter(function (x) { return String(x.id) === String(id); })[0]; }
+function telConcluir(I, id, on) {
+  var x = _telAchar(I, id); if (!x) return;
+  _telOtimista(I, function () { x.concluida = on; }, 'apiConcluirTarefaElemento', [String(id), !!on]);
 }
-function telRenomear(el) {
-  var x = _telAchar(el.dataset.id), v = el.value.trim(); if (!x) return;
+function telRenomear(I, el) {
+  var x = _telAchar(I, el.dataset.id), v = el.value.trim(); if (!x) return;
   if (v === x.titulo) return;
-  if (!v) { el.value = x.titulo; telErro('O título precisa de 1 a 300 caracteres.'); return; }
-  _telOtimista(function () { x.titulo = v; }, 'apiSalvarTarefaElemento', [{ id: x.id, idElemento: _tel.idElemento, titulo: v, nota: x.nota, dataPrevista: x.dataPrevista || '' }]);
+  if (!v) { el.value = x.titulo; telErro(I, 'O título precisa de 1 a 300 caracteres.'); return; }
+  _telOtimista(I, function () { x.titulo = v; }, 'apiSalvarTarefaElemento', [{ id: x.id, idElemento: I.idElemento, titulo: v, nota: x.nota, dataPrevista: x.dataPrevista || '' }]);
 }
-function telMudarData(el) {
-  var x = _telAchar(el.dataset.id); if (!x) return;
-  _telOtimista(function () { x.dataPrevista = el.value; }, 'apiSalvarTarefaElemento', [{ id: x.id, idElemento: _tel.idElemento, titulo: x.titulo, nota: x.nota, dataPrevista: el.value }]);
+function telMudarData(I, el) {
+  var x = _telAchar(I, el.dataset.id); if (!x) return;
+  _telOtimista(I, function () { x.dataPrevista = el.value; }, 'apiSalvarTarefaElemento', [{ id: x.id, idElemento: I.idElemento, titulo: x.titulo, nota: x.nota, dataPrevista: el.value }]);
 }
-function telCriar(el) {
+function telCriar(I, el) {
   var v = el.value.trim(); if (!v) return;
-  var tmp = 'tmp-' + Date.now(), t = _telTarefas(), ordem = t.length ? (t[t.length - 1].ordem || t.length) + 1 : 1;
-  _telOtimista(function () { _tel.dados.tarefas.push({ id: tmp, _tmp: tmp, titulo: v, concluida: false, dataPrevista: '', ordem: ordem }); },
-    'apiSalvarTarefaElemento', [{ idElemento: _tel.idElemento, titulo: v }],
-    function (res) { var i = _tel.dados.tarefas.findIndex(function (x) { return x._tmp === tmp; }); if (i >= 0 && res && res.tarefa) _tel.dados.tarefas[i] = res.tarefa; _telAplicar({ percentual: res && res.percentual, status: res && res.status }); });
-  setTimeout(function () { var n = document.getElementById('tel-novo'); if (n) n.focus(); }, 0);
+  var tmp = 'tmp-' + Date.now(), t = _telTarefas(I), ordem = t.length ? (t[t.length - 1].ordem || t.length) + 1 : 1;
+  _telOtimista(I, function () { I.dados.tarefas.push({ id: tmp, _tmp: tmp, titulo: v, concluida: false, dataPrevista: '', ordem: ordem }); },
+    'apiSalvarTarefaElemento', [{ idElemento: I.idElemento, titulo: v }],
+    function (res) { var i = I.dados.tarefas.findIndex(function (x) { return x._tmp === tmp; }); if (i >= 0 && res && res.tarefa) I.dados.tarefas[i] = res.tarefa; _telAplicar(I, { percentual: res && res.percentual, status: res && res.status }); });
+  setTimeout(function () { var n = _telQ(I, '[data-tel-novo]'); if (n) n.focus(); }, 0);
 }
-function telExcluir(id) {
-  _telOtimista(function () { _tel.dados.tarefas = _tel.dados.tarefas.filter(function (x) { return String(x.id) !== String(id); }); }, 'apiExcluirTarefaElemento', [String(id)]);
+function telExcluir(idElemento, id) {
+  var I = _telInst[String(idElemento)]; if (!I) return;
+  _telOtimista(I, function () { I.dados.tarefas = I.dados.tarefas.filter(function (x) { return String(x.id) !== String(id); }); }, 'apiExcluirTarefaElemento', [String(id)]);
 }
-function _telReordenar(id, novaPos) {
-  var t = _telTarefas(), de = t.findIndex(function (x) { return String(x.id) === String(id); });
+function _telReordenar(I, id, novaPos) {
+  var t = _telTarefas(I), de = t.findIndex(function (x) { return String(x.id) === String(id); });
   if (de < 0 || novaPos < 0 || novaPos >= t.length || novaPos === de) return;
   var item = t.splice(de, 1)[0]; t.splice(novaPos, 0, item);
   var ant = t[novaPos - 1], seg = t[novaPos + 1];
-  _telOtimista(function () { t.forEach(function (x, i) { x.ordem = i + 1; }); }, 'apiReordenarTarefaElemento', [String(id), ant ? String(ant.id) : '', seg ? String(seg.id) : ''],
+  _telOtimista(I, function () { t.forEach(function (x, i) { x.ordem = i + 1; }); }, 'apiReordenarTarefaElemento', [String(id), ant ? String(ant.id) : '', seg ? String(seg.id) : ''],
     function (res) { if (res && res.ordem !== undefined) item.ordem = res.ordem; });
 }
-function telMover(id, passo) { var t = _telTarefas(), i = t.findIndex(function (x) { return String(x.id) === String(id); }); _telReordenar(id, i + passo); }
-function _telAtivarArraste() {
-  document.querySelectorAll('#tel-lista .tel-item').forEach(function (el) {
-    el.addEventListener('dragstart', function (e) { if (!e.target.classList.contains('tel-item')) return; _tel.arrastando = el.dataset.id; el.classList.add('tel-arrastando'); e.dataTransfer.effectAllowed = 'move'; });
-    el.addEventListener('dragend', function () { el.classList.remove('tel-arrastando'); _tel.arrastando = null; });
-    el.addEventListener('dragover', function (e) { if (!_tel.arrastando) return; e.preventDefault(); el.classList.add('tel-sobre'); });
+function telMover(idElemento, id, passo) {
+  var I = _telInst[String(idElemento)]; if (!I) return;
+  var t = _telTarefas(I), i = t.findIndex(function (x) { return String(x.id) === String(id); }); _telReordenar(I, id, i + passo);
+}
+function _telAtivarArraste(I) {
+  I.host.querySelectorAll('.tel-lista .tel-item').forEach(function (el) {
+    el.addEventListener('dragstart', function (e) { if (!e.target.classList.contains('tel-item')) return; I.arrastando = el.dataset.id; el.classList.add('tel-arrastando'); e.dataTransfer.effectAllowed = 'move'; });
+    el.addEventListener('dragend', function () { el.classList.remove('tel-arrastando'); I.arrastando = null; });
+    el.addEventListener('dragover', function (e) { if (!I.arrastando) return; e.preventDefault(); el.classList.add('tel-sobre'); });
     el.addEventListener('dragleave', function () { el.classList.remove('tel-sobre'); });
     el.addEventListener('drop', function (e) {
       e.preventDefault(); el.classList.remove('tel-sobre');
-      if (!_tel.arrastando || _tel.arrastando === el.dataset.id) return;
-      var t = _telTarefas(), alvo = t.findIndex(function (x) { return String(x.id) === String(el.dataset.id); });
-      _telReordenar(_tel.arrastando, alvo);
+      if (!I.arrastando || I.arrastando === el.dataset.id) return;
+      var t = _telTarefas(I), alvo = t.findIndex(function (x) { return String(x.id) === String(el.dataset.id); });
+      _telReordenar(I, I.arrastando, alvo);
     });
   });
 }
 uiRegistrarAcoes('components_tarefas_elemento', {
-  '1': function () { telConcluir(this.dataset.id, this.checked); },
-  '2': function (event) { if (event.key === 'Enter') { event.preventDefault(); this.blur(); } else if (event.key === 'Escape') { var x = _telAchar(this.dataset.id); if (x) this.value = x.titulo; this.blur(); } },
-  '3': function () { telRenomear(this); },
-  '4': function () { telMudarData(this); },
-  '5': function (event) { if (event.key === 'Enter') { event.preventDefault(); telCriar(this); this.value = ''; } }
+  '1': function () { telConcluir(_telDe(this), this.dataset.id, this.checked); },
+  '2': function (event) { if (event.key === 'Enter') { event.preventDefault(); this.blur(); } else if (event.key === 'Escape') { var x = _telAchar(_telDe(this), this.dataset.id); if (x) this.value = x.titulo; this.blur(); } },
+  '3': function () { telRenomear(_telDe(this), this); },
+  '4': function () { telMudarData(_telDe(this), this); },
+  '5': function (event) { if (event.key === 'Enter') { event.preventDefault(); telCriar(_telDe(this), this); this.value = ''; } }
 });
+</script>
+
+    <!-- Corpo do painel lateral de detalhes de UM elemento (cabeçalho + seções), compartilhado pelo detalhe do plano (#detp-panel) e pelo registro de execução (#extp-panel).
+     Quem chama monta o modelo com os dados que tem e coloca o HTML devolvido no painel; a marcação mora só aqui (uma fonte, mesma aparência nas duas telas). -->
+<script>
+function _detpLinha(label, valor) {
+  return valor ? '<div class="detp-linha"><span class="detp-linha-label">' + label + '</span>'
+    + '<span class="detp-linha-valor">' + valor + '</span></div>' : '';
+}
+
+function _detpBlocoTexto(label, texto) {
+  if (!texto || !String(texto).trim()) return '';
+  return '<div class="detp-subsecao">' +
+    '<div class="detp-subsecao-label">' + escapeHtml(label) + '</div>' +
+    '<div class="detp-texto-bloco">' + escapeHtml(String(texto).trim()) + '</div>' +
+    '</div>';
+}
+
+var DETEL_BADGE_STATUS = {
+  'Em Elaboração': 'ds-badge--elaboracao', 'Em Análise': 'ds-badge--analise', 'Em Execução': 'ds-badge--execucao', 'Em Avaliação': 'ds-badge--avaliacao',
+  'Prorrogado': 'ds-badge--prorrogado', 'Em Revisão': 'ds-badge--revisao', 'Finalizado': 'ds-badge--finalizado', 'Cancelado': 'ds-badge--cancelado', 'Excluído': 'ds-badge--cancelado'
+};
+
+/**
+ * HTML do corpo do painel. m = {
+ *   tipo, corTipo (opcional, #rrggbb), codigo, titulo, status, progresso (número ou ''), peso, prazos (texto), custo (texto), localizacao, abertoColaboracao,
+ *   pai (texto), superiores: [{ texto, plano, planoCompleto }], relacionados: [texto],
+ *   descricao, descricaoComplementar, justificativa, comoFazer,
+ *   responsaveis: [{ nome, tipo, papel }], indicadores: [{ nome, unidade }],
+ *   registro: { criadoPor, criadoEm, alteradoPor, alteradoEm }, acoesHtml }
+ * Só entra a linha/seção que tem valor.
+ */
+function detelHTML(m) {
+  var cor = m.corTipo;
+  var tipoBadge = '<span class="ds-badge ds-badge--neutral"' + (cor ? ' style="background:' + cor + '22;color:' + cor + ';border:1px solid ' + cor + '55"' : '') + '>' + escapeHtml(m.tipo || 'Elemento') + '</span>';
+  var cabecalho = '<div class="ds-stack ds-stack--2"><div class="ds-cluster">' + tipoBadge + '</div>' +
+    '<h3 class="ds-section-title"><span>' + (m.codigo ? '<span class="ds-help">' + escapeHtml(m.codigo) + ' — </span>' : '') + escapeHtml(m.titulo || '') + '</span></h3></div>';
+
+  var statusBadge = m.status ? '<span class="ds-badge ' + (DETEL_BADGE_STATUS[m.status] || 'ds-badge--finalizado') + '">' + escapeHtml(m.status) + '</span>' : '';
+  var temProgresso = m.progresso !== null && m.progresso !== undefined && m.progresso !== '';
+  var sobre =
+    _detpLinha('Tipo', escapeHtml(m.tipo || '—')) +
+    _detpLinha('Código', m.codigo ? escapeHtml(m.codigo) : '') +
+    _detpLinha('Status', statusBadge) +
+    _detpLinha('Progresso', temProgresso ? escapeHtml(String(Math.round(Number(m.progresso) * 10) / 10)) + '%' : '') +
+    _detpLinha('Peso', (m.peso !== undefined && m.peso !== null && m.peso !== '') ? escapeHtml(String(m.peso)) : '') +
+    _detpLinha('Prazos', m.prazos ? escapeHtml(m.prazos) : '') +
+    _detpLinha('Custo estimado', m.custo ? escapeHtml(m.custo) : '') +
+    _detpLinha('Localização', m.localizacao ? escapeHtml(m.localizacao) : '') +
+    _detpLinha('Aberto à colaboração', m.abertoColaboracao ? 'Sim' : '');
+
+  var vinculos = _detpLinha('Elemento pai', m.pai ? escapeHtml(m.pai) : '');
+  var sup = m.superiores || [];
+  if (sup.length) {
+    vinculos += _detpLinha(sup.length > 1 ? 'Elementos superiores' : 'Elemento superior', sup.map(function(s) {
+      return '<div class="detp-vinc-item">' + escapeHtml(s.texto) +
+        (s.plano ? ' <span class="detp-vinc-plano" data-title="' + escapeHtml(s.planoCompleto || s.plano) + '">· ' + escapeHtml(s.plano) + '</span>' : '') + '</div>';
+    }).join(''));
+  }
+  var rel = m.relacionados || [];
+  if (rel.length) {
+    vinculos += _detpLinha(rel.length > 1 ? 'Elementos relacionados' : 'Elemento relacionado',
+      rel.map(function(t) { return '<div class="detp-vinc-item">' + escapeHtml(t) + '</div>'; }).join(''));
+  }
+
+  var detalhamento =
+    _detpBlocoTexto('Descrição', m.descricao) +
+    _detpBlocoTexto('Descrição complementar', m.descricaoComplementar) +
+    _detpBlocoTexto('Justificativa', m.justificativa) +
+    _detpBlocoTexto('Metodologia / Como fazer', m.comoFazer);
+
+  var responsaveis = (m.responsaveis || []).map(function(q) {
+    return '<div class="detp-resp-item"><span class="material-symbols-outlined">' + (q.tipo === 'USER' ? 'person' : 'apartment') + '</span>' +
+      '<span>' + escapeHtml(nomeRespExibicao(q.nome, q.tipo)) + '</span><span class="detp-resp-papel">' + escapeHtml(q.papel || '') + '</span></div>';
+  }).join('');
+
+  var indicadores = (m.indicadores || []).map(function(i) {
+    return '<div class="detp-ind-item"><span class="material-symbols-outlined">speed</span><span class="detp-ind-nome">' + escapeHtml(i.nome || '—') +
+      (i.unidade ? ' <span class="ds-help">(' + escapeHtml(i.unidade) + ')</span>' : '') + '</span></div>';
+  }).join('');
+
+  var r = m.registro || {};
+  var registro =
+    _detpLinha('Criado por', r.criadoPor ? escapeHtml(r.criadoPor) : '') +
+    _detpLinha('Criado em', r.criadoEm ? escapeHtml(r.criadoEm) : '') +
+    _detpLinha('Alterado por', r.alteradoPor ? escapeHtml(r.alteradoPor) : '') +
+    _detpLinha('Alterado em', r.alteradoEm ? escapeHtml(r.alteradoEm) : '');
+
+  var secoes = [
+    { titulo: 'Sobre o elemento', html: sobre }, { titulo: 'Vínculos', html: vinculos }, { titulo: 'Detalhamento', html: detalhamento },
+    { titulo: 'Responsáveis', html: responsaveis }, { titulo: 'Indicadores associados', html: indicadores }, { titulo: 'Registro', html: registro },
+    { titulo: 'Ações', html: m.acoesHtml || '' }
+  ];
+  return '<div class="ds-stack">' + cabecalho + secoes.filter(function(s) { return s.html; }).map(function(s) {
+    return '<div class="detp-secao"><div class="detp-secao-titulo">' + s.titulo + '</div>' + s.html + '</div>';
+  }).join('') + '</div>';
+}
 </script>
  
     <!-- ARQUIVO: components_modal_usuario.html -->
@@ -9623,6 +9744,24 @@ function uiRespHTML(nome, tipo, adicionais) {
     + escapeHtml(exib) + (mais ? ' <span class="ds-resp-mais">+' + mais + '</span>' : '') + '</span>';
 }
 /** Barra de progresso com o valor ao lado (0–100); null/indefinido = "—". `dica` opcional. */
+// Cabeçalho ordenável de lista (.ds-th-ord): rotulo, se é a coluna ativa, direção ('asc'|'desc'), JS do clique (uiAtributosAcao) e classes extras da coluna.
+function uiThOrdHTML(rotulo, ativo, dir, onclick, cls) {
+  return '<th class="ds-th-ord' + (cls ? ' ' + cls : '') + '" ' + uiAtributosAcao(onclick, 'click') + '>' + escapeHtml(rotulo)
+    + '<span class="material-symbols-outlined ds-th-ord__icone">' + (ativo ? (dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '') + '</span></th>';
+}
+
+// Alerta de atraso (.ds-alerta-atraso): ícone solto ao lado do que está atrasado, com o motivo no tooltip. Único estilo do sistema para "atrasado".
+function uiAlertaAtrasoHTML(texto) {
+  return '<span class="ds-alerta-atraso" data-title="' + escapeHtml(texto) + '" aria-label="' + escapeHtml(texto) + '"><span class="material-symbols-outlined">warning</span></span>';
+}
+
+// Botão ÚNICO de expandir/recolher tudo do cabeçalho de ações de uma lista colapsável: o ícone e o rótulo mudam conforme o estado
+// (tudo expandido -> "Recolher tudo"; senão -> "Expandir tudo"). Nunca dois botões. atributosClique = o atributo de clique do botão (data-on-click="arquivo.N").
+function uiAlternarTudoHTML(tudoExpandido, atributosClique) {
+  var rotulo = tudoExpandido ? 'Recolher tudo' : 'Expandir tudo';
+  return '<button type="button" class="ds-icon-action ds-icon-action--sm" ' + atributosClique + ' data-title="' + rotulo + '" aria-label="' + rotulo + '"><span class="material-symbols-outlined">' + (tudoExpandido ? 'unfold_less' : 'unfold_more') + '</span></button>';
+}
+
 function uiProgressoHTML(pct, dica) {
   if (pct == null || isNaN(Number(pct))) return '<span class="ds-progresso__valor">—</span>';
   var p = Math.max(0, Math.min(100, Number(pct))).toFixed(0);
@@ -18598,13 +18737,6 @@ function abrirPainelApp(html) {
   panel.classList.add('aberto');
   panel.setAttribute('aria-hidden', 'false');
 }
-function _detpBlocoTexto(label, texto) {
-  if (!texto || !String(texto).trim()) return '';
-  return '<div class="detp-subsecao">' +
-    '<div class="detp-subsecao-label">' + escapeHtml(label) + '</div>' +
-    '<div class="detp-texto-bloco">' + escapeHtml(String(texto).trim()) + '</div>' +
-    '</div>';
-}
 function formatarCustoElemento(custo) {
   if (custo === null || custo === undefined || custo === '') return '';
   var limpo = String(custo).replace(/^R\$\s*/i, '').trim();
@@ -18735,120 +18867,21 @@ function abrirDetalhesElementoPainel(id) {
   var view = document.getElementById('detp-view-detalhes');
   if (!view) return;
 
-  var corTipo = _corDoTipo(el.tipo);
-  var tipoBadge = corTipo
-    ? '<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:6px;font-size:12px;font-weight:600;background:' + corTipo + '22;color:' + corTipo + ';border:1px solid ' + corTipo + '55">' + escapeHtml(el.tipo || 'Elemento') + '</span>'
-    : '<span style="display:inline-flex;align-items:center;padding:2px 10px;border-radius:6px;font-size:12px;font-weight:600;background:var(--ds-color-surface-2);color:var(--ds-color-text-muted);border:1px solid var(--ds-color-border)">' + escapeHtml(el.tipo || 'Elemento') + '</span>';
-
-  // Cabeçalho com Tipo, Código e Título
-  var headerHtml = '<div style="margin-bottom:18px">' +
-    '<div style="margin-bottom:8px">' + tipoBadge + '</div>' +
-    '<h3 style="font-size:1.15rem;font-weight:600;margin:0 0 4px;line-height:1.35;color:var(--ds-color-text)">' +
-    (el.codigo ? '<span style="color:var(--ds-color-text-muted);font-weight:500">' + escapeHtml(el.codigo) + ' — </span>' : '') +
-    escapeHtml(el.titulo || '') +
-    '</h3>' +
-    '</div>';
-
-  // 1. Seção "Sobre o elemento"
-  var statusBadge = '';
-  if (el.status) {
-    statusBadge = '<span class="ds-badge ds-badge--' + (DETP_STATUS_SLUG[el.status] || 'finalizado') + '">' + escapeHtml(el.status) + '</span>';
-  }
-  var pctEl = _detpPercentualElemento(el);
-  var progressoTxt = (pctEl !== null && pctEl !== undefined && pctEl !== '')
-    ? (escapeHtml(String(Math.round(Number(pctEl) * 10) / 10)) + '%')
-    : '';
-
-  var prazosTxt = '';
-  if (el.inicio || el.fim) {
-    prazosTxt = (el.inicio ? escapeHtml(el.inicio) : '?') + ' – ' + (el.fim ? escapeHtml(el.fim) : '?');
-  }
-
+  var todos = dadosDetalhados.elementos || [];
+  var rotulo = function(e) { return (e.codigo ? e.codigo + ' — ' : '') + (e.titulo || ''); };
+  var elPai = el.idPai ? todos.find(function(e) { return String(e.id) === String(el.idPai); }) : null;
+  var noPlano = function(idv) { return todos.some(function(e) { return String(e.id) === String(idv); }); };
+  var superiores = (el.idsContribuiPara || []).filter(function(idv) { return !noPlano(idv); }).map(function(idSup) {
+    var sup = (dadosDetalhados.elementosSuperiores || []).find(function(e) { return String(e.id) === String(idSup); });
+    return sup ? { texto: rotulo(sup), plano: sup.nomeCurtoPlanoOrigem || sup.nomePlanoOrigem || '', planoCompleto: sup.nomePlanoOrigem || '' } : { texto: 'Elemento superior #' + idSup };
+  });
+  var relacionados = (el.idsContribuiPara || []).filter(noPlano).map(function(idRel) {
+    var rel = todos.find(function(e) { return String(e.id) === String(idRel); });
+    return rel ? rotulo(rel) : 'Elemento #' + idRel;
+  });
   var custoFmt = formatarCustoElemento(el.custo);
 
-  var htmlSobre =
-    _detpLinha('Tipo', escapeHtml(el.tipo || '—')) +
-    _detpLinha('Código', el.codigo ? escapeHtml(el.codigo) : '') +
-    _detpLinha('Status', statusBadge) +
-    _detpLinha('Progresso', progressoTxt) +
-    _detpLinha('Peso', (el.peso !== undefined && el.peso !== null && el.peso !== '') ? escapeHtml(String(el.peso)) : '') +
-    _detpLinha('Prazos', prazosTxt) +
-    _detpLinha('Custo estimado', custoFmt ? escapeHtml(custoFmt) : '') +
-    _detpLinha('Localização', el.localizacao ? escapeHtml(el.localizacao) : '') +
-    _detpLinha('Aberto à colaboração', el.abertoColaboracao ? 'Sim' : '');
-
-  // 2. Seção "Vínculos"
-  var htmlVinculos = '';
-  if (el.idPai) {
-    var elPai = (dadosDetalhados.elementos || []).find(function(e) { return String(e.id) === String(el.idPai); });
-    var paiTxt = elPai
-      ? ((elPai.codigo ? escapeHtml(elPai.codigo) + ' — ' : '') + escapeHtml(elPai.titulo || ''))
-      : ('Elemento #' + escapeHtml(el.idPai));
-    htmlVinculos += _detpLinha('Elemento pai', paiTxt);
-  }
-  // Elementos superiores (N:N): TODOS, cada um com o plano de origem ao lado.
-  var noPlano = function(id) { return (dadosDetalhados.elementos || []).some(function(e) { return String(e.id) === String(id); }); };
-  var idsSup = (el.idsContribuiPara || []).filter(function(id) { return !noPlano(id); });
-  if (idsSup.length) {
-    var itensSup = idsSup.map(function(idSup) {
-      var sup = (dadosDetalhados.elementosSuperiores || []).find(function(e) { return String(e.id) === String(idSup); });
-      if (!sup) return '<div class="detp-vinc-item">Elemento superior #' + escapeHtml(idSup) + '</div>';
-      var plano = sup.nomeCurtoPlanoOrigem || sup.nomePlanoOrigem || '';
-      return '<div class="detp-vinc-item">' + (sup.codigo ? escapeHtml(sup.codigo) + ' — ' : '') + escapeHtml(sup.titulo || '')
-        + (plano ? ' <span class="detp-vinc-plano" data-title="' + escapeHtml(sup.nomePlanoOrigem || plano) + '">· ' + escapeHtml(plano) + '</span>' : '') + '</div>';
-    }).join('');
-    htmlVinculos += _detpLinha(idsSup.length > 1 ? 'Elementos superiores' : 'Elemento superior', itensSup);
-  }
-  // Elementos relacionados (N:N, mesmo plano, simétrico)
-  var idsRel = (el.idsContribuiPara || []).filter(noPlano);
-  if (idsRel.length) {
-    var itensRel = idsRel.map(function(idRel) {
-      var rel = (dadosDetalhados.elementos || []).find(function(e) { return String(e.id) === String(idRel); });
-      if (!rel) return '<div class="detp-vinc-item">Elemento #' + escapeHtml(idRel) + '</div>';
-      return '<div class="detp-vinc-item">' + (rel.codigo ? escapeHtml(rel.codigo) + ' — ' : '') + escapeHtml(rel.titulo || '') + '</div>';
-    }).join('');
-    htmlVinculos += _detpLinha(idsRel.length > 1 ? 'Elementos relacionados' : 'Elemento relacionado', itensRel);
-  }
-
-  // 3. Seção "Detalhamento e Metodologia"
-  var htmlDetalhamento =
-    _detpBlocoTexto('Descrição', el.descricao) +
-    _detpBlocoTexto('Descrição complementar', el.descricaoComplementar) +
-    _detpBlocoTexto('Justificativa', el.justificativa) +
-    _detpBlocoTexto('Metodologia / Como fazer', el.comoFazer || el.metodologia);
-
-  // 4. Seção "Responsáveis" (estilo .detp-resp-item idêntico aos detalhes do plano)
-  var htmlResp = '';
-  if (el.quem && el.quem.length > 0) {
-    htmlResp = el.quem.map(function(q) {
-      var icone = q.tipo === 'USER' ? 'person' : 'apartment';
-      var papel = q.colaborador ? 'Colaborador' : 'Principal';
-      return '<div class="detp-resp-item"><span class="material-symbols-outlined">' + icone + '</span>'
-        + '<span>' + escapeHtml(nomeRespExibicao(q.idResp, q.tipo)) + '</span>'
-        + '<span class="detp-resp-papel">' + papel + '</span></div>';
-    }).join('');
-  }
-
-  // 5. Seção "Indicadores associados"
-  var htmlInd = '';
-  if (dadosDetalhados.indicadores) {
-    var inds = dadosDetalhados.indicadores.filter(function(i) { return String(i.idElemento) === String(id); });
-    if (inds.length > 0) {
-      htmlInd = inds.map(function(i) {
-        var un = i.unidadeMedida ? ' <span style="color:var(--ds-color-text-muted);font-size:var(--ds-text-xs)">(' + escapeHtml(i.unidadeMedida) + ')</span>' : '';
-        return '<div class="detp-ind-item"><span class="material-symbols-outlined">speed</span><span class="detp-ind-nome">' + escapeHtml(i.nome || i.titulo || '—') + un + '</span></div>';
-      }).join('');
-    }
-  }
-
-  // 6. Seção "Registro"
-  var htmlRegistro =
-    _detpLinha('Criado por', el.criadoPor ? escapeHtml(el.criadoPor) : '') +
-    _detpLinha('Criado em', el.criadoEm ? escapeHtml(el.criadoEm) : '') +
-    _detpLinha('Alterado por', el.alteradoPor ? escapeHtml(el.alteradoPor) : '') +
-    _detpLinha('Alterado em', el.alteradoEm ? escapeHtml(el.alteradoEm) : '');
-
-  // 7. Ações
+  // Ações (só com permissão de edição)
   var podeEditar = planoPermiteEdicao();
   var htmlAcoes = '';
   if (podeEditar) {
@@ -18860,22 +18893,15 @@ function abrirDetalhesElementoPainel(id) {
       '</div>';
   }
 
-  var secoes = [
-    { titulo: 'Sobre o elemento', html: htmlSobre },
-    { titulo: 'Vínculos', html: htmlVinculos },
-    { titulo: 'Detalhamento', html: htmlDetalhamento },
-    { titulo: 'Responsáveis', html: htmlResp },
-    { titulo: 'Indicadores associados', html: htmlInd },
-    { titulo: 'Registro', html: htmlRegistro },
-    { titulo: 'Ações', html: htmlAcoes }
-  ];
-
-  var htmlCorpo = secoes
-    .filter(function(s) { return s.html; })
-    .map(function(s) { return '<div class="detp-secao"><div class="detp-secao-titulo">' + s.titulo + '</div>' + s.html + '</div>'; })
-    .join('');
-
-  view.innerHTML = '<div style="padding:4px 0">' + headerHtml + htmlCorpo + '</div>';
+  view.innerHTML = detelHTML({
+    tipo: el.tipo, corTipo: _corDoTipo(el.tipo), codigo: el.codigo, titulo: el.titulo, status: el.status, progresso: _detpPercentualElemento(el), peso: el.peso,
+    prazos: (el.inicio || el.fim) ? (el.inicio || '?') + ' – ' + (el.fim || '?') : '', custo: custoFmt, localizacao: el.localizacao, abertoColaboracao: el.abertoColaboracao,
+    pai: el.idPai ? (elPai ? rotulo(elPai) : 'Elemento #' + el.idPai) : '', superiores: superiores, relacionados: relacionados,
+    descricao: el.descricao, descricaoComplementar: el.descricaoComplementar, justificativa: el.justificativa, comoFazer: el.comoFazer || el.metodologia,
+    responsaveis: (el.quem || []).map(function(q) { return { nome: q.idResp, tipo: q.tipo, papel: q.colaborador ? 'Colaborador' : 'Principal' }; }),
+    indicadores: (dadosDetalhados.indicadores || []).filter(function(i) { return String(i.idElemento) === String(id); }).map(function(i) { return { nome: i.nome || i.titulo, unidade: i.unidadeMedida }; }),
+    registro: { criadoPor: el.criadoPor, criadoEm: el.criadoEm, alteradoPor: el.alteradoPor, alteradoEm: el.alteradoEm }, acoesHtml: htmlAcoes
+  });
   abrirPainelDetalhes('detalhes');
 }
 
@@ -19354,11 +19380,6 @@ function _detFecharMenuAcoes() {
 }
 
 // --- PAINEL DE DETALHES (#detp-panel): Detalhes (metadados) / Atividade (histórico) ---
-
-function _detpLinha(label, valor) {
-  return valor ? '<div class="detp-linha"><span class="detp-linha-label">' + label + '</span>'
-    + '<span class="detp-linha-valor">' + valor + '</span></div>' : '';
-}
 
 function _detpRenderDetalhes() {
   const container = document.getElementById('detp-view-detalhes');
@@ -19891,16 +19912,6 @@ uiRegistrarAcoes('plano', {
 #page-execucao-planos .ds-icon-action--sm:disabled,
 #page-execucao-planos .ds-icon-action--sm[aria-disabled="true"] { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 
-/* Ícones Atualizar/Exportar/Ordenar no cabeçalho da coluna de ações */
-#page-execucao-planos .exl-th-acoes { display: inline-flex; align-items: center; gap: 2px; }
-#page-execucao-planos .exl-sort-btn {
-  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0;
-  background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); cursor: pointer;
-  transition: background var(--ds-duration-fast), color var(--ds-duration-fast);
-}
-#page-execucao-planos .exl-sort-btn:hover, #page-execucao-planos .exl-sort-btn[aria-expanded="true"] { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
-#page-execucao-planos .exl-sort-btn .material-symbols-outlined { font-size: 20px; }
-
 /* Tabela (sem overflow no wrapper, para manter o cabeçalho sticky perfeito) */
 #page-execucao-planos .exl-tabela-card { margin-bottom: -20px !important; padding: 0; background: var(--ds-color-surface); border: none; box-shadow: none; }
 #page-execucao-planos .exl-table-wrap { overflow: visible; }
@@ -19923,10 +19934,6 @@ uiRegistrarAcoes('plano', {
 #page-execucao-planos .exl-tabela tbody tr.exl-linha.selecionada td { background: var(--ds-sidebar-item-active); }
 #page-execucao-planos .exl-tabela tbody tr.exl-linha-msg { cursor: default; }
 #page-execucao-planos .exl-tabela tbody tr.exl-linha-msg:hover td { background: transparent !important; }
-#page-execucao-planos .th-sortable { cursor: pointer; user-select: none; }
-#page-execucao-planos .th-sortable:hover { color: var(--ds-color-action); }
-#page-execucao-planos .sort-icon { font-size: 14px; vertical-align: middle; margin-left: 3px; color: var(--ds-color-action); }
-#page-execucao-planos .sort-icon:empty { display: none; }
 
 #page-execucao-planos .exl-tabela .exl-col-check { width: 48px; text-align: left; padding: 14px 0 14px 16px; }
 #page-execucao-planos .exl-tabela thead .exl-col-check { padding-top: 12px; padding-bottom: 12px; }
@@ -19956,11 +19963,6 @@ uiRegistrarAcoes('plano', {
 /* Vigência e Indicador de Atraso */
 #page-execucao-planos .exl-vig-wrap { display: inline-flex; align-items: center; gap: 2px; }
 #page-execucao-planos .exl-vig { color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); white-space: nowrap; }
-#page-execucao-planos .exl-alerta-atraso {
-  display: inline-flex; align-items: center; justify-content: center;
-  color: var(--ds-color-danger-fg); cursor: help; vertical-align: middle; margin-left: 6px;
-}
-#page-execucao-planos .exl-alerta-atraso .material-symbols-outlined { font-size: 16px; }
 
 /* Responsável */
 #page-execucao-planos .resp-badge {
@@ -20010,7 +20012,6 @@ uiRegistrarAcoes('plano', {
   #page-execucao-planos .exl-tabela thead th.exl-col-plano,
   #page-execucao-planos .exl-tabela thead th.exl-col-acoes { display: inline-flex; align-items: center; width: auto; min-width: 0; }
   #page-execucao-planos .exl-tabela thead th.exl-col-plano { margin-right: auto; }
-  #page-execucao-planos .exl-sort-btn { width: 44px; height: 44px; }
 
   #page-execucao-planos .exl-tabela tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 12px; }
   /* card: tag + ⋮ / nome / detalhes / tarefas */
@@ -20494,15 +20495,12 @@ function _execCabecalho() {
     + '</th>';
   cols.forEach(function(c) {
     var ativo = s.col === c.col || (c.col === 'vigencia' && (s.col === 'vigencia' || s.col === 'vigenciaEfetiva'));
-    var icon = ativo ? (s.dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '';
-    html += '<th class="th-sortable ' + c.cls + '" data-on-click="pages_execucao_planos.16" data-aclick0="' + c.col + '">'
-      + escapeHtml(c.label)
-      + '<span class="sort-icon material-symbols-outlined">' + icon + '</span></th>';
+    html += uiThOrdHTML(c.label, ativo, s.dir, "execPlanosOrdenar('" + c.col + "')", c.cls);
   });
-  html += '<th class="exl-col-acoes"><div class="exl-th-acoes">'
-    + '<button type="button" class="exl-sort-btn" data-on-click="pages_execucao_planos.17" data-title="Atualizar" aria-label="Atualizar lista"><span class="material-symbols-outlined">refresh</span></button>'
-    + '<button type="button" class="exl-sort-btn" data-on-click="pages_execucao_planos.18" data-title="Exportar (em desenvolvimento)" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
-    + '<button type="button" class="exl-sort-btn" data-on-click="pages_execucao_planos.19" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu"><span class="material-symbols-outlined">sort</span></button>'
+  html += '<th class="exl-col-acoes"><div class="ds-th-acoes">'
+    + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_planos.17" data-title="Atualizar" aria-label="Atualizar lista"><span class="material-symbols-outlined">refresh</span></button>'
+    + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_planos.18" data-title="Exportar (em desenvolvimento)" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>'
+    + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_planos.19" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu"><span class="material-symbols-outlined">sort</span></button>'
     + '</div></th></tr>';
   return html;
 }
@@ -20533,8 +20531,7 @@ function _execRenderizarTabela(planos) {
     var alertaHtml = '';
     if (p.tarefasAtrasadas > 0) {
       var alertaTxt = p.tarefasAtrasadas === 1 ? '1 item com prazo vencido' : (p.tarefasAtrasadas + ' itens com prazos vencidos');
-      alertaHtml = '<span class="exl-alerta-atraso" data-title="' + escapeHtml(alertaTxt) + '" aria-label="' + escapeHtml(alertaTxt) + '">'
-        + '<span class="material-symbols-outlined">warning</span></span>';
+      alertaHtml = uiAlertaAtrasoHTML(alertaTxt);
     }
 
     var iconResp = p.tipoResponsavel === 'USER' ? 'person' : 'apartment';
@@ -20942,9 +20939,8 @@ uiRegistrarAcoes('pages_execucao_planos', {
   align-items: center;
   line-height: 1.4;
 }
-#page-execucao-tarefas #ext-col-prog { width: 160px; }
-#page-execucao-tarefas #ext-col-acoes { width: 164px; }
-@media (max-width: 768px) { #page-execucao-tarefas #ext-col-prog { width: 108px; } #page-execucao-tarefas #ext-col-acoes { width: 48px; } #ext-tabela [data-ext-chips] { display: none; } }
+#page-execucao-tarefas #ext-col-prog { width: 196px; }
+@media (max-width: 768px) { #page-execucao-tarefas #ext-col-prog { width: 140px; } #ext-tabela [data-ext-chips] { display: none; } }
 
 /* --- Riscos e Tratamentos --- */
 #page-execucao-tarefas .ext-risco-card { background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-xl); padding: var(--ds-space-4); margin-bottom: var(--ds-space-4); }
@@ -20997,8 +20993,10 @@ var estadoExecTarefas = {
   origem: 'todas',
   dentroDe: '',
   anoSelecionado: 'todos',
-  abertaId: '',
-  historico: null, // { idElemento, registros[] } da linha aberta
+  abertas: {}, // linhas expandidas: id do elemento -> true
+  historico: {}, // id do elemento -> registros[] já lidos
+  ordenacao: { col: '', dir: 'asc' }, // col: '' (ordem do plano) | 'elemento' | 'responsavel' | 'progresso'
+  painelElemento: '', // id do elemento mostrado na barra lateral ('' = detalhes do plano)
   riscos: null
 };
 
@@ -21019,7 +21017,7 @@ function execTarefasCarregar(preservar) {
   var e = estadoExecTarefas;
   if (!preservar) {
     document.getElementById('ext-titulo').textContent = 'Carregando…';
-    e.riscos = null; e.abertaId = ''; e.historico = null;
+    e.riscos = null; e.abertas = {}; e.historico = {};
     e.filtroStatus = 'todos'; e.busca = ''; e.origem = 'todas'; e.dentroDe = '';
     var buscaEl = document.getElementById('ext-busca');
     if (buscaEl) buscaEl.value = '';
@@ -21051,7 +21049,7 @@ function execTarefasCarregar(preservar) {
 
 // Hook de recarregamento esperado por components_modal_resultado.html após salvar
 function carregarDadosExecucao() {
-  estadoExecTarefas.historico = null;
+  estadoExecTarefas.historico = {};
   if (estadoExecTarefas.idPlano) execTarefasCarregar(true);
 }
 
@@ -21080,14 +21078,48 @@ function execTarefasRenderizarHeader(p, primeiraCarga) {
 }
 
 // Controle do Painel Lateral de Detalhes (#extp-panel)
-function extAbrirPainelDetalhes() {
+// Barra lateral com os detalhes de UM elemento (o mesmo corpo da aba Elementos do plano: detelHTML). Dados: a linha da árvore + apiGetElemento.
+function extAbrirDetalhesElemento(id) {
+  var n = _execNoDe(id), p = document.getElementById('extp-panel'), view = document.getElementById('extp-view-detalhes');
+  if (!n || !p || !view) return;
+  estadoExecTarefas.painelElemento = String(id);
+  view.innerHTML = spinnerListaHTML('');
+  extAbrirPainelDetalhes(true);
+  _extpMudarAba('detalhes', true);
+  google.script.run
+    .withSuccessHandler(function(e) {
+      if (estadoExecTarefas.painelElemento !== String(id)) return;
+      view.innerHTML = _extpElementoHTML(n, e);
+    })
+    .withFailureHandler(function(err) { view.innerHTML = '<span class="ds-help ds-help--error">' + escapeHtml(err.message) + '</span>'; })
+    .apiGetElemento(String(id));
+}
+
+function _extpElementoHTML(n, e) {
+  var rotulo = function(x) { return (x.codigo ? x.codigo + ' — ' : '') + (x.titulo || ''); };
+  var pai = e.idPai ? _execNoDe(e.idPai) : null;
+  var contribui = e.contribuiParaInfo || [];
+  return detelHTML({
+    tipo: e.tipo, corTipo: e.corTipo, codigo: e.codigo, titulo: e.titulo, status: n.status, progresso: n.percentual, peso: e.peso,
+    prazos: (e.inicio || e.fim) ? (e.inicio ? _isoParaBR(e.inicio) : '?') + ' – ' + (e.fim ? _isoParaBR(e.fim) : '?') : '', custo: e.custo ? formatarCustoElemento(e.custo) : '',
+    localizacao: e.localizacao, abertoColaboracao: e.abertoColaboracao,
+    pai: e.idPai ? (pai ? rotulo(pai) : 'Elemento #' + e.idPai) : '',
+    superiores: contribui.filter(function(c) { return !c.interna; }).map(function(c) { return { texto: rotulo(c), plano: c.nomeCurtoPlanoDestino, planoCompleto: c.nomePlanoDestino }; }),
+    relacionados: contribui.filter(function(c) { return c.interna; }).map(rotulo),
+    descricao: e.descricao, justificativa: e.justificativa, comoFazer: e.comoFazer,
+    responsaveis: (e.responsaveis || []).map(function(r) { return { nome: r.nome, tipo: r.tipo, papel: '' }; }),
+    indicadores: _execIndicadoresDoElemento(n.id).map(function(i) { return { nome: i.nome, unidade: i.unidade }; })
+  });
+}
+
+function extAbrirPainelDetalhes(semRenderizar) {
   var p = document.getElementById('extp-panel');
   if (!p) return;
   p.classList.add('aberto');
   p.setAttribute('aria-hidden', 'false');
   var btn = document.getElementById('ext-btn-detalhes');
   if (btn) btn.setAttribute('aria-expanded', 'true');
-  _extpRenderDetalhes();
+  if (!semRenderizar) { estadoExecTarefas.painelElemento = ''; _extpMudarAba('detalhes'); }
 }
 function extFecharPainelDetalhes() {
   var p = document.getElementById('extp-panel');
@@ -21103,7 +21135,7 @@ function extAlternarPainelDetalhes() {
   if (p.classList.contains('aberto')) extFecharPainelDetalhes();
   else extAbrirPainelDetalhes();
 }
-function _extpMudarAba(aba) {
+function _extpMudarAba(aba, manterConteudo) {
   var tabDet = document.getElementById('extp-tab-detalhes');
   var tabAtiv = document.getElementById('extp-tab-atividade');
   var viewDet = document.getElementById('extp-view-detalhes');
@@ -21113,16 +21145,12 @@ function _extpMudarAba(aba) {
   if (viewDet) viewDet.classList.toggle('hidden', aba !== 'detalhes');
   if (viewAtiv) viewAtiv.classList.toggle('hidden', aba !== 'atividade');
   if (aba === 'atividade') _extpRenderAtividade();
-  else _extpRenderDetalhes();
-}
-
-function _extpLinha(label, valor) {
-  return valor ? '<div class="detp-linha"><span class="detp-linha-label">' + label + '</span><span class="detp-linha-valor">' + valor + '</span></div>' : '';
+  else if (!manterConteudo) _extpRenderDetalhes();
 }
 
 function _extpRenderDetalhes() {
   var container = document.getElementById('extp-view-detalhes');
-  if (!container || !estadoExecTarefas.dados || !estadoExecTarefas.dados.plano) return;
+  if (!container || !estadoExecTarefas.dados || !estadoExecTarefas.dados.plano || estadoExecTarefas.painelElemento) return;
   var p = estadoExecTarefas.dados.plano;
 
   var catLabel = { 'INSTITUCIONAL': 'Institucional', 'PESSOAL': 'Pessoal', 'NEGOCIADO': 'Negociado' }[p.categoria] || p.categoria || '';
@@ -21130,10 +21158,10 @@ function _extpRenderDetalhes() {
   var cor = EXT_CORES_STATUS_PLANO[p.status] || ['var(--ds-color-surface-2)', 'var(--ds-color-text)'];
 
   var htmlSobre =
-    _extpLinha('Tipo', escapeHtml(p.tipo || '—') + (catLabel ? ' · ' + escapeHtml(catLabel) : '')) +
-    _extpLinha('Vigência', escapeHtml(vig)) +
-    _extpLinha('Status', p.status ? '<span class="badge-status" style="background:' + cor[0] + ';color:' + cor[1] + '">' + escapeHtml(p.status) + '</span>' : '') +
-    _extpLinha('Visibilidade', escapeHtml(p.visibilidade || 'Público'));
+    _detpLinha('Tipo', escapeHtml(p.tipo || '—') + (catLabel ? ' · ' + escapeHtml(catLabel) : '')) +
+    _detpLinha('Vigência', escapeHtml(vig)) +
+    _detpLinha('Status', p.status ? '<span class="badge-status" style="background:' + cor[0] + ';color:' + cor[1] + '">' + escapeHtml(p.status) + '</span>' : '') +
+    _detpLinha('Visibilidade', escapeHtml(p.visibilidade || 'Público'));
 
   var responsaveis = [{ nome: p.nomeUnidade, tipo: p.tipoResponsavel, papel: 'Principal' }]
     .concat((p.responsaveisAdicionais || []).map(function(a) { return { nome: a.nome, tipo: a.tipo, papel: 'Adicional' }; }));
@@ -21145,10 +21173,10 @@ function _extpRenderDetalhes() {
   if (!htmlResp) htmlResp = '<div style="font-size:0.85rem;color:var(--ds-color-text-muted)">Nenhum responsável atribuído.</div>';
 
   var htmlRegistro =
-    _extpLinha('Criado por', p.criadoPor ? escapeHtml(p.criadoPor) : '') +
-    _extpLinha('Criado em', p.criadoEm ? escapeHtml(p.criadoEm) : '') +
-    _extpLinha('Alterado por', p.alteradoPor ? escapeHtml(p.alteradoPor) : '') +
-    _extpLinha('Alterado em', p.alteradoEm ? escapeHtml(p.alteradoEm) : '');
+    _detpLinha('Criado por', p.criadoPor ? escapeHtml(p.criadoPor) : '') +
+    _detpLinha('Criado em', p.criadoEm ? escapeHtml(p.criadoEm) : '') +
+    _detpLinha('Alterado por', p.alteradoPor ? escapeHtml(p.alteradoPor) : '') +
+    _detpLinha('Alterado em', p.alteradoEm ? escapeHtml(p.alteradoEm) : '');
 
   var secoes = [
     { titulo: 'Sobre o plano', html: htmlSobre },
@@ -21397,7 +21425,48 @@ function _execCasaFiltros(n) {
 
 function _execLinhas() {
   var nos = (estadoExecTarefas.dados && estadoExecTarefas.dados.arvore) || [];
-  return nos.filter(function(n) { return (n.papel === 'FOLHA' || n.temIndicador) && _execCasaFiltros(n); });
+  return _execLinhasOrdenar(nos.filter(function(n) { return (n.papel === 'FOLHA' || n.temIndicador) && _execCasaFiltros(n); }));
+}
+
+// Ordenação por coluna; sem coluna escolhida vale a ordem do plano (a da árvore).
+function _execLinhasChave(n, col) {
+  if (col === 'progresso') return Number(n.percentual) || 0;
+  if (col === 'responsavel') { var t = _execTarefaDe(n.id); return t && t.quem && t.quem.length ? String(t.quem[0].idResp || '').toLowerCase() : String.fromCharCode(0xffff); }
+  return ((n.codigo ? n.codigo + ' ' : '') + (n.titulo || '')).toLowerCase();
+}
+function _execLinhasOrdenar(linhas) {
+  var o = estadoExecTarefas.ordenacao;
+  if (!o.col) return linhas;
+  var f = o.dir === 'asc' ? 1 : -1;
+  return linhas.map(function(n, i) { return { n: n, i: i, k: _execLinhasChave(n, o.col) }; }).sort(function(a, b) {
+    var c = typeof a.k === 'number' ? a.k - b.k : String(a.k).localeCompare(String(b.k), 'pt', { numeric: true });
+    return c ? c * f : a.i - b.i;
+  }).map(function(x) { return x.n; });
+}
+function _execThOrd(rotulo, col, cls) {
+  var o = estadoExecTarefas.ordenacao;
+  return uiThOrdHTML(rotulo, o.col === col, o.dir, "extOrdenarPor('" + col + "')", cls);
+}
+// Clicar na coluna: ascendente, depois descendente na mesma coluna.
+function extOrdenarPor(col) {
+  var o = estadoExecTarefas.ordenacao;
+  o.dir = o.col === col && o.dir === 'asc' ? 'desc' : 'asc';
+  o.col = col;
+  execTarefasRenderizar();
+}
+function extDefinirColuna(col) { estadoExecTarefas.ordenacao.col = col; execTarefasRenderizar(); }
+function extDefinirDirecao(dir) { estadoExecTarefas.ordenacao.dir = dir; execTarefasRenderizar(); }
+function extMenuOrdenar(ev, gatilho) {
+  var o = estadoExecTarefas.ordenacao;
+  if (ev) ev.stopPropagation();
+  var colunas = [{ valor: '', label: 'Ordem do plano' }, { valor: 'elemento', label: 'Elemento' }, { valor: 'responsavel', label: 'Responsável' }, { valor: 'progresso', label: 'Progresso' }];
+  abrirMenuSelecao(gatilho || document.getElementById('ext-btn-ordenar'), [
+    { label: 'Ordenar por', itens: colunas.map(function(c) { return { label: c.label, ativo: c.valor === o.col, onclick: "extDefinirColuna('" + c.valor + "')" }; }) },
+    { label: 'Ordem', itens: [
+      { label: 'Crescente', ativo: o.dir === 'asc', onclick: "extDefinirDirecao('asc')" },
+      { label: 'Decrescente', ativo: o.dir === 'desc', onclick: "extDefinirDirecao('desc')" }
+    ] }
+  ]);
 }
 
 function _execChipHTML(icone, texto, dica, extra, id) {
@@ -21409,25 +21478,26 @@ function _execProgressoHTML(n, t) {
   if (n.papel !== 'FOLHA') return '';
   var dica = n.porLista ? 'O progresso vem da lista de verificação' : '';
   if (n.progressoEsperado !== null && n.progressoEsperado !== undefined) dica += (dica ? ' · ' : '') + 'Esperado hoje: ' + Math.round(n.progressoEsperado) + '%';
-  return uiProgressoHTML(n.percentual, dica);
+  var alerta = n.atrasado ? uiAlertaAtrasoHTML('Atrasado: o realizado está abaixo do esperado' + (n.progressoEsperado !== null && n.progressoEsperado !== undefined ? ' (' + Math.round(n.progressoEsperado) + '% esperado)' : '')) : '';
+  return alerta ? '<div class="ds-cluster">' + uiProgressoHTML(n.percentual, dica) + alerta + '</div>' : uiProgressoHTML(n.percentual, dica);
 }
 
 function _execAcoesHTML(n, id) {
   var acoes = [];
-  if (n.podeLancar) acoes.push({ icone: 'edit_square', rotulo: 'Lançar progresso', onclick: "_execAbrirModalProgresso('" + escapeJsAttr(id) + "')", principal: true });
-  if (n.podeLancarPelaLista) acoes.push({ icone: 'edit_square', rotulo: 'Lançar progresso pela lista de verificação', onclick: "_execAbrirModalProgresso('" + escapeJsAttr(id) + "')", principal: true });
+  acoes.push({ icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "extAbrirDetalhesElemento('" + escapeJsAttr(id) + "')", principal: true });
+  if (n.podeLancar) acoes.push({ icone: 'task_alt', rotulo: 'Lançar progresso', onclick: "_execAbrirModalProgresso('" + escapeJsAttr(id) + "')", principal: true });
+  if (n.podeLancarPelaLista) acoes.push({ icone: 'task_alt', rotulo: 'Lançar progresso pela lista de verificação', onclick: "_execAbrirModalProgresso('" + escapeJsAttr(id) + "')", principal: true });
   // sem itens na lista o progresso não pode ser lançado: a ação existe, com a dica, e leva à lista
-  if (n.listaNecessaria) acoes.push({ icone: 'edit_square', rotulo: 'Crie a lista de verificação para lançar o progresso', onclick: "_execAbrirLinha('" + escapeJsAttr(id) + "')", principal: true });
+  if (n.listaNecessaria) acoes.push({ icone: 'task_alt', rotulo: 'Crie a lista de verificação para lançar o progresso', onclick: "_execAbrirLinha('" + escapeJsAttr(id) + "')", principal: true });
   acoes.push({ icone: 'open_in_new', rotulo: 'Ver no plano', onclick: "carregarDetalhesPlano('" + escapeJsAttr(String(estadoExecTarefas.idPlano)) + "')" });
   return acoesLinhaHTML('ext-tb-' + id, acoes);
 }
 
 function _execLinhaHTML(n) {
-  var id = String(n.id), t = _execTarefaDe(id), inds = _execIndicadoresDoElemento(id), aberta = estadoExecTarefas.abertaId === id;
+  var id = String(n.id), t = _execTarefaDe(id), inds = _execIndicadoresDoElemento(id), aberta = !!estadoExecTarefas.abertas[id];
   var caminho = _execCaminho(n).join(' › ');
 
   var chips = [];
-  if (n.atrasado) chips.push(_execChipHTML('warning', '', 'Atrasado: o realizado está abaixo do esperado' + (n.progressoEsperado !== null ? ' (' + Math.round(n.progressoEsperado) + '%)' : '')));
   if (t && t.fim) chips.push(_execChipHTML('event', '', 'Prazo final: ' + t.fim));
   if (n.progressoPendente) chips.push(_execChipHTML('hourglass_top', '', 'Lançamento de progresso aguardando validação; o percentual mostrado é o validado.'));
   if (t && t.tarefasTotal > 0) chips.push(_execChipHTML('checklist', t.tarefasConcluidas + ' de ' + t.tarefasTotal, 'Itens da lista de verificação concluídos', '', 'ext-cont-' + id));
@@ -21449,8 +21519,8 @@ function _execLinhaHTML(n) {
   var expande = '<button type="button" class="el-toggle-btn' + (aberta ? ' expanded' : '') + '" data-on-click="pages_execucao_tarefas.41" data-aclick0="' + escapeHtml(id) + '" aria-label="' + (aberta ? 'Recolher' : 'Expandir') + '">' +
     '<span class="material-symbols-outlined">chevron_right</span></button>';
 
-  var tr = '<tr data-id="' + escapeHtml(id) + '"><td class="el-col-expand">' + expande + '</td>' + tdElem + tdResp +
-    '<td>' + _execProgressoHTML(n, t) + '</td><td>' + _execAcoesHTML(n, id) + '</td></tr>';
+  var tr = '<tr class="ds-linha-clicavel" data-id="' + escapeHtml(id) + '" data-on-click="pages_execucao_tarefas.41" data-aclick0="' + escapeHtml(id) + '"><td class="el-col-expand">' + expande + '</td>' + tdElem + tdResp +
+    '<td>' + _execProgressoHTML(n, t) + '</td><td class="ds-col-acoes">' + _execAcoesHTML(n, id) + '</td></tr>';
   var detalhe = aberta ? '<tr><td colspan="5">' + _execDetalheHTML(n, id) + '</td></tr>' : '';
   return tr + detalhe;
 }
@@ -21459,9 +21529,9 @@ function _execLinhaHTML(n) {
 function _execDetalheHTML(n, id) {
   var inds = _execIndicadoresDoElemento(id);
   var lista = n.papel === 'FOLHA'
-    ? '<div class="ds-stack ds-stack--2"><div id="ext-lista-host"></div></div>' : '';
+    ? '<div class="ds-stack ds-stack--2"><div id="ext-lista-host-' + escapeHtml(id) + '"></div></div>' : '';
   var historico = n.papel === 'FOLHA'
-    ? '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Histórico de progresso</div><div id="ext-historico-host">' + spinnerListaHTML('') + '</div></div>' : '';
+    ? '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Histórico de progresso</div><div id="ext-historico-host-' + escapeHtml(id) + '">' + spinnerListaHTML('') + '</div></div>' : '';
   var indicadores = inds.length
     ? '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Indicadores</div>' + inds.map(function(ind) { return _execIndicadorHTML(id, ind); }).join('') + '</div>' : '';
   return '<div class="ds-stack ds-stack--3">' + lista + historico + indicadores + '</div>';
@@ -21478,7 +21548,7 @@ function _execIndicadorHTML(idElemento, ind) {
   return '<div class="ds-spread"><div class="ds-inline"><span class="material-symbols-outlined">speed</span><span>' + escapeHtml(ind.nome) + '</span></div>' +
     '<div class="ds-cluster"><span class="ds-help">Meta' + (meta && meta.ano ? ' ' + meta.ano : '') + ': ' + escapeHtml(meta ? meta.valor + un : 'sem meta no exercício') + '</span>' + sit +
     '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Lançar desempenho" aria-label="Lançar desempenho" data-on-click="pages_execucao_tarefas.35" data-aclick0="' + escapeHtml(String(idElemento)) + '" data-aclick1="' + escapeHtml(String(ind.id)) + '">' +
-    '<span class="material-symbols-outlined">add_chart</span></button></div></div>';
+    '<span class="material-symbols-outlined">track_changes</span></button></div></div>';
 }
 
 function execTarefasRenderizar() {
@@ -21494,42 +21564,46 @@ function execTarefasRenderizar() {
     corpo = linhas.map(_execLinhaHTML).join('');
   }
   container.innerHTML = '<div class="el-table-wrap"><table class="el-tabela" id="ext-tabela">' +
-    '<colgroup><col class="el-col-expand"><col class="el-col-elem"><col class="el-col-resp"><col id="ext-col-prog"><col id="ext-col-acoes"></colgroup>' +
-    '<thead><tr><th class="el-col-expand"></th><th class="el-col-elem">Elemento</th><th class="el-col-resp">Responsável</th><th>Progresso</th>' +
-    '<th><div class="el-th-acoes"><button type="button" class="el-th-btn" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar" aria-label="Atualizar">' +
-    '<span class="material-symbols-outlined">refresh</span></button></div></th></tr></thead><tbody>' + corpo + '</tbody></table></div>';
+    '<colgroup><col class="el-col-expand"><col class="el-col-elem"><col class="el-col-resp"><col id="ext-col-prog"><col class="ds-col-acoes"></colgroup>' +
+    '<thead><tr><th class="el-col-expand"></th>' + _execThOrd('Elemento', 'elemento', 'el-col-elem') + _execThOrd('Responsável', 'responsavel', 'el-col-resp') + _execThOrd('Progresso', 'progresso', '') +
+    '<th class="ds-col-acoes"><div class="ds-th-acoes">' +
+    '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar" aria-label="Atualizar lista"><span class="material-symbols-outlined">refresh</span></button>' +
+    uiAlternarTudoHTML(_execTudoAberto(), 'data-on-click="pages_execucao_tarefas.46"') +
+    '<button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Baixar"><span class="material-symbols-outlined">download</span></button>' +
+    '<button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>' +
+    '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.45" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu"><span class="material-symbols-outlined">sort</span></button>' +
+    '</div></th></tr></thead><tbody>' + corpo + '</tbody></table></div>';
   _execMontarLista();
   uiPaginaMedir(document.getElementById('page-execucao-tarefas'));
 }
 
-// A lista de verificação da linha aberta (componente de components_tarefas_elemento.html, uma por vez) e a atualização da contagem na linha.
+// Lista de verificação (componente de components_tarefas_elemento.html) e histórico de cada linha aberta; a contagem na linha acompanha a lista.
 function _execMontarLista() {
-  var id = estadoExecTarefas.abertaId;
-  if (!id) return;
-  _execMontarHistorico(id);
-  if (!document.getElementById('ext-lista-host') || typeof telMontar !== 'function') return;
-  telMontar('ext-lista-host', id, function(st) {
-    var t = _execTarefaDe(id);
-    if (t) { t.tarefasTotal = st.total; t.tarefasConcluidas = st.concluidas; }
-    var chip = document.getElementById('ext-cont-' + id);
-    if (chip) chip.textContent = st.concluidas + ' de ' + st.total;
+  Object.keys(estadoExecTarefas.abertas).forEach(function(id) {
+    _execMontarHistorico(id);
+    if (!document.getElementById('ext-lista-host-' + id) || typeof telMontar !== 'function') return;
+    telMontar('ext-lista-host-' + id, id, function(st) {
+      var t = _execTarefaDe(id);
+      if (t) { t.tarefasTotal = st.total; t.tarefasConcluidas = st.concluidas; }
+      var chip = document.getElementById('ext-cont-' + id);
+      if (chip) chip.textContent = st.concluidas + ' de ' + st.total;
+    });
   });
 }
 
-// Histórico dos lançamentos de progresso do elemento (do mais novo ao mais antigo); fica em memória enquanto a linha está aberta.
+// Histórico dos lançamentos de progresso do elemento (do mais novo ao mais antigo); fica em memória enquanto a página está aberta.
 function _execMontarHistorico(id) {
-  var host = document.getElementById('ext-historico-host'), h = estadoExecTarefas.historico;
+  var host = document.getElementById('ext-historico-host-' + id), h = estadoExecTarefas.historico[id];
   if (!host) return;
-  if (h && h.idElemento === id) { host.innerHTML = _execHistoricoHTML(h.registros); return; }
+  if (h) { host.innerHTML = _execHistoricoHTML(h); return; }
   google.script.run
     .withSuccessHandler(function(r) {
-      if (estadoExecTarefas.abertaId !== id) return;
-      estadoExecTarefas.historico = { idElemento: id, registros: r.registros || [] };
-      var alvo = document.getElementById('ext-historico-host');
+      estadoExecTarefas.historico[id] = r.registros || [];
+      var alvo = document.getElementById('ext-historico-host-' + id);
       if (alvo) alvo.innerHTML = _execHistoricoHTML(r.registros || []);
     })
     .withFailureHandler(function(err) {
-      var alvo = document.getElementById('ext-historico-host');
+      var alvo = document.getElementById('ext-historico-host-' + id);
       if (alvo) alvo.innerHTML = '<span class="ds-help ds-help--error">' + escapeHtml(err.message) + '</span>';
     })
     .apiGetRegistrosExecucaoElemento(id);
@@ -21553,12 +21627,26 @@ function _execHistoricoHTML(registros) {
 }
 
 function extToggleLinha(id) {
-  estadoExecTarefas.abertaId = estadoExecTarefas.abertaId === String(id) ? '' : String(id);
+  var ab = estadoExecTarefas.abertas;
+  if (ab[String(id)]) delete ab[String(id)]; else ab[String(id)] = true;
+  execTarefasRenderizar();
+}
+
+function _execTudoAberto() {
+  var l = _execLinhas();
+  return l.length > 0 && l.every(function(n) { return estadoExecTarefas.abertas[String(n.id)]; });
+}
+
+// Um botão só: com tudo aberto recolhe, senão abre as linhas hoje listadas (já com os filtros).
+function extExpandirTudo() {
+  var abrir = !_execTudoAberto();
+  estadoExecTarefas.abertas = {};
+  if (abrir) _execLinhas().forEach(function(n) { estadoExecTarefas.abertas[String(n.id)] = true; });
   execTarefasRenderizar();
 }
 
 function _execAbrirLinha(id) {
-  estadoExecTarefas.abertaId = String(id);
+  estadoExecTarefas.abertas[String(id)] = true;
   execTarefasRenderizar();
 }
 
@@ -21748,10 +21836,12 @@ uiRegistrarAcoes('pages_execucao_tarefas', {
   '38': function (event) { extFiltrar('filtroStatus', 'todos'); },
   '39': function (event) { extFecharModalRegistro(); },
   '40': function (event) { extSalvarRegistro(); },
-  '41': function (event) { extToggleLinha(uiArgJs(this.dataset.aclick0)); },
+  '41': function (event) { event.stopPropagation(); extToggleLinha(uiArgJs(this.dataset.aclick0)); },
   '42': function (event) { extFiltrar('origem', 'todas'); },
   '43': function (event) { extFiltrar('dentroDe', ''); },
-  '44': function (event) { extFiltrar('anoSelecionado', 'todos'); }
+  '44': function (event) { extFiltrar('anoSelecionado', 'todos'); },
+  '45': function (event) { extMenuOrdenar(event, this); },
+  '46': function (event) { extExpandirTudo(); }
 });
 </script>
        <!-- ARQUIVO: pages_colaboracao.html -->
