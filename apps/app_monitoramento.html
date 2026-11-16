@@ -191,7 +191,7 @@ var _monitChartsClique = {};
 
 var estadoMonit = {
   modo: 'progresso',
-  busca: '', filtroStatus: '', filtroResp: '', filtroElem: '', filtroConceito: '',
+  busca: '', filtroStatus: '', filtroResp: '', filtroElem: '', filtroConceito: '', filtroTipo: '',
   tipoElementoBarras: '',
   sort: { col: 'codigo', dir: 'asc' },
   paginaAtual: 1, itensPorPagina: 20
@@ -222,7 +222,9 @@ window.addEventListener('resize', function() {
   _monitResizeCharts();
 });
 
+var _monitRecorteTipo = null; // resposta de apiGetRecorteTipo para o tipo escolhido (visão de análise)
 var _monitFiltrosDef = {
+  tipo:     { label: 'Tipo',        chave: 'filtroTipo',     modo: 'progresso' },
   status:   { label: 'Status',      chave: 'filtroStatus',   modo: 'progresso' },
   obj:      { label: 'Elemento',    chave: 'filtroElem',     modo: '*' },
   resp:     { label: 'Responsável', chave: 'filtroResp',     modo: '*' },
@@ -878,7 +880,7 @@ function _monitRedesenharGraficosHistorico() {
 }
 
 function _monitCamposAtivos() {
-  return estadoMonit.modo === 'progresso' ? ['status', 'obj', 'resp'] : ['conceito', 'obj', 'resp'];
+  return estadoMonit.modo === 'progresso' ? ['status', 'obj', 'resp', 'tipo'] : ['conceito', 'obj', 'resp'];
 }
 
 function perfToggleExpand(idInd, ev) {
@@ -1232,7 +1234,7 @@ function _monitDesempenhoFiltrado(linhasFiltradas, faixasConfig) {
 function _monitResumoHTML(dados) {
   if (!dados) return '<div class="mon-topo"><div class="mon-card" style="flex:1 1 100%">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>') + '</div></div>';
   if (estadoMonit.modo === 'progresso') {
-    var p = (dados.progresso && dados.progresso.proprio) || {}, v = dados.progresso ? dados.progresso.vinculado : null;
+    var p = (dados.progresso && dados.progresso.proprio) || {};
     var temFiltroProg = !!(estadoMonit.busca || estadoMonit.filtroStatus || estadoMonit.filtroResp || estadoMonit.filtroElem);
     var pAtual = temFiltroProg ? _monitProgressoFiltrado(_monitFiltrar(_monitLinhasProgresso())) : p;
     var venc = temFiltroProg ? pAtual.vencidos : _monitVencidos();
@@ -1267,9 +1269,6 @@ function _monitResumoHTML(dados) {
     return '<div class="mon-topo">'
       + _monitCardHTML('anel', 'Execução do plano', subAnelProg, tipAnelProg, 'mon-chart-anel',
           '<div class="mon-fatos">'
-          + _monitFatoHTML('Com vinculados' + (v && v.qtdPlanos && !temFiltroProg ? ' (' + v.qtdPlanos + ')' : ''),
-              temFiltroProg ? '—' : (v && _isNum(v.pct) ? _fmtNumBR(v.pct) + '%' : '—'),
-              temFiltroProg ? 'Vínculos desconsiderados com filtro ativo' : 'Inclui os elementos dos planos subordinados com vínculo aprovado')
           + _monitFatoHTML('Elementos concluídos', (pAtual.concluidos || 0) + ' de ' + (pAtual.totalConsiderado || 0))
           + _monitFatoHTML('Prazos vencidos', String(venc), temFiltroProg ? 'Elementos filtrados com prazo final já vencido' : 'Elementos não concluídos com prazo final já vencido', venc > 0)
           + '</div>')
@@ -1278,7 +1277,7 @@ function _monitResumoHTML(dados) {
       + _monitCardHTML('barras', 'Execução por Elemento', subTituloBarras, '', 'mon-chart-barras', '', headerBarrasHTML)
       + '</div>';
   }
-  var d = (dados.desempenho && dados.desempenho.proprio) || {}, vd = dados.desempenho ? dados.desempenho.vinculado : null;
+  var d = (dados.desempenho && dados.desempenho.proprio) || {};
   var temFiltroDesemp = !!(estadoMonit.busca || estadoMonit.filtroElem || estadoMonit.filtroResp || estadoMonit.filtroConceito);
   var dAtual = temFiltroDesemp ? _monitDesempenhoFiltrado(_monitFiltrar(_monitLinhasDesempenho()), dados.faixas) : d;
   var baseC = _monitBaseSem('filtroConceito');
@@ -1295,9 +1294,6 @@ function _monitResumoHTML(dados) {
         'IEG = Σ(peso × pontos) ÷ Σ(peso × ' + pontosMax + '). Cada indicador recebe de 0 a ' + pontosMax + ' pontos conforme o alcance da meta.', 'mon-chart-anel',
         (dAtual.conceito ? '<div class="mon-conceito">' + _perfBadgeConceito(dAtual.conceito) + '</div>' : '')
         + '<div class="mon-fatos">'
-        + _monitFatoHTML('Com vinculados' + (vd && vd.qtdPlanos && !temFiltroDesemp ? ' (' + vd.qtdPlanos + ')' : ''),
-            temFiltroDesemp ? '—' : (vd && _isNum(vd.ieg) ? _fmtNumBR(vd.ieg) + '%' : '—'),
-            temFiltroDesemp ? 'Vínculos desconsiderados com filtro ativo' : 'Inclui os indicadores dos planos subordinados com vínculo aprovado')
         + _monitFatoHTML('Metas alcançadas', (dAtual.atingidas || 0) + ' de ' + (dAtual.avaliaveis || 0), 'Indicadores apurados com alcance ≥ 100%')
         + _monitFatoHTML('Pontos ponderados', _fmtNumBR(dAtual.pontosObtidos || 0) + ' de ' + _fmtNumBR(dAtual.pontosMaximos || 0))
         + ((dAtual.pendentes || 0) > 0 ? _monitFatoHTML('Resultados pendentes', String(dAtual.pendentes), 'Aguardando validação — não entram no cálculo', true) : '')
@@ -1320,6 +1316,7 @@ function _monitRotuloFiltro(campo) {
     var o = elems.find(function(e) { return String(e.id) === String(v); });
     return o ? (o.codigo ? o.codigo + ' — ' : '') + _monitTrunc(o.titulo, 22) : '';
   }
+  if (campo === 'tipo') return _monitTrunc(v, 22);
   if (campo === 'resp') {
     var tipo = 'USER';
     _monitListaAtiva().some(function(l) {
@@ -1398,6 +1395,8 @@ function monitAbrirFiltro(campo, ev) {
     opcoes = _MON_ORD_STATUS.map(function(s) { return { v: s, label: s, dot: _monitCor((_PERF_CORES_STATUS[s] || {}).cor) }; });
   } else if (campo === 'conceito') {
     opcoes = _MON_ORD_CONC.map(function(k) { var c = _PERF_CORES_CONCEITO[k]; return { v: k, label: k, dot: _monitCor(c ? c.text : 'var(--ds-color-border-strong)') }; });
+  } else if (campo === 'tipo') {
+    opcoes = ((_perfDados && _perfDados.tipos) || []).map(function(t) { return { v: t.tipo, label: t.tipo }; });
   } else if (campo === 'obj') {
     var todosElems = ((_perfDados && _perfDados.elementos) || []).slice().sort(function(a, b) {
       return (typeof compararCodigos === 'function')
@@ -1426,14 +1425,47 @@ function monitAbrirFiltro(campo, ev) {
 function monitSelecionarFiltro(campo, valor) {
   estadoMonit[_monitFiltrosDef[campo].chave] = valor;
   estadoMonit.paginaAtual = 1;
+  if (campo === 'tipo') { _monitCarregarRecorteTipo(valor); return; }
   renderizarMonitoramento(_perfDados);
+}
+
+// Recorte por tipo (spec §6): uma linha por elemento mais fino do tipo, com o que está abaixo dele e o que contribui para ele. Visão de análise: não é nota.
+function _monitCarregarRecorteTipo(tipo) {
+  _monitRecorteTipo = null;
+  renderizarMonitoramento(_perfDados);
+  if (!tipo) return;
+  _monitoramentoSDK.chamar('apiGetRecorteTipo', _monitPlanoId, tipo)
+    .then(function(res) {
+      if (estadoMonit.filtroTipo !== tipo) return;
+      _monitRecorteTipo = res;
+      renderizarMonitoramento(_perfDados);
+    })
+    .catch(function(err) {
+      estadoMonit.filtroTipo = '';
+      renderizarMonitoramento(_perfDados);
+      showMessage('error', 'Erro', escapeHtml((err && err.message) || String(err)));
+    });
+}
+
+function _monitRecorteTipoHTML() {
+  var r = _monitRecorteTipo;
+  if (!r) return '<div class="el-table-wrap">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>') + '</div>';
+  var corpo = (r.linhas || []).map(function(l) {
+    return '<tr><td>' + escapeHtml((l.codigo ? l.codigo + ' ' : '') + l.titulo) + '</td>'
+      + '<td>' + (l.qtdFolhas ? uiProgressoHTML(l.progresso) : '—') + '</td>'
+      + '<td>' + (l.ieg === null || l.ieg === undefined ? '—' : 'IEG ' + Math.round(l.ieg) + '%') + '</td>'
+      + '<td>' + l.qtdElementos + (l.qtdElementos === 1 ? ' elemento' : ' elementos') + '</td></tr>';
+  }).join('');
+  return '<div class="el-table-wrap"><table class="el-tabela mon-tabela"><thead><tr>'
+    + '<th>' + escapeHtml(r.tipo) + ' <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Visão de análise: cada linha inclui o que está abaixo do elemento e o que contribui para ele, e um elemento pode aparecer em mais de uma linha. Não é nota; o IEG oficial e a avaliação não mudam.">info</span></th>'
+    + '<th>Progresso</th><th>IEG</th><th>Elementos</th></tr></thead><tbody>' + corpo + '</tbody></table></div>';
 }
 
 function monitLimparUmFiltro(campo) { monitSelecionarFiltro(campo, ''); }
 
 function limparFiltrosMonit() {
   estadoMonit.busca = ''; estadoMonit.filtroStatus = ''; estadoMonit.filtroResp = '';
-  estadoMonit.filtroElem = ''; estadoMonit.filtroConceito = '';
+  estadoMonit.filtroElem = ''; estadoMonit.filtroConceito = ''; estadoMonit.filtroTipo = ''; _monitRecorteTipo = null;
   estadoMonit.paginaAtual = 1;
   renderizarMonitoramento(_perfDados);
 }
@@ -1450,11 +1482,12 @@ function renderizarMonitoramento(dados) {
   container.innerHTML =
     '<div id="monit-resumo">' + _monitResumoHTML(dados) + '</div>'
     + _monitFiltrosHTML(modo)
-    + '<div class="el-table-wrap">'
+    + (modo === 'progresso' && estadoMonit.filtroTipo ? _monitRecorteTipoHTML() : '')
+    + '<div class="el-table-wrap' + (modo === 'progresso' && estadoMonit.filtroTipo ? ' hidden' : '') + '">'
     +   '<table class="el-tabela mon-tabela" id="monit-tabela"><colgroup>' + cols + '</colgroup>'
     +   '<thead id="monit-thead"></thead><tbody id="monit-tbody"></tbody></table>'
     + '</div>'
-    + '<div id="monit-pagination" class="pagination-bar rsc-pag">'
+    + '<div id="monit-pagination" class="pagination-bar rsc-pag' + (modo === 'progresso' && estadoMonit.filtroTipo ? ' hidden' : '') + '">'
     +   '<div class="pag-left"><span>Exibir:</span>'
     +     '<select id="monit-pag-size" data-on-change="mon.10" class="form-control form-control-sm">'
     +       '<option value="10">10</option><option value="20">20</option><option value="50">50</option>'

@@ -36,7 +36,7 @@
 .wiz-rail-modal { max-width: 860px; max-height: 90vh; padding: 0; position: relative; overflow: hidden; }
 /* Largura fixa: sem .modal-lg definido, o cartão encolhia ao conteúdo da etapa (ficava estreito). */
 #modal-novo-elemento .wiz-rail-modal { width: 860px; max-width: calc(100vw - 32px); }
-#group-vinculo-externo, #group-vinculo-relacionado { margin-top: 16px; }
+#group-vinculo-contribui { margin-top: 16px; }
 .wiz-rail-close { position: absolute; top: 14px; right: 14px; z-index: 5; }
 .wiz-body { display: flex; min-height: 0; max-height: 90vh; }
 
@@ -1108,14 +1108,9 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                 <div id="el-selpai"></div>
               </div>
 
-              <!-- Campo 2 (VÁRIOS): elementos de planos superiores (vínculo N:N) — SeletorLista -->
-              <div class="ds-field" id="group-vinculo-externo">
-                <div id="el-selsup"></div>
-              </div>
-
-              <!-- Campo 3 (VÁRIOS): relação com outros elementos DO MESMO plano (sem hierarquia) — mesmo componente -->
-              <div class="ds-field" id="group-vinculo-relacionado">
-                <div id="el-selrel"></div>
+              <!-- Campo 2 (VÁRIOS): "contribui para", com direção — elementos deste plano e de planos superiores (SeletorLista) -->
+              <div class="ds-field" id="group-vinculo-contribui">
+                <div id="el-selcontrib"></div>
               </div>
             </div>
           </div>
@@ -1685,13 +1680,12 @@ const ELWIZ_MSGS_CAMPO = {
 // Contador "N/limite" ao lado de campos com maxlength
 
 
-var seletorSuperioresEl = null;
+var seletorContribuiEl = null;
 // configElementos do último apiGetAbaElementos (limites/interruptores já resolvidos pelo servidor)
-var _elConfigElementos = { vinculoElementoLimite: null, vinculoRelacionadoLimite: null };
+var _elConfigElementos = { vinculoElementoLimite: null, vinculoInternoLimite: null };
 
 // Posição na árvore (pai: no máximo 1) — mesmo componente, em modo de seleção única. Só na criação.
 var seletorPaiEl = null;
-var seletorRelacionadosEl = null;
 const COR_TIPO_PADRAO = '#1967d2';
 
 // Sincroniza o seletor de cor com a cor já definida para o tipo neste plano —
@@ -1787,7 +1781,7 @@ _elementosSDK.aoContexto(function(ctx) {
   _elElementos = [];
   _elElementosSuperiores = [];
   _elPlanosSemVinculo = [];
-  _elConfigElementos = { vinculoElementoLimite: null, vinculoRelacionadoLimite: null };
+  _elConfigElementos = { vinculoElementoLimite: null, vinculoInternoLimite: null };
   _elIniciar();
 });
 
@@ -1869,13 +1863,10 @@ function abrirModalEdicaoElemento(idElemento) {
         if (campo) _elwizContador(campo);
       });
 
-      // Vínculos com planos superiores (N:N) — os já gravados vêm descritos pelo servidor
-      // (superioresInfo), inclusive os de plano que deixou de ser superior (chip "indisponível").
-      // O vínculo interno (pai na árvore) não é alterado na edição — usar Reorganizar na árvore.
-      _initSeletorSuperioresEl();
-      seletorSuperioresEl.setLista(el.superioresInfo || []);
-      _initSeletorRelacionadosEl();
-      seletorRelacionadosEl.setLista(el.relacionadosInfo || []);
+      // "Contribui para" (N:N, com direção) — os já gravados vêm descritos pelo servidor (contribuiParaInfo), inclusive os de plano que deixou de ser
+      // superior (chip "indisponível"). O vínculo interno (pai na árvore) não é alterado na edição — usar Reorganizar na árvore.
+      _initSeletorContribuiEl();
+      seletorContribuiEl.setLista(_elContribuiInfoParaSeletor(el.contribuiParaInfo));
 
       // Responsáveis (lista completa; fallback para o campo single de sessões antigas)
       prepararDadosResponsavelEl();
@@ -1980,14 +1971,12 @@ function handleSalvarElemento(e) {
     descricao:        form.descricao.value,
     cor:              document.getElementById('input-el-cor').value,
     abertoColaboracao: document.getElementById('input-el-aberto-colaboracao').checked,
-    // N:N: na edição o conjunto enviado SUBSTITUI o atual (o servidor só valida os novos)
-    idsElementoSuperior: seletorSuperioresEl ? seletorSuperioresEl.getIds() : [],
-    // Relação (N:N, simétrica) com outros elementos do MESMO plano — também SUBSTITUI o conjunto atual
-    idsElementoRelacionado: seletorRelacionadosEl ? seletorRelacionadosEl.getIds() : []
+    // "Contribui para" (com direção): mesmo plano e planos superiores, num só conjunto; na edição o conjunto enviado SUBSTITUI o atual
+    idsContribuiPara: seletorContribuiEl ? seletorContribuiEl.getIds() : []
   };
   // Marcador do formulário curto: as etapas escondidas (prazo, esforço, responsáveis, colaboração) não são enviadas;
   // o servidor só grava o que chega, então o que já existia no elemento permanece.
-  dados.estruturador = _elwizOrg.ativo;
+  dados.organizador = _elwizOrg.ativo;
   if (_elwizOrg.ativo) {
     delete dados.inicio; delete dados.fim; delete dados.custo; delete dados.peso; delete dados.responsaveis;
     delete dados.abertoColaboracao;
@@ -2096,12 +2085,12 @@ function orgRestaurarLayout() {
   });
 }
 function _orgAlterarRel(remover, adicionar) {
-  _elementosSDK.chamar('apiAlterarRelacionamentosElementos', _elCtx.idPlano, remover, adicionar).then(function() {
+  _elementosSDK.chamar('apiAlterarContribuicoesElementos', _elCtx.idPlano, remover, adicionar).then(function() {
     var porId = {}; (_elElementos || []).forEach(function(e) { porId[String(e.id)] = e; });
-    var tira = function(a, b) { var e = porId[a]; if (e) e.idsElementoRelacionado = (e.idsElementoRelacionado || []).filter(function(x) { return String(x) !== b; }); };
-    var poe = function(a, b) { var e = porId[a]; if (e) { e.idsElementoRelacionado = e.idsElementoRelacionado || []; if (e.idsElementoRelacionado.map(String).indexOf(b) < 0) e.idsElementoRelacionado.push(b); } };
-    remover.forEach(function(p) { tira(p[0], p[1]); tira(p[1], p[0]); });
-    adicionar.forEach(function(p) { poe(p[0], p[1]); poe(p[1], p[0]); });
+    var tira = function(a, b) { var e = porId[a]; if (e) e.idsContribuiPara = (e.idsContribuiPara || []).filter(function(x) { return String(x) !== b; }); };
+    var poe = function(a, b) { var e = porId[a]; if (e) { e.idsContribuiPara = e.idsContribuiPara || []; if (e.idsContribuiPara.map(String).indexOf(b) < 0) e.idsContribuiPara.push(b); } };
+    remover.forEach(function(p) { tira(p[0], p[1]); });
+    adicionar.forEach(function(p) { poe(p[0], p[1]); });
     _orgEst.relCache = null;
     renderizarTabelaEstrutura();
     _elementosSDK.reportarDados({ elementos: _elElementos, elementosSuperiores: _elElementosSuperiores });
@@ -2196,7 +2185,7 @@ function atualizarConteudoPlano() {
     _elElementosSuperiores = res.elementosSuperiores || [];
     _elPlanosSemVinculo = res.planosSuperioresSemPermissao || [];
     _elPosDiagrama = res.posicoesDiagrama || {}; _orgEst.relCache = null;
-    if (res.configElementos) { _elConfigElementos = res.configElementos; if (seletorSuperioresEl) seletorSuperioresEl.atualizar(); if (seletorRelacionadosEl) seletorRelacionadosEl.atualizar(); if (seletorRespElemento && seletorRespElemento.atualizarLimite) seletorRespElemento.atualizarLimite(); }
+    if (res.configElementos) { _elConfigElementos = res.configElementos; if (seletorContribuiEl) seletorContribuiEl.atualizar(); if (seletorRespElemento && seletorRespElemento.atualizarLimite) seletorRespElemento.atualizarLimite(); }
     renderizarTabelaEstrutura();
     renderizarGantt();
     renderizarTabelaDetalhes();
@@ -2222,7 +2211,7 @@ function _elIniciar() {
     _elElementosSuperiores = res.elementosSuperiores || [];
     _elPlanosSemVinculo = res.planosSuperioresSemPermissao || [];
     _elPosDiagrama = res.posicoesDiagrama || {}; _orgEst.relCache = null;
-    if (res.configElementos) { _elConfigElementos = res.configElementos; if (seletorSuperioresEl) seletorSuperioresEl.atualizar(); if (seletorRelacionadosEl) seletorRelacionadosEl.atualizar(); if (seletorRespElemento && seletorRespElemento.atualizarLimite) seletorRespElemento.atualizarLimite(); }
+    if (res.configElementos) { _elConfigElementos = res.configElementos; if (seletorContribuiEl) seletorContribuiEl.atualizar(); if (seletorRespElemento && seletorRespElemento.atualizarLimite) seletorRespElemento.atualizarLimite(); }
     renderizarTabelaEstrutura();
     renderizarGantt();
     renderizarTabelaDetalhes();
@@ -2367,55 +2356,82 @@ function _initSeletorPaiEl() {
   });
 }
 
-// Relação entre elementos do MESMO plano (N:N, simétrica; independe do pai da árvore). Opções = os outros
-// elementos do plano carregado; o próprio elemento em edição nunca aparece. Limite: configElementos.vinculoRelacionadoLimite.
-function _opcoesRelacionadosEl() {
+// "Contribui para" (com direção): elementos deste plano e de planos superiores aprovados, num só seletor. Opções do plano: todos os outros elementos
+// menos o próprio, os ancestrais e os descendentes (a árvore já diz "é parte de"). Limites separados: configElementos.vinculoInternoLimite (neste plano) e
+// vinculoElementoLimite (planos superiores); o servidor repete tudo.
+function _elIdsAncestraisEDescendentesEl(idBase, idPaiPrevisto) {
+  var porId = {}, filhos = {};
+  (_elElementos || []).forEach(function (e) { porId[String(e.id)] = e; var p = String(e.idPai || ''); if (p) (filhos[p] = filhos[p] || []).push(String(e.id)); });
+  var fora = {};
+  if (idBase) fora[String(idBase)] = true;
+  var atual = idBase ? porId[String(idBase)] : null, pai = atual ? String(atual.idPai || '') : String(idPaiPrevisto || '');
+  while (pai && porId[pai] && !fora[pai]) { fora[pai] = true; pai = String(porId[pai].idPai || ''); }
+  var fila = idBase ? (filhos[String(idBase)] || []).slice() : [];
+  while (fila.length) { var d = fila.shift(); if (fora[d]) continue; fora[d] = true; (filhos[d] || []).forEach(function (x) { fila.push(x); }); }
+  return fora;
+}
+function _elContribuiEhInterno(id) {
+  return (_elElementos || []).some(function (e) { return String(e.id) === String(id); });
+}
+function _elContribuiContagem() {
+  var ids = seletorContribuiEl ? seletorContribuiEl.getIds() : [], interno = 0;
+  ids.forEach(function (id) { if (_elContribuiEhInterno(id)) interno++; });
+  return { interno: interno, externo: ids.length - interno };
+}
+function _opcoesContribuiEl() {
   var idProprio = (document.getElementById('input-el-id-edicao') || {}).value || '';
+  var idPaiNovo = (document.getElementById('input-el-pai-interno') || {}).value || (seletorPaiEl && seletorPaiEl.getIds ? (seletorPaiEl.getIds()[0] || '') : '');
+  var fora = _elIdsAncestraisEDescendentesEl(idProprio, idPaiNovo);
   var cores = (typeof dadosDetalhados !== 'undefined' && dadosDetalhados && dadosDetalhados.coresTipo) || {};
-  return (_elElementos || []).filter(function (e) { return String(e.id) !== String(idProprio); })
+  var idPlano = (typeof _elCtx !== 'undefined' && _elCtx && _elCtx.idPlano) || '';
+  var cfg = _elConfigElementos || {}, cont = _elContribuiContagem();
+  var limInt = cfg.vinculoInternoLimite, limExt = cfg.vinculoElementoLimite;
+  var internas = (limInt === 0) ? [] : (_elElementos || []).filter(function (e) { return !fora[String(e.id)]; })
     .sort(function (a, b) { return String(a.codigo || '').localeCompare(String(b.codigo || ''), 'pt-BR', { numeric: true }); })
     .map(function (e) {
-      return { id: e.id, titulo: e.titulo, codigo: e.codigo, tipo: e.tipo, cor: cores[e.tipo] || COR_TIPO_PADRAO };
+      var cheio = limInt > 0 && cont.interno >= limInt;
+      return { id: e.id, titulo: e.titulo, codigo: e.codigo, tipo: e.tipo, cor: cores[e.tipo] || COR_TIPO_PADRAO, idPlanoOrigem: idPlano, nomePlanoOrigem: 'Este plano', grupoPrimeiro: true,
+        motivoNaoVinculavel: cheio ? 'LIMITE' : '', textoLimite: ' · limite neste plano atingido' };
     });
-}
-function _initSeletorRelacionadosEl() {
-  if (seletorRelacionadosEl) return;
-  seletorRelacionadosEl = SeletorLista.criar({
-    containerId: 'el-selrel',
-    semGrupos: true,
-    filtrosTipo: true,
-    getOpcoes: _opcoesRelacionadosEl,
-    getConfig: function () { return _elConfigElementos; },
-    getLimite: function () { return _elConfigElementos.vinculoRelacionadoLimite; },
-    textos: {
-      rotulo: 'Relacionado a outros elementos deste plano', icone: 'hub',
-      ajuda: 'Relacione este elemento a outros do mesmo plano para os quais ele também contribui, sem alterar a posição na árvore. A relação vale nos dois sentidos.',
-      desativado: 'O relacionamento entre elementos está desativado neste plano.',
-      vazio: 'Nenhum outro elemento disponível neste plano.', vazioBusca: ' neste plano',
-      chipsAria: 'Elementos relacionados escolhidos', telaTitulo: 'Relacionado a', telaBusca: 'Buscar elementos deste plano',
-      remover: 'Remover relação com '
-    }
+  var externas = (limExt === 0) ? [] : (_elElementosSuperiores || []).filter(function (e) { return e.motivoNaoVinculavel !== 'PLANO'; }).map(function (e) {
+    var cheio = limExt > 0 && cont.externo >= limExt;
+    return cheio ? Object.assign({}, e, { motivoNaoVinculavel: 'LIMITE', textoLimite: ' · limite para planos superiores atingido' }) : e;
   });
+  return internas.concat(externas);
 }
-
-function _initSeletorSuperioresEl() {
-  if (seletorSuperioresEl) return;
-  seletorSuperioresEl = SeletorLista.criar({
-    containerId: 'el-selsup',
-    // Só entram na lista os elementos de planos superiores que PERMITEM receber vínculos (a decisão é do plano superior);
-    // os "lotados" (limite de entrantes) aparecem desabilitados.
-    getOpcoes: function () { return (_elElementosSuperiores || []).filter(function (e) { return e.motivoNaoVinculavel !== 'PLANO'; }); },
-    getTodasOpcoes: function () { return _elElementosSuperiores || []; },
+function _initSeletorContribuiEl() {
+  if (seletorContribuiEl) return;
+  seletorContribuiEl = SeletorLista.criar({
+    containerId: 'el-selcontrib',
+    filtrosTipo: true,
+    getOpcoes: _opcoesContribuiEl,
+    // Itens escolhidos continuam "disponíveis" enquanto existirem: só some o de plano que deixou de ser superior (vem do servidor em contribuiParaInfo).
+    getTodasOpcoes: function () { return _opcoesContribuiEl().concat((_elElementosSuperiores || []).filter(function (e) { return e.motivoNaoVinculavel === 'PLANO'; })); },
     getAviso: function () {
       if (!_elPlanosSemVinculo.length) return '';
       return 'Não permitem vínculo de elementos: ' + _elPlanosSemVinculo.map(function (p) { return p.nomeCurto || p.nome; }).join(', ') + '.';
     },
-    getVazio: function () { return _elPlanosSemVinculo.length ? 'Nenhum plano superior permite vincular elementos.' : ''; },
-    getConfig: function () { return _elConfigElementos; }
+    getVazio: function () { return 'Nenhum elemento disponível neste plano nem nos planos superiores.'; },
+    getConfig: function () { return _elConfigElementos; },
+    // Os limites são por tipo de destino (acima, em cada opção); o seletor só trava de vez quando os dois estão desativados.
+    getLimite: function () { var c = _elConfigElementos || {}; return (c.vinculoInternoLimite === 0 && c.vinculoElementoLimite === 0) ? 0 : null; },
+    textos: {
+      rotulo: 'Contribui para', icone: 'north_east',
+      ajuda: 'Escolha para quais elementos deste plano ou de planos superiores este elemento contribui. A contribuição tem direção (daqui para o destino) e não muda a posição na árvore.',
+      desativado: 'A contribuição entre elementos está desativada neste plano.',
+      vazio: 'Nenhum elemento disponível.', vazioBusca: ' neste plano ou nos planos superiores',
+      chipsAria: 'Elementos para os quais este contribui', telaTitulo: 'Contribui para', telaBusca: 'Buscar elementos', remover: 'Remover contribuição para '
+    }
+  });
+}
+// Itens gravados vêm de contribuiParaInfo (campos *Destino); o seletor lê *Origem para agrupar e rotular o plano.
+function _elContribuiInfoParaSeletor(infos) {
+  return (infos || []).map(function (i) {
+    return Object.assign({}, i, { idPlanoOrigem: i.idPlanoDestino, nomePlanoOrigem: i.interna ? '' : i.nomePlanoDestino, nomeCurtoPlanoOrigem: i.interna ? '' : i.nomeCurtoPlanoDestino });
   });
 }
 
-// Erros de vínculo que apontam um elemento superior vêm com o sufixo " [#<id>]" (elemento_regras.js);
+// Erros de vínculo que apontam um elemento de destino vêm com o sufixo " [#<id>]" (elemento_regras.js);
 // extrai o id (para marcar o chip culpado) e devolve a mensagem limpa.
 function _selsupSepararErroEl(mensagem) {
   var m = /\s\[#([^\]]+)\]$/.exec(String(mensagem || ''));
@@ -2576,8 +2592,7 @@ function obterInfoElementoSuperior(idElementoSuperior) {
 }
 // N:N: resume TODOS os superiores do elemento — o chip mostra só a QUANTIDADE; o tooltip lista cada um
 function obterInfoSuperioresElemento(el) {
-  var ids = (el && el.idsElementoSuperior && el.idsElementoSuperior.length) ? el.idsElementoSuperior
-          : (el && el.idElementoSuperior ? [el.idElementoSuperior] : []);
+  var ids = (el && el.idsContribuiPara) || [];
   var infos = ids.map(obterInfoElementoSuperior).filter(Boolean);
   if (!infos.length) return null;
   return {
@@ -2602,8 +2617,8 @@ function _elMapaPorIdRel() {
   }
   return _elRelMapa.map;
 }
-function _elRelacionadosDe(el) {
-  var ids = (el && el.idsElementoRelacionado) || [];
+function _elContribuicoesInternasDe(el) {
+  var ids = (el && el.idsContribuiPara) || [];
   if (!ids.length) return [];
   var m = _elMapaPorIdRel(), vistos = {};
   return ids.map(function (i) { i = String(i); if (vistos[i] || i === String(el.id)) return null; vistos[i] = 1; return m[i] || null; })
@@ -3268,7 +3283,7 @@ function _orgParesRel(ordem, layout) {
   // Filho de nó recolhido: a linha vai até o ancestral visível (recolhido). Filtrado: sem linha (o badge continua contando).
   function visivel(id) { id = String(id); if (!(id in pais)) return null; while (id && id !== 'root' && !vis[id]) id = pais[id]; return id && id !== 'root' ? id : null; }
   (_elElementos || []).forEach(function(e) {
-    (e.idsElementoRelacionado || []).forEach(function(r) {
+    (e.idsContribuiPara || []).forEach(function(r) {
       var a = visivel(e.id), b = visivel(r); if (!a || !b || a === b) return;
       var k = a < b ? a + '|' + b : b + '|' + a; if (vistos[k]) return; vistos[k] = 1;
       pares.push({ a: a < b ? a : b, b: a < b ? b : a });
@@ -3308,7 +3323,7 @@ function orgToggleRelacionamentos() {
   renderizarOrganograma();
 }
 function _orgAtualizarBotaoRel() {
-  var tem = (_elElementos || []).some(function(e) { return (e.idsElementoRelacionado || []).length; });
+  var tem = (_elElementos || []).some(function(e) { return (e.idsContribuiPara || []).length; });
   var g = document.getElementById('org-rel-grupo'), s = document.getElementById('org-rel-sep'), b = document.getElementById('org-btn-rel');
   if (g) g.classList.toggle('hidden', !tem);
   if (s) s.classList.toggle('hidden', !tem);
@@ -3931,8 +3946,8 @@ function criarNoDOM(item) {
   // de superiores já Aprovado (ver apiGetPlanoCompleto) — se o vínculo não
   // resolver aqui, ou ainda está Pendente ou foi desfeito nesse meio-tempo.
   let parentLinkHtml = '';
-  if (item.idElementoSuperior) {
-    const paiSuperior = (_elElementosSuperiores || []).find(p => String(p.id) === String(item.idElementoSuperior));
+  {
+    const paiSuperior = (_elElementosSuperiores || []).find(p => (item.idsContribuiPara || []).map(String).indexOf(String(p.id)) > -1);
     if (paiSuperior) {
       const nomePai = escapeHtml(paiSuperior.nomePlanoOrigem || 'Plano Superior');
       const tooltip = `${paiSuperior.tipo}: ${paiSuperior.titulo}`;
@@ -4204,12 +4219,12 @@ function chipsVinculoElementoHTML(el, supInfo) {
   }
   return html;
 }
-// Badge de relacionamento (N:N simétrico, mesmo plano): ícone hub + quantidade; a lista vai só no tooltip (máx. 12 itens + "e mais N").
-function chipRelacionadosHTML(el) {
-  var rel = _elRelacionadosDe(el), n = rel.length;
+// Badge de contribuição dentro do plano (com direção: este elemento contribui para os da lista): ícone hub + quantidade; a lista vai só no tooltip (máx. 12 itens + "e mais N").
+function chipContribuiParaHTML(el) {
+  var rel = _elContribuicoesInternasDe(el), n = rel.length;
   if (!n) return '';
   var itens = rel.slice(0, EL_REL_TIP_MAX).map(function (r) { return ((r.codigo || '') + ' ' + (r.titulo || '')).trim(); });
-  var tip = (n === 1 ? 'Relacionado a: ' : 'Relacionado a ' + n + ' elementos: ') + itens.join('; ') + (n > EL_REL_TIP_MAX ? '; e mais ' + (n - EL_REL_TIP_MAX) : '');
+  var tip = (n === 1 ? 'Contribui para: ' : 'Contribui para ' + n + ' elementos: ') + itens.join('; ') + (n > EL_REL_TIP_MAX ? '; e mais ' + (n - EL_REL_TIP_MAX) : '');
   return '<span class="el-chip-meta el-chip-rel" data-title="' + escapeHtml(tip) + '" aria-label="' + escapeHtml(tip) + '"><span class="material-symbols-outlined">hub</span><span class="el-chip-meta-txt">' + n + '</span></span>';
 }
 // Ícone de alerta "acima do limite" (VINCULO_ELEMENTO_LIMITE reduzido com vínculos já existentes): informativo,
@@ -5117,7 +5132,7 @@ function renderizarTabelaEstrutura() {
     }
     var chipVinc = chipsVinculoElementoHTML(no, supInfo);
     if (chipVinc) chipsList.push(chipVinc);
-    var chipRel = chipRelacionadosHTML(no);
+    var chipRel = chipContribuiParaHTML(no);
     if (chipRel) chipsList.push(chipRel);
     if (qtdInd > 0) {
       chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + '</span></span>');
@@ -5347,7 +5362,7 @@ function renderizarOrganograma() {
       + (movido ? '<span class="org-era" data-title="Código antes da reorganização">era ' + escapeHtml(_orgEst.base[id]) + '</span>' : '')
       + '<span class="org-flex"></span>' + acoes + '</div>'
       + '<div class="org-titulo" data-title="' + escapeHtml(el.titulo) + '">' + escapeHtml(el.titulo) + '</div>'
-      + '<div class="org-card-base">' + respHtml + indHtml + chipRelacionadosHTML(el) + '</div>'
+      + '<div class="org-card-base">' + respHtml + indHtml + chipContribuiParaHTML(el) + '</div>'
       + toggle
       + (podeRel ? '<div class="org-port" data-port="' + id + '" style="' + (V ? 'left:calc(100% + 8px);top:50%' : 'left:50%;top:calc(100% + 8px)') + '" data-title="Arraste até outro elemento para relacioná-los"></div>' : '')
       + '</div>';
@@ -5500,7 +5515,7 @@ function renderizarTabelaDetalhes() {
     var chipsList = [];
     var chipVinc = chipsVinculoElementoHTML(item, supInfo);
     if (chipVinc) chipsList.push(chipVinc);
-    var chipRel = chipRelacionadosHTML(item);
+    var chipRel = chipContribuiParaHTML(item);
     if (chipRel) chipsList.push(chipRel);
     if (qtdInd > 0) {
       chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + '</span></span>');
@@ -5738,17 +5753,16 @@ function _elwizIrParaRail(n) {
 }
 
 // =====================================================================================
-// ELEMENTO ORGANIZADOR: só um interruptor que ENCURTA o formulário (Identificação + Detalhes). Um elemento
-// organizador é igual a qualquer outro — nenhuma regra muda. O marcador (coluna Estruturador) é salvo apenas para
-// que a edição também abra curta. As etapas escondidas não são enviadas: na criação ficam vazias e, na edição,
-// o servidor mantém o que já existia (prazo, responsáveis…) intacto.
+// ELEMENTO ORGANIZADOR: só agrupa (fora do progresso, sem registro de execução nem tarefas; pode ter responsável e indicador). O interruptor também
+// ENCURTA o formulário (Identificação + Detalhes). As etapas escondidas não são enviadas: na criação ficam vazias e, na edição, o servidor mantém o
+// que já existia (prazo, responsáveis…) intacto.
 // =====================================================================================
 
 function _elwizPassosVisiveis() { return _elwizOrg.ativo ? [1, 4] : [1, 2, 3, 4]; }
 
 // el = elemento carregado (edição) ou null (criação)
 function _elwizOrgIniciar(el) {
-  _elwizOrg = { ativo: !!(el && el.estruturador) };
+  _elwizOrg = { ativo: !!(el && el.organizador) };
   const sw = document.getElementById('elwiz-org-switch');
   if (sw) sw.checked = _elwizOrg.ativo;
   _elwizOrgAplicar();
@@ -5834,20 +5848,16 @@ function _wizardElPrepararPasso1(idPaiInternoFixo) {
   // não aparece, em vez de mostrar uma escolha que não seria gravada.
   const emEdicao = !!document.getElementById('input-el-id-edicao').value;
   const mostraInterno = !idPaiInternoFixo && !emEdicao && !!(dadosDetalhados && _elElementos && _elElementos.length > 0);
-  // Superiores: há itens em planos superiores aprovados OU o elemento já tem vínculos (edição —
-  // inclusive de plano que deixou de ser superior, que precisam continuar visíveis e removíveis).
-  const temVinculosGravados = !!(seletorSuperioresEl && seletorSuperioresEl.getQuantidade() > 0);
-  const mostraExterno = !!(dadosDetalhados && ((_elElementosSuperiores && _elElementosSuperiores.length > 0) || temVinculosGravados || _elPlanosSemVinculo.length > 0));
-  // Relacionados: há OUTROS elementos neste plano OU o elemento já tem relações gravadas
-  const temRelacionadosGravados = !!(seletorRelacionadosEl && seletorRelacionadosEl.getQuantidade() > 0);
-  const mostraRelacionado = !!(dadosDetalhados && (_opcoesRelacionadosEl().length > 0 || temRelacionadosGravados));
+  // "Contribui para": há outros elementos no plano, itens em planos superiores aprovados (ou que não aceitam, para o aviso) OU o elemento já tem contribuições
+  // (edição — inclusive para plano que deixou de ser superior, que precisam continuar visíveis e removíveis).
+  const temGravadas = !!(seletorContribuiEl && seletorContribuiEl.getQuantidade() > 0);
+  const mostraContribui = !!(dadosDetalhados && (_opcoesContribuiEl().length > 0 || temGravadas || _elPlanosSemVinculo.length > 0));
 
   document.getElementById('group-vinculo-interno').classList.toggle('hidden', !mostraInterno);
-  document.getElementById('group-vinculo-externo').classList.toggle('hidden', !mostraExterno);
-  document.getElementById('group-vinculo-relacionado').classList.toggle('hidden', !mostraRelacionado);
-  document.getElementById('wizard-el-vinculo-campos').classList.toggle('hidden', !(mostraInterno || mostraExterno || mostraRelacionado));
+  document.getElementById('group-vinculo-contribui').classList.toggle('hidden', !mostraContribui);
+  document.getElementById('wizard-el-vinculo-campos').classList.toggle('hidden', !(mostraInterno || mostraContribui));
 
-  document.getElementById('wizard-el-vinculo-msg-vazio').classList.toggle('hidden', mostraBanner || mostraInterno || mostraExterno || mostraRelacionado);
+  document.getElementById('wizard-el-vinculo-msg-vazio').classList.toggle('hidden', mostraBanner || mostraInterno || mostraContribui);
 }
 
 // Zera o wizard e sempre começa na Etapa 1
@@ -5983,10 +5993,8 @@ function abrirModalNovoElemento(idPaiInterno = null) {
 
   // 2. Carrega Dados Auxiliares
   prepararDadosResponsavelEl();
-  _initSeletorSuperioresEl();
-  seletorSuperioresEl.limpar(); // opções = elementos dos planos superiores aprovados (_elElementosSuperiores)
-  _initSeletorRelacionadosEl();
-  seletorRelacionadosEl.limpar(); // opções = outros elementos deste plano (_elElementos)
+  _initSeletorContribuiEl();
+  seletorContribuiEl.limpar(); // opções = outros elementos deste plano e os dos planos superiores aprovados
   _elwizOrgIniciar(null);  // criação: formulário completo por padrão
 
   _wizardElIniciar(idPaiInterno);
@@ -6021,12 +6029,9 @@ function _wizardElAtualizarLabelColaboracao() {
 // componente compartilhado SeletorResponsaveis; aqui só carregamos os dados.
 function _selsupTratarErroSalvarEl(err) {
   var e = _selsupSepararErroEl(err && err.message);
-  var doRel = /^Cada elemento pode se relacionar|^O relacionamento entre elementos|^Um elemento não pode se relacionar|mesmo plano|relacionamentos do plano|elemento relacionado selecionado/.test(e.mensagem)
-    || (!!e.idElemento && !!seletorRelacionadosEl && seletorRelacionadosEl.contem(e.idElemento) && !(seletorSuperioresEl && seletorSuperioresEl.contem(e.idElemento)));
-  var alvo = doRel ? seletorRelacionadosEl : seletorSuperioresEl;
-  var doCampo = !!e.idElemento || doRel || /^Cada elemento pode ter no máximo|^O vínculo de elementos com planos superiores/.test(e.mensagem);
-  if (!doCampo || !alvo) return false;
-  alvo.setErro(e.mensagem, e.idElemento);
+  var doCampo = !!e.idElemento || /^Cada elemento pode ter no máximo|^A contribuição entre elementos|^O vínculo de elementos com planos superiores|^Um elemento não pode contribuir|é parte da mesma árvore|mesmo plano|plano superior vinculado|circular/.test(e.mensagem);
+  if (!doCampo || !seletorContribuiEl) return false;
+  seletorContribuiEl.setErro(e.mensagem, e.idElemento);
   _wizardElIrPara(1, 'tras');
   return true;
 }

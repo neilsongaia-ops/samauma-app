@@ -1252,7 +1252,7 @@ function _indIdsElementosSuperiores() {
   var meus = _indIdsElementosAtuais(), vistos = {}, lista = [];
   ((dadosDetalhados && dadosDetalhados.elementos) || []).forEach(function(e) {
     if (meus.indexOf(String(e.id)) < 0) return;
-    (e.idsElementoSuperior || (e.idElementoSuperior ? [e.idElementoSuperior] : [])).forEach(function(s) {
+    (e.idsContribuiPara || []).forEach(function(s) {
       s = String(s); if (!vistos[s]) { vistos[s] = true; lista.push(s); }
     });
   });
@@ -1270,7 +1270,7 @@ function _indMotivosLigacao(idsB) {
   var mapa = {}, motivos = [];
   ((dadosDetalhados && dadosDetalhados.elementos) || []).forEach(function(e) { mapa[String(e.id)] = e; });
   function add(m) { if (motivos.indexOf(m) < 0) motivos.push(m); }
-  function rels(e) { return (e.idsElementoRelacionado || []).map(String); }
+  function rels(e) { return (e.idsContribuiPara || []).map(String); }
   _indIdsElementosAtuais().forEach(function(a) {
     var ea = mapa[a];
     if (!ea) return;

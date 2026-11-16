@@ -3107,10 +3107,10 @@ var SeletorLista = (function () {
     var mapa = {}, ordem = [];
     opcoes.forEach(function (o) {
       var k = String(o.idPlanoOrigem);
-      if (!mapa[k]) { mapa[k] = { idPlano: k, nome: o.nomePlanoOrigem || 'Plano superior', curto: curto(o), principal: !!o.planoPrincipal, opcoes: [] }; ordem.push(mapa[k]); }
+      if (!mapa[k]) { mapa[k] = { idPlano: k, nome: o.nomePlanoOrigem || 'Plano superior', curto: curto(o), principal: !!o.planoPrincipal, primeiro: !!o.grupoPrimeiro, opcoes: [] }; ordem.push(mapa[k]); }
       mapa[k].opcoes.push(o);
     });
-    return ordem.sort(function (a, b) { return (Number(b.principal) - Number(a.principal)) || a.nome.localeCompare(b.nome, 'pt-BR'); });
+    return ordem.sort(function (a, b) { return (Number(b.primeiro) - Number(a.primeiro)) || (Number(b.principal) - Number(a.principal)) || a.nome.localeCompare(b.nome, 'pt-BR'); });
   }
 
   function criar(cfg) {
@@ -3193,7 +3193,7 @@ var SeletorLista = (function () {
     // ---- renderização ----
     function htmlOpcao(o, c, mob) {
       var id = String(o.id), escolhido = !!c.idsSel[id], desab = escolhido || c.atingido || (o.motivoNaoVinculavel === 'LIMITE' && !escolhido);
-      var meta = (o.meta !== undefined ? String(o.meta) : (o.tipo || '') + ' · ' + (o.codigo || '')) + (escolhido ? ' · já escolhido' : (c.atingido ? ' · limite atingido' : (o.motivoNaoVinculavel === 'LIMITE' ? ' · limite do plano superior atingido' : '')));
+      var meta = (o.meta !== undefined ? String(o.meta) : (o.tipo || '') + ' · ' + (o.codigo || '')) + (escolhido ? ' · já escolhido' : (c.atingido ? ' · limite atingido' : (o.motivoNaoVinculavel === 'LIMITE' ? (o.textoLimite || ' · limite do plano superior atingido') : '')));
       var cls = 'selsup-opcao' + (escolhido ? ' escolhida' : (desab ? ' desabilitada' : '')) + (ST.ativoId === id && !mob ? ' ativa' : '');
       var corpo = '<span class="selsup-opcao-corpo"><span class="selsup-opcao-titulo">' + destacar(o.titulo || '', ST.busca) + '</span>' +
         '<span class="selsup-opcao-meta">' + (mob ? '<span class="selsup-chip-cor" style="display:inline-block;margin-right:6px;background:' + corSegura(o.cor) + '"></span>' : '') + esc(meta) + '</span></span>';
@@ -5030,10 +5030,7 @@ uiRegistrarAcoes('components_modal_plano', {
         <input type="hidden" name="idElemento" id="input-res-id-elemento">
         <input type="hidden" name="idIndicador" id="input-res-id-indicador">
         
-        <!-- Tarefas do elemento (components_tarefas_elemento.html) -->
-        <div id="res-tarefas-host"></div>
-
-        <!-- Progresso físico: some quando o progresso vem das tarefas -->
+        <!-- Progresso físico: com o progresso vindo da lista de verificação, o percentual é só mostrado (não se digita) -->
         <div id="wrapper-progresso">
         <div class="section-title">Progresso físico</div>
         
@@ -5088,8 +5085,10 @@ uiRegistrarAcoes('components_modal_plano', {
             <label>Meta do período <span class="material-symbols-outlined ds-info" tabindex="0" data-title="A meta é escolhida pela data da aferição.">info</span></label>
             <div class="res-meta" id="res-meta-periodo">—</div>
           </div>
+        </div>
 
-          <!-- Área de Evidências -->
+        <!-- Evidência e análise: do lançamento de progresso e/ou do resultado do indicador (uma só, vale para os dois) -->
+        <div id="wrapper-evidencia">
           <div class="form-group">
             <label>Evidência</label>
             
@@ -5150,7 +5149,8 @@ function carregarLimitesEvidenciaRes() {
 
 /**
  * Função principal para abrir o modal.
- * @param {Object} dados - { idElemento, tituloElemento, percentualAtual, statusAtual, idIndicador, nomeIndicador }
+ * @param {Object} dados - { idElemento, tituloElemento, percentualAtual, statusAtual, idIndicador, nomeIndicador, porLista }
+ * porLista: o progresso vem da lista de verificação do elemento; o percentual mostrado é o da lista e salvar gera o lançamento pendente.
  */
 function abrirModalResultado(dados) {
   // 1. Resetar Form e Variáveis
@@ -5168,16 +5168,13 @@ function abrirModalResultado(dados) {
   _resDados = dados;
   ['data', 'valor', 'link', 'geral'].forEach(function (c) { _resErro(c, ''); });
   document.getElementById('res-btn-salvar').textContent = dados.idResultado ? 'Salvar correção' : 'Salvar';
-  // Progresso: some quando vem das tarefas; correção de resultado não mexe no progresso
-  _resProgressoVisivel(!dados.progressoPorTarefas && !dados.idResultado);
-  const hostTar = document.getElementById('res-tarefas-host');
-  hostTar.innerHTML = '';
-  if (dados.idElemento && !dados.idResultado && typeof telMontar === 'function') {
-    telMontar('res-tarefas-host', dados.idElemento, function (st) {
-      _resProgressoVisivel(!st.progressoPorTarefas);
-      if (typeof dados.aoMudarTarefas === 'function') dados.aoMudarTarefas(st);
-    });
-  }
+  // Progresso: correção de resultado não mexe nele; vindo da lista, os campos ficam travados
+  _resProgressoVisivel(!dados.idResultado && !(dados.progressoPorTarefas && !dados.porLista));
+  ['range-progresso', 'num-progresso', 'input-res-status'].forEach(function (id) {
+    const el = document.getElementById(id);
+    el.disabled = !!dados.porLista;
+    el.setAttribute('data-title', dados.porLista ? 'O progresso vem da lista de verificação' : '');
+  });
 
   const pct = dados.percentualAtual || 0;
   syncProgresso(pct); // Sincroniza slider e input
@@ -5226,7 +5223,13 @@ function fecharModalResultado() {
   if (typeof desbloquearFundo === 'function') desbloquearFundo();
 }
 function _resHojeIso() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-function _resProgressoVisivel(v) { document.getElementById('wrapper-progresso').classList.toggle('hidden', !v); }
+function _resProgressoVisivel(v) { document.getElementById('wrapper-progresso').classList.toggle('hidden', !v); _resEvidenciaVisivel(); }
+// Evidência e análise valem para o progresso lançado (campo livre ou lista) e para o resultado do indicador; sem nenhum dos dois, não há o que evidenciar.
+function _resEvidenciaVisivel() {
+  const d = _resDados || {};
+  const lancaProgresso = !document.getElementById('wrapper-progresso').classList.contains('hidden');
+  document.getElementById('wrapper-evidencia').classList.toggle('hidden', !(d.idIndicador || lancaProgresso));
+}
 function _resErro(campo, msg) { const e = document.getElementById('res-erro-' + campo); if (e) e.textContent = msg || ''; return !msg; }
 function _resContarAnalise() { document.getElementById('res-analise-cont').textContent = document.getElementById('input-res-analise').value.length + '/5000'; }
 // Erro do servidor vai para o campo de data quando fala de data/vigência/janela; senão, para o rodapé.
@@ -5360,12 +5363,13 @@ async function handleSalvarResultado(e) {
   const modoLink = document.getElementById('container-upload').classList.contains('hidden');
   ['data', 'valor', 'link', 'geral'].forEach(function (c) { _resErro(c, ''); });
   let ok = true;
+  const comEvidencia = !document.getElementById('wrapper-evidencia').classList.contains('hidden');
   if (idIndicador) {
     const dataEl = document.getElementById('input-res-data'), dt = dataEl.value;
     ok = _resErro('valor', valorApurado === '' ? 'Informe o valor apurado.' : '') && ok;
     ok = _resErro('data', !dt ? 'Informe a data da aferição.' : dt > _resHojeIso() ? 'A data não pode ser futura.' : (dataEl.min && dt < dataEl.min) || (dataEl.max && dt > dataEl.max) ? 'A data precisa estar dentro da vigência do plano.' : '') && ok;
-    if (modoLink && link) ok = _resErro('link', !/^https?:\/\//i.test(link) ? 'Use um link que comece com http:// ou https://.' : link.length > 2000 ? 'Use até 2.000 caracteres.' : '') && ok;
   }
+  if (comEvidencia && modoLink && link) ok = _resErro('link', !/^https?:\/\//i.test(link) ? 'Use um link que comece com http:// ou https://.' : link.length > 2000 ? 'Use até 2.000 caracteres.' : '') && ok;
   if (!ok) return;
 
   const dados = {
@@ -5376,10 +5380,10 @@ async function handleSalvarResultado(e) {
     linkEvidencia: modoLink ? link : '',
     analise: form.analise.value
   };
-  if (!document.getElementById('wrapper-progresso').classList.contains('hidden')) { dados.status = form.status.value; dados.percentual = form.percentual.value; }
+  if (!d0.porLista && !document.getElementById('wrapper-progresso').classList.contains('hidden')) { dados.status = form.status.value; dados.percentual = form.percentual.value; }
   const btnSubmit = e.submitter || document.getElementById('res-btn-salvar');
   const liberar = uiTravarBotao(btnSubmit);
-  if (idIndicador && !modoLink && arquivosSelecionados.length > 0) {
+  if (comEvidencia && !modoLink && arquivosSelecionados.length > 0) {
     const assinatura = _resAssinaturaArquivos();
     if (!_resEnvioEvid || _resEnvioEvid.assinatura !== assinatura) {
       try {
@@ -5398,7 +5402,8 @@ async function handleSalvarResultado(e) {
     else if (typeof carregarPainelExecucao === 'function') carregarPainelExecucao();
   };
   const falha = function (err) { liberar(); _resErroServidor(err.message); };
-  if (d0.idResultado) google.script.run.withSuccessHandler(ok2).withFailureHandler(falha).apiCorrigirResultado(String(d0.idResultado), dados);
+  if (d0.porLista) google.script.run.withSuccessHandler(ok2).withFailureHandler(falha).apiLancarProgressoPelaLista(dados.idElemento, { analise: dados.analise, linkEvidencia: dados.linkEvidencia, evidenciaRecibo: dados.evidenciaRecibo });
+  else if (d0.idResultado) google.script.run.withSuccessHandler(ok2).withFailureHandler(falha).apiCorrigirResultado(String(d0.idResultado), dados);
   else google.script.run.withSuccessHandler(ok2).withFailureHandler(falha).apiSalvarExecucaoEResultado(dados);
 }
 
@@ -5418,14 +5423,13 @@ uiRegistrarAcoes('components_modal_resultado', {
     <!-- ARQUIVO: components_tarefas_elemento.html -->
 <!-- Seção "Tarefas" do elemento (lista a fazer, estilo Planner), montada dentro do modal "Atualizar Execução"
      (components_modal_resultado.html) ao abrir um elemento na execução. Rotas: apiGetTarefasElemento, apiSalvarTarefaElemento,
-     apiConcluirTarefaElemento, apiReordenarTarefaElemento, apiExcluirTarefaElemento, apiDefinirProgressoPorTarefas.
-     Permissões (podeEditar/podeConcluir/podeDefinirProgresso) vêm do servidor; a tela só mostra/esconde. -->
+     apiConcluirTarefaElemento, apiReordenarTarefaElemento, apiExcluirTarefaElemento. A escolha "o progresso vem da lista" é do planejamento (formulário do elemento).
+     Permissões (podeEditar/podeConcluir) vêm do servidor; a tela só mostra/esconde. -->
 <style>
 .tel-sec { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .tel-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tel-cab-t { font-size: 14px; font-weight: var(--ds-weight-bold); color: var(--ds-color-text); }
 .tel-cont { font-size: 12px; color: var(--ds-color-text-muted); }
-.tel-chave { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ds-color-text); }
 .tel-lista { display: flex; flex-direction: column; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md); overflow: hidden; background: var(--ds-color-surface); }
 .tel-lista:empty { display: none; }
 .tel-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--ds-color-border); min-height: 44px; }
@@ -5458,8 +5462,7 @@ function telMontar(hostId, idElemento, aoMudar) {
   if (!host) return;
   _tel.idElemento = String(idElemento); _tel.dados = null; _tel.aoMudar = aoMudar || null;
   host.innerHTML = '<div class="tel-sec" id="tel-sec">'
-    + '<div class="tel-cab"><span class="tel-cab-t">Tarefas</span><span class="tel-cont" id="tel-cont"></span>'
-    +   '<span class="tel-chave hidden" id="tel-chave"></span></div>'
+    + '<div class="tel-cab"><span class="tel-cab-t">Lista de verificação</span><span class="tel-cont" id="tel-cont"></span></div>'
     + '<div id="tel-corpo">' + spinnerListaHTML('') + '</div>'
     + '<span class="tel-erro" id="tel-erro" role="alert"></span></div>';
   var id = _tel.idElemento;
@@ -5478,27 +5481,25 @@ function telRender() {
   var d = _tel.dados || {}, t = _telTarefas(), feitas = t.filter(function (x) { return x.concluida; }).length;
   var edita = !!d.podeEditar, conclui = edita && d.podeConcluir !== false;
   document.getElementById('tel-cont').textContent = t.length ? feitas + ' de ' + t.length : '';
-  var chave = document.getElementById('tel-chave');
-  chave.classList.toggle('hidden', !edita && !d.progressoPorTarefas);
-  chave.innerHTML = ntfSwitchHtml(!!d.progressoPorTarefas, !d.podeDefinirProgresso, 'telAlternarProgresso()', 'Progresso pelas tarefas')
-    + '<span>Progresso pelas tarefas</span><span class="material-symbols-outlined ds-info" tabindex="0" data-title="Ligada, o percentual do elemento passa a ser a parte concluída das tarefas e não é mais digitado.">info</span>';
-  var motivoChk = !conclui && edita ? ' data-title="O plano não está em execução"' : '';
+  var motivoChk = !conclui && edita ? ' data-title="O plano não permite alterar a lista neste status"' : '';
+  var MOTIVO_TRAVADA = 'Este item já contou em um progresso validado: não pode ser reaberto, renomeado nem apagado.';
   var h = '<div class="tel-lista" id="tel-lista">' + t.map(function (x, i) {
     var quem = x.concluida && x.concluidaPorNome ? 'Concluída por ' + x.concluidaPorNome + (x.concluidaEm ? ' em ' + (typeof _isoParaBR === 'function' ? _isoParaBR(String(x.concluidaEm).slice(0, 10)) : x.concluidaEm) : '') : '';
-    var acoes = edita ? acoesLinhaHTML('tel-' + x.id, [
+    var trava = !!x.travada;
+    var acoes = edita && !trava ? acoesLinhaHTML('tel-' + x.id, [
       { icone: 'arrow_upward', rotulo: 'Mover para cima', oculto: i === 0, onclick: "telMover('" + escapeJsAttr(x.id) + "',-1)" },
       { icone: 'arrow_downward', rotulo: 'Mover para baixo', oculto: i === t.length - 1, onclick: "telMover('" + escapeJsAttr(x.id) + "',1)" },
       { icone: 'delete', rotulo: 'Excluir', perigo: true, onclick: "telExcluir('" + escapeJsAttr(x.id) + "')" }
     ], { maxDireto: 0 }) : '';
-    return '<div class="tel-item' + (x.concluida ? ' tel-item--feita' : '') + '" data-id="' + escapeHtml(x.id) + '"' + (edita ? ' draggable="true"' : '') + (quem ? ' data-title="' + escapeHtml(quem) + '"' : '') + '>'
+    return '<div class="tel-item' + (x.concluida ? ' tel-item--feita' : '') + '" data-id="' + escapeHtml(x.id) + '"' + (edita ? ' draggable="true"' : '') + (trava ? ' data-title="' + escapeHtml(MOTIVO_TRAVADA) + '"' : (quem ? ' data-title="' + escapeHtml(quem) + '"' : '')) + '>'
       + (edita ? '<span class="material-symbols-outlined tel-alca" aria-hidden="true">drag_indicator</span>' : '')
-      + '<input type="checkbox"' + (x.concluida ? ' checked' : '') + (conclui ? '' : ' disabled') + motivoChk + ' data-on-change="components_tarefas_elemento.1" data-id="' + escapeHtml(x.id) + '" aria-label="Concluir tarefa">'
-      + '<input type="text" class="tel-titulo" value="' + escapeHtml(x.titulo) + '" maxlength="300"' + (edita ? '' : ' readonly') + ' data-on-keydown="components_tarefas_elemento.2" data-on-blur="components_tarefas_elemento.3" data-id="' + escapeHtml(x.id) + '" aria-label="Título da tarefa">'
+      + '<input type="checkbox"' + (x.concluida ? ' checked' : '') + (conclui && !trava ? '' : ' disabled') + (trava ? '' : motivoChk) + ' data-on-change="components_tarefas_elemento.1" data-id="' + escapeHtml(x.id) + '" aria-label="Concluir item">'
+      + '<input type="text" class="tel-titulo" value="' + escapeHtml(x.titulo) + '" maxlength="300"' + (edita && !trava ? '' : ' readonly') + ' data-on-keydown="components_tarefas_elemento.2" data-on-blur="components_tarefas_elemento.3" data-id="' + escapeHtml(x.id) + '" aria-label="Título do item">'
       + '<input type="date" class="tel-data" value="' + escapeHtml(x.dataPrevista || '') + '"' + (edita ? '' : ' disabled') + ' data-on-change="components_tarefas_elemento.4" data-id="' + escapeHtml(x.id) + '" aria-label="Data prevista">'
       + acoes + '</div>';
   }).join('') + '</div>';
-  if (edita) h += '<label class="tel-novo"><span class="material-symbols-outlined" aria-hidden="true">add</span><input type="text" id="tel-novo" maxlength="300" placeholder="Adicionar tarefa" data-on-keydown="components_tarefas_elemento.5" aria-label="Adicionar tarefa"></label>';
-  if (!t.length && !edita) h = '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhuma tarefa</p></div>';
+  if (edita) h += '<label class="tel-novo"><span class="material-symbols-outlined" aria-hidden="true">add</span><input type="text" id="tel-novo" maxlength="300" placeholder="Adicionar item" data-on-keydown="components_tarefas_elemento.5" aria-label="Adicionar item"></label>';
+  if (!t.length && !edita) h = '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhum item</p></div>';
   document.getElementById('tel-corpo').innerHTML = h;
   if (edita) _telAtivarArraste();
 }
@@ -5564,11 +5565,6 @@ function _telAtivarArraste() {
       _telReordenar(_tel.arrastando, alvo);
     });
   });
-}
-function telAlternarProgresso() {
-  var d = _tel.dados; if (!d || !d.podeDefinirProgresso) return;
-  var ligar = !d.progressoPorTarefas;
-  _telOtimista(function () { d.progressoPorTarefas = ligar; }, 'apiDefinirProgressoPorTarefas', [_tel.idElemento, ligar]);
 }
 uiRegistrarAcoes('components_tarefas_elemento', {
   '1': function () { telConcluir(this.dataset.id, this.checked); },
@@ -9724,7 +9720,7 @@ function uiEscopoRespIdsUnidades(unidades, chave) {
 // rota de escrita feita nesse trecho síncrono prende o alvo até responder. Fluxos com etapa assíncrona antes
 // de gravar (consulta, confirmação) usam uiTravarBotao(btn) direto e chamam o liberar() devolvido.
 // Lista = rotas "escrita" de docs/referencia_rotas.md.
-var _UI_ROTAS_ESCRITA = new Set(['apiIniciarCargaPessoas', 'apiEnviarLoteCargaPessoas', 'apiConcluirCargaPessoas', 'apiConfirmarCargaRetida', 'apiCancelarCargaPessoas', 'apiValidarResultado', 'apiValidarRegistroExecucao', 'apiCorrigirRegistroExecucao', 'apiExcluirRegistroExecucao', 'apiCorrigirResultado', 'apiExcluirResultado', 'apiSalvarTarefaElemento', 'apiConcluirTarefaElemento', 'apiReordenarTarefaElemento', 'apiExcluirTarefaElemento', 'apiDefinirProgressoPorTarefas', 'apiSalvarEventoCalendario', 'apiCancelarEventoCalendario', 'apiAuthSair', 'apiAuthSolicitarCodigo', 'apiAuthVerificarCodigo', 'apiMarcarNotificacoes', 'apiSalvarConfigEmailNotificacoes', 'apiSalvarConfigNotificacoes', 'apiSalvarPreferenciaNotificacao', 'apiCancelarMensagemSistema', 'apiExcluirMensagemEnviada', 'apiExcluirMensagemSistema', 'apiLerMensagemSistema', 'apiPublicarMensagemSistema', 'apiSalvarMensagemSistema', 'apiSalvarConfigArmazenamento', 'apiSalvarLimitesArmazenamento', 'apiSalvarConfigAlertasNotificacoes', 'apiInativarUnidade', 'apiReativarUnidade', 'apiSalvarUnidade', 'apiAtualizarUsuarioCompleto', 'apiExcluirUsuario', 'apiExcluirUsuariosEmLote', 'apiSalvarNovoUsuarioCompleto', 'apiToggleAtivoUsuario', 'apiToggleAtivoUsuariosEmLote', 'apiImportarServidores', 'apiAprovarUsuarioPendente', 'apiRecusarUsuarioPendente', 'apiSalvarConfigCadastroUsuarios', 'apiEscolherVinculo', 'apiAuthConfirmarPrimeiroAcesso', 'apiAuthPrimeiroAcesso', 'apiAtualizarPlano', 'apiSalvarPlano', 'apiExcluirPlano', 'apiProrrogarPlano', 'apiTramitarPlano', 'apiExcluirPlanoDefinitivo', 'apiFecharRevisao', 'apiSolicitarRevisaoPlano', 'apiCancelarSolicitacao', 'apiResponderSolicitacao', 'apiAprovarVinculoPlano', 'apiCancelarPropostaVinculo', 'apiDefinirPlanoSuperiorPrincipal', 'apiDesvincularVinculo', 'apiDispensarVinculoRecusado', 'apiExcluirVinculosOrfaos', 'apiPropoQuerVinculoSubordinado', 'apiResponderPropostaVinculoSubordinado', 'apiVincularASuperior', 'apiSalvarConfigGlobal', 'apiSalvarConfigPlano', 'apiAtualizarStatusApp', 'apiDesinstalarApp', 'apiInstalarApp', 'apiReordenarAppsPlano', 'apiIndicarParesAvaliacao', 'apiRemoverParIndicado', 'apiSalvarConfigAvaliacao', 'apiAlterarRelacionamentosElementos', 'apiAtualizarElemento', 'apiReordenarElementos', 'apiRestaurarLayoutDiagrama', 'apiSalvarElemento', 'apiSalvarPosicoesDiagrama', 'apiAlternarColaboracaoElemento', 'apiCancelarSolicitacaoColaboracao', 'apiIndicarColaboradorElemento', 'apiResponderSolicitacaoColaboracao', 'apiSolicitarColaboracao', 'apiSalvarMetasPeriodo', 'apiAtualizarIndicador', 'apiExcluirIndicador', 'apiExcluirMeta', 'apiSalvarIndicador', 'apiSalvarExecucaoEResultado', 'apiValidarResultado', 'apiExcluirElemento', 'apiReanexarIndicador', 'apiRestaurarItemPlano', 'apiAdicionarCausaConsequencia', 'apiAtualizarRisco', 'apiExcluirRegistroTratamento', 'apiExcluirRisco', 'apiExcluirTratamento', 'apiSalvarRegistroTratamento', 'apiSalvarRisco', 'apiSalvarTratamento', 'apiAdicionarTopicoALista', 'apiArquivarTopicoForum', 'apiCriarListaForum', 'apiCriarTopicoForum', 'apiEditarMensagemForum', 'apiEnviarMensagemForum', 'apiExcluirListaForum', 'apiExcluirMensagemForum', 'apiExcluirTopicoForum', 'apiFavoritarTopicoForum', 'apiFixarTopicoForum', 'apiMarcarTopicoLido', 'apiMarcarTopicoNaoLido', 'apiRemoverTopicoDaLista', 'apiRenomearListaForum', 'apiRenomearTopicoForum', 'apiReordenarCatalogoOpcoes', 'apiSalvarOpcaoCatalogo', 'apiSalvarConfigSistemaSecao', 'apiSalvarPreferenciaUsuario', 'apiAvaliarPlano', 'apiCancelarAvaliacao', 'apiRecorrerAvaliacao', 'apiResponderRecurso', 'apiSalvarRascunhoAvaliacao']);
+var _UI_ROTAS_ESCRITA = new Set(['apiIniciarCargaPessoas', 'apiEnviarLoteCargaPessoas', 'apiConcluirCargaPessoas', 'apiConfirmarCargaRetida', 'apiCancelarCargaPessoas', 'apiValidarResultado', 'apiValidarRegistroExecucao', 'apiCorrigirRegistroExecucao', 'apiExcluirRegistroExecucao', 'apiCorrigirResultado', 'apiExcluirResultado', 'apiSalvarTarefaElemento', 'apiConcluirTarefaElemento', 'apiReordenarTarefaElemento', 'apiExcluirTarefaElemento', 'apiSalvarEventoCalendario', 'apiCancelarEventoCalendario', 'apiAuthSair', 'apiAuthSolicitarCodigo', 'apiAuthVerificarCodigo', 'apiMarcarNotificacoes', 'apiSalvarConfigEmailNotificacoes', 'apiSalvarConfigNotificacoes', 'apiSalvarPreferenciaNotificacao', 'apiCancelarMensagemSistema', 'apiExcluirMensagemEnviada', 'apiExcluirMensagemSistema', 'apiLerMensagemSistema', 'apiPublicarMensagemSistema', 'apiSalvarMensagemSistema', 'apiSalvarConfigArmazenamento', 'apiSalvarLimitesArmazenamento', 'apiSalvarConfigAlertasNotificacoes', 'apiInativarUnidade', 'apiReativarUnidade', 'apiSalvarUnidade', 'apiAtualizarUsuarioCompleto', 'apiExcluirUsuario', 'apiExcluirUsuariosEmLote', 'apiSalvarNovoUsuarioCompleto', 'apiToggleAtivoUsuario', 'apiToggleAtivoUsuariosEmLote', 'apiImportarServidores', 'apiAprovarUsuarioPendente', 'apiRecusarUsuarioPendente', 'apiSalvarConfigCadastroUsuarios', 'apiEscolherVinculo', 'apiAuthConfirmarPrimeiroAcesso', 'apiAuthPrimeiroAcesso', 'apiAtualizarPlano', 'apiSalvarPlano', 'apiExcluirPlano', 'apiProrrogarPlano', 'apiTramitarPlano', 'apiExcluirPlanoDefinitivo', 'apiFecharRevisao', 'apiSolicitarRevisaoPlano', 'apiCancelarSolicitacao', 'apiResponderSolicitacao', 'apiAprovarVinculoPlano', 'apiCancelarPropostaVinculo', 'apiDefinirPlanoSuperiorPrincipal', 'apiDesvincularVinculo', 'apiDispensarVinculoRecusado', 'apiExcluirVinculosOrfaos', 'apiPropoQuerVinculoSubordinado', 'apiResponderPropostaVinculoSubordinado', 'apiVincularASuperior', 'apiSalvarConfigGlobal', 'apiSalvarConfigPlano', 'apiAtualizarStatusApp', 'apiDesinstalarApp', 'apiInstalarApp', 'apiReordenarAppsPlano', 'apiIndicarParesAvaliacao', 'apiRemoverParIndicado', 'apiSalvarConfigAvaliacao', 'apiAlterarContribuicoesElementos', 'apiAtualizarElemento', 'apiReordenarElementos', 'apiRestaurarLayoutDiagrama', 'apiSalvarElemento', 'apiSalvarPosicoesDiagrama', 'apiAlternarColaboracaoElemento', 'apiCancelarSolicitacaoColaboracao', 'apiIndicarColaboradorElemento', 'apiResponderSolicitacaoColaboracao', 'apiSolicitarColaboracao', 'apiSalvarMetasPeriodo', 'apiAtualizarIndicador', 'apiExcluirIndicador', 'apiExcluirMeta', 'apiSalvarIndicador', 'apiSalvarExecucaoEResultado', 'apiValidarResultado', 'apiExcluirElemento', 'apiReanexarIndicador', 'apiRestaurarItemPlano', 'apiAdicionarCausaConsequencia', 'apiAtualizarRisco', 'apiExcluirRegistroTratamento', 'apiExcluirRisco', 'apiExcluirTratamento', 'apiSalvarRegistroTratamento', 'apiSalvarRisco', 'apiSalvarTratamento', 'apiAdicionarTopicoALista', 'apiArquivarTopicoForum', 'apiCriarListaForum', 'apiCriarTopicoForum', 'apiEditarMensagemForum', 'apiEnviarMensagemForum', 'apiExcluirListaForum', 'apiExcluirMensagemForum', 'apiExcluirTopicoForum', 'apiFavoritarTopicoForum', 'apiFixarTopicoForum', 'apiMarcarTopicoLido', 'apiMarcarTopicoNaoLido', 'apiRemoverTopicoDaLista', 'apiRenomearListaForum', 'apiRenomearTopicoForum', 'apiReordenarCatalogoOpcoes', 'apiSalvarOpcaoCatalogo', 'apiSalvarConfigSistemaSecao', 'apiSalvarPreferenciaUsuario', 'apiAvaliarPlano', 'apiCancelarAvaliacao', 'apiRecorrerAvaliacao', 'apiResponderRecurso', 'apiSalvarRascunhoAvaliacao']);
 var _uiTravaAlvo = null;
 function _uiTravaCss() {
   if (document.getElementById('ui-trava-css')) return;
@@ -18791,8 +18787,8 @@ function abrirDetalhesElementoPainel(id) {
     htmlVinculos += _detpLinha('Elemento pai', paiTxt);
   }
   // Elementos superiores (N:N): TODOS, cada um com o plano de origem ao lado.
-  var idsSup = (el.idsElementoSuperior && el.idsElementoSuperior.length) ? el.idsElementoSuperior
-    : (el.idElementoSuperior ? [el.idElementoSuperior] : []);
+  var noPlano = function(id) { return (dadosDetalhados.elementos || []).some(function(e) { return String(e.id) === String(id); }); };
+  var idsSup = (el.idsContribuiPara || []).filter(function(id) { return !noPlano(id); });
   if (idsSup.length) {
     var itensSup = idsSup.map(function(idSup) {
       var sup = (dadosDetalhados.elementosSuperiores || []).find(function(e) { return String(e.id) === String(idSup); });
@@ -18804,7 +18800,7 @@ function abrirDetalhesElementoPainel(id) {
     htmlVinculos += _detpLinha(idsSup.length > 1 ? 'Elementos superiores' : 'Elemento superior', itensSup);
   }
   // Elementos relacionados (N:N, mesmo plano, simétrico)
-  var idsRel = el.idsElementoRelacionado || [];
+  var idsRel = (el.idsContribuiPara || []).filter(noPlano);
   if (idsRel.length) {
     var itensRel = idsRel.map(function(idRel) {
       var rel = (dadosDetalhados.elementos || []).find(function(e) { return String(e.id) === String(idRel); });
@@ -20774,11 +20770,10 @@ uiRegistrarAcoes('pages_execucao_planos', {
      - Sem sobreposição: margem e espaçamentos padronizados para o hero e a linha de abas;
      - Barra de filtros unificada na mesma linha base: busca expansível estilo Drive, filtro de status dropdown
        com abrirMenuSelecao, toggle de colaborações e limpar filtros à esquerda;
-     - À direita na mesma linha base: seletor de exercício plurianual via dropdown e alternador de modos (Lista/Kanban);
-     - Ações de colunas e atualizar movidas para a topbar do kanban e para o cabeçalho da tabela no modo lista;
+     - À direita na mesma linha base: seletor de exercício plurianual via dropdown;
+     - Registro de execução: lista plana dos elementos executáveis (folhas e elementos com indicador), caminho dos ancestrais acima do título, linha colapsável com a lista de verificação e os indicadores;
      - Painel lateral (#extp-panel) com abas Detalhes e Atividade;
-     - Binômio Elemento + Indicadores ancorados ("pendendo do elemento");
-     - Suporte a planos plurianuais com seletor de exercício/período. -->
+     - Seletor de exercício só aparece se a vigência do plano cruza mais de um ano. -->
 <div id="page-execucao-tarefas" class="page-content ds-pagina hidden">
 
   <section class="ds-pagina__hero" id="ext-hero">
@@ -20812,83 +20807,71 @@ uiRegistrarAcoes('pages_execucao_planos', {
   <!-- PAINEL: RESPONSABILIDADES -->
   <div id="ext-painel-tarefas">
 
-    <!-- Barra de Filtros Unificada: Busca, Filtro Status, Colaboração, Limpar + Exercício e Modos de Visualização -->
-    <div class="ext-filtros ds-pagina__filtros" id="ext-filtros">
-      <div class="ext-filtros-normal" id="ext-filtros-normal">
+    <!-- Filtros: busca, situação, origem, "Dentro de…" e exercício (só se a vigência cruza mais de um ano) -->
+    <div class="ds-filtros ds-pagina__filtros" id="ext-filtros">
+      <div class="ds-filtros__normal" id="ext-filtros-normal">
 
-        <!-- Busca expansível (estilo Drive / Samaúma) -->
-        <div class="ext-search" id="ext-search-wrap">
+        <div class="ds-busca" id="ext-search-wrap">
           <button type="button" class="ds-icon-action" id="ext-search-toggle" data-on-click="pages_execucao_tarefas.5"
-                  data-title="Buscar" aria-label="Buscar responsabilidade">
+                  data-title="Buscar" aria-label="Buscar elemento">
             <span class="material-symbols-outlined">search</span>
           </button>
-          <div class="ext-search-caixa hidden" id="ext-search-caixa">
-            <span class="material-symbols-outlined ext-search-icon" aria-hidden="true">search</span>
-            <input type="text" class="ds-input ext-search-input" id="ext-busca"
+          <div class="ds-busca__caixa hidden" id="ext-search-caixa">
+            <span class="material-symbols-outlined ds-busca__icone" aria-hidden="true">search</span>
+            <input type="text" class="ds-input ds-busca__input" id="ext-busca"
                    placeholder="Buscar elemento, código ou indicador…" data-on-input="pages_execucao_tarefas.9"
                    aria-label="Buscar elemento, código ou indicador">
-            <button type="button" class="ext-search-clear hidden" id="ext-btn-limpar-busca"
+            <button type="button" class="ds-busca__limpar hidden" id="ext-btn-limpar-busca"
                     data-on-click="pages_execucao_tarefas.6" data-title="Limpar busca" aria-label="Limpar busca">
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
         </div>
 
-        <!-- Filtro Status (dropdown estilo Drive via abrirMenuSelecao) -->
-        <div class="ext-filtro" data-filtro="status" id="ext-filtro-wrap-status">
-          <button type="button" class="ext-filtro-btn" id="ext-filtro-btn-status" data-on-click="pages_execucao_tarefas.10"
-                  aria-haspopup="menu" aria-expanded="false">
-            <span id="ext-filtro-label-status">Status</span>
-            <span class="material-symbols-outlined">expand_more</span>
+        <span class="ds-filtro" id="ext-filtro-wrap-status">
+          <button type="button" class="ds-filtro__btn" id="ext-filtro-btn-status" data-on-click="pages_execucao_tarefas.10" aria-haspopup="menu">
+            <span id="ext-filtro-label-status">Situação</span><span class="material-symbols-outlined">expand_more</span>
           </button>
-          <button type="button" class="ext-filtro-x hidden" id="ext-filtro-x-status" data-on-click="pages_execucao_tarefas.38"
-                  data-title="Remover filtro de status" aria-label="Remover filtro de status">
+          <button type="button" class="ds-filtro__x hidden" id="ext-filtro-x-status" data-on-click="pages_execucao_tarefas.38" aria-label="Limpar filtro de situação">
             <span class="material-symbols-outlined">close</span>
           </button>
-        </div>
+        </span>
 
-        <!-- Toggle: Somente colaborações -->
-        <label class="ext-toggle-origem" data-title="Mostra só as responsabilidades que você assumiu por colaboração externa (fora do seu escopo normal de Unidade)">
-          <input type="checkbox" id="ext-filtro-colaboracao" data-on-change="pages_execucao_tarefas.8">
-          <span class="ext-toggle-track"><span class="ext-toggle-thumb"></span></span>
-          <span>Somente colaborações</span>
-        </label>
-
-        <!-- Limpar filtros -->
-        <button type="button" class="ext-limpar-link hidden" id="ext-btn-limpar-filtros"
-                data-on-click="pages_execucao_tarefas.7" aria-label="Limpar filtros">
-          Limpar filtros
-        </button>
-
-        <!-- Spacer empurra os controles para a direita na mesma linha base -->
-        <div style="flex:1"></div>
-
-        <!-- Seletor de Período / Exercício Plurianual (dropdown na mesma linha base) -->
-        <div class="ext-filtro ext-periodo-filtro" id="ext-periodo-wrap" data-filtro="exercicio">
-          <button type="button" class="ext-filtro-btn" id="ext-filtro-btn-exercicio" data-on-click="pages_execucao_tarefas.28"
-                  aria-haspopup="menu" aria-expanded="false" data-title="Selecione o exercício de apuração do plano">
-            <span class="material-symbols-outlined" style="font-size:18px;color:var(--ds-color-action)">event</span>
-            <span id="ext-filtro-label-exercicio">Exercício</span>
-            <span class="material-symbols-outlined">expand_more</span>
+        <span class="ds-filtro" id="ext-filtro-wrap-origem">
+          <button type="button" class="ds-filtro__btn" id="ext-filtro-btn-origem" data-on-click="pages_execucao_tarefas.12" aria-haspopup="menu"
+                  data-title="Só as responsabilidades que você assumiu por colaboração (fora do seu escopo normal de unidade)">
+            <span id="ext-filtro-label-origem">Origem</span><span class="material-symbols-outlined">expand_more</span>
           </button>
-        </div>
-
-        <!-- Alternador Simplificado de Visualização: Apenas Lista e Kanban (à direita, mesma linha base) -->
-        <div class="det-modos" role="group" aria-label="Modo de visualização">
-          <button type="button" class="det-modo ativo" data-view="kanban" data-on-click="pages_execucao_tarefas.4"
-                  id="ext-btn-modo-kanban" data-title="Visualização em Kanban" aria-label="Visualização em Kanban" aria-pressed="true">
-            <span class="material-symbols-outlined">view_kanban</span>
+          <button type="button" class="ds-filtro__x hidden" id="ext-filtro-x-origem" data-on-click="pages_execucao_tarefas.42" aria-label="Limpar filtro de origem">
+            <span class="material-symbols-outlined">close</span>
           </button>
-          <button type="button" class="det-modo" data-view="lista" data-on-click="pages_execucao_tarefas.3"
-                  id="ext-btn-modo-lista" data-title="Visualização em Lista" aria-label="Visualização em Lista" aria-pressed="false">
-            <span class="material-symbols-outlined">format_list_bulleted</span>
-          </button>
-        </div>
+        </span>
 
+        <span class="ds-filtro" id="ext-filtro-wrap-dentro">
+          <button type="button" class="ds-filtro__btn" id="ext-filtro-btn-dentro" data-on-click="pages_execucao_tarefas.14" aria-haspopup="menu"
+                  data-title="Só o que está dentro de um elemento superior">
+            <span id="ext-filtro-label-dentro">Dentro de…</span><span class="material-symbols-outlined">expand_more</span>
+          </button>
+          <button type="button" class="ds-filtro__x hidden" id="ext-filtro-x-dentro" data-on-click="pages_execucao_tarefas.43" aria-label="Limpar filtro de elemento superior">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </span>
+
+        <span class="ds-filtro hidden" id="ext-filtro-wrap-exercicio">
+          <button type="button" class="ds-filtro__btn" id="ext-filtro-btn-exercicio" data-on-click="pages_execucao_tarefas.28" aria-haspopup="menu"
+                  data-title="Exercício de apuração: os elementos cuja vigência alcança o ano">
+            <span id="ext-filtro-label-exercicio">Exercício</span><span class="material-symbols-outlined">expand_more</span>
+          </button>
+          <button type="button" class="ds-filtro__x hidden" id="ext-filtro-x-exercicio" data-on-click="pages_execucao_tarefas.44" aria-label="Ver todos os exercícios">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </span>
+
+        <button type="button" class="ds-link hidden" id="ext-btn-limpar-filtros" data-on-click="pages_execucao_tarefas.7">Limpar filtros</button>
       </div>
     </div>
 
-    <!-- Container Dinâmico (Kanban ou Lista) -->
+    <!-- Lista do registro de execução -->
     <div id="ext-container"></div>
   </div>
 
@@ -20912,32 +20895,6 @@ uiRegistrarAcoes('pages_execucao_planos', {
       <div id="extp-view-atividade" class="detp-view hidden"><!-- Injetado via JS --></div>
     </div>
   </aside>
-
-  <!-- MODAL: CONFIGURAÇÃO DE COLUNAS DO KANBAN -->
-  <div id="ext-modal-colunas" class="ext-mini-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ext-modal-colunas-titulo">
-    <div class="ext-mini-card">
-      <div class="ext-mini-header">
-        <h4 id="ext-modal-colunas-titulo">Configurar Colunas do Kanban</h4>
-        <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.30" aria-label="Fechar">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-      <div class="ext-mini-body">
-        <p style="font-size:0.84rem;color:var(--ds-color-text-muted);margin:0">
-          Personalize as colunas do seu quadro de execução. Os cards arrastados são organizados conforme sua preferência.
-        </p>
-        <div id="ext-colunas-lista" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto"></div>
-        <div style="display:flex;gap:8px;margin-top:6px">
-          <input type="text" id="ext-nova-coluna-titulo" class="filtro-input ds-input" placeholder="Nome da nova coluna…" style="flex:1" maxlength="40">
-          <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_execucao_tarefas.31">Adicionar</button>
-        </div>
-      </div>
-      <div class="ext-mini-footer">
-        <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="pages_execucao_tarefas.32">Restaurar padrão</button>
-        <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_execucao_tarefas.30">Concluir</button>
-      </div>
-    </div>
-  </div>
 
   <!-- MINI MODAL: REGISTRAR EXECUÇÃO DE TRATAMENTO -->
   <div id="ext-modal-registro" class="ext-mini-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ext-modal-reg-titulo">
@@ -20973,7 +20930,7 @@ uiRegistrarAcoes('pages_execucao_planos', {
    ESTILOS ESPECÍFICOS: WORKSPACE DE REGISTRO DE EXECUÇÃO
    ========================================================================== */
 
-/* O layout (hero, ações, abas e filtros fixos) é o .ds-pagina do design system. */
+/* O layout (hero, ações, abas e filtros fixos) é o .ds-pagina do design system; filtros, busca e lista usam os componentes canônicos. */
 #page-execucao-tarefas .badge-status {
   border: none;
   background: var(--ds-color-surface-2);
@@ -20985,311 +20942,9 @@ uiRegistrarAcoes('pages_execucao_planos', {
   align-items: center;
   line-height: 1.4;
 }
-
-/* --- Barra de filtros unificada (estilo Drive / Samaúma) --- */
-#page-execucao-tarefas .ext-filtros {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  margin-bottom: var(--ds-space-3);
-}
-#page-execucao-tarefas .ext-filtros-normal {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  flex-wrap: wrap;
-}
-
-/* Busca expansível */
-#page-execucao-tarefas .ext-search { position: relative; display: inline-flex; align-items: center; }
-#page-execucao-tarefas .ext-search-caixa { position: relative; display: flex; align-items: center; }
-#page-execucao-tarefas .ext-search-caixa.hidden { display: none; }
-#page-execucao-tarefas .ext-search-icon {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  font-size: 20px; color: var(--ds-color-text-muted); pointer-events: none;
-}
-#page-execucao-tarefas .ext-search-input { width: 260px; max-width: 60vw; padding-left: 42px; padding-right: 38px; height: 36px; }
-#page-execucao-tarefas .ext-search-clear {
-  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0;
-  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
-  background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted);
-}
-#page-execucao-tarefas .ext-search-clear:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text); }
-#page-execucao-tarefas .ext-search-clear .material-symbols-outlined { font-size: 18px; }
-
-/* Pastilhas de Filtro (Chip-buttons de filtro, padrão pll/exl) */
-#page-execucao-tarefas .ext-filtro { display: inline-flex; align-items: stretch; }
-#page-execucao-tarefas .ext-filtro-btn {
-  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px;
-  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
-  color: var(--ds-color-text); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
-  cursor: pointer; white-space: nowrap; transition: all 0.15s;
-}
-#page-execucao-tarefas .ext-filtro-btn:hover { background: var(--ds-sidebar-item-hover); }
-#page-execucao-tarefas .ext-filtro-btn .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
-#page-execucao-tarefas .ext-filtro-btn--ativo {
-  background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); border-color: var(--ds-color-info-bg); font-weight: var(--ds-weight-semibold);
-}
-#page-execucao-tarefas .ext-filtro-btn--ativo .material-symbols-outlined { color: var(--ds-color-info-fg); }
-#page-execucao-tarefas .ext-filtro-btn:has(+ .ext-filtro-x:not(.hidden)) {
-  border-top-right-radius: 0; border-bottom-right-radius: 0;
-  border-right-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
-}
-#page-execucao-tarefas .ext-filtro-x {
-  display: inline-flex; align-items: center; justify-content: center; width: 26px; padding: 0;
-  background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); cursor: pointer;
-  border: 1px solid var(--ds-color-info-bg);
-  border-left-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
-  border-top-right-radius: var(--ds-r-lg); border-bottom-right-radius: var(--ds-r-lg);
-}
-#page-execucao-tarefas .ext-filtro-x:hover { filter: brightness(0.94); }
-#page-execucao-tarefas .ext-filtro-x .material-symbols-outlined { font-size: 15px; }
-
-/* Link limpar filtros */
-#page-execucao-tarefas .ext-limpar-link {
-  background: none; border: none; padding: 6px 4px; color: var(--ds-color-action); font-family: var(--ds-font-sans);
-  font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; white-space: nowrap;
-}
-#page-execucao-tarefas .ext-limpar-link:hover { text-decoration: underline; }
-
-/* Toggle "Somente colaborações" */
-#page-execucao-tarefas .ext-toggle-origem {
-  display: inline-flex; align-items: center; gap: 8px; font-size: var(--ds-text-sm); color: var(--ds-color-text);
-  cursor: pointer; white-space: nowrap; height: 36px; padding: 0 4px;
-}
-#page-execucao-tarefas .ext-toggle-origem input { position: absolute; opacity: 0; width: 0; height: 0; }
-#page-execucao-tarefas .ext-toggle-track {
-  width: 30px; height: 16px; background: var(--ds-color-border); border-radius: 10px;
-  position: relative; flex-shrink: 0; transition: background 0.15s;
-}
-#page-execucao-tarefas .ext-toggle-thumb {
-  position: absolute; top: 2px; left: 2px; width: 12px; height: 12px;
-  border-radius: 50%; background: var(--ds-color-surface); transition: left 0.15s;
-}
-#page-execucao-tarefas .ext-toggle-origem input:checked + .ext-toggle-track { background: var(--ds-color-action); }
-#page-execucao-tarefas .ext-toggle-origem input:checked + .ext-toggle-track .ext-toggle-thumb { left: 16px; }
-
-/* Alternador de Modos de visualização (.det-modos / .det-modo) */
-#page-execucao-tarefas .det-modos {
-  display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--ds-r-lg);
-  background: var(--ds-color-surface-2); border: 1px solid var(--ds-glass-border, var(--ds-color-border));
-}
-#page-execucao-tarefas .det-modo {
-  position: relative; width: 38px; height: 30px; padding: 0; cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted);
-  transition: all 0.15s;
-}
-#page-execucao-tarefas .det-modo:hover { color: var(--ds-color-text); background: var(--ds-sidebar-item-hover); }
-#page-execucao-tarefas .det-modo.ativo {
-  background: var(--ds-color-surface); color: var(--ds-color-action); box-shadow: var(--ds-shadow-1);
-}
-#page-execucao-tarefas .det-modo .material-symbols-outlined { font-size: 19px; }
-
-/* Topbar do Kanban e da Lista */
-#page-execucao-tarefas .ext-kanban-topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 4px 2px 12px; gap: 12px;
-}
-#page-execucao-tarefas .ext-contador-badge {
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
-  color: var(--ds-color-text-muted);
-}
-#page-execucao-tarefas .ext-kanban-topbar-acoes {
-  display: flex; align-items: center; gap: 8px; margin-left: auto;
-}
-#page-execucao-tarefas .ext-icon-th-btn {
-  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0;
-  background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); cursor: pointer;
-  transition: all 0.15s;
-}
-#page-execucao-tarefas .ext-icon-th-btn:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
-
-/* Ações no cabeçalho da tabela */
-#page-execucao-tarefas .ext-th-acoes {
-  display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; width: 100%;
-}
-
-/* --- KANBAN BOARD E COLUNAS --- */
-#page-execucao-tarefas .kanban-board {
-  display: flex; gap: 16px; padding: 4px 0 24px; overflow-x: auto; align-items: flex-start;
-  min-height: 480px;
-}
-#page-execucao-tarefas .kanban-col {
-  min-width: 320px; max-width: 340px; width: 330px; background: var(--ds-color-surface-2);
-  border-radius: var(--ds-r-lg); border: 1px solid var(--ds-color-border);
-  display: flex; flex-direction: column; flex-shrink: 0;
-  transition: box-shadow .15s, border-color .15s, background .15s;
-}
-#page-execucao-tarefas .kanban-col.exec-col-over {
-  border-color: var(--ds-color-action); box-shadow: 0 0 0 2px var(--ds-color-action) inset;
-  background: var(--ds-color-info-bg);
-}
-#page-execucao-tarefas .kanban-header {
-  padding: 12px 14px; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text);
-  display: flex; justify-content: space-between; align-items: center;
-  border-bottom: 1px solid var(--ds-color-border);
-}
-#page-execucao-tarefas .kanban-header-titulo {
-  display: flex; align-items: center; gap: 8px; font-size: 0.92rem;
-}
-#page-execucao-tarefas .badge-count {
-  font-size: 11px; font-weight: var(--ds-weight-bold);
-  padding: 1px 7px; border-radius: var(--ds-r-pill);
-  background: var(--ds-color-surface); color: var(--ds-color-text-muted);
-  border: 1px solid var(--ds-color-border);
-}
-#page-execucao-tarefas .kanban-body {
-  padding: 12px; display: flex; flex-direction: column; gap: 12px; min-height: 120px;
-}
-
-/* --- CARD PRINCIPAL (Elemento + Itens Ancorados) --- */
-#page-execucao-tarefas .task-card {
-  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md);
-  box-shadow: var(--ds-shadow-1); cursor: grab; transition: transform .18s var(--ds-ease-standard), box-shadow .18s var(--ds-ease-standard), border-color .18s;
-  display: flex; flex-direction: column; overflow: hidden; position: relative;
-}
-#page-execucao-tarefas .task-card:hover {
-  transform: translateY(-2px); box-shadow: var(--ds-shadow-2); border-color: var(--ds-color-action);
-}
-#page-execucao-tarefas .task-card.exec-dragging {
-  opacity: 0.35; transform: scale(0.98); cursor: grabbing;
-}
-
-/* Corpo do Elemento no Card */
-#page-execucao-tarefas .card-main-content {
-  padding: 12px; display: flex; flex-direction: column; gap: 8px;
-}
-#page-execucao-tarefas .card-meta {
-  display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--ds-color-text-muted);
-}
-#page-execucao-tarefas .card-code {
-  font-weight: 700; background: var(--ds-color-surface-2); color: var(--ds-color-text);
-  padding: 2px 6px; border-radius: 4px; border: 1px solid var(--ds-color-border); font-size: 0.75rem;
-}
-#page-execucao-tarefas .card-title {
-  font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); font-size: 0.92rem; line-height: 1.38;
-}
-#page-execucao-tarefas .card-parent-title {
-  font-size: 0.75rem; color: var(--ds-color-text-muted); margin-top: -4px;
-}
-
-/* Barra de Progresso Físico no Card */
-#page-execucao-tarefas .card-prog-wrap {
-  display: flex; flex-direction: column; gap: 4px; margin-top: 4px;
-}
-#page-execucao-tarefas .card-prog-info {
-  display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;
-}
-#page-execucao-tarefas .card-prog-pct {
-  font-weight: var(--ds-weight-bold); color: var(--ds-color-action);
-}
-#page-execucao-tarefas .card-prog-track {
-  height: 6px; background: var(--ds-color-border); border-radius: 3px; overflow: hidden; position: relative;
-}
-#page-execucao-tarefas .card-prog-fill {
-  height: 100%; background: var(--ds-color-action); border-radius: 3px; transition: width .3s var(--ds-ease-standard);
-}
-
-/* Alerta de Meta Pendente no Card */
-#page-execucao-tarefas .ext-alerta-meta {
-  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
-  background: var(--ds-color-warning-bg); border: 1px solid var(--ds-color-warning);
-  border-radius: var(--ds-r-sm); font-size: 0.74rem; color: var(--ds-color-text);
-  font-weight: var(--ds-weight-medium);
-}
-#page-execucao-tarefas .ext-alerta-meta .material-symbols-outlined {
-  font-size: 16px; color: var(--ds-color-warning-fg);
-}
-
-/* Rodapé de Ações do Elemento */
-#page-execucao-tarefas .card-footer-actions {
-  display: flex; justify-content: space-between; align-items: center; padding-top: 8px;
-  border-top: 1px solid var(--ds-color-border);
-}
-#page-execucao-tarefas .card-btn-gaveta {
-  display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: var(--ds-weight-semibold);
-  color: var(--ds-color-action); background: none; border: none; cursor: pointer; padding: 4px 6px;
-  border-radius: 4px; transition: background .12s;
-}
-#page-execucao-tarefas .card-btn-gaveta:hover { background: var(--ds-sidebar-item-hover); }
-#page-execucao-tarefas .card-btn-gaveta .material-symbols-outlined { font-size: 16px; transition: transform .2s var(--ds-ease-standard); }
-#page-execucao-tarefas .card-btn-gaveta.aberto .material-symbols-outlined { transform: rotate(180deg); }
-
-/* --- GAVETA ANCORADA: INDICADORES "PENDENDO DO ELEMENTO" --- */
-#page-execucao-tarefas .ext-ancora-container {
-  background: var(--ds-color-surface-2); border-top: 1px dashed var(--ds-color-border);
-  padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
-  position: relative; border-left: 3px solid var(--ds-color-action);
-}
-#page-execucao-tarefas .ext-ancora-item {
-  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border);
-  border-radius: var(--ds-r-sm); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px;
-  transition: border-color .15s, box-shadow .15s;
-}
-#page-execucao-tarefas .ext-ancora-item:hover {
-  border-color: var(--ds-color-action); box-shadow: var(--ds-shadow-1);
-}
-#page-execucao-tarefas .ext-ancora-header {
-  display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
-}
-#page-execucao-tarefas .ext-ancora-nome {
-  font-size: 0.82rem; font-weight: var(--ds-weight-medium); color: var(--ds-color-text); line-height: 1.3;
-}
-#page-execucao-tarefas .ext-ancora-meta-box {
-  display: flex; justify-content: space-between; align-items: center; font-size: 0.74rem; color: var(--ds-color-text-muted);
-}
-#page-execucao-tarefas .ext-ancora-resultado {
-  font-weight: var(--ds-weight-bold); color: var(--ds-color-text);
-}
-#page-execucao-tarefas .ext-ancora-resultado.atingido { color: var(--ds-color-success-fg); }
-#page-execucao-tarefas .ext-ancora-resultado.pendente { color: var(--ds-color-warning-fg); font-style: italic; }
-
-/* Subseção de Checklist de Tarefas Ancoradas */
-#page-execucao-tarefas .ext-ancora-tarefas-wrap {
-  border-top: 1px solid var(--ds-color-border); padding-top: 6px; margin-top: 4px;
-}
-#page-execucao-tarefas .ext-mini-tarefa-item {
-  display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 0.78rem; color: var(--ds-color-text);
-}
-#page-execucao-tarefas .ext-mini-tarefa-item.concluida {
-  text-decoration: line-through; color: var(--ds-color-text-muted);
-}
-
-/* Botões de Ação Mini */
-#page-execucao-tarefas .action-btn-mini {
-  width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--ds-color-border); background: var(--ds-color-surface);
-  display: inline-flex; align-items: center; justify-content: center; color: var(--ds-color-text-muted); cursor: pointer;
-  transition: all .15s;
-}
-#page-execucao-tarefas .action-btn-mini:hover { background: var(--ds-color-surface-2); color: var(--ds-color-action); border-color: var(--ds-color-action); }
-
-/* --- MODO LISTA: TABELA HIERÁRQUICA E LINHAS EXPANSÍVEIS --- */
-#page-execucao-tarefas .ext-tabela-wrap {
-  width: 100%; overflow-x: auto; background: var(--ds-color-surface);
-  border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md);
-}
-#page-execucao-tarefas .ext-tabela-lista {
-  width: 100%; border-collapse: collapse; font-family: var(--ds-font-sans);
-}
-#page-execucao-tarefas .ext-tabela-lista th {
-  padding: 10px 14px; font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs);
-  text-transform: uppercase; letter-spacing: 0.04em; color: var(--ds-color-text-muted);
-  background: var(--ds-color-surface-2); border-bottom: 1px solid var(--ds-color-border); text-align: left;
-}
-#page-execucao-tarefas .ext-tabela-lista td {
-  padding: 12px 14px; border-bottom: 1px solid var(--ds-color-border);
-  font-size: var(--ds-text-sm); color: var(--ds-color-text); vertical-align: middle;
-  transition: background var(--ds-duration-fast) var(--ds-ease-standard);
-}
-#page-execucao-tarefas .ext-tabela-lista tbody tr.ext-linha-elemento:hover td {
-  background: var(--ds-sidebar-item-hover);
-}
-#page-execucao-tarefas .ext-linha-detalhes td {
-  background: var(--ds-color-surface-2); padding: 12px 18px; border-bottom: 1px solid var(--ds-color-border);
-}
+#page-execucao-tarefas #ext-col-prog { width: 160px; }
+#page-execucao-tarefas #ext-col-acoes { width: 164px; }
+@media (max-width: 768px) { #page-execucao-tarefas #ext-col-prog { width: 108px; } #page-execucao-tarefas #ext-col-acoes { width: 48px; } #ext-tabela [data-ext-chips] { display: none; } }
 
 /* --- Riscos e Tratamentos --- */
 #page-execucao-tarefas .ext-risco-card { background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-xl); padding: var(--ds-space-4); margin-bottom: var(--ds-space-4); }
@@ -21337,23 +20992,15 @@ var estadoExecTarefas = {
   idPlano: null,
   dados: null,
   aba: 'tarefas',
-  view: 'kanban',
   filtroStatus: 'todos',
   busca: '',
-  somenteColaboracao: false,
+  origem: 'todas',
+  dentroDe: '',
   anoSelecionado: 'todos',
-  gavetasAbertas: {},
-  tarefasAbertas: {},
-  riscos: null,
-  ordenacao: { coluna: null, direcao: 'asc' }
+  abertaId: '',
+  historico: null, // { idElemento, registros[] } da linha aberta
+  riscos: null
 };
-
-var EXEC_COLUNAS_PADRAO = [
-  { id: 'nao_iniciado', titulo: 'Não Iniciado', status: 'Não Iniciado', icone: 'radio_button_unchecked' },
-  { id: 'em_andamento', titulo: 'Em Andamento', status: 'Em Andamento', icone: 'timelapse' },
-  { id: 'concluido', titulo: 'Concluído', status: 'Concluído', icone: 'check_circle' },
-  { id: 'atrasado', titulo: 'Atrasado', status: 'Atrasado', icone: 'warning' }
-];
 
 var EXT_CORES_STATUS_PLANO = {
   'Em Execução':   ['var(--ds-status-execucao-bg)', 'var(--ds-status-execucao-fg)'],
@@ -21367,59 +21014,25 @@ var EXT_CORES_STATUS_PLANO = {
   'Excluído':      ['var(--ds-status-cancelado-bg)', 'var(--ds-status-cancelado-fg)']
 };
 
-function execTarefasCarregar() {
-  document.getElementById('ext-titulo').textContent = 'Carregando…';
-  estadoExecTarefas.riscos = null;
-  estadoExecTarefas.gavetasAbertas = {};
-  estadoExecTarefas.tarefasAbertas = {};
-
-  // Reseta a UI de filtros/visualização para o estado padrão
-  if (estadoExecTarefas.view !== 'lista' && estadoExecTarefas.view !== 'kanban') {
-    estadoExecTarefas.view = 'kanban';
+// Carrega o registro de execução do plano. `preservar` (recarga depois de lançar ou de atualizar) mantém filtros e linha aberta; a primeira carga os zera.
+function execTarefasCarregar(preservar) {
+  var e = estadoExecTarefas;
+  if (!preservar) {
+    document.getElementById('ext-titulo').textContent = 'Carregando…';
+    e.riscos = null; e.abertaId = ''; e.historico = null;
+    e.filtroStatus = 'todos'; e.busca = ''; e.origem = 'todas'; e.dentroDe = '';
+    var buscaEl = document.getElementById('ext-busca');
+    if (buscaEl) buscaEl.value = '';
+    document.getElementById('ext-search-caixa').classList.add('hidden');
+    document.getElementById('ext-search-toggle').classList.remove('hidden');
+    execTarefasMudarAba('tarefas', true);
+    document.getElementById('ext-container').innerHTML = spinnerListaHTML('Carregando o registro de execução…');
   }
-  estadoExecTarefas.filtroStatus = 'todos';
-  estadoExecTarefas.busca = '';
-  estadoExecTarefas.somenteColaboracao = false;
-  estadoExecTarefas.ordenacao = { coluna: null, direcao: 'asc' };
-
-  var btnKanban = document.getElementById('ext-btn-modo-kanban');
-  var btnLista = document.getElementById('ext-btn-modo-lista');
-  if (btnKanban) {
-    btnKanban.classList.toggle('ativo', estadoExecTarefas.view === 'kanban');
-    btnKanban.setAttribute('aria-pressed', estadoExecTarefas.view === 'kanban' ? 'true' : 'false');
-  }
-  if (btnLista) {
-    btnLista.classList.toggle('ativo', estadoExecTarefas.view === 'lista');
-    btnLista.setAttribute('aria-pressed', estadoExecTarefas.view === 'lista' ? 'true' : 'false');
-  }
-
-  var buscaEl = document.getElementById('ext-busca');
-  if (buscaEl) buscaEl.value = '';
-  var btnClearBusca = document.getElementById('ext-btn-limpar-busca');
-  if (btnClearBusca) btnClearBusca.classList.add('hidden');
-  var caixaBusca = document.getElementById('ext-search-caixa');
-  var toggleBusca = document.getElementById('ext-search-toggle');
-  if (caixaBusca) caixaBusca.classList.add('hidden');
-  if (toggleBusca) toggleBusca.classList.remove('hidden');
-
-  var elLabelStatus = document.getElementById('ext-filtro-label-status');
-  var elBtnStatus = document.getElementById('ext-filtro-btn-status');
-  var elXStatus = document.getElementById('ext-filtro-x-status');
-  if (elLabelStatus) elLabelStatus.textContent = 'Status';
-  if (elBtnStatus) elBtnStatus.classList.remove('ext-filtro-btn--ativo');
-  if (elXStatus) elXStatus.classList.add('hidden');
-
-  var filtroColabEl = document.getElementById('ext-filtro-colaboracao');
-  if (filtroColabEl) filtroColabEl.checked = false;
-
-  _extVerificarLimparFiltros();
-  execTarefasMudarAba('tarefas', true);
-  document.getElementById('ext-container').innerHTML = spinnerListaHTML('Carregando responsabilidades…');
 
   google.script.run
     .withSuccessHandler(function(dados) {
-      estadoExecTarefas.dados = dados;
-      execTarefasRenderizarHeader(dados.plano);
+      e.dados = dados;
+      execTarefasRenderizarHeader(dados.plano, !preservar);
       if (typeof setBreadcrumb === 'function') {
         setBreadcrumb([
           { label: 'Execução', page: 'execucao' },
@@ -21427,22 +21040,24 @@ function execTarefasCarregar() {
           { label: dados.plano.nome }
         ]);
       }
+      _extFiltrosAtualizarUI();
       execTarefasRenderizar();
     })
     .withFailureHandler(function(err) {
       document.getElementById('ext-container').innerHTML = '<div class="exl-vazio"><span class="material-symbols-outlined">error</span><p>' + escapeHtml(err.message) + '</p></div>';
     })
-    .apiGetTarefasExecucaoPlano(estadoExecTarefas.idPlano);
+    .apiGetTarefasExecucaoPlano(e.idPlano);
 }
 
 // Hook de recarregamento esperado por components_modal_resultado.html após salvar
 function carregarDadosExecucao() {
-  if (estadoExecTarefas.idPlano) execTarefasCarregar();
+  estadoExecTarefas.historico = null;
+  if (estadoExecTarefas.idPlano) execTarefasCarregar(true);
 }
 
 // --- HEADER E PAINEL LATERAL DE DETALHES ---
 
-function execTarefasRenderizarHeader(p) {
+function execTarefasRenderizarHeader(p, primeiraCarga) {
   document.getElementById('ext-titulo').innerText = p.nome || 'Sem Nome';
   if (typeof calPrazosRender === 'function') calPrazosRender('ext-prazos', estadoExecTarefas.idPlano);
 
@@ -21452,14 +21067,13 @@ function execTarefasRenderizarHeader(p) {
   elStatus.style.background = cor[0];
   elStatus.style.color = cor[1];
 
-  // Configura o seletor de Exercício / Período Plurianual
-  var anos = p.anosVigencia || [];
-  if (!anos.length && p.anoInicio && p.anoFim) {
-    for (var a = Number(p.anoInicio); a <= Number(p.anoFim); a++) anos.push(a);
+  // O seletor de exercício só existe se a vigência cruza mais de um ano; abre no ano corrente (ou no primeiro)
+  var anos = _extAnos();
+  document.getElementById('ext-filtro-wrap-exercicio').classList.toggle('hidden', anos.length < 2);
+  if (primeiraCarga) {
+    var anoAtual = new Date().getFullYear();
+    estadoExecTarefas.anoSelecionado = anos.length < 2 ? 'todos' : String(anos.indexOf(anoAtual) > -1 ? anoAtual : anos[0]);
   }
-  var anoAtual = new Date().getFullYear();
-  var anoPadrao = anos.indexOf(anoAtual) > -1 ? anoAtual : (anos[0] || 'todos');
-  extSelecionarExercicio(String(anoPadrao));
 
   // Mantém os dados da barra lateral atualizados
   _extpRenderDetalhes();
@@ -21572,12 +21186,6 @@ function _extpRenderAtividade() {
 // Fechamento de painel lateral e modal com tecla Esc
 document.addEventListener('keydown', function(e) {
   if (e.key !== 'Escape') return;
-  var modalCol = document.getElementById('ext-modal-colunas');
-  if (modalCol && !modalCol.classList.contains('hidden')) {
-    _execFecharModalColunasKanban();
-    e.preventDefault();
-    return;
-  }
   var panel = document.getElementById('extp-panel');
   if (panel && panel.classList.contains('aberto')) {
     extFecharPainelDetalhes();
@@ -21611,24 +21219,7 @@ function execTarefasMudarAba(aba, semCarregarRiscos) {
   uiPaginaMedir(document.getElementById('page-execucao-tarefas'));
 }
 
-// --- MODOS DE VISUALIZAÇÃO: APENAS LISTA E KANBAN ---
-
-function execTarefasSetView(view) {
-  estadoExecTarefas.view = view;
-  var btnKanban = document.getElementById('ext-btn-modo-kanban');
-  var btnLista = document.getElementById('ext-btn-modo-lista');
-  if (btnKanban) {
-    btnKanban.classList.toggle('ativo', view === 'kanban');
-    btnKanban.setAttribute('aria-pressed', view === 'kanban' ? 'true' : 'false');
-  }
-  if (btnLista) {
-    btnLista.classList.toggle('ativo', view === 'lista');
-    btnLista.setAttribute('aria-pressed', view === 'lista' ? 'true' : 'false');
-  }
-  execTarefasRenderizar();
-}
-
-// --- FILTROS E BUSCA (ESTILO DRIVE COM abrirMenuSelecao) ---
+// --- FILTROS (componentes canônicos .ds-filtro / .ds-busca) ---
 
 function extAbrirBusca() {
   var toggle = document.getElementById('ext-search-toggle');
@@ -21641,189 +21232,338 @@ function extAbrirBusca() {
 
 function extLimparBusca() {
   var inp = document.getElementById('ext-busca');
-  if (inp) {
-    inp.value = '';
-    inp.focus();
-  }
-  var btnClear = document.getElementById('ext-btn-limpar-busca');
-  if (btnClear) btnClear.classList.add('hidden');
+  if (inp) { inp.value = ''; inp.focus(); }
   execTarefasFiltrar();
 }
 
 function execTarefasFiltrar() {
   var inp = document.getElementById('ext-busca');
   estadoExecTarefas.busca = inp ? inp.value.toLowerCase().trim() : '';
+  _extFiltrosAtualizarUI();
+  execTarefasRenderizar();
+}
+
+// Mostra o estado de cada filtro (rótulo, destaque e "x") a partir de estadoExecTarefas: única fonte da aparência dos filtros.
+function _extFiltroUI(nome, ativo, rotuloAtivo, rotuloPadrao) {
+  var label = document.getElementById('ext-filtro-label-' + nome);
+  var btn = document.getElementById('ext-filtro-btn-' + nome);
+  var x = document.getElementById('ext-filtro-x-' + nome);
+  if (label) label.textContent = ativo ? rotuloAtivo : rotuloPadrao;
+  if (btn) btn.classList.toggle('ds-filtro__btn--ativo', !!ativo);
+  if (x) x.classList.toggle('hidden', !ativo);
+}
+
+function _extFiltrosAtualizarUI() {
+  var e = estadoExecTarefas, dentro = e.dentroDe ? _execNoDe(e.dentroDe) : null;
+  _extFiltroUI('status', e.filtroStatus !== 'todos', e.filtroStatus, 'Situação');
+  _extFiltroUI('origem', e.origem !== 'todas', 'Só colaborações', 'Origem');
+  _extFiltroUI('dentro', !!dentro, dentro ? ((dentro.codigo ? dentro.codigo + ' ' : '') + dentro.titulo) : '', 'Dentro de…');
+  _extFiltroUI('exercicio', e.anoSelecionado !== 'todos', 'Exercício ' + e.anoSelecionado, 'Exercício');
+  var inp = document.getElementById('ext-busca');
   var btnClear = document.getElementById('ext-btn-limpar-busca');
-  if (btnClear) btnClear.classList.toggle('hidden', !estadoExecTarefas.busca);
-  _extVerificarLimparFiltros();
+  if (btnClear) btnClear.classList.toggle('hidden', !(inp && inp.value));
+  var algum = !!e.busca || e.filtroStatus !== 'todos' || e.origem !== 'todas' || !!e.dentroDe;
+  var limpar = document.getElementById('ext-btn-limpar-filtros');
+  if (limpar) limpar.classList.toggle('hidden', !algum);
+}
+
+// Define um filtro (campo de estadoExecTarefas) e redesenha.
+function extFiltrar(campo, valor) {
+  estadoExecTarefas[campo] = valor;
+  _extFiltrosAtualizarUI();
   execTarefasRenderizar();
-}
-
-function extToggleColaboracao(input) {
-  estadoExecTarefas.somenteColaboracao = !!(input && input.checked);
-  _extVerificarLimparFiltros();
-  execTarefasRenderizar();
-}
-
-function extAbrirFiltroStatus(ev, gatilho) {
-  if (ev) ev.stopPropagation();
-  gatilho = gatilho || (this instanceof Element ? this : null) || (ev && ev.currentTarget && ev.currentTarget !== document.documentElement && ev.currentTarget !== document.body ? ev.currentTarget : null) || document.getElementById('ext-filtro-btn-status');
-  var atual = estadoExecTarefas.filtroStatus || 'todos';
-  var opcoes = [
-    { valor: 'todos', label: 'Todos os status' },
-    { valor: 'Não Iniciado', label: 'Não Iniciado' },
-    { valor: 'Em Andamento', label: 'Em Andamento' },
-    { valor: 'Concluído', label: 'Concluído' },
-    { valor: 'Atrasado', label: 'Atrasado' }
-  ];
-  var itens = opcoes.map(function(o) {
-    return {
-      label: o.label,
-      ativo: o.valor === atual,
-      onclick: "extSelecionarFiltroStatus('" + escapeJsAttr(o.valor) + "')"
-    };
-  });
-  if (typeof abrirMenuSelecao === 'function') {
-    abrirMenuSelecao(gatilho, [{ itens: itens }]);
-  }
-}
-
-function extSelecionarFiltroStatus(valor) {
-  estadoExecTarefas.filtroStatus = valor || 'todos';
-  var ativo = valor && valor !== 'todos';
-  var elLabel = document.getElementById('ext-filtro-label-status');
-  var elBtn = document.getElementById('ext-filtro-btn-status');
-  var elX = document.getElementById('ext-filtro-x-status');
-  if (elLabel) elLabel.textContent = ativo ? valor : 'Status';
-  if (elBtn) elBtn.classList.toggle('ext-filtro-btn--ativo', !!ativo);
-  if (elX) elX.classList.toggle('hidden', !ativo);
-  _extVerificarLimparFiltros();
-  execTarefasRenderizar();
-}
-
-function extLimparFiltroStatus() {
-  extSelecionarFiltroStatus('todos');
-}
-
-function extAbrirMenuExercicio(ev, gatilho) {
-  if (ev) ev.stopPropagation();
-  gatilho = gatilho || (this instanceof Element ? this : null) || (ev && ev.currentTarget && ev.currentTarget !== document.documentElement && ev.currentTarget !== document.body ? ev.currentTarget : null) || document.getElementById('ext-filtro-btn-exercicio');
-  var p = (estadoExecTarefas.dados && estadoExecTarefas.dados.plano) || {};
-  var anos = p.anosVigencia || [];
-  if (!anos.length && p.anoInicio && p.anoFim) {
-    for (var a = Number(p.anoInicio); a <= Number(p.anoFim); a++) anos.push(a);
-  }
-  var atual = String(estadoExecTarefas.anoSelecionado || 'todos');
-  var itens = [
-    { label: 'Todos os exercícios', ativo: atual === 'todos', onclick: "extSelecionarExercicio('todos')" }
-  ].concat(anos.map(function(ano) {
-    return {
-      label: 'Exercício ' + ano,
-      ativo: atual === String(ano),
-      onclick: "extSelecionarExercicio('" + ano + "')"
-    };
-  }));
-  if (typeof abrirMenuSelecao === 'function') {
-    abrirMenuSelecao(gatilho, [{ itens: itens }]);
-  }
-}
-
-function extSelecionarExercicio(ano) {
-  estadoExecTarefas.anoSelecionado = String(ano);
-  var elLabel = document.getElementById('ext-filtro-label-exercicio');
-  var elBtn = document.getElementById('ext-filtro-btn-exercicio');
-  if (elLabel) elLabel.textContent = (ano === 'todos') ? 'Todos os exercícios' : ('Exercício ' + ano);
-  if (elBtn) elBtn.classList.toggle('ext-filtro-btn--ativo', ano !== 'todos');
-  execTarefasRenderizar();
-}
-
-function _extVerificarLimparFiltros() {
-  var temBusca = !!estadoExecTarefas.busca;
-  var temStatus = estadoExecTarefas.filtroStatus && estadoExecTarefas.filtroStatus !== 'todos';
-  var temColab = !!estadoExecTarefas.somenteColaboracao;
-  var btnLimpar = document.getElementById('ext-btn-limpar-filtros');
-  if (btnLimpar) btnLimpar.classList.toggle('hidden', !(temBusca || temStatus || temColab));
 }
 
 function extLimparFiltros() {
   var inp = document.getElementById('ext-busca');
   if (inp) inp.value = '';
-  var btnClear = document.getElementById('ext-btn-limpar-busca');
-  if (btnClear) btnClear.classList.add('hidden');
   var caixa = document.getElementById('ext-search-caixa');
   var toggle = document.getElementById('ext-search-toggle');
   if (caixa) caixa.classList.add('hidden');
   if (toggle) toggle.classList.remove('hidden');
-
   estadoExecTarefas.busca = '';
   estadoExecTarefas.filtroStatus = 'todos';
-  estadoExecTarefas.somenteColaboracao = false;
-
-  var elLabelStatus = document.getElementById('ext-filtro-label-status');
-  var elBtnStatus = document.getElementById('ext-filtro-btn-status');
-  var elXStatus = document.getElementById('ext-filtro-x-status');
-  if (elLabelStatus) elLabelStatus.textContent = 'Status';
-  if (elBtnStatus) elBtnStatus.classList.remove('ext-filtro-btn--ativo');
-  if (elXStatus) elXStatus.classList.add('hidden');
-
-  var colabEl = document.getElementById('ext-filtro-colaboracao');
-  if (colabEl) colabEl.checked = false;
-
-  _extVerificarLimparFiltros();
+  estadoExecTarefas.origem = 'todas';
+  estadoExecTarefas.dentroDe = '';
+  _extFiltrosAtualizarUI();
   execTarefasRenderizar();
 }
 
-// Lista filtrada: LIMITA O REGISTRO DE EXECUÇÃO EXCLUSIVAMENTE A ELEMENTOS COM INDICADORES
-function _execListaFiltrada() {
-  if (!estadoExecTarefas.dados || !estadoExecTarefas.dados.tarefas) return [];
-  var busca = (estadoExecTarefas.busca || '').toLowerCase().trim();
-  var statusF = estadoExecTarefas.filtroStatus || 'todos';
-  var somenteColaboracao = estadoExecTarefas.somenteColaboracao;
+function _extAbrirMenu(ev, gatilho, idPadrao, itens) {
+  if (ev) ev.stopPropagation();
+  gatilho = gatilho || document.getElementById(idPadrao);
+  if (typeof abrirMenuSelecao === 'function') abrirMenuSelecao(gatilho, [{ itens: itens }]);
+}
 
-  return estadoExecTarefas.dados.tarefas.filter(function(t) {
-    // Regra do binômio: somente elementos que possuem indicadores associados
-    var inds = _execIndicadoresDoElemento(t.id);
-    if (!inds.length) return false;
+function _extItemFiltro(campo, valor, label, atual) {
+  return { label: label, ativo: String(valor) === String(atual), onclick: "extFiltrar('" + campo + "','" + escapeJsAttr(String(valor)) + "')" };
+}
 
-    if (busca) {
-      var matchTitulo = t.titulo && t.titulo.toLowerCase().indexOf(busca) > -1;
-      var matchCodigo = t.codigo && String(t.codigo).toLowerCase().indexOf(busca) > -1;
-      var matchInd = inds.some(function(i) { return i.nome && i.nome.toLowerCase().indexOf(busca) > -1; });
-      if (!matchTitulo && !matchCodigo && !matchInd) return false;
-    }
+function extMenuStatus(ev, gatilho) {
+  var atual = estadoExecTarefas.filtroStatus;
+  _extAbrirMenu(ev, gatilho, 'ext-filtro-btn-status', [
+    ['todos', 'Todas as situações'], ['Não Iniciado', 'Não Iniciado'], ['Em Andamento', 'Em Andamento'], ['Concluído', 'Concluído'], ['Atrasado', 'Atrasado']
+  ].map(function(o) { return _extItemFiltro('filtroStatus', o[0], o[1], atual); }));
+}
 
-    if (statusF !== 'todos') {
-      if (statusF === 'Atrasado') {
-        if (!_execEstaAtrasado(t)) return false;
-      } else if (t.status !== statusF) {
-        return false;
-      }
-    }
+function extMenuOrigem(ev, gatilho) {
+  var atual = estadoExecTarefas.origem;
+  _extAbrirMenu(ev, gatilho, 'ext-filtro-btn-origem', [
+    _extItemFiltro('origem', 'todas', 'Todas as responsabilidades', atual),
+    _extItemFiltro('origem', 'colab', 'Só colaborações', atual)
+  ]);
+}
 
-    if (somenteColaboracao && !t.origemColaboracao) return false;
-    return true;
-  });
+// "Dentro de…": os elementos que têm algo abaixo deles (organizadores e pais); escolher um recorta a lista ao que está dentro dele.
+function extMenuDentro(ev, gatilho) {
+  var nos = (estadoExecTarefas.dados && estadoExecTarefas.dados.arvore) || [];
+  var comFilhos = {};
+  nos.forEach(function(n) { if (n.idPai) comFilhos[n.idPai] = true; });
+  var itens = [_extItemFiltro('dentroDe', '', 'Todo o plano', estadoExecTarefas.dentroDe)].concat(
+    nos.filter(function(n) { return comFilhos[n.id]; }).map(function(n) {
+      return _extItemFiltro('dentroDe', n.id, (n.codigo ? n.codigo + ' ' : '') + n.titulo, estadoExecTarefas.dentroDe);
+    }));
+  _extAbrirMenu(ev, gatilho, 'ext-filtro-btn-dentro', itens);
+}
+
+// Exercícios que a vigência do plano atravessa; o seletor só existe se forem mais de um (spec §13.6).
+function _extAnos() {
+  var p = (estadoExecTarefas.dados && estadoExecTarefas.dados.plano) || {};
+  var anos = (p.anosVigencia || []).slice();
+  if (!anos.length && p.anoInicio && p.anoFim) for (var a = Number(p.anoInicio); a <= Number(p.anoFim); a++) anos.push(a);
+  return anos;
+}
+
+function extMenuExercicio(ev, gatilho) {
+  var atual = estadoExecTarefas.anoSelecionado;
+  _extAbrirMenu(ev, gatilho, 'ext-filtro-btn-exercicio', [_extItemFiltro('anoSelecionado', 'todos', 'Todos os exercícios', atual)].concat(
+    _extAnos().map(function(ano) { return _extItemFiltro('anoSelecionado', ano, 'Exercício ' + ano, atual); })));
+}
+
+// --- REGISTRO DE EXECUÇÃO: LISTA PLANA DOS ELEMENTOS EXECUTÁVEIS ---
+// A lista vem de dados.arvore (papel ORGANIZADOR / PAI / FOLHA); responsáveis, prazos e contagem da lista vêm de dados.tarefas quando o usuário
+// é responsável. Entram as folhas executáveis e qualquer elemento com indicador; o caminho dos ancestrais fica acima do título.
+
+function _execTarefaDe(id) {
+  var lista = (estadoExecTarefas.dados && estadoExecTarefas.dados.tarefas) || [];
+  return lista.find(function(t) { return String(t.id) === String(id); }) || null;
+}
+
+function _execNoDe(id) {
+  var nos = (estadoExecTarefas.dados && estadoExecTarefas.dados.arvore) || [];
+  return nos.find(function(n) { return String(n.id) === String(id); }) || null;
+}
+
+// Títulos dos ancestrais, do mais alto ao pai.
+function _execCaminho(n) {
+  var partes = [];
+  for (var x = _execNoDe(n.idPai); x; x = _execNoDe(x.idPai)) partes.unshift(x.titulo);
+  return partes;
+}
+
+function _execDentroDe(n, idAncestral) {
+  for (var x = _execNoDe(n.idPai); x; x = _execNoDe(x.idPai)) if (String(x.id) === String(idAncestral)) return true;
+  return false;
+}
+
+function _execAnoDaData(br) {
+  var p = String(br || '').split('/');
+  return p.length === 3 ? Number(p[2]) : null;
+}
+
+// A vigência do elemento (a do plano, quando não tem datas próprias) alcança o exercício escolhido?
+function _execNoExercicio(t, ano) {
+  if (ano === 'todos' || !t) return true;
+  var ini = _execAnoDaData(t.inicio), fim = _execAnoDaData(t.fim);
+  return (ini === null || ini <= Number(ano)) && (fim === null || fim >= Number(ano));
+}
+
+function _execCasaFiltros(n) {
+  var e = estadoExecTarefas, t = _execTarefaDe(n.id);
+  if (e.busca) {
+    var achou = String(n.titulo || '').toLowerCase().indexOf(e.busca) > -1 || String(n.codigo || '').toLowerCase().indexOf(e.busca) > -1 ||
+      _execCaminho(n).join(' ').toLowerCase().indexOf(e.busca) > -1 ||
+      _execIndicadoresDoElemento(n.id).some(function(i) { return i.nome && i.nome.toLowerCase().indexOf(e.busca) > -1; });
+    if (!achou) return false;
+  }
+  if (e.filtroStatus !== 'todos') {
+    if (n.papel !== 'FOLHA') return false;
+    if (e.filtroStatus === 'Atrasado' ? !n.atrasado : n.status !== e.filtroStatus) return false;
+  }
+  if (e.origem === 'colab' && !(t && t.origemColaboracao)) return false;
+  if (e.dentroDe && !_execDentroDe(n, e.dentroDe)) return false;
+  return _execNoExercicio(t, e.anoSelecionado);
+}
+
+function _execLinhas() {
+  var nos = (estadoExecTarefas.dados && estadoExecTarefas.dados.arvore) || [];
+  return nos.filter(function(n) { return (n.papel === 'FOLHA' || n.temIndicador) && _execCasaFiltros(n); });
+}
+
+function _execChipHTML(icone, texto, dica, extra, id) {
+  return '<span class="el-chip-meta' + (extra ? ' ' + extra : '') + '" data-title="' + escapeHtml(dica) + '"><span class="material-symbols-outlined">' + icone + '</span>' +
+    (texto ? '<span class="el-chip-meta-txt"' + (id ? ' id="' + id + '"' : '') + '>' + escapeHtml(texto) + '</span>' : '') + '</span>';
+}
+
+function _execProgressoHTML(n, t) {
+  if (n.papel !== 'FOLHA') return '';
+  var dica = n.porLista ? 'O progresso vem da lista de verificação' : '';
+  if (n.progressoEsperado !== null && n.progressoEsperado !== undefined) dica += (dica ? ' · ' : '') + 'Esperado hoje: ' + Math.round(n.progressoEsperado) + '%';
+  return uiProgressoHTML(n.percentual, dica);
+}
+
+function _execAcoesHTML(n, id) {
+  var acoes = [];
+  if (n.podeLancar) acoes.push({ icone: 'edit_square', rotulo: 'Lançar progresso', onclick: "_execAbrirModalProgresso('" + escapeJsAttr(id) + "')", principal: true });
+  if (n.podeLancarPelaLista) acoes.push({ icone: 'edit_square', rotulo: 'Lançar progresso pela lista de verificação', onclick: "_execAbrirModalProgresso('" + escapeJsAttr(id) + "')", principal: true });
+  // sem itens na lista o progresso não pode ser lançado: a ação existe, com a dica, e leva à lista
+  if (n.listaNecessaria) acoes.push({ icone: 'edit_square', rotulo: 'Crie a lista de verificação para lançar o progresso', onclick: "_execAbrirLinha('" + escapeJsAttr(id) + "')", principal: true });
+  acoes.push({ icone: 'open_in_new', rotulo: 'Ver no plano', onclick: "carregarDetalhesPlano('" + escapeJsAttr(String(estadoExecTarefas.idPlano)) + "')" });
+  return acoesLinhaHTML('ext-tb-' + id, acoes);
+}
+
+function _execLinhaHTML(n) {
+  var id = String(n.id), t = _execTarefaDe(id), inds = _execIndicadoresDoElemento(id), aberta = estadoExecTarefas.abertaId === id;
+  var caminho = _execCaminho(n).join(' › ');
+
+  var chips = [];
+  if (n.atrasado) chips.push(_execChipHTML('warning', '', 'Atrasado: o realizado está abaixo do esperado' + (n.progressoEsperado !== null ? ' (' + Math.round(n.progressoEsperado) + '%)' : '')));
+  if (t && t.fim) chips.push(_execChipHTML('event', '', 'Prazo final: ' + t.fim));
+  if (n.progressoPendente) chips.push(_execChipHTML('hourglass_top', '', 'Lançamento de progresso aguardando validação; o percentual mostrado é o validado.'));
+  if (t && t.tarefasTotal > 0) chips.push(_execChipHTML('checklist', t.tarefasConcluidas + ' de ' + t.tarefasTotal, 'Itens da lista de verificação concluídos', '', 'ext-cont-' + id));
+  if (n.temIndicador) chips.push(_execChipHTML('speed', inds.length ? String(inds.length) : '', 'Elemento com indicador', 'el-chip-ind'));
+  if (t && t.origemColaboracao) chips.push(_execChipHTML('diversity_3', '', 'Você colabora neste elemento'));
+
+  var tdElem = '<td class="el-col-elem"><div class="ds-stack ds-stack--2">' +
+    (caminho ? '<span class="ds-help" data-title="' + escapeHtml(caminho) + '">' + escapeHtml(caminho) + '</span>' : '') +
+    '<div class="el-elem-content">' +
+    (n.tipo ? '<span class="el-tipo-badge">' + escapeHtml(n.tipo) + '</span>' : '') +
+    '<span class="el-codigo">' + escapeHtml(n.codigo || '') + '</span>' +
+    '<span class="el-titulo" data-title="' + escapeHtml(n.titulo) + '">' + escapeHtml(n.titulo) + '</span>' +
+    (chips.length ? '<div class="el-meta-chips" data-ext-chips>' + chips.join('') + '</div>' : '') +
+    '</div></div></td>';
+
+  var tdResp = '<td class="el-col-resp">' + ((t && t.quem && t.quem.length)
+    ? uiRespHTML(t.quem[0].idResp, t.quem[0].tipo, t.quem.slice(1).map(function(q) { return q.idResp; })) : '') + '</td>';
+
+  var expande = '<button type="button" class="el-toggle-btn' + (aberta ? ' expanded' : '') + '" data-on-click="pages_execucao_tarefas.41" data-aclick0="' + escapeHtml(id) + '" aria-label="' + (aberta ? 'Recolher' : 'Expandir') + '">' +
+    '<span class="material-symbols-outlined">chevron_right</span></button>';
+
+  var tr = '<tr data-id="' + escapeHtml(id) + '"><td class="el-col-expand">' + expande + '</td>' + tdElem + tdResp +
+    '<td>' + _execProgressoHTML(n, t) + '</td><td>' + _execAcoesHTML(n, id) + '</td></tr>';
+  var detalhe = aberta ? '<tr><td colspan="5">' + _execDetalheHTML(n, id) + '</td></tr>' : '';
+  return tr + detalhe;
+}
+
+// Linha expandida: a lista de verificação (só folha executável) e os indicadores do elemento, cada um com o seu lançamento de desempenho.
+function _execDetalheHTML(n, id) {
+  var inds = _execIndicadoresDoElemento(id);
+  var lista = n.papel === 'FOLHA'
+    ? '<div class="ds-stack ds-stack--2"><div id="ext-lista-host"></div></div>' : '';
+  var historico = n.papel === 'FOLHA'
+    ? '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Histórico de progresso</div><div id="ext-historico-host">' + spinnerListaHTML('') + '</div></div>' : '';
+  var indicadores = inds.length
+    ? '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Indicadores</div>' + inds.map(function(ind) { return _execIndicadorHTML(id, ind); }).join('') + '</div>' : '';
+  return '<div class="ds-stack ds-stack--3">' + lista + historico + indicadores + '</div>';
+}
+
+function _execIndicadorHTML(idElemento, ind) {
+  var ano = estadoExecTarefas.anoSelecionado, metas = ind.metas || [], resultados = ind.resultados || [];
+  var meta = ano !== 'todos' ? metas.find(function(m) { return Number(m.ano) === Number(ano); }) : (metas[0] || null);
+  var res = meta ? resultados.find(function(r) { return String(r.idMeta) === String(meta.id); }) : (resultados[0] || null);
+  var un = ind.unidade ? ' ' + ind.unidade : '';
+  var atingido = res && meta && Number(res.valorApurado) >= Number(meta.valor);
+  var sit = !res ? '<span class="ds-badge ds-badge--warning">Pendente</span>'
+    : '<span class="ds-badge ' + (atingido ? 'ds-badge--success' : 'ds-badge--neutral') + '">' + escapeHtml(res.valorApurado + un) + '</span>';
+  return '<div class="ds-spread"><div class="ds-inline"><span class="material-symbols-outlined">speed</span><span>' + escapeHtml(ind.nome) + '</span></div>' +
+    '<div class="ds-cluster"><span class="ds-help">Meta' + (meta && meta.ano ? ' ' + meta.ano : '') + ': ' + escapeHtml(meta ? meta.valor + un : 'sem meta no exercício') + '</span>' + sit +
+    '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Lançar desempenho" aria-label="Lançar desempenho" data-on-click="pages_execucao_tarefas.35" data-aclick0="' + escapeHtml(String(idElemento)) + '" data-aclick1="' + escapeHtml(String(ind.id)) + '">' +
+    '<span class="material-symbols-outlined">add_chart</span></button></div></div>';
 }
 
 function execTarefasRenderizar() {
   var container = document.getElementById('ext-container');
-  var itens = _execListaFiltrada();
-
-  if (estadoExecTarefas.view === 'lista') _execRenderTabelaLista(itens, container);
-  else _execRenderKanban(itens, container);
+  var d = estadoExecTarefas.dados;
+  if (!container || !d) return;
+  var linhas = _execLinhas(), corpo;
+  if (!(d.arvore || []).some(function(n) { return n.papel === 'FOLHA' || n.temIndicador; })) {
+    corpo = '<tr class="el-linha-msg"><td colspan="5"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhum elemento para você neste plano</p><p>Os elementos em que você é responsável aparecem aqui.</p></div></td></tr>';
+  } else if (!linhas.length) {
+    corpo = '<tr class="el-linha-msg"><td colspan="5"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">filter_alt_off</span><p class="el-esti">Nenhum resultado para os filtros</p><p>Tente ampliar ou limpar os filtros aplicados.</p></div></td></tr>';
+  } else {
+    corpo = linhas.map(_execLinhaHTML).join('');
+  }
+  container.innerHTML = '<div class="el-table-wrap"><table class="el-tabela" id="ext-tabela">' +
+    '<colgroup><col class="el-col-expand"><col class="el-col-elem"><col class="el-col-resp"><col id="ext-col-prog"><col id="ext-col-acoes"></colgroup>' +
+    '<thead><tr><th class="el-col-expand"></th><th class="el-col-elem">Elemento</th><th class="el-col-resp">Responsável</th><th>Progresso</th>' +
+    '<th><div class="el-th-acoes"><button type="button" class="el-th-btn" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar" aria-label="Atualizar">' +
+    '<span class="material-symbols-outlined">refresh</span></button></div></th></tr></thead><tbody>' + corpo + '</tbody></table></div>';
+  _execMontarLista();
   uiPaginaMedir(document.getElementById('page-execucao-tarefas'));
+}
+
+// A lista de verificação da linha aberta (componente de components_tarefas_elemento.html, uma por vez) e a atualização da contagem na linha.
+function _execMontarLista() {
+  var id = estadoExecTarefas.abertaId;
+  if (!id) return;
+  _execMontarHistorico(id);
+  if (!document.getElementById('ext-lista-host') || typeof telMontar !== 'function') return;
+  telMontar('ext-lista-host', id, function(st) {
+    var t = _execTarefaDe(id);
+    if (t) { t.tarefasTotal = st.total; t.tarefasConcluidas = st.concluidas; }
+    var chip = document.getElementById('ext-cont-' + id);
+    if (chip) chip.textContent = st.concluidas + ' de ' + st.total;
+  });
+}
+
+// Histórico dos lançamentos de progresso do elemento (do mais novo ao mais antigo); fica em memória enquanto a linha está aberta.
+function _execMontarHistorico(id) {
+  var host = document.getElementById('ext-historico-host'), h = estadoExecTarefas.historico;
+  if (!host) return;
+  if (h && h.idElemento === id) { host.innerHTML = _execHistoricoHTML(h.registros); return; }
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (estadoExecTarefas.abertaId !== id) return;
+      estadoExecTarefas.historico = { idElemento: id, registros: r.registros || [] };
+      var alvo = document.getElementById('ext-historico-host');
+      if (alvo) alvo.innerHTML = _execHistoricoHTML(r.registros || []);
+    })
+    .withFailureHandler(function(err) {
+      var alvo = document.getElementById('ext-historico-host');
+      if (alvo) alvo.innerHTML = '<span class="ds-help ds-help--error">' + escapeHtml(err.message) + '</span>';
+    })
+    .apiGetRegistrosExecucaoElemento(id);
+}
+
+var _EXT_SITUACAO_REGISTRO = { Validado: ['ds-badge--success', 'Validado'], Pendente: ['ds-badge--warning', 'Aguardando validação'], Rejeitado: ['ds-badge--danger', 'Rejeitado'] };
+
+function _execHistoricoHTML(registros) {
+  if (!registros.length) return '<span class="ds-help">Nenhum progresso lançado.</span>';
+  return '<div class="ds-stack ds-stack--2">' + registros.map(function(r) {
+    var sit = _EXT_SITUACAO_REGISTRO[r.statusValidacao] || ['ds-badge--neutral', r.statusValidacao || ''];
+    var de = r.percentualAnterior === null || r.percentualAnterior === undefined ? '' : r.percentualAnterior + '% → ';
+    var quando = r.lancadoEm ? _isoParaBR(String(r.lancadoEm).slice(0, 10)) : '';
+    var complemento = (r.analise ? escapeHtml(r.analise) : '') + (r.statusValidacao === 'Rejeitado' && r.motivoRejeicao ? (r.analise ? ' · ' : '') + 'Motivo: ' + escapeHtml(r.motivoRejeicao) : '');
+    return '<div class="ds-stack ds-stack--2"><div class="ds-spread"><div class="ds-cluster"><strong>' + de + r.percentual + '%</strong>' +
+      '<span class="ds-help">' + escapeHtml(r.autorNome || '') + (quando ? ' · ' + quando : '') + (r.origem === 'TAREFAS' ? ' · pela lista' : '') + '</span></div>' +
+      '<div class="ds-cluster">' + (r.temEvidencia ? '<span class="material-symbols-outlined" data-title="Tem evidência" aria-label="Tem evidência">attach_file</span>' : '') +
+      '<span class="ds-badge ' + sit[0] + '">' + sit[1] + '</span></div></div>' +
+      (complemento ? '<span class="ds-help">' + complemento + '</span>' : '') + '</div>';
+  }).join('') + '</div>';
+}
+
+function extToggleLinha(id) {
+  estadoExecTarefas.abertaId = estadoExecTarefas.abertaId === String(id) ? '' : String(id);
+  execTarefasRenderizar();
+}
+
+function _execAbrirLinha(id) {
+  estadoExecTarefas.abertaId = String(id);
+  execTarefasRenderizar();
 }
 
 function _execVazioHTML(msg) {
   return '<div class="exl-vazio"><span class="material-symbols-outlined">checklist</span><p>' + escapeHtml(msg) + '</p></div>';
-}
-
-function _execEstaAtrasado(t) {
-  if (t.status === 'Concluído' || !t.fim) return false;
-  var partes = String(t.fim).split('/');
-  if (partes.length !== 3) return false;
-  var dataFim = new Date(partes[2], partes[1] - 1, partes[0]);
-  return dataFim < new Date(new Date().toDateString());
 }
 
 function _execIndicadoresDoElemento(idEl) {
@@ -21831,426 +21571,34 @@ function _execIndicadoresDoElemento(idEl) {
   return estadoExecTarefas.dados.indicadores.filter(function(i) { return String(i.idElemento) === String(idEl); });
 }
 
-function _execTemMetaPendenteNoAno(ind, ano) {
-  if (!ind || !ind.metas || !ind.metas.length) return false;
-  var metasDoAno = (ano && ano !== 'todos') ? ind.metas.filter(function(m) { return Number(m.ano) === Number(ano); }) : ind.metas;
-  if (!metasDoAno.length) return false;
-  var resultados = ind.resultados || [];
-  return metasDoAno.some(function(m) {
-    return !resultados.some(function(r) { return String(r.idMeta) === String(m.id); });
-  });
-}
-
-// --- GAVETA DE INDICADORES ANCORADOS ("PENDENDO DO ELEMENTO") ---
-function _execRenderIndicadoresAncoradosHTML(t, anoAtivo) {
-  var inds = _execIndicadoresDoElemento(t.id);
-  if (!inds.length) return '';
-
-  var linhas = inds.map(function(ind) {
-    var metas = ind.metas || [];
-    var resultados = ind.resultados || [];
-    var metaAno = (anoAtivo && anoAtivo !== 'todos')
-      ? metas.find(function(m) { return Number(m.ano) === Number(anoAtivo); })
-      : (metas[0] || null);
-
-    var resMeta = metaAno ? resultados.find(function(r) { return String(r.idMeta) === String(metaAno.id); }) : (resultados[0] || null);
-    var valorMetaFmt = metaAno ? (metaAno.valor + (ind.unidade ? ' ' + ind.unidade : '')) : 'Sem meta no ano';
-    var resFmt = resMeta ? (resMeta.valorAtingido + (ind.unidade ? ' ' + ind.unidade : '')) : 'Pendente';
-    var atingido = resMeta && metaAno && Number(resMeta.valorAtingido) >= Number(metaAno.valor);
-
-    return '<div class="ext-ancora-item">'
-      + '<div class="ext-ancora-header">'
-      +   '<div class="ext-ancora-nome"><span class="material-symbols-outlined" style="font-size:14px;vertical-align:text-bottom;color:var(--ds-color-action);margin-right:4px">monitoring</span>' + escapeHtml(ind.nome) + '</div>'
-      +   '<div style="display:flex;gap:4px">'
-      +     '<button type="button" class="action-btn-mini" data-title="Lançar Resultado" data-on-click="pages_execucao_tarefas.35" data-aclick0="' + escapeHtml(String(t.id)) + '" data-aclick1="' + escapeHtml(String(ind.id)) + '">'
-      +       '<span class="material-symbols-outlined" style="font-size:15px">add_chart</span>'
-      +     '</button>'
-      +   '</div>'
-      + '</div>'
-      + '<div class="ext-ancora-meta-box">'
-      +   '<span>Meta ' + (metaAno && metaAno.ano ? metaAno.ano : '') + ': <b>' + escapeHtml(valorMetaFmt) + '</b></span>'
-      +   '<span class="ext-ancora-resultado ' + (resMeta ? (atingido ? 'atingido' : '') : 'pendente') + '">Realizado: ' + escapeHtml(resFmt) + '</span>'
-      + '</div>'
-      + '</div>';
-  }).join('');
-
-  return '<div class="ext-ancora-container">'
-    + '<div style="font-size:0.73rem;font-weight:700;color:var(--ds-color-action);text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:4px">'
-    +   '<span class="material-symbols-outlined" style="font-size:14px">account_tree</span> Indicadores Ancorados (' + inds.length + ')'
-    + '</div>'
-    + linhas
-    + '</div>';
-}
-
-// --- KANBAN COM COLUNAS PERSONALIZÁVEIS E ARRASTO SUAVE ---
-
-function _execObterColunasKanban() {
-  if (!estadoExecTarefas.idPlano) return EXEC_COLUNAS_PADRAO.slice();
-  try {
-    var salvas = localStorage.getItem('samauma_kanban_colunas_' + estadoExecTarefas.idPlano);
-    if (salvas) {
-      var arr = JSON.parse(salvas);
-      if (Array.isArray(arr) && arr.length) return arr;
-    }
-  } catch (e) {}
-  return EXEC_COLUNAS_PADRAO.slice();
-}
-
-function _execSalvarColunasKanban(colunas) {
-  if (!estadoExecTarefas.idPlano) return;
-  try {
-    localStorage.setItem('samauma_kanban_colunas_' + estadoExecTarefas.idPlano, JSON.stringify(colunas));
-  } catch (e) {}
-}
-
-function _execRenderKanban(itens, container) {
-  var colunas = _execObterColunasKanban();
-  var total = (estadoExecTarefas.dados && estadoExecTarefas.dados.tarefas && estadoExecTarefas.dados.tarefas.length) || 0;
-
-  var topbarHtml = '<div class="ext-kanban-topbar">'
-    + '<div class="ext-contador-badge">' + itens.length + ' de ' + total + ' responsabilidade(s) com indicadores</div>'
-    + '<div class="ext-kanban-topbar-acoes">'
-    +   '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" id="ext-btn-kanban-cfg" data-on-click="pages_execucao_tarefas.29" data-title="Configurar colunas do Kanban">'
-    +     '<span class="material-symbols-outlined" style="font-size:16px">view_column</span> Colunas'
-    +   '</button>'
-    +   '<button type="button" class="ext-icon-th-btn" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar dados" aria-label="Atualizar dados">'
-    +     '<span class="material-symbols-outlined" style="font-size:18px">refresh</span>'
-    +   '</button>'
-    + '</div>'
-    + '</div>';
-
-  var boardHtml = '<div class="kanban-board">';
-  colunas.forEach(function(col) {
-    var statusAlvo = col.status || col.titulo;
-    var itensCol = itens.filter(function(t) {
-      if (col.id === 'atrasado') return _execEstaAtrasado(t) && t.status !== 'Concluído';
-      if (statusAlvo === 'Não Iniciado') return t.status === 'Não Iniciado' && !_execEstaAtrasado(t);
-      if (statusAlvo === 'Em Andamento') return t.status === 'Em Andamento' && !_execEstaAtrasado(t);
-      if (statusAlvo === 'Concluído') return t.status === 'Concluído';
-      return (t.colunaPersonalizada === col.id) || (t.status === statusAlvo);
-    });
-
-    boardHtml += '<div class="kanban-col" data-col-id="' + escapeHtml(col.id) + '">'
-      + '<div class="kanban-header">'
-      +   '<div class="kanban-header-titulo"><span class="material-symbols-outlined" style="font-size:17px;color:var(--ds-color-action)">' + (col.icone || 'circle') + '</span> ' + escapeHtml(col.titulo) + '</div>'
-      +   '<span class="badge-count">' + itensCol.length + '</span>'
-      + '</div>'
-      + '<div class="kanban-body">' + itensCol.map(function(t) { return _execCriarCardKanban(t); }).join('') + '</div>'
-      + '</div>';
-  });
-  boardHtml += '</div>';
-
-  container.innerHTML = topbarHtml + boardHtml;
-  _execAtivarDrag();
-}
-
-function _execCriarCardKanban(t) {
-  var atrasado = _execEstaAtrasado(t);
-  var inds = _execIndicadoresDoElemento(t.id);
-  var anoAtivo = estadoExecTarefas.anoSelecionado;
-  var temMetaPendente = inds.some(function(i) { return _execTemMetaPendenteNoAno(i, anoAtivo); });
-  var aberta = !!estadoExecTarefas.gavetasAbertas[t.id];
-
-  var pct = Number(t.percentual) || 0;
-  var porTarefas = !!t.progressoPorTarefas;
-  var contTar = porTarefas ? (t.tarefasConcluidas || 0) + ' de ' + (t.tarefasTotal || 0) + ' tarefas' : pct + '%';
-
-  var alertaPendenteHtml = temMetaPendente
-    ? '<div class="ext-alerta-meta" data-title="Existe meta pendente de medição neste período"><span class="material-symbols-outlined">priority_high</span> Meta pendente de medição</div>'
-    : '';
-
-  var gavetaHtml = aberta ? _execRenderIndicadoresAncoradosHTML(t, anoAtivo) : '';
-
-  return '<div class="task-card" draggable="true" data-id="' + escapeHtml(String(t.id)) + '">'
-    + '<div class="card-main-content">'
-    +   '<div class="card-meta">'
-    +     '<span class="card-code">' + escapeHtml(t.codigo || 'S/N') + '</span>'
-    +     '<span style="' + (atrasado ? 'color:var(--ds-color-danger-fg);font-weight:bold' : '') + '">'
-    +       (atrasado ? '<span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom">warning</span> ' : '')
-    +       escapeHtml(t.fim || 'Sem prazo')
-    +     '</span>'
-    +   '</div>'
-    +   '<div class="card-title">' + escapeHtml(t.titulo)
-    +     (t.origemColaboracao ? ' <span class="material-symbols-outlined" style="font-size:14px;vertical-align:text-bottom;color:var(--ds-color-action)" data-title="Você colabora nesta tarefa">diversity_3</span>' : '')
-    +   '</div>'
-    +   (t.tituloPai ? '<div class="card-parent-title">' + escapeHtml(t.tituloPai) + '</div>' : '')
-    +   '<div class="card-prog-wrap">'
-    +     '<div class="card-prog-info"><span>Progresso Físico</span><span class="card-prog-pct">' + contTar + '</span></div>'
-    +     '<div class="card-prog-track"><div class="card-prog-fill" style="width:' + pct + '%"></div></div>'
-    +   '</div>'
-    +   alertaPendenteHtml
-    +   '<div class="card-footer-actions">'
-    +     '<button type="button" class="card-btn-gaveta' + (aberta ? ' aberto' : '') + '" data-on-click="pages_execucao_tarefas.33" data-aclick0="' + escapeHtml(String(t.id)) + '">'
-    +       '<span class="material-symbols-outlined">expand_more</span> <span class="ext-gaveta-label">' + inds.length + ' indicador(es) ancorado(s)</span>'
-    +     '</button>'
-    +     '<div style="display:flex;gap:6px">'
-    +       '<button type="button" class="action-btn-mini" data-title="Atualizar Progresso Físico" data-on-click="pages_execucao_tarefas.13" data-aclick0="' + escapeHtml(String(t.id)) + '">'
-    +         '<span class="material-symbols-outlined" style="font-size:15px">edit_square</span>'
-    +       '</button>'
-    +       '<button type="button" class="action-btn-mini" data-title="Ver no Plano" data-on-click="pages_execucao_tarefas.14" data-aclick0="' + escapeHtml(String(t.idPlano)) + '">'
-    +         '<span class="material-symbols-outlined" style="font-size:15px">open_in_new</span>'
-    +       '</button>'
-    +     '</div>'
-    +   '</div>'
-    + '</div>'
-    + gavetaHtml
-    + '</div>';
-}
-
-// Drag and drop do Kanban
-var _execDragTaskId = null;
-function _execAtivarDrag() {
-  document.querySelectorAll('#ext-container .task-card[draggable="true"]').forEach(function(card) {
-    card.addEventListener('dragstart', function() {
-      _execDragTaskId = card.dataset.id;
-      card.classList.add('exec-dragging');
-    });
-    card.addEventListener('dragend', function() {
-      card.classList.remove('exec-dragging');
-      _execDragTaskId = null;
-    });
-  });
-  document.querySelectorAll('#ext-container .kanban-col').forEach(function(col) {
-    col.addEventListener('dragover', function(e) { e.preventDefault(); col.classList.add('exec-col-over'); });
-    col.addEventListener('dragleave', function() { col.classList.remove('exec-col-over'); });
-    col.addEventListener('drop', function(e) {
-      e.preventDefault();
-      col.classList.remove('exec-col-over');
-      if (_execDragTaskId) _execMoverTarefa(_execDragTaskId, col.dataset.colId);
-    });
-  });
-}
-
-function _execMoverTarefa(idTarefa, idColuna) {
-  var colunas = _execObterColunasKanban();
-  var col = colunas.find(function(c) { return c.id === idColuna; }) || { id: idColuna, titulo: idColuna, status: idColuna };
-  var tarefa = estadoExecTarefas.dados.tarefas.find(function(t) { return String(t.id) === String(idTarefa); });
-  if (!tarefa) return;
-
-  var statusAnterior = tarefa.status;
-  var pctAnterior = tarefa.percentual;
-  var novoStatus = col.status || (col.id === 'concluido' ? 'Concluído' : (col.id === 'em_andamento' ? 'Em Andamento' : (col.id === 'nao_iniciado' ? 'Não Iniciado' : tarefa.status)));
-  var novoPct = tarefa.percentual;
-
-  if (novoStatus === 'Concluído') novoPct = 100;
-  else if (novoStatus === 'Não Iniciado') novoPct = 0;
-  else if (novoStatus === 'Em Andamento' && Number(novoPct) === 0) novoPct = 10;
-
-  tarefa.colunaPersonalizada = col.id;
-  tarefa.status = novoStatus;
-  tarefa.percentual = novoPct;
-
-  // Atualização otimista imediata na UI
-  execTarefasRenderizar();
-
-  // Alerta suave se houver meta pendente no período
-  var inds = _execIndicadoresDoElemento(tarefa.id);
-  var temMetaPendente = inds.some(function(i) { return _execTemMetaPendenteNoAno(i, estadoExecTarefas.anoSelecionado); });
-  if (novoStatus === 'Concluído' && temMetaPendente && typeof showMessage === 'function') {
-    showMessage('info', 'Meta pendente de medição', 'O elemento foi movido para Concluído, mas possui metas de indicadores pendentes no exercício ativo. Lembre-se de lançar os resultados.');
-  }
-
-  // Persiste assincronamente no servidor
-  google.script.run
-    .withFailureHandler(function(err) {
-      tarefa.status = statusAnterior;
-      tarefa.percentual = pctAnterior;
-      execTarefasRenderizar();
-      if (typeof showMessage === 'function') showMessage('error', 'Erro ao mover tarefa', escapeHtml(err.message));
-    })
-    .apiSalvarExecucaoEResultado({ idElemento: idTarefa, status: novoStatus, percentual: novoPct });
-}
-
-// Alternar gaveta ancorada de um card
-function _execToggleGavetaCard(idElemento) {
-  estadoExecTarefas.gavetasAbertas[idElemento] = !estadoExecTarefas.gavetasAbertas[idElemento];
-  execTarefasRenderizar();
-}
-
-// --- MODO LISTA: TABELA HIERÁRQUICA COM LINHAS EXPANSÍVEIS ---
-
-function _execRenderTabelaLista(itens, container) {
-  var total = (estadoExecTarefas.dados && estadoExecTarefas.dados.tarefas && estadoExecTarefas.dados.tarefas.length) || 0;
-
-  if (itens.length === 0) {
-    container.innerHTML = '<div class="ext-kanban-topbar">'
-      + '<div class="ext-contador-badge">0 de ' + total + ' responsabilidade(s) com indicadores</div>'
-      + '<div class="ext-kanban-topbar-acoes">'
-      +   '<button type="button" class="ext-icon-th-btn" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar dados" aria-label="Atualizar dados">'
-      +     '<span class="material-symbols-outlined" style="font-size:18px">refresh</span>'
-      +   '</button>'
-      + '</div>'
-      + '</div>'
-      + '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhuma responsabilidade encontrada</p><p>Ajuste os filtros ou aguarde novas atribuições.</p></div>';
-    return;
-  }
-
-  var anoAtivo = estadoExecTarefas.anoSelecionado;
-  var linhas = itens.map(function(t) {
-    var atrasado = _execEstaAtrasado(t);
-    var inds = _execIndicadoresDoElemento(t.id);
-    var aberta = !!estadoExecTarefas.gavetasAbertas[t.id];
-    var pct = Number(t.percentual) || 0;
-
-    var linhaPrincipal = '<tr class="ext-linha-elemento">'
-      + '<td><span class="card-code">' + escapeHtml(t.codigo || '-') + '</span></td>'
-      + '<td><div style="font-weight:600">' + escapeHtml(t.titulo) + '</div>'
-      +     (t.tituloPai ? '<div style="font-size:0.75rem;color:var(--ds-color-text-muted)">' + escapeHtml(t.tituloPai) + '</div>' : '') + '</td>'
-      + '<td>' + _execRespHTML(t.quem) + '</td>'
-      + '<td><div style="' + (atrasado ? 'color:var(--ds-color-danger-fg);font-weight:bold' : '') + '">' + escapeHtml(t.fim || '-')
-      +     (atrasado ? ' <span class="material-symbols-outlined" style="font-size:14px;vertical-align:middle">warning</span>' : '') + '</div></td>'
-      + '<td><div style="display:flex;align-items:center;gap:8px">'
-      +     '<div class="ds-kpi-track" style="width:70px"><div class="ds-kpi-fill ds-tone-info" style="width:' + pct + '%"></div></div>'
-      +     '<span style="font-size:0.75rem;font-weight:700">' + pct + '%</span>'
-      +   '</div></td>'
-      + '<td>'
-      +   '<button type="button" class="card-btn-gaveta' + (aberta ? ' aberto' : '') + '" data-on-click="pages_execucao_tarefas.33" data-aclick0="' + escapeHtml(String(t.id)) + '">'
-      +     '<span class="material-symbols-outlined">expand_more</span> ' + inds.length + ' indicador(es)'
-      +   '</button>'
-      + '</td>'
-      + '<td><div style="display:flex;gap:5px;justify-content:flex-end">'
-      +   '<button type="button" class="action-btn-mini" data-title="Atualizar Progresso Físico" data-on-click="pages_execucao_tarefas.13" data-aclick0="' + escapeHtml(String(t.id)) + '"><span class="material-symbols-outlined" style="font-size:15px">edit_square</span></button>'
-      +   '<button type="button" class="action-btn-mini" data-title="Ver no Plano" data-on-click="pages_execucao_tarefas.14" data-aclick0="' + escapeHtml(String(t.idPlano)) + '"><span class="material-symbols-outlined" style="font-size:15px">open_in_new</span></button>'
-      + '</div></td>'
-      + '</tr>';
-
-    var linhaDetalhes = aberta ? ('<tr class="ext-linha-detalhes"><td colspan="7">' + _execRenderIndicadoresAncoradosHTML(t, anoAtivo) + '</td></tr>') : '';
-
-    return linhaPrincipal + linhaDetalhes;
-  }).join('');
-
-  var topbarHtml = '<div class="ext-kanban-topbar">'
-    + '<div class="ext-contador-badge">' + itens.length + ' de ' + total + ' responsabilidade(s) com indicadores</div>'
-    + '</div>';
-
-  container.innerHTML = topbarHtml + '<div class="card table-container ext-tabela-wrap"><table class="ext-tabela-lista"><thead><tr>'
-    + '<th style="width:80px">Cód.</th>'
-    + '<th>Elemento (O Quê)</th>'
-    + '<th>Responsável (Quem)</th>'
-    + '<th>Prazo (Quando)</th>'
-    + '<th style="width:130px">Progresso</th>'
-    + '<th>Indicadores</th>'
-    + '<th style="text-align:right;width:110px">'
-    +   '<div class="ext-th-acoes">'
-    +     '<span style="font-size:0.78rem;font-weight:600;text-transform:uppercase;color:var(--ds-color-text-muted)">Ações</span>'
-    +     '<button type="button" class="ext-icon-th-btn" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar dados" aria-label="Atualizar dados">'
-    +       '<span class="material-symbols-outlined" style="font-size:18px">refresh</span>'
-    +     '</button>'
-    +   '</div>'
-    + '</th>'
-    + '</tr></thead><tbody>' + linhas + '</tbody></table></div>';
-}
-
-function _execRespHTML(quem) {
-  if (!quem || !quem.length) return '<span style="color:var(--ds-color-text-muted)">-</span>';
-  return '<div style="display:flex;flex-wrap:wrap;gap:4px">' + quem.map(function(q) {
-    var icone = q.tipo === 'USER' ? 'person' : 'apartment';
-    var nome = q.idResp || '';
-    var nomeCurto = nome.length > 22 ? nome.substring(0, 22) + '…' : nome;
-    return '<span class="meta-tag" data-title="Responsável: ' + escapeHtml(nome) + '">'
-      + '<span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">' + icone + '</span>' + escapeHtml(nomeCurto) + '</span>';
-  }).join('') + '</div>';
-}
-
-// --- MODAIS DE EXECUÇÃO: PROGRESSO FÍSICO E LANÇAMENTO DE RESULTADO ---
+// --- MODAIS DE EXECUÇÃO: PROGRESSO E DESEMPENHO ---
 
 function _execAbrirModalProgresso(idElemento) {
-  var t = estadoExecTarefas.dados.tarefas.find(function(x) { return String(x.id) === String(idElemento); });
-  if (!t) return;
-  if (typeof abrirModalResultado === 'function') {
-    abrirModalResultado({
-      idElemento: t.id, tituloElemento: t.titulo,
-      percentualAtual: Number(t.percentual) || 0, statusAtual: t.status || 'Não Iniciado',
-      idIndicador: null, nomeIndicador: null,
-      progressoPorTarefas: !!t.progressoPorTarefas,
-      aoMudarTarefas: function (st) {
-        t.progressoPorTarefas = st.progressoPorTarefas; t.tarefasTotal = st.total; t.tarefasConcluidas = st.concluidas;
-        if (st.percentual !== undefined && st.percentual !== null) t.percentual = st.percentual;
-        if (st.status) t.status = st.status;
-        execTarefasRenderizar();
-      }
-    });
-  }
-}
-
-function _execAbrirModalLancamento(idElemento) {
-  var inds = _execIndicadoresDoElemento(idElemento);
-  if (!inds.length) { _execAbrirModalProgresso(idElemento); return; }
-  _execAbrirModalLancamentoIndicador(idElemento, inds[0].id);
+  var n = _execNoDe(idElemento), t = _execTarefaDe(idElemento) || n;
+  if (!n || typeof abrirModalResultado !== 'function') return;
+  var abrir = function(extra) {
+    abrirModalResultado(Object.assign({
+      idElemento: n.id, tituloElemento: n.titulo, percentualAtual: Number(t.percentual) || 0, statusAtual: t.status || 'Não Iniciado', idIndicador: null, nomeIndicador: null
+    }, extra));
+  };
+  if (!n.porLista) { abrir({}); return; }
+  // com o progresso vindo da lista, o percentual é o que a lista vale agora (não se digita)
+  google.script.run
+    .withSuccessHandler(function(r) { abrir({ porLista: true, percentualAtual: r.percentualDaLista || 0 }); })
+    .withFailureHandler(function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); })
+    .apiGetTarefasElemento(n.id);
 }
 
 function _execAbrirModalLancamentoIndicador(idElemento, idIndicador) {
-  var t = estadoExecTarefas.dados.tarefas.find(function(x) { return String(x.id) === String(idElemento); });
+  var t = _execTarefaDe(idElemento) || _execNoDe(idElemento);
   if (!t) return;
   var inds = _execIndicadoresDoElemento(idElemento);
   var ind = inds.find(function(i) { return String(i.id) === String(idIndicador); }) || inds[0];
-  if (!ind) return;
-
-  if (typeof abrirModalResultado === 'function') {
-    abrirModalResultado({
-      idElemento: t.id,
-      tituloElemento: t.titulo,
-      percentualAtual: Number(t.percentual) || 0,
-      statusAtual: t.status || 'Não Iniciado',
-      idIndicador: ind.id,
-      nomeIndicador: ind.nome + (ind.unidade ? ' (' + ind.unidade + ')' : ''),
-      progressoPorTarefas: !!t.progressoPorTarefas
-    });
-  }
-}
-
-// --- MODAL DE CONFIGURAÇÃO DE COLUNAS DO KANBAN ---
-
-function _execAbrirModalColunasKanban() {
-  var modal = document.getElementById('ext-modal-colunas');
-  if (!modal) return;
-  _execRenderColunasListaModal();
-  modal.classList.remove('hidden');
-}
-
-function _execFecharModalColunasKanban() {
-  var modal = document.getElementById('ext-modal-colunas');
-  if (modal) modal.classList.add('hidden');
-}
-
-function _execRenderColunasListaModal() {
-  var listaEl = document.getElementById('ext-colunas-lista');
-  if (!listaEl) return;
-  var colunas = _execObterColunasKanban();
-
-  listaEl.innerHTML = colunas.map(function(col, idx) {
-    var podeExcluir = colunas.length > 2;
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--ds-color-surface-2);border-radius:var(--ds-r-sm);border:1px solid var(--ds-color-border)">'
-      + '<span style="font-size:0.86rem;font-weight:600;color:var(--ds-color-text)">' + escapeHtml(col.titulo) + '</span>'
-      + (podeExcluir ? '<button type="button" class="action-btn-mini" data-title="Remover coluna" data-on-click="pages_execucao_tarefas.37" data-aclick0="' + escapeHtml(col.id) + '"><span class="material-symbols-outlined" style="font-size:15px;color:var(--ds-color-danger-fg)">delete</span></button>' : '<span></span>')
-      + '</div>';
-  }).join('');
-}
-
-function _execAdicionarColunaKanban() {
-  var input = document.getElementById('ext-nova-coluna-titulo');
-  if (!input || !input.value.trim()) return;
-  var titulo = input.value.trim();
-  var colunas = _execObterColunasKanban();
-  var idNovo = 'col_' + Date.now();
-  colunas.push({ id: idNovo, titulo: titulo, status: titulo, icone: 'view_column' });
-  _execSalvarColunasKanban(colunas);
-  input.value = '';
-  _execRenderColunasListaModal();
-  execTarefasRenderizar();
-}
-
-function _execExcluirColunaKanban(colId) {
-  var colunas = _execObterColunasKanban().filter(function(c) { return c.id !== colId; });
-  _execSalvarColunasKanban(colunas);
-  _execRenderColunasListaModal();
-  execTarefasRenderizar();
-}
-
-function _execRestaurarColunasKanbanPadrao() {
-  _execSalvarColunasKanban(EXEC_COLUNAS_PADRAO.slice());
-  _execRenderColunasListaModal();
-  execTarefasRenderizar();
+  if (!ind || typeof abrirModalResultado !== 'function') return;
+  abrirModalResultado({
+    idElemento: t.id, tituloElemento: t.titulo, percentualAtual: Number(t.percentual) || 0, statusAtual: t.status || 'Não Iniciado',
+    progressoPorTarefas: !!(_execNoDe(idElemento)||{}).porLista, idIndicador: ind.id, nomeIndicador: ind.nome + (ind.unidade ? ' (' + ind.unidade + ')' : '')
+  });
 }
 
 // ==================================================================
@@ -22381,35 +21729,29 @@ function _execExcluirRegistro(id) {
 uiRegistrarAcoes('pages_execucao_tarefas', {
   '1': function (event) { execTarefasMudarAba('tarefas'); },
   '2': function (event) { execTarefasMudarAba('riscos'); },
-  '3': function (event) { execTarefasSetView('lista'); },
-  '4': function (event) { execTarefasSetView('kanban'); },
   '5': function (event) { extAbrirBusca(); },
   '6': function (event) { extLimparBusca(); },
   '7': function (event) { extLimparFiltros(); },
-  '8': function (event) { extToggleColaboracao(this); },
   '9': function (event) { execTarefasFiltrar(); },
-  '10': function (event) { extAbrirFiltroStatus(event, this); },
-  '11': function (event) { execTarefasCarregar(); },
-  '12': function (event) { _execAbrirModalLancamento(uiArgJs(this.dataset.aclick0)); },
-  '13': function (event) { _execAbrirModalProgresso(uiArgJs(this.dataset.aclick0)); },
-  '14': function (event) { carregarDetalhesPlano(uiArgJs(this.dataset.aclick0)); },
+  '10': function (event) { extMenuStatus(event, this); },
+  '11': function (event) { execTarefasCarregar(true); },
+  '12': function (event) { extMenuOrigem(event, this); },
+  '14': function (event) { extMenuDentro(event, this); },
   '22': function (event) { _execExcluirRegistro(uiArgJs(this.dataset.aclick0)); },
   '23': function (event) { _execAbrirModalRegistro(uiArgJs(this.dataset.aclick0)); },
   '24': function (event) { extAlternarPainelDetalhes(); },
   '25': function (event) { _extpMudarAba('detalhes'); },
   '26': function (event) { _extpMudarAba('atividade'); },
   '27': function (event) { extFecharPainelDetalhes(); },
-  '28': function (event) { extAbrirMenuExercicio(event, this); },
-  '29': function (event) { _execAbrirModalColunasKanban(); },
-  '30': function (event) { _execFecharModalColunasKanban(); },
-  '31': function (event) { _execAdicionarColunaKanban(); },
-  '32': function (event) { _execRestaurarColunasKanbanPadrao(); },
-  '33': function (event) { event.stopPropagation(); _execToggleGavetaCard(uiArgJs(this.dataset.aclick0)); },
+  '28': function (event) { extMenuExercicio(event, this); },
   '35': function (event) { event.stopPropagation(); _execAbrirModalLancamentoIndicador(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
-  '37': function (event) { _execExcluirColunaKanban(uiArgJs(this.dataset.aclick0)); },
-  '38': function (event) { extLimparFiltroStatus(); },
+  '38': function (event) { extFiltrar('filtroStatus', 'todos'); },
   '39': function (event) { extFecharModalRegistro(); },
-  '40': function (event) { extSalvarRegistro(); }
+  '40': function (event) { extSalvarRegistro(); },
+  '41': function (event) { extToggleLinha(uiArgJs(this.dataset.aclick0)); },
+  '42': function (event) { extFiltrar('origem', 'todas'); },
+  '43': function (event) { extFiltrar('dentroDe', ''); },
+  '44': function (event) { extFiltrar('anoSelecionado', 'todos'); }
 });
 </script>
        <!-- ARQUIVO: pages_colaboracao.html -->
@@ -24555,12 +23897,24 @@ function _axRenderNavElementos() {
     const n = form.notasElementos[el.id], c = n ? _axConceito(n) : null;
     return '<span' + (c ? ' style="background:' + c.cor + '"' : '') + '></span>';
   }).join('');
-  const itens = els.map(function(el, i) {
+  // Árvore do plano: os avaliáveis aparecem sob os ancestrais (cabeçalhos sem nota, só contexto), recuados pela profundidade.
+  const ancestrais = d.ancestraisAvaliaveis || [], porId = {};
+  els.concat(ancestrais).forEach(function(e) { porId[String(e.id)] = e; });
+  const profundidade = function(e) { let n = 0, p = String(e.idPai || ''); while (p && porId[p] && n < 30) { n++; p = String(porId[p].idPai || ''); } return n; };
+  const recuo = function(e) { return profundidade(e) ? ' style="margin-left:' + (profundidade(e) * 14) + 'px;width:calc(100% - ' + (profundidade(e) * 14) + 'px)"' : ''; };
+  const indiceDe = {};
+  els.forEach(function(e, i) { indiceDe[String(e.id)] = i; });
+  const ordenados = els.concat(ancestrais).sort(function(x, y) { return String(x.codigo || '').localeCompare(String(y.codigo || ''), 'pt-BR', { numeric: true }); });
+  const itens = ordenados.map(function(el) {
+    if (indiceDe[String(el.id)] === undefined) {
+      return '<div class="ax-rotulo"' + recuo(el) + '><span class="ax-codigo">' + escapeHtml(el.codigo || '') + '</span> ' + escapeHtml(el.nome) + '</div>';
+    }
+    const i = indiceDe[String(el.id)];
     const n = form.notasElementos[el.id], c = n ? _axConceito(n) : null;
     const erro = estadoAxAval.validar ? _axPendencia(el) : null;
     const cls = 'ax-nav-item' + (i === estadoAxAval.stepAtual ? ' atual' : '') + (c ? ' feito' : '') + (erro ? ' erro' : '');
     const ico = erro ? 'error' : c ? 'check_circle' : 'radio_button_unchecked';
-    return '<button type="button" class="' + cls + '" data-on-click="pages_avaliacao_executar.13" data-rclick0="' + i + '"' + (i === estadoAxAval.stepAtual ? ' aria-current="true"' : '') + '>' +
+    return '<button type="button" class="' + cls + '"' + recuo(el) + ' data-on-click="pages_avaliacao_executar.13" data-rclick0="' + i + '"' + (i === estadoAxAval.stepAtual ? ' aria-current="true"' : '') + '>' +
       '<span class="material-symbols-outlined"' + (c && !erro ? ' style="color:' + c.cor + '"' : '') + '>' + ico + '</span>' +
       '<span class="ax-nav-txt"><span class="ax-nav-nome"><span class="ax-codigo">' + escapeHtml(el.codigo || '') + '</span> ' + escapeHtml(el.nome) + '</span>' +
       '<span class="ax-nav-meta">Peso ' + el.peso +
