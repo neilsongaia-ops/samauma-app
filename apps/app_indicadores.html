@@ -260,7 +260,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
 .indw-meta-cab h3 { margin: 2px 0 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #form-nova-meta { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; }
 .indw-meta-corpo { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 4px 20px 20px; gap: 16px; }
-.indw-meta-topo { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px; }
+.indw-meta-topo { display: grid; grid-template-columns: 230px minmax(0, 1fr) auto; gap: 16px; }
 .indw-meta-topo .ds-field { margin-bottom: 0; min-width: 0; }
 .indw-meta-fill { display: flex; gap: 8px; }
 #meta-grade { display: flex; flex-direction: column; flex: 1; min-height: 0; }
@@ -530,6 +530,10 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
               <input type="text" id="input-meta-preencher" class="ds-input" placeholder="Ex: 100" data-on-keydown="ind.15">
               <button type="button" class="ds-btn ds-btn--ghost" id="btn-meta-aplicar" data-on-click="ind.16">Aplicar</button>
             </div>
+          </div>
+          <div class="ds-field hidden" id="meta-copiar-campo">
+            <label class="ds-label" for="btn-meta-copiar">Período anterior <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Preenche só os períodos vazios, com a meta do período anterior. Depois você ainda pode ajustar cada um.">info</span></label>
+            <button type="button" class="ds-btn ds-btn--ghost" id="btn-meta-copiar" data-on-click="ind.53"><span class="material-symbols-outlined">content_copy</span>Copiar</button>
           </div>
         </div>
 
@@ -1543,7 +1547,36 @@ function _indAplicarTravaDefinicao(edicao) {
 function _metaPreencherTodos() {
   var v = (document.getElementById('input-meta-preencher') || {}).value;
   if (v === undefined || String(v).trim() === '') return;
-  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) { inp.value = String(v).trim(); });
+  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) { if (!inp.disabled) inp.value = String(v).trim(); });
+  _metaAtualizarCopiar();
+}
+
+// A meta é um nível (ULTIMO/MEDIA): repetir a do período anterior faz sentido; em SOMA é acumulativa e não se copia.
+function _metaPodeCopiar(g) { return !!g && (g.regraAgregacao === 'ULTIMO' || g.regraAgregacao === 'MEDIA'); }
+
+// Cada campo vazio e editável recebe o valor do campo anterior mais próximo que tenha valor (já preenchido ou copiado agora). Só preenche; quem grava é o Salvar.
+function _metaCopiarAnterior() {
+  var ultimo = '';
+  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) {
+    var v = String(inp.value || '').trim();
+    if (v !== '') { ultimo = v; return; }
+    if (!inp.disabled && ultimo !== '') inp.value = ultimo;
+  });
+  _metaAtualizarCopiar();
+}
+
+// Mostra a ação só quando a regra permite e a deixa desabilitada sem campo vazio, editável e com valor anterior para copiar.
+function _metaAtualizarCopiar() {
+  var campo = document.getElementById('meta-copiar-campo');
+  var btn = document.getElementById('btn-meta-copiar');
+  if (!campo || !btn) return;
+  campo.classList.toggle('hidden', !_metaPodeCopiar(_metaGrade));
+  var ultimo = false, copiavel = false;
+  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) {
+    if (String(inp.value || '').trim() !== '') ultimo = true;
+    else if (!inp.disabled && ultimo) copiavel = true;
+  });
+  btn.disabled = !copiavel;
 }
 
 function carregarAbaIndicadores() {
@@ -2378,7 +2411,7 @@ function _metaRenderGrade() {
         var trava = p.temResultados
           ? '<span class="material-symbols-outlined" tabindex="0" data-title="Já há resultados lançados neste período. A meta pode ser alterada, não removida.">lock</span>' : '';
         return '<tr><td class="meta-per">' + escapeHtml(p.rotulo) + trava + '</td>'
-          + '<td><input type="text" class="ds-input meta-valor" data-inicio="' + escapeHtml(p.inicioISO) + '" value="' + escapeHtml(p.valor) + '" aria-label="Meta de ' + escapeHtml(p.rotulo) + '" placeholder="Ex: 100"' + (p.editavel === false ? ' disabled' : '') + '></td></tr>';
+          + '<td><input type="text" class="ds-input meta-valor" data-inicio="' + escapeHtml(p.inicioISO) + '" value="' + escapeHtml(p.valor) + '" aria-label="Meta de ' + escapeHtml(p.rotulo) + '" placeholder="Ex: 100" data-on-input="ind.54"' + (p.editavel === false ? ' disabled' : '') + '></td></tr>';
       }).join('') + '</tbody></table></div>';
   }
 
@@ -2394,6 +2427,7 @@ function _metaRenderGrade() {
       : '';
   }
   _metaSalvarHabilitado(g.periodos.some(function(p) { return p.editavel !== false; }));
+  _metaAtualizarCopiar();
 }
 
 // app_indicadores_modais — modais e wizards (abrir, validar, salvar)
@@ -2873,7 +2907,9 @@ uiRegistrarAcoes('ind', {
   '49': function (event) { indMudarPagina('prev'); },
   '50': function (event) { indIrParaPagina(this.value); },
   '51': function (event) { indMudarPagina('next'); },
-  '52': function (event) { _indwizIrParaRail(uiArgLit(this.dataset.rclick0)); }
+  '52': function (event) { _indwizIrParaRail(uiArgLit(this.dataset.rclick0)); },
+  '53': function (event) { _metaCopiarAnterior(); },
+  '54': function (event) { _metaAtualizarCopiar(); }
 });
 
 

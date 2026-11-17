@@ -1353,6 +1353,10 @@ td > .acoes-linha:only-child { display: flex; }
 .ds-linha-clicavel:hover > td { background: var(--ds-sidebar-item-hover); }
 .ds-alerta-atraso { display: inline-flex; align-items: center; color: var(--ds-color-danger-fg); cursor: help; vertical-align: middle; }
 .ds-alerta-atraso .material-symbols-outlined { font-size: 16px; }
+/* Selo de histórico de atraso: registro (não alerta) de que o elemento já estava atrasado na vigência regular do plano; neutro, nunca some. uiSeloHistoricoAtrasoHTML(texto). */
+.ds-selo-historico { display: inline-flex; align-items: center; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; }
+.ds-selo-historico .material-symbols-outlined { font-size: 16px; }
+.ds-selo-historico:focus-visible { outline: 2px solid var(--ds-color-action); outline-offset: 2px; border-radius: var(--ds-r-sm); }
 .ds-valor-alerta { display: inline-flex; align-items: center; gap: 2px; }
 /* Prazo final do elemento: pílula com ícone de calendário (cor própria, diferente dos chips de vínculo e indicador) + data final. uiChipPrazoHTML(dataBR). */
 .ds-chip-prazo { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-pill); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); line-height: 1.25; white-space: nowrap; color: var(--ds-color-text); cursor: default; }
@@ -9767,6 +9771,11 @@ function uiThOrdHTML(rotulo, ativo, dir, onclick, cls) {
 }
 
 // Alerta de atraso (.ds-alerta-atraso): ícone solto ao lado do que está atrasado, com o motivo no tooltip. Único estilo do sistema para "atrasado".
+// Selo de HISTÓRICO de atraso (neutro, não é alerta): o elemento já estava atrasado na vigência regular do plano e só deixou de estar porque o plano foi prorrogado. Nunca some.
+function uiSeloHistoricoAtrasoHTML(texto) {
+  return '<span class="ds-selo-historico" tabindex="0" data-title="' + escapeHtml(texto) + '" aria-label="' + escapeHtml(texto) + '"><span class="material-symbols-outlined">history</span></span>';
+}
+
 function uiAlertaAtrasoHTML(texto) {
   return '<span class="ds-alerta-atraso" data-title="' + escapeHtml(texto) + '" aria-label="' + escapeHtml(texto) + '"><span class="material-symbols-outlined">warning</span></span>';
 }
@@ -9822,7 +9831,7 @@ function uiChipPrazoHTML(dataBR, atrasoRegular) {
   var chip = '<span class="ds-chip-prazo" data-title="Prazo final: ' + escapeHtml(dataBR) + '"><span class="material-symbols-outlined">event</span><span>' + escapeHtml(dataBR) + '</span></span>';
   if (!atrasoRegular || !atrasoRegular.prazo) return chip;
   // já estava atrasado quando a vigência regular do plano acabou: o histórico fica ao lado do prazo, mesmo depois de o elemento ser concluído
-  return chip + uiAlertaAtrasoHTML('Estava atrasado na vigência regular do plano (prazo original ' + atrasoRegular.prazo + '). Deixou de estar atrasado porque o plano foi prorrogado' + (atrasoRegular.novaVigencia ? ' até ' + atrasoRegular.novaVigencia : '') + '.');
+  return chip + uiSeloHistoricoAtrasoHTML('Estava atrasado na vigência regular do plano (prazo original ' + atrasoRegular.prazo + '). Deixou de estar atrasado porque o plano foi prorrogado' + (atrasoRegular.novaVigencia ? ' até ' + atrasoRegular.novaVigencia : '') + '.');
 }
 
 function uiProgressoHTML(pct, dica) {
@@ -18839,7 +18848,7 @@ function _detpDataBR(iso) {
 function _detpVigenciaExtra(p) {
   var html = '';
   if (p.foiProrrogado && p.vigenciaEfetiva) html += ' · prorrogada até ' + escapeHtml(p.vigenciaEfetiva);
-  if (p.avisoPlanoSuperior) html += ' <span class="material-symbols-outlined ds-info" tabindex="0" data-title="' + escapeHtml('O plano superior "' + p.avisoPlanoSuperior.nome + '" vigora até ' + p.avisoPlanoSuperior.vigencia + '. Este plano também pode ser prorrogado.') + '">info</span>';
+  if ((p.avisosPlanosSuperiores || []).length) html += ' <span class="material-symbols-outlined ds-info" tabindex="0" data-title="' + escapeHtml(p.avisosPlanosSuperiores.map(function(a) { return 'O plano superior "' + a.nome + '" vigora até ' + a.vigencia + '.'; }).join(' ') + ' Este plano também pode ser prorrogado.') + '">info</span>';
   return html;
 }
 
@@ -19737,7 +19746,7 @@ function abrirModalProrrogar() {
   const p = dadosDetalhados.plano;
   document.getElementById('prorrogar-plano-nome').innerText = p.nome || '';
   document.getElementById('prorrogar-vigencia-atual').innerText = p.vigenciaEfetiva || (p.dataFim || '');
-  document.getElementById('prorrogar-nova-data').value = (p.avisoPlanoSuperior && p.avisoPlanoSuperior.vigenciaISO) || p.vigenciaEfetivaISO || p.dataFim || '';
+  document.getElementById('prorrogar-nova-data').value = ((p.avisosPlanosSuperiores || [])[0] || {}).vigenciaISO || p.vigenciaEfetivaISO || p.dataFim || '';
   document.getElementById('prorrogar-motivo').value = '';
   document.getElementById('modal-prorrogar').classList.remove('hidden');
   if (typeof bloquearFundo === 'function') bloquearFundo();
