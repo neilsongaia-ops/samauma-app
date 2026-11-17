@@ -992,6 +992,12 @@ function _indPermiteEdicao() {
   return false;
 }
 
+// Definir metas: além de quem edita o plano, com o plano Prorrogado quem responde por ele define as metas dos períodos criados pela prorrogação (o servidor confere cada período).
+function _indPermiteMetas() {
+  if (_indPermiteEdicao()) return true;
+  return !!(_indCtx && _indCtx.permissoes && _indCtx.permissoes.metasPeriodoEstendido);
+}
+
 // Junta indicadores + metas + elemento + indicador superior em lista unificada
 function _indDados() {
   var inds = _indIndicadores.length ? _indIndicadores : ((dadosDetalhados && dadosDetalhados.indicadores) || []);
@@ -1826,7 +1832,7 @@ function _indFaixaHTML(p, anos, podeEditar) {
           + '</div>';
       }).join('');
     } else {
-      corpo = podeEditar
+      corpo = _indPermiteMetas()
         ? '<button type="button" class="ind-meta-add" data-on-click="ind.19" data-aclick0="' + idj + '" data-rclick1="' + ano + '" aria-label="Definir meta para ' + ano + '"><span class="material-symbols-outlined">add</span>Meta</button>'
         : '<span class="ind-meta-vazio">—</span>';
     }
@@ -1898,7 +1904,7 @@ function _indLinhaHTML(p, anos, podeEditar) {
     acoes = acoesLinhaHTML('ind-' + idj, [
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + idj + "')", principal: true },
       { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + idj + "')", principal: true, oculto: !podeEditar },
-      { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + idj + "')", oculto: !podeEditar },
+      { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + idj + "')", oculto: !_indPermiteMetas() },
       { icone: 'delete', rotulo: 'Excluir indicador', onclick: "confirmarExclusaoIndicador('" + idj + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar }
     ]);
   }
@@ -1942,7 +1948,7 @@ function _indLinhaHTML(p, anos, podeEditar) {
           ? _indFaixaHTML(p, anos, podeEditar)
             + '<div class="ind-det-rodape">'
             +   (p.interpretacao ? '<span class="ind-interp"><span class="material-symbols-outlined">' + (menor ? 'trending_down' : 'trending_up') + '</span>' + escapeHtml(p.interpretacao) + '</span>' : '<span class="ind-interp"></span>')
-            +   (podeEditar ? '<button type="button" class="rsc-link" data-on-click="ind.27" data-aclick0="' + idj + '"><span class="material-symbols-outlined">add_chart</span>Nova meta</button>' : '')
+            +   (_indPermiteMetas() ? '<button type="button" class="rsc-link" data-on-click="ind.27" data-aclick0="' + idj + '"><span class="material-symbols-outlined">add_chart</span>Nova meta</button>' : '')
             +   '<button type="button" class="rsc-link" data-on-click="ind.28" data-aclick0="' + idj + '">Ver configuração<span class="material-symbols-outlined">chevron_right</span></button>'
             + '</div>'
           : '<div class="ind-sem-metas">'
@@ -2203,7 +2209,7 @@ function _indAtualizarSelecao(listaVisivel) {
       acoesCont.innerHTML = acoesLinhaHTML('indsel-' + indId, [
         { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + indId + "')", principal: true },
         { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + indId + "')", principal: true, oculto: !podeEditar },
-        { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + indId + "')", principal: true, oculto: !podeEditar },
+        { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + indId + "')", principal: true, oculto: !_indPermiteMetas() },
         { icone: 'download', rotulo: 'Exportar CSV', onclick: "exportarIndicadoresMetasCSV()", principal: true },
         { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoIndicador('" + indId + "','" + escapeJsAttr(indObj ? indObj.nome : '') + "')", cor: 'var(--ds-color-danger-fg)', oculto: !podeEditar }
       ], { maxDireto: 5 });
@@ -2267,7 +2273,7 @@ function _indRenderPainel(p) {
     + '</div>'
     + '<div class="detp-secao">'
     +   '<div class="detp-risco-sec-cab"><strong>Metas</strong><span>' + p.metas.length + (p.metas.length === 1 ? ' meta' : ' metas') + ' · ' + anosCom + ' de ' + anos.length + ' anos</span>'
-    +     (podeEditar ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.27" data-aclick0="' + idj + '" data-title="Nova meta" aria-label="Nova meta"><span class="material-symbols-outlined">add</span></button>' : '')
+    +     (_indPermiteMetas() ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.27" data-aclick0="' + idj + '" data-title="Nova meta" aria-label="Nova meta"><span class="material-symbols-outlined">add</span></button>' : '')
     +   '</div>'
     +   (anos.length ? '<div class="detp-ind-metas">' + metas + '</div>' : '<p class="detp-texto-bloco" style="color:var(--ds-color-text-muted)">Nenhuma meta definida.</p>')
     + '</div>';
@@ -2372,7 +2378,7 @@ function _metaRenderGrade() {
         var trava = p.temResultados
           ? '<span class="material-symbols-outlined" tabindex="0" data-title="Já há resultados lançados neste período. A meta pode ser alterada, não removida.">lock</span>' : '';
         return '<tr><td class="meta-per">' + escapeHtml(p.rotulo) + trava + '</td>'
-          + '<td><input type="text" class="ds-input meta-valor" data-inicio="' + escapeHtml(p.inicioISO) + '" value="' + escapeHtml(p.valor) + '" aria-label="Meta de ' + escapeHtml(p.rotulo) + '" placeholder="Ex: 100"></td></tr>';
+          + '<td><input type="text" class="ds-input meta-valor" data-inicio="' + escapeHtml(p.inicioISO) + '" value="' + escapeHtml(p.valor) + '" aria-label="Meta de ' + escapeHtml(p.rotulo) + '" placeholder="Ex: 100"' + (p.editavel === false ? ' disabled' : '') + '></td></tr>';
       }).join('') + '</tbody></table></div>';
   }
 
@@ -2387,7 +2393,7 @@ function _metaRenderGrade() {
         }).join('') + '</div>'
       : '';
   }
-  _metaSalvarHabilitado(g.periodos.length > 0);
+  _metaSalvarHabilitado(g.periodos.some(function(p) { return p.editavel !== false; }));
 }
 
 // app_indicadores_modais — modais e wizards (abrir, validar, salvar)

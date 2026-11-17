@@ -9817,9 +9817,12 @@ function uiPaginadorRodapeAtualizar(id, estado, total) {
 }
 
 // Prazo final de um elemento (.ds-chip-prazo): ícone de calendário + data final (dd/mm/aaaa). Vazio quando não há data.
-function uiChipPrazoHTML(dataBR) {
+function uiChipPrazoHTML(dataBR, atrasoRegular) {
   if (!dataBR) return '';
-  return '<span class="ds-chip-prazo" data-title="Prazo final: ' + escapeHtml(dataBR) + '"><span class="material-symbols-outlined">event</span><span>' + escapeHtml(dataBR) + '</span></span>';
+  var chip = '<span class="ds-chip-prazo" data-title="Prazo final: ' + escapeHtml(dataBR) + '"><span class="material-symbols-outlined">event</span><span>' + escapeHtml(dataBR) + '</span></span>';
+  if (!atrasoRegular || !atrasoRegular.prazo) return chip;
+  // já estava atrasado quando a vigência regular do plano acabou: o histórico fica ao lado do prazo, mesmo depois de o elemento ser concluído
+  return chip + uiAlertaAtrasoHTML('Estava atrasado na vigência regular do plano (prazo original ' + atrasoRegular.prazo + '). Deixou de estar atrasado porque o plano foi prorrogado' + (atrasoRegular.novaVigencia ? ' até ' + atrasoRegular.novaVigencia : '') + '.');
 }
 
 function uiProgressoHTML(pct, dica) {
@@ -18832,6 +18835,14 @@ function _detpDataBR(iso) {
 // objeto Date real — mesmo caso que extrairAno() já trata) faz formatarDataISO retornar
 // "" para os dois lados, então cai para o ano isolado (anoInicio/anoFim, que extrairAno
 // sempre resolve). Nunca mostra "?": some a linha inteira se não houver nada em nenhum dos dois.
+// Vigência prorrogada e, se o plano superior vigora além deste, o aviso de que este também pode ser prorrogado.
+function _detpVigenciaExtra(p) {
+  var html = '';
+  if (p.foiProrrogado && p.vigenciaEfetiva) html += ' · prorrogada até ' + escapeHtml(p.vigenciaEfetiva);
+  if (p.avisoPlanoSuperior) html += ' <span class="material-symbols-outlined ds-info" tabindex="0" data-title="' + escapeHtml('O plano superior "' + p.avisoPlanoSuperior.nome + '" vigora até ' + p.avisoPlanoSuperior.vigencia + '. Este plano também pode ser prorrogado.') + '">info</span>';
+  return html;
+}
+
 function _detpVigencia(p) {
   const iniBR = _detpDataBR(p.dataInicio), fimBR = _detpDataBR(p.dataFim);
   if (iniBR && fimBR) return iniBR + ' – ' + fimBR;
@@ -19453,7 +19464,7 @@ function _detpRenderDetalhes() {
 
   const htmlSobre =
     _detpLinha('Tipo', escapeHtml(p.tipo || '—') + (categoriaLabel ? ' · ' + escapeHtml(categoriaLabel) : '')) +
-    _detpLinha('Vigência', _detpVigencia(p)) +
+    _detpLinha('Vigência', _detpVigencia(p) + _detpVigenciaExtra(p)) +
     _detpLinha('Status', p.status ? '<span class="ds-badge ds-badge--' + (DETP_STATUS_SLUG[p.status] || 'finalizado') + '">' + escapeHtml(p.status) + '</span>' : '') +
     _detpLinha('Avaliação', avalHtml) +
     _detpLinha((p.planosSuperiores && p.planosSuperiores.length > 1) ? 'Planos superiores' : 'Plano superior',
@@ -19726,7 +19737,7 @@ function abrirModalProrrogar() {
   const p = dadosDetalhados.plano;
   document.getElementById('prorrogar-plano-nome').innerText = p.nome || '';
   document.getElementById('prorrogar-vigencia-atual').innerText = p.vigenciaEfetiva || (p.dataFim || '');
-  document.getElementById('prorrogar-nova-data').value = p.vigenciaEfetivaISO || p.dataFim || '';
+  document.getElementById('prorrogar-nova-data').value = (p.avisoPlanoSuperior && p.avisoPlanoSuperior.vigenciaISO) || p.vigenciaEfetivaISO || p.dataFim || '';
   document.getElementById('prorrogar-motivo').value = '';
   document.getElementById('modal-prorrogar').classList.remove('hidden');
   if (typeof bloquearFundo === 'function') bloquearFundo();
@@ -21546,7 +21557,7 @@ function _execLinhaHTML(n) {
   var id = String(n.id), t = _execTarefaDe(id), inds = _execIndicadoresDoElemento(id), aberta = !!estadoExecTarefas.abertas[id];
 
   var chips = [];
-  if (t && t.fim) chips.push(uiChipPrazoHTML(t.fim));
+  if (t && t.fim) chips.push(uiChipPrazoHTML(t.fim, t.atrasoRegular));
   if (n.progressoRejeitado) chips.push(_execChipHTML('error', '', 'Último lançamento de progresso rejeitado' + (n.progressoRejeitado.motivo ? ': ' + n.progressoRejeitado.motivo : '') + '. O percentual mostrado é o validado.'));
   if (n.progressoPendente) chips.push(_execChipHTML('hourglass_top', '', 'Lançamento de progresso aguardando validação; o percentual mostrado é o validado.'));
   if (t && t.tarefasTotal > 0) chips.push(_execChipHTML('checklist', t.tarefasConcluidas + ' de ' + t.tarefasTotal, 'Itens da lista de verificação concluídos', '', 'ext-cont-' + id));
@@ -21591,8 +21602,9 @@ function _execIndicadorHTML(idElemento, ind) {
     : '<span class="ds-badge ' + (atingido ? 'ds-badge--success' : 'ds-badge--neutral') + '">' + escapeHtml(res.valorApurado + un) + '</span>';
   return '<div class="ds-spread"><div class="ds-inline"><span class="material-symbols-outlined">speed</span><span>' + escapeHtml(ind.nome) + '</span></div>' +
     '<div class="ds-cluster"><span class="ds-help">Meta' + (meta && meta.ano ? ' ' + meta.ano : '') + ': ' + escapeHtml(meta ? meta.valor + un : 'sem meta no exercício') + '</span>' + sit +
-    '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Lançar desempenho" aria-label="Lançar desempenho" data-on-click="pages_execucao_tarefas.35" data-aclick0="' + escapeHtml(String(idElemento)) + '" data-aclick1="' + escapeHtml(String(ind.id)) + '">' +
-    '<span class="material-symbols-outlined">track_changes</span></button></div></div>';
+    (ind.resultadoBloqueado ? '' : '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Lançar desempenho" aria-label="Lançar desempenho" data-on-click="pages_execucao_tarefas.35" data-aclick0="' + escapeHtml(String(idElemento)) + '" data-aclick1="' + escapeHtml(String(ind.id)) + '">' +
+    '<span class="material-symbols-outlined">track_changes</span></button>') +
+    '</div></div>';
 }
 
 function execTarefasRenderizar() {
