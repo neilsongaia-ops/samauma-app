@@ -1291,6 +1291,18 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-paginador__nav { display: inline-flex; align-items: center; gap: 2px; }
 .ds-paginador__atual { min-width: 20px; text-align: center; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
 .ds-paginador .ds-icon-action:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Paginador de rodapé (versão 2, base da tabela dentro do plano): esquerda "Exibir N", centro "a–b de n", direita ‹ [página] ›. uiPaginadorRodapeHTML / uiPaginarLista. */
+.ds-paginador-rodape { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--ds-space-3); padding: var(--ds-space-3) var(--ds-space-4); border-top: 1px solid var(--ds-color-border); font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); }
+.ds-paginador-rodape__esq, .ds-paginador-rodape__centro, .ds-paginador-rodape__dir { display: flex; align-items: center; gap: var(--ds-space-2); }
+.ds-paginador-rodape__esq { justify-self: start; }
+.ds-paginador-rodape__centro { justify-self: center; white-space: nowrap; }
+.ds-paginador-rodape__dir { justify-self: end; }
+.ds-paginador-rodape .ds-select { width: auto; min-width: 56px; min-height: 32px; padding: var(--ds-space-1) var(--ds-space-2); font-size: var(--ds-text-sm); text-align: center; }
+.ds-paginador-rodape .ds-icon-action:disabled { opacity: 0.4; cursor: not-allowed; }
+@media (max-width: 768px) {
+  .ds-paginador-rodape { grid-template-columns: 1fr; justify-items: center; }
+  .ds-paginador-rodape__esq, .ds-paginador-rodape__dir { justify-self: center; }
+}
 
 /* Responsável: pastilha com o nome (nomeRespExibicao) e, se houver mais, "+N" em .ds-resp-mais */
 .ds-resp {
@@ -9764,6 +9776,44 @@ function uiAlertaAtrasoHTML(texto) {
 function uiAlternarTudoHTML(tudoExpandido, atributosClique) {
   var rotulo = tudoExpandido ? 'Recolher tudo' : 'Expandir tudo';
   return '<button type="button" class="ds-icon-action ds-icon-action--sm" ' + atributosClique + ' data-title="' + rotulo + '" aria-label="' + rotulo + '"><span class="material-symbols-outlined">' + (tudoExpandido ? 'unfold_less' : 'unfold_more') + '</span></button>';
+}
+
+// Paginador de rodapé (.ds-paginador-rodape). estado = { itensPorPagina, paginaAtual }. uiPaginarLista devolve a página atual da lista (e corrige
+// a página se a lista encolheu); uiPaginadorRodapeHTML desenha a barra (acoes = ids de ação { tamanho, anterior, pagina, proximo }: os dois de seleção
+// recebem o valor em this.value); uiPaginadorRodapeAtualizar preenche contador, seletor de página e setas depois que a barra está na tela.
+function uiPaginarLista(lista, estado) {
+  var totalPags = Math.max(1, Math.ceil(lista.length / estado.itensPorPagina));
+  estado.paginaAtual = Math.min(Math.max(1, estado.paginaAtual), totalPags);
+  var ini = (estado.paginaAtual - 1) * estado.itensPorPagina;
+  return lista.slice(ini, ini + estado.itensPorPagina);
+}
+function uiPaginadorRodapeHTML(id, acoes) {
+  var seta = function(sufixo, acao, icone, rotulo) {
+    return '<button type="button" class="ds-icon-action ds-icon-action--sm" id="' + id + '-' + sufixo + '" data-on-click="' + acao + '" data-title="' + rotulo + '" aria-label="' + rotulo + '"><span class="material-symbols-outlined">' + icone + '</span></button>';
+  };
+  return '<div class="ds-paginador-rodape" id="' + id + '">' +
+    '<div class="ds-paginador-rodape__esq"><span>Exibir:</span><select class="ds-select" id="' + id + '-tamanho" data-on-change="' + acoes.tamanho + '" aria-label="Itens por página">' +
+    '<option value="10">10</option><option value="20">20</option><option value="50">50</option></select></div>' +
+    '<div class="ds-paginador-rodape__centro"><span id="' + id + '-contador">0–0 de 0</span></div>' +
+    '<div class="ds-paginador-rodape__dir">' + seta('anterior', acoes.anterior, 'chevron_left', 'Página anterior') +
+    '<select class="ds-select" id="' + id + '-pagina" data-on-change="' + acoes.pagina + '" aria-label="Ir para a página"></select>' +
+    seta('proximo', acoes.proximo, 'chevron_right', 'Próxima página') + '</div></div>';
+}
+function uiPaginadorRodapeAtualizar(id, estado, total) {
+  var totalPags = Math.max(1, Math.ceil(total / estado.itensPorPagina));
+  var pag = estado.paginaAtual, ini = (pag - 1) * estado.itensPorPagina;
+  var el = function(s) { return document.getElementById(id + '-' + s); };
+  if (el('contador')) el('contador').textContent = total === 0 ? '0 de 0' : (ini + 1) + '–' + Math.min(ini + estado.itensPorPagina, total) + ' de ' + total;
+  if (el('tamanho')) el('tamanho').value = String(estado.itensPorPagina);
+  if (el('pagina')) {
+    var ops = '';
+    for (var i = 1; i <= totalPags; i++) ops += '<option value="' + i + '">' + i + '</option>';
+    el('pagina').innerHTML = ops;
+    el('pagina').value = String(pag);
+    el('pagina').disabled = totalPags <= 1;
+  }
+  if (el('anterior')) el('anterior').disabled = pag <= 1;
+  if (el('proximo')) el('proximo').disabled = pag >= totalPags;
 }
 
 // Prazo final de um elemento (.ds-chip-prazo): ícone de calendário + data final (dd/mm/aaaa). Vazio quando não há data.
@@ -20728,7 +20778,7 @@ function _execRenderizarAcoesSelecao(qtd) {
 }
 
 function abrirExecucaoPlano(idPlano) {
-  estadoExecTarefas = { idPlano: String(idPlano), dados: null, aba: 'tarefas', view: 'kanban', filtroStatus: 'todos', busca: '', ordenacao: { coluna: null, direcao: 'asc' } };
+  execTarefasReiniciar(idPlano);
   navigate('execucao-tarefas', { idPlano: idPlano });
   execTarefasCarregar();
 }
@@ -20775,9 +20825,9 @@ uiRegistrarAcoes('pages_execucao_planos', {
      - Hero limpo com título de 30px, badge-status e botão sticky de painel lateral (right_panel_open);
      - Sem sobreposição: margem e espaçamentos padronizados para o hero e a linha de abas;
      - Barra de filtros unificada na mesma linha base: busca expansível estilo Drive, filtro de status dropdown
-       com abrirMenuSelecao, toggle de colaborações e limpar filtros à esquerda;
+       com abrirMenuSelecao e limpar filtros à esquerda;
      - À direita na mesma linha base: seletor de exercício plurianual via dropdown;
-     - Registro de execução: lista plana dos elementos executáveis (folhas e elementos com indicador), caminho dos ancestrais acima do título, linha colapsável com a lista de verificação e os indicadores;
+     - Registro de execução: lista plana dos elementos executáveis (folhas e elementos com indicador), linha colapsável com a lista de verificação e os indicadores;
      - Painel lateral (#extp-panel) com abas Detalhes e Atividade;
      - Seletor de exercício só aparece se a vigência do plano cruza mais de um ano. -->
 <div id="page-execucao-tarefas" class="page-content ds-pagina hidden">
@@ -20813,7 +20863,7 @@ uiRegistrarAcoes('pages_execucao_planos', {
   <!-- PAINEL: RESPONSABILIDADES -->
   <div id="ext-painel-tarefas">
 
-    <!-- Filtros: busca, situação, origem, "Dentro de…" e exercício (só se a vigência cruza mais de um ano) -->
+    <!-- Filtros: busca, situação, "Dentro de…" e exercício (só se a vigência cruza mais de um ano) -->
     <div class="ds-filtros ds-pagina__filtros" id="ext-filtros">
       <div class="ds-filtros__normal" id="ext-filtros-normal">
 
@@ -20839,16 +20889,6 @@ uiRegistrarAcoes('pages_execucao_planos', {
             <span id="ext-filtro-label-status">Situação</span><span class="material-symbols-outlined">expand_more</span>
           </button>
           <button type="button" class="ds-filtro__x hidden" id="ext-filtro-x-status" data-on-click="pages_execucao_tarefas.38" aria-label="Limpar filtro de situação">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </span>
-
-        <span class="ds-filtro" id="ext-filtro-wrap-origem">
-          <button type="button" class="ds-filtro__btn" id="ext-filtro-btn-origem" data-on-click="pages_execucao_tarefas.12" aria-haspopup="menu"
-                  data-title="Só as responsabilidades que você assumiu por colaboração (fora do seu escopo normal de unidade)">
-            <span id="ext-filtro-label-origem">Origem</span><span class="material-symbols-outlined">expand_more</span>
-          </button>
-          <button type="button" class="ds-filtro__x hidden" id="ext-filtro-x-origem" data-on-click="pages_execucao_tarefas.42" aria-label="Limpar filtro de origem">
             <span class="material-symbols-outlined">close</span>
           </button>
         </span>
@@ -20999,12 +21039,12 @@ var estadoExecTarefas = {
   aba: 'tarefas',
   filtroStatus: 'todos',
   busca: '',
-  origem: 'todas',
   dentroDe: '',
   anoSelecionado: 'todos',
   abertas: {}, // linhas expandidas: id do elemento -> true
   historico: {}, // id do elemento -> registros[] já lidos
   ordenacao: { col: '', dir: 'asc' }, // col: '' (ordem do plano) | 'elemento' | 'responsavel' | 'progresso'
+  itensPorPagina: 10, paginaAtual: 1,
   painelElemento: '', // id do elemento mostrado na barra lateral ('' = detalhes do plano)
   riscos: null
 };
@@ -21021,13 +21061,21 @@ var EXT_CORES_STATUS_PLANO = {
   'Excluído':      ['var(--ds-status-cancelado-bg)', 'var(--ds-status-cancelado-fg)']
 };
 
+// Estado de uma abertura nova da página (o objeto é um só: aqui se volta ao ponto de partida, sem trocá-lo por outro).
+function execTarefasReiniciar(idPlano) {
+  Object.assign(estadoExecTarefas, {
+    idPlano: String(idPlano), dados: null, aba: 'tarefas', filtroStatus: 'todos', busca: '', dentroDe: '', anoSelecionado: 'todos', abertas: {}, historico: {},
+    ordenacao: { col: '', dir: 'asc' }, itensPorPagina: 10, paginaAtual: 1, painelElemento: '', riscos: null
+  });
+}
+
 // Carrega o registro de execução do plano. `preservar` (recarga depois de lançar ou de atualizar) mantém filtros e linha aberta; a primeira carga os zera.
 function execTarefasCarregar(preservar) {
   var e = estadoExecTarefas;
   if (!preservar) {
     document.getElementById('ext-titulo').textContent = 'Carregando…';
     e.riscos = null; e.abertas = {}; e.historico = {};
-    e.filtroStatus = 'todos'; e.busca = ''; e.origem = 'todas'; e.dentroDe = '';
+    e.filtroStatus = 'todos'; e.busca = ''; e.dentroDe = ''; e.paginaAtual = 1;
     var buscaEl = document.getElementById('ext-busca');
     if (buscaEl) buscaEl.value = '';
     document.getElementById('ext-search-caixa').classList.add('hidden');
@@ -21283,6 +21331,7 @@ function extLimparBusca() {
 function execTarefasFiltrar() {
   var inp = document.getElementById('ext-busca');
   estadoExecTarefas.busca = inp ? inp.value.toLowerCase().trim() : '';
+  estadoExecTarefas.paginaAtual = 1;
   _extFiltrosAtualizarUI();
   execTarefasRenderizar();
 }
@@ -21300,13 +21349,12 @@ function _extFiltroUI(nome, ativo, rotuloAtivo, rotuloPadrao) {
 function _extFiltrosAtualizarUI() {
   var e = estadoExecTarefas, dentro = e.dentroDe ? _execNoDe(e.dentroDe) : null;
   _extFiltroUI('status', e.filtroStatus !== 'todos', e.filtroStatus, 'Situação');
-  _extFiltroUI('origem', e.origem !== 'todas', 'Só colaborações', 'Origem');
   _extFiltroUI('dentro', !!dentro, dentro ? ((dentro.codigo ? dentro.codigo + ' ' : '') + dentro.titulo) : '', 'Dentro de…');
   _extFiltroUI('exercicio', e.anoSelecionado !== 'todos', 'Exercício ' + e.anoSelecionado, 'Exercício');
   var inp = document.getElementById('ext-busca');
   var btnClear = document.getElementById('ext-btn-limpar-busca');
   if (btnClear) btnClear.classList.toggle('hidden', !(inp && inp.value));
-  var algum = !!e.busca || e.filtroStatus !== 'todos' || e.origem !== 'todas' || !!e.dentroDe;
+  var algum = !!e.busca || e.filtroStatus !== 'todos' || !!e.dentroDe;
   var limpar = document.getElementById('ext-btn-limpar-filtros');
   if (limpar) limpar.classList.toggle('hidden', !algum);
 }
@@ -21314,6 +21362,7 @@ function _extFiltrosAtualizarUI() {
 // Define um filtro (campo de estadoExecTarefas) e redesenha.
 function extFiltrar(campo, valor) {
   estadoExecTarefas[campo] = valor;
+  estadoExecTarefas.paginaAtual = 1;
   _extFiltrosAtualizarUI();
   execTarefasRenderizar();
 }
@@ -21327,8 +21376,8 @@ function extLimparFiltros() {
   if (toggle) toggle.classList.remove('hidden');
   estadoExecTarefas.busca = '';
   estadoExecTarefas.filtroStatus = 'todos';
-  estadoExecTarefas.origem = 'todas';
   estadoExecTarefas.dentroDe = '';
+  estadoExecTarefas.paginaAtual = 1;
   _extFiltrosAtualizarUI();
   execTarefasRenderizar();
 }
@@ -21348,14 +21397,6 @@ function extMenuStatus(ev, gatilho) {
   _extAbrirMenu(ev, gatilho, 'ext-filtro-btn-status', [
     ['todos', 'Todas as situações'], ['Não Iniciado', 'Não Iniciado'], ['Em Andamento', 'Em Andamento'], ['Concluído', 'Concluído'], ['Atrasado', 'Atrasado']
   ].map(function(o) { return _extItemFiltro('filtroStatus', o[0], o[1], atual); }));
-}
-
-function extMenuOrigem(ev, gatilho) {
-  var atual = estadoExecTarefas.origem;
-  _extAbrirMenu(ev, gatilho, 'ext-filtro-btn-origem', [
-    _extItemFiltro('origem', 'todas', 'Todas as responsabilidades', atual),
-    _extItemFiltro('origem', 'colab', 'Só colaborações', atual)
-  ]);
 }
 
 // "Dentro de…": os elementos que têm algo abaixo deles (organizadores e pais); escolher um recorta a lista ao que está dentro dele.
@@ -21386,7 +21427,7 @@ function extMenuExercicio(ev, gatilho) {
 
 // --- REGISTRO DE EXECUÇÃO: LISTA PLANA DOS ELEMENTOS EXECUTÁVEIS ---
 // A lista vem de dados.arvore (papel ORGANIZADOR / PAI / FOLHA); responsáveis, prazos e contagem da lista vêm de dados.tarefas quando o usuário
-// é responsável. Entram as folhas executáveis e qualquer elemento com indicador; o caminho dos ancestrais fica acima do título.
+// é responsável. Entram as folhas executáveis e qualquer elemento com indicador; a posição na árvore está na barra lateral de detalhes.
 
 function _execTarefaDe(id) {
   var lista = (estadoExecTarefas.dados && estadoExecTarefas.dados.tarefas) || [];
@@ -21396,13 +21437,6 @@ function _execTarefaDe(id) {
 function _execNoDe(id) {
   var nos = (estadoExecTarefas.dados && estadoExecTarefas.dados.arvore) || [];
   return nos.find(function(n) { return String(n.id) === String(id); }) || null;
-}
-
-// Títulos dos ancestrais, do mais alto ao pai.
-function _execCaminho(n) {
-  var partes = [];
-  for (var x = _execNoDe(n.idPai); x; x = _execNoDe(x.idPai)) partes.unshift(x.titulo);
-  return partes;
 }
 
 function _execDentroDe(n, idAncestral) {
@@ -21426,7 +21460,6 @@ function _execCasaFiltros(n) {
   var e = estadoExecTarefas, t = _execTarefaDe(n.id);
   if (e.busca) {
     var achou = String(n.titulo || '').toLowerCase().indexOf(e.busca) > -1 || String(n.codigo || '').toLowerCase().indexOf(e.busca) > -1 ||
-      _execCaminho(n).join(' ').toLowerCase().indexOf(e.busca) > -1 ||
       _execIndicadoresDoElemento(n.id).some(function(i) { return i.nome && i.nome.toLowerCase().indexOf(e.busca) > -1; });
     if (!achou) return false;
   }
@@ -21434,7 +21467,6 @@ function _execCasaFiltros(n) {
     if (n.papel !== 'FOLHA') return false;
     if (e.filtroStatus === 'Atrasado' ? !n.atrasado : n.status !== e.filtroStatus) return false;
   }
-  if (e.origem === 'colab' && !(t && t.origemColaboracao)) return false;
   if (e.dentroDe && !_execDentroDe(n, e.dentroDe)) return false;
   return _execNoExercicio(t, e.anoSelecionado);
 }
@@ -21468,10 +21500,11 @@ function extOrdenarPor(col) {
   var o = estadoExecTarefas.ordenacao;
   o.dir = o.col === col && o.dir === 'asc' ? 'desc' : 'asc';
   o.col = col;
+  estadoExecTarefas.paginaAtual = 1;
   execTarefasRenderizar();
 }
-function extDefinirColuna(col) { estadoExecTarefas.ordenacao.col = col; execTarefasRenderizar(); }
-function extDefinirDirecao(dir) { estadoExecTarefas.ordenacao.dir = dir; execTarefasRenderizar(); }
+function extDefinirColuna(col) { estadoExecTarefas.ordenacao.col = col; estadoExecTarefas.paginaAtual = 1; execTarefasRenderizar(); }
+function extDefinirDirecao(dir) { estadoExecTarefas.ordenacao.dir = dir; estadoExecTarefas.paginaAtual = 1; execTarefasRenderizar(); }
 function extMenuOrdenar(ev, gatilho) {
   var o = estadoExecTarefas.ordenacao;
   if (ev) ev.stopPropagation();
@@ -21511,7 +21544,6 @@ function _execAcoesHTML(n, id) {
 
 function _execLinhaHTML(n) {
   var id = String(n.id), t = _execTarefaDe(id), inds = _execIndicadoresDoElemento(id), aberta = !!estadoExecTarefas.abertas[id];
-  var caminho = _execCaminho(n).join(' › ');
 
   var chips = [];
   if (t && t.fim) chips.push(uiChipPrazoHTML(t.fim));
@@ -21519,16 +21551,13 @@ function _execLinhaHTML(n) {
   if (n.progressoPendente) chips.push(_execChipHTML('hourglass_top', '', 'Lançamento de progresso aguardando validação; o percentual mostrado é o validado.'));
   if (t && t.tarefasTotal > 0) chips.push(_execChipHTML('checklist', t.tarefasConcluidas + ' de ' + t.tarefasTotal, 'Itens da lista de verificação concluídos', '', 'ext-cont-' + id));
   if (n.temIndicador) chips.push(_execChipHTML('speed', inds.length ? String(inds.length) : '', 'Elemento com indicador', 'el-chip-ind'));
-  if (t && t.origemColaboracao) chips.push(_execChipHTML('diversity_3', '', 'Você colabora neste elemento'));
 
-  var tdElem = '<td class="el-col-elem"><div class="ds-stack ds-stack--2">' +
-    (caminho ? '<span class="ds-help" data-title="' + escapeHtml(caminho) + '">' + escapeHtml(caminho) + '</span>' : '') +
-    '<div class="el-elem-content">' +
+  var tdElem = '<td class="el-col-elem"><div class="el-elem-content">' +
     (n.tipo ? '<span class="el-tipo-badge">' + escapeHtml(n.tipo) + '</span>' : '') +
     '<span class="el-codigo">' + escapeHtml(n.codigo || '') + '</span>' +
     '<span class="el-titulo" data-title="' + escapeHtml(n.titulo) + '">' + escapeHtml(n.titulo) + '</span>' +
     (chips.length ? '<div class="el-meta-chips" data-ext-chips>' + chips.join('') + '</div>' : '') +
-    '</div></div></td>';
+    '</div></td>';
 
   var tdResp = '<td class="el-col-resp">' + ((t && t.quem && t.quem.length)
     ? uiRespHTML(t.quem[0].idResp, t.quem[0].tipo, t.quem.slice(1).map(function(q) { return q.idResp; })) : '') + '</td>';
@@ -21571,12 +21600,13 @@ function execTarefasRenderizar() {
   var d = estadoExecTarefas.dados;
   if (!container || !d) return;
   var linhas = _execLinhas(), corpo;
+  var pagina = uiPaginarLista(linhas, estadoExecTarefas);
   if (!(d.arvore || []).some(function(n) { return n.papel === 'FOLHA' || n.temIndicador; })) {
     corpo = '<tr class="el-linha-msg"><td colspan="5"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhum elemento para você neste plano</p><p>Os elementos em que você é responsável aparecem aqui.</p></div></td></tr>';
   } else if (!linhas.length) {
     corpo = '<tr class="el-linha-msg"><td colspan="5"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">filter_alt_off</span><p class="el-esti">Nenhum resultado para os filtros</p><p>Tente ampliar ou limpar os filtros aplicados.</p></div></td></tr>';
   } else {
-    corpo = linhas.map(_execLinhaHTML).join('');
+    corpo = pagina.map(_execLinhaHTML).join('');
   }
   container.innerHTML = '<div class="el-table-wrap"><table class="el-tabela" id="ext-tabela">' +
     '<colgroup><col class="el-col-expand"><col class="el-col-elem"><col class="el-col-resp"><col id="ext-col-prog"><col class="ds-col-acoes"></colgroup>' +
@@ -21587,7 +21617,9 @@ function execTarefasRenderizar() {
     '<button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Baixar"><span class="material-symbols-outlined">download</span></button>' +
     '<button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>' +
     '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.45" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu"><span class="material-symbols-outlined">sort</span></button>' +
-    '</div></th></tr></thead><tbody>' + corpo + '</tbody></table></div>';
+    '</div></th></tr></thead><tbody>' + corpo + '</tbody></table></div>' +
+    (linhas.length ? uiPaginadorRodapeHTML('ext-pag', { tamanho: 'pages_execucao_tarefas.47', anterior: 'pages_execucao_tarefas.48', pagina: 'pages_execucao_tarefas.49', proximo: 'pages_execucao_tarefas.50' }) : '');
+  if (linhas.length) uiPaginadorRodapeAtualizar('ext-pag', estadoExecTarefas, linhas.length);
   _execMontarLista();
   uiPaginaMedir(document.getElementById('page-execucao-tarefas'));
 }
@@ -21640,22 +21672,27 @@ function _execHistoricoHTML(registros) {
   }).join('') + '</div>';
 }
 
+function extMudarTamanhoPagina(valor) { estadoExecTarefas.itensPorPagina = parseInt(valor, 10) || 10; estadoExecTarefas.paginaAtual = 1; execTarefasRenderizar(); }
+function extIrParaPagina(valor) { estadoExecTarefas.paginaAtual = parseInt(valor, 10) || 1; execTarefasRenderizar(); }
+
 function extToggleLinha(id) {
   var ab = estadoExecTarefas.abertas;
   if (ab[String(id)]) delete ab[String(id)]; else ab[String(id)] = true;
   execTarefasRenderizar();
 }
 
+function _execLinhasDaPagina() { return uiPaginarLista(_execLinhas(), estadoExecTarefas); }
+
 function _execTudoAberto() {
-  var l = _execLinhas();
+  var l = _execLinhasDaPagina();
   return l.length > 0 && l.every(function(n) { return estadoExecTarefas.abertas[String(n.id)]; });
 }
 
-// Um botão só: com tudo aberto recolhe, senão abre as linhas hoje listadas (já com os filtros).
+// Um botão só: com tudo aberto recolhe, senão abre as linhas da página mostrada (já com os filtros).
 function extExpandirTudo() {
   var abrir = !_execTudoAberto();
   estadoExecTarefas.abertas = {};
-  if (abrir) _execLinhas().forEach(function(n) { estadoExecTarefas.abertas[String(n.id)] = true; });
+  if (abrir) _execLinhasDaPagina().forEach(function(n) { estadoExecTarefas.abertas[String(n.id)] = true; });
   execTarefasRenderizar();
 }
 
@@ -21837,7 +21874,6 @@ uiRegistrarAcoes('pages_execucao_tarefas', {
   '9': function (event) { execTarefasFiltrar(); },
   '10': function (event) { extMenuStatus(event, this); },
   '11': function (event) { execTarefasCarregar(true); },
-  '12': function (event) { extMenuOrigem(event, this); },
   '14': function (event) { extMenuDentro(event, this); },
   '22': function (event) { _execExcluirRegistro(uiArgJs(this.dataset.aclick0)); },
   '23': function (event) { _execAbrirModalRegistro(uiArgJs(this.dataset.aclick0)); },
@@ -21851,11 +21887,14 @@ uiRegistrarAcoes('pages_execucao_tarefas', {
   '39': function (event) { extFecharModalRegistro(); },
   '40': function (event) { extSalvarRegistro(); },
   '41': function (event) { event.stopPropagation(); extToggleLinha(uiArgJs(this.dataset.aclick0)); },
-  '42': function (event) { extFiltrar('origem', 'todas'); },
   '43': function (event) { extFiltrar('dentroDe', ''); },
   '44': function (event) { extFiltrar('anoSelecionado', 'todos'); },
   '45': function (event) { extMenuOrdenar(event, this); },
-  '46': function (event) { extExpandirTudo(); }
+  '46': function (event) { extExpandirTudo(); },
+  '47': function (event) { extMudarTamanhoPagina(this.value); },
+  '48': function (event) { extIrParaPagina(estadoExecTarefas.paginaAtual - 1); },
+  '49': function (event) { extIrParaPagina(this.value); },
+  '50': function (event) { extIrParaPagina(estadoExecTarefas.paginaAtual + 1); }
 });
 </script>
        <!-- ARQUIVO: pages_colaboracao.html -->
