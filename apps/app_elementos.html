@@ -275,7 +275,6 @@ body.org-fs-active, body.org-fs-active #main-content { overflow: hidden !importa
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 2.7em;
 }
 .org-card-base { display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: auto; }
-.org-card-base .resp-badge { font-size: var(--ds-text-xs); min-width: 0; }
 .org-card .acoes-linha {
   position: absolute; top: 50%; transform: translateY(-50%); right: -6px; height: 26px;
   display: inline-flex; align-items: center; justify-content: flex-end; gap: 2px;
@@ -568,26 +567,6 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
   left: 12px !important;
   right: auto !important;
   transform: translateY(-50%) !important;
-}
-.gantt-today-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--ds-color-danger, #d32f2f);
-  color: #fff;
-  font-size: 9.5px;
-  font-weight: 700;
-  padding: 1px 7px;
-  border-radius: 10px;
-  white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-  line-height: 14px;
-  position: relative;
-  z-index: 15;
-  letter-spacing: 0.01em;
-}
-.gantt-today-badge.is-overdue {
-  background: #c62828;
 }
 
 .gantt-th-acoes, .gantt-col-acoes-body {
@@ -3929,14 +3908,14 @@ function criarNoDOM(item) {
     if (!isNaN(val)) custoTxt = val.toLocaleString('pt-BR', {minimumFractionDigits: 2});
     else custoTxt = item.custo;
   }
-  const custoHtml = custoTxt ? `<span class="meta-tag tag-custo">R$ ${escapeHtml(custoTxt)}</span>` : '';
+  const custoHtml = custoTxt ? `<span class="ds-badge ds-badge--warning">R$ ${escapeHtml(custoTxt)}</span>` : '';
 
   let respHtml = '';
   if (item.quem && item.quem.length > 0) {
     respHtml = item.quem.map(q => {
       const iconeResp = q.tipo === 'USER' ? 'person' : 'apartment';
       const nomeCurto = (function(n) { return n.length > 25 ? n.substring(0, 25) + '...' : n; })(nomeRespExibicao(q.idResp, q.tipo));
-      return `<span class="meta-tag" data-title="Responsável: ${escapeHtml(q.idResp)}">
+      return `<span class="ds-resp" data-title="Responsável: ${escapeHtml(q.idResp)}">
         <span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">${iconeResp}</span>${escapeHtml(nomeCurto)}</span>`;
     }).join('');
   }
@@ -3950,11 +3929,11 @@ function criarNoDOM(item) {
     if (paiSuperior) {
       const nomePai = escapeHtml(paiSuperior.nomePlanoOrigem || 'Plano Superior');
       const tooltip = `${paiSuperior.tipo}: ${paiSuperior.titulo}`;
-      parentLinkHtml = `<div class="parent-link-badge" data-title="${escapeHtml(tooltip)}">
+      parentLinkHtml = `<div class="ds-badge ds-badge--info parent-link-badge" data-title="${escapeHtml(tooltip)}">
         <span class="material-symbols-outlined" style="font-size:12px;vertical-align:middle">link</span>
         Vinculado a ${nomePai}</div>`;
     } else {
-      parentLinkHtml = `<div class="parent-link-badge parent-link-pendente"
+      parentLinkHtml = `<div class="ds-badge ds-badge--warning parent-link-badge"
         data-title="O plano superior deste vínculo ainda não foi aprovado, ou o vínculo foi desfeito">
         <span class="material-symbols-outlined" style="font-size:12px;vertical-align:middle">schedule</span>
         Vínculo pendente</div>`;
@@ -3965,7 +3944,7 @@ function criarNoDOM(item) {
   const qtdInd = Number(item.qtdIndicadores || 0);
   if (qtdInd > 0) {
     const label = qtdInd === 1 ? '1 indicador' : `${qtdInd} indicadores`;
-    indicadorTagHtml = `<span class="meta-tag tag-indicador" data-on-click="el.71" data-aclick0="${item.id}">
+    indicadorTagHtml = `<span class="ds-badge ds-badge--info tag-indicador" data-on-click="el.71" data-aclick0="${item.id}">
       <span class="material-symbols-outlined" style="font-size:13px">monitoring</span> ${label}</span>`;
   }
 
@@ -4000,9 +3979,7 @@ function criarNoDOM(item) {
             ${parentLinkHtml}
             <div style="display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;margin-top:2px">
               <span class="item-code">${escapeHtml(item.codigo || '')}</span>
-              ${corTipoNo
-                ? `<span class="item-tipo-prefix item-tipo-chip" style="background:${corTipoNo}22;color:${corTipoNo};border:1px solid ${corTipoNo}55">${escapeHtml(item.tipo)}</span>`
-                : `<span class="item-tipo-prefix">${escapeHtml(item.tipo)}:</span>`}
+              ${uiBadgeTipoHTML(item.tipo, corTipoNo)}
               <span class="item-title">${escapeHtml(item.titulo)}</span>
               ${item.abertoColaboracao ? '<span class="material-symbols-outlined" style="font-size:15px;color:var(--ds-color-action);vertical-align:middle" data-title="Aberto para colaboração externa">diversity_3</span>' : ''}
             </div>
@@ -4016,7 +3993,7 @@ function criarNoDOM(item) {
           ${indicadorTagHtml}
           ${custoHtml}
           ${uiChipPrazoHTML(item.prazo || item.fim)}
-          ${(item.solicitacoesColaboracaoPendentes && item.solicitacoesColaboracaoPendentes.length) ? `<span class="meta-tag" style="background: var(--ds-color-warning-bg);color: var(--ds-color-warning-fg);border-color:color-mix(in srgb, var(--ds-color-warning-fg) 40%, transparent);cursor:pointer" data-on-click="el.74" data-aclick0="${item.id}"><span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">group_add</span>${item.solicitacoesColaboracaoPendentes.length} solicitação(ões) de colaboração</span>` : ''}
+          ${(item.solicitacoesColaboracaoPendentes && item.solicitacoesColaboracaoPendentes.length) ? `<span class="ds-badge" style="background: var(--ds-color-warning-bg);color: var(--ds-color-warning-fg);border-color:color-mix(in srgb, var(--ds-color-warning-fg) 40%, transparent);cursor:pointer" data-on-click="el.74" data-aclick0="${item.id}"><span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">group_add</span>${item.solicitacoesColaboracaoPendentes.length} solicitação(ões) de colaboração</span>` : ''}
         </div>
       </div>
     </div>`;
@@ -4825,18 +4802,18 @@ function renderizarGantt() {
   var headerTodayHtml = '';
   var todayLineHtml = '';
   if (hojeDentroFaixa) {
-    var badgeClass = hojePassouLimite ? 'gantt-today-badge is-overdue' : 'gantt-today-badge';
+    var badgeClass = 'ds-badge ds-badge--danger';
     var badgeText = hojePassouLimite ? 'Hoje • Encerrado' : 'Hoje';
     var todayTooltip = 'Hoje: ' + _ganttFmtData(hoje) + (hojePassouLimite ? ' (Prazos encerrados em ' + _ganttFmtData(maxDate) + ')' : '');
     headerTodayHtml = '<div class="gantt-scale-today" style="left:' + todayPct.toFixed(2) + '%" data-title="' + escapeHtml(todayTooltip) + '"><span class="' + badgeClass + '">' + badgeText + '</span></div>';
     todayLineHtml = '<div class="gantt-today-line' + (hojePassouLimite ? ' is-overdue' : '') + '" style="left:' + todayPct.toFixed(2) + '%"></div>';
   } else if (hoje > rangeEnd) {
     var todayTooltip = 'A data atual (' + _ganttFmtData(hoje) + ') ultrapassou o período das atividades (encerradas em ' + _ganttFmtData(maxDate) + ')';
-    headerTodayHtml = '<div class="gantt-scale-today at-edge-right" data-title="' + escapeHtml(todayTooltip) + '"><span class="gantt-today-badge is-overdue">Hoje ▶ ' + _ganttFmtData(hoje) + '</span></div>';
+    headerTodayHtml = '<div class="gantt-scale-today at-edge-right" data-title="' + escapeHtml(todayTooltip) + '"><span class="ds-badge ds-badge--danger">Hoje ▶ ' + _ganttFmtData(hoje) + '</span></div>';
     todayLineHtml = '<div class="gantt-today-line is-overdue at-edge-right"></div>';
   } else if (hojeAntesInicio) {
     var todayTooltip = 'A data atual (' + _ganttFmtData(hoje) + ') é anterior ao início das atividades (início em ' + _ganttFmtData(minDate) + ')';
-    headerTodayHtml = '<div class="gantt-scale-today at-edge-left" data-title="' + escapeHtml(todayTooltip) + '"><span class="gantt-today-badge">◀ Hoje (' + _ganttFmtData(hoje) + ')</span></div>';
+    headerTodayHtml = '<div class="gantt-scale-today at-edge-left" data-title="' + escapeHtml(todayTooltip) + '"><span class="ds-badge ds-badge--danger">◀ Hoje (' + _ganttFmtData(hoje) + ')</span></div>';
     todayLineHtml = '<div class="gantt-today-line at-edge-left"></div>';
   }
 
@@ -5147,7 +5124,7 @@ function renderizarTabelaEstrutura() {
       chipsHtml +
       '</div></td>';
 
-    // Responsável (estilo resp-badge com conexão fluida ao indicativo de mais responsáveis)
+    // Responsável (estilo ds-resp com conexão fluida ao indicativo de mais responsáveis)
     var respHtml = '';
     if (no.quem && no.quem.length > 0) {
       var nomesTodos = no.quem.map(function(q) { return nomeRespExibicao(q.idResp, q.tipo); }).filter(Boolean);
@@ -5158,10 +5135,10 @@ function renderizarTabelaEstrutura() {
         : (no.quem[0].idResp !== primeiro ? no.quem[0].idResp : '');
       var ico = no.quem[0].tipo === 'USER' ? 'person' : 'apartment';
 
-      respHtml = '<span class="resp-badge el-resp-badge"' +
+      respHtml = '<span class="ds-resp"' +
         (respTitle ? ' data-title="' + escapeHtml(respTitle) + '"' : '') +
         '><span class="material-symbols-outlined">' + ico + '</span>' +
-        '<span class="el-resp-nome">' + escapeHtml(primeiro) + '</span>' +
+        '<span>' + escapeHtml(primeiro) + '</span>' +
         (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '') +
         '</span>';
     }
@@ -5334,9 +5311,9 @@ function renderizarOrganograma() {
       var nomes = el.quem.map(function(q) { return nomeRespExibicao(q.idResp, q.tipo); }).filter(Boolean);
       var nAdic = nomes.length - 1;
       var tit = nAdic > 0 ? 'Principal: ' + nomes[0] + ' | Adicionais: ' + nomes.slice(1).join(', ') : (el.quem[0].idResp !== nomes[0] ? el.quem[0].idResp : '');
-      respHtml = '<span class="resp-badge el-resp-badge"' + (tit ? ' data-title="' + escapeHtml(tit) + '"' : '') + '>'
+      respHtml = '<span class="ds-resp"' + (tit ? ' data-title="' + escapeHtml(tit) + '"' : '') + '>'
         + '<span class="material-symbols-outlined">' + (el.quem[0].tipo === 'USER' ? 'person' : 'apartment') + '</span>'
-        + '<span class="el-resp-nome">' + escapeHtml(nomes[0] || 'Não definido') + '</span>'
+        + '<span>' + escapeHtml(nomes[0] || 'Não definido') + '</span>'
         + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '') + '</span>';
     }
     var nInd = Number(el.qtdIndicadores || 0);
@@ -5538,10 +5515,10 @@ function renderizarTabelaDetalhes() {
         : (item.quem[0].idResp !== primeiro ? item.quem[0].idResp : '');
       var ico = item.quem[0].tipo === 'USER' ? 'person' : 'apartment';
 
-      respHtml = '<span class="resp-badge el-resp-badge"' +
+      respHtml = '<span class="ds-resp"' +
         (respTitle ? ' data-title="' + escapeHtml(respTitle) + '"' : '') +
         '><span class="material-symbols-outlined">' + ico + '</span>' +
-        '<span class="el-resp-nome">' + escapeHtml(primeiro) + '</span>' +
+        '<span>' + escapeHtml(primeiro) + '</span>' +
         (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '') +
         '</span>';
     }

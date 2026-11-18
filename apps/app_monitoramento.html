@@ -3,8 +3,6 @@
 #monit-corpo-wrap {
   width: 100%;
 }
-.perf-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
-.perf-faixa-chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; margin-right: 6px; }
 .mon-topo { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; margin-bottom: 16px; }
 .mon-card {
   min-width: 0; border-radius: var(--ds-r-2xl); padding: 20px; display: flex; flex-direction: column;
@@ -611,9 +609,9 @@ function _monitOptHistorico(ind) {
 }
 
 function _perfBadgeConceito(conceito, extraStyle) {
-  if (!conceito) return '<span class="perf-badge" style="background: var(--ds-color-surface-2);color: var(--ds-color-text-muted)">Não apurado</span>';
+  if (!conceito) return '<span class="ds-badge" style="background: var(--ds-color-surface-2);color: var(--ds-color-text-muted)">Não apurado</span>';
   var c = _PERF_CORES_CONCEITO[conceito] || { bg: 'var(--ds-color-surface-2)', text: 'var(--ds-color-text-muted)' };
-  return '<span class="perf-badge" style="background:' + c.bg + ';color:' + c.text + ';' + (extraStyle || '') + '">' + escapeHtml(conceito) + '</span>';
+  return '<span class="ds-badge" style="background:' + c.bg + ';color:' + c.text + ';' + (extraStyle || '') + '">' + escapeHtml(conceito) + '</span>';
 }
 
 function _monitDentroDoElemento(idElemento, idRaiz) {
@@ -1579,9 +1577,9 @@ function _monitRenderCorpo() {
         : ((l.quem && l.quem[0] && l.quem[0].idResp !== nomesTodos[0]) ? l.quem[0].idResp : '');
       var ico = (l.quem && l.quem[0] && l.quem[0].tipo === 'USER') ? 'person' : 'apartment';
       var resp = (l.quem && l.quem.length > 0)
-        ? '<span class="resp-badge el-resp-badge"' + (respTitle ? ' data-title="' + escapeHtml(respTitle) + '"' : '') + '>'
+        ? '<span class="ds-resp"' + (respTitle ? ' data-title="' + escapeHtml(respTitle) + '"' : '') + '>'
           + '<span class="material-symbols-outlined">' + ico + '</span>'
-          + '<span class="el-resp-nome">' + escapeHtml(nomesTodos[0] || 'Não definido') + '</span>'
+          + '<span>' + escapeHtml(nomesTodos[0] || 'Não definido') + '</span>'
           + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '')
           + '</span>'
         : '—';

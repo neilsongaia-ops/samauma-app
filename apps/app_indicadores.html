@@ -1916,9 +1916,9 @@ function _indLinhaHTML(p, anos, podeEditar) {
     var respNome = nomeRespExibicao(p.responsavel, p.tipoResponsavel);
     var icoResp = p.tipoResponsavel === 'USER' ? 'person' : 'apartment';
     var titResp = p.responsavel !== respNome ? p.responsavel : '';
-    resp = '<span class="resp-badge el-resp-badge"' + (titResp ? ' data-title="' + escapeHtml(titResp) + '"' : '') + '>'
+    resp = '<span class="ds-resp"' + (titResp ? ' data-title="' + escapeHtml(titResp) + '"' : '') + '>'
       + '<span class="material-symbols-outlined">' + icoResp + '</span>'
-      + '<span class="el-resp-nome">' + escapeHtml(respNome) + '</span>'
+      + '<span>' + escapeHtml(respNome) + '</span>'
       + '</span>';
   } else {
     resp = '—';

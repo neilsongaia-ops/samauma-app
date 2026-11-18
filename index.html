@@ -900,12 +900,13 @@ body.high-contrast {
 .ds-tela-cheia__aviso:not(:empty) { margin-bottom: var(--ds-space-3); }
 
 /* ---- Badges / chips ---- */
-.ds-badge {
+/* Forma única da pílula (altura, arredondamento, fonte): badge de situação, tipo/nível e responsável compartilham as mesmas medidas; cada um só define cor e peso. */
+.ds-badge, .ds-badge-tipo, .ds-resp {
   display: inline-flex; align-items: center; gap: var(--ds-space-1);
   padding: 3px 12px; border-radius: var(--ds-r-pill);
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
-  background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); line-height: 1.4; white-space: nowrap;
+  font-size: var(--ds-text-xs); line-height: 1.4; white-space: nowrap;
 }
+.ds-badge, .ds-badge-tipo { font-weight: var(--ds-weight-semibold); background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); }
 .ds-badge .material-symbols-outlined { font-size: var(--ds-icon-xs); }
 .ds-badge--elaboracao { background: var(--ds-status-elaboracao-bg); color: var(--ds-status-elaboracao-fg); }
 .ds-badge--analise    { background: var(--ds-status-analise-bg);    color: var(--ds-status-analise-fg); }
@@ -1027,7 +1028,7 @@ body.high-contrast {
 .ds-btn--pendencia-re:hover { background: var(--ds-color-danger-bg); }
 
 /* ---- .ds-badge: tom neutro com borda ---- */
-.ds-badge--neutral { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); border: 1px solid var(--ds-color-border); }
+.ds-badge--neutral { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); }
 
 /* ---- Abas segmentadas (pílula) — componente novo .ds-tabs ---- */
 .ds-tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; font-family: var(--ds-font-sans); }
@@ -1342,11 +1343,10 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 }
 
 /* Responsável: pastilha com o nome (nomeRespExibicao) e, se houver mais, "+N" em .ds-resp-mais */
-.ds-resp {
-  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--ds-r-pill);
-  background: var(--ds-color-surface-2); color: var(--ds-color-text); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
-  white-space: nowrap;
-}
+.ds-resp { background: var(--ds-color-surface-2); color: var(--ds-color-text); font-weight: var(--ds-weight-medium); }
+.ds-resp { min-width: 0; max-width: 100%; }
+.ds-resp > :not(.material-symbols-outlined) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ds-resp .material-symbols-outlined { flex-shrink: 0; }
 .ds-resp .material-symbols-outlined { font-size: var(--ds-icon-xs); }
 .ds-resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); }
 
@@ -1413,8 +1413,8 @@ tr:hover .ds-celula-sobreposta__acoes, tr:focus-within .ds-celula-sobreposta__ac
 .ds-alerta-atraso { display: inline-flex; align-items: center; color: var(--ds-color-danger-fg); cursor: help; vertical-align: middle; }
 .ds-alerta-atraso .material-symbols-outlined { font-size: 16px; }
 .ds-valor-alerta { display: inline-flex; align-items: center; gap: 2px; }
-/* Badge do tipo de elemento: pílula com a cor do tipo (definida ao criar o elemento) aplicada em linha (cor, fundo e borda a partir do hex); sem cor, neutro. uiBadgeTipoHTML(tipo, cor). */
-.ds-badge-tipo { flex-shrink: 0; max-width: 135px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; padding: 1px 8px; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); }
+/* Badge do tipo de elemento: pílula (mesma forma do .ds-badge) com a cor do tipo (definida ao criar o elemento) aplicada em linha (texto e fundo a partir do hex); sem cor, neutro. uiBadgeTipoHTML(tipo, cor). */
+.ds-badge-tipo { flex-shrink: 0; max-width: 135px; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 768px) { .ds-badge-tipo { max-width: 80px; } }
 /* Prazo final do elemento: pílula com ícone de calendário (cor própria, diferente dos chips de vínculo e indicador) + data final. uiChipPrazoHTML(dataBR). */
 .ds-chip-prazo { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-pill); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); line-height: 1.25; white-space: nowrap; color: var(--ds-color-text); cursor: default; }
@@ -3096,7 +3096,7 @@ var SeletorResponsaveis = (function() {
 .selsup-vazio .material-symbols-outlined { font-size: 22px; display: block; margin: 0 auto 4px; }
 .selsup-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .selsup-chip {
-  display: inline-flex; align-items: center; gap: 6px; padding: 3px 6px 3px 8px; border-radius: 14px; max-width: 100%;
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 6px 3px 8px; border-radius: var(--ds-r-pill); max-width: 100%;
   border: 1px solid var(--ds-color-border); background: var(--ds-color-surface-2); font-size: 12.8px; color: var(--ds-color-text);
 }
 .selsup-chip--indisponivel { border-style: dashed; opacity: .62; }
@@ -10267,7 +10267,7 @@ function uiChipPrazoHTML(dataBR) {
 // Badge do tipo de elemento (.ds-badge-tipo): herda a cor definida para o tipo no plano (hex, aplicada em linha); sem cor, neutro. Vazio sem tipo.
 function uiBadgeTipoHTML(tipo, cor) {
   if (!tipo) return '';
-  return '<span class="ds-badge-tipo"' + (cor ? ' style="color:' + escapeHtml(cor) + ';background:' + escapeHtml(cor) + '22;border-color:' + escapeHtml(cor) + '55"' : '') + '>' + escapeHtml(tipo) + '</span>';
+  return '<span class="ds-badge-tipo"' + (cor ? ' style="color:' + escapeHtml(cor) + ';background:' + escapeHtml(cor) + '22"' : '') + '>' + escapeHtml(tipo) + '</span>';
 }
 
 function uiProgressoHTML(pct, dica) {
@@ -11664,13 +11664,6 @@ uiRegistrarAcoes('pages_home', {
   color: var(--ds-color-text, #1e293b);
 }
 
-.moncorp-kpi-badge {
-  font-size: 12px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: var(--ds-r-md);
-}
-
 .moncorp-kpi-sub {
   font-size: 12px;
   color: var(--ds-color-text-muted, #64748b);
@@ -11703,16 +11696,6 @@ uiRegistrarAcoes('pages_home', {
   gap: 6px;
   flex-wrap: wrap;
   margin-top: 2px;
-}
-
-.moncorp-faixa-chip {
-  font-size: 11px;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
 }
 
 /* Barra de Filtros Transversais estilo Drive */
@@ -11842,16 +11825,6 @@ uiRegistrarAcoes('pages_home', {
   border-radius: 3px;
 }
 
-/* Badge Nível de Risco */
-.moncorp-risco-badge {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: var(--ds-r-md);
-  text-transform: uppercase;
-  display: inline-block;
-}
-
 .moncorp-risco-extremo { background: #fee2e2; color: #b91c1c; }
 .moncorp-risco-alto { background: #ffedd5; color: #c2410c; }
 .moncorp-risco-medio { background: #fef9c3; color: #a16207; }
@@ -11932,7 +11905,7 @@ uiRegistrarAcoes('pages_home', {
       </div>
       <div class="moncorp-kpi-valor-linha">
         <span class="moncorp-kpi-num" id="moncorp-kpi-ieg">—</span>
-        <span class="moncorp-kpi-badge hidden" id="moncorp-kpi-ieg-badge">Excelente</span>
+        <span class="ds-badge hidden" id="moncorp-kpi-ieg-badge">Excelente</span>
       </div>
       <div class="moncorp-kpi-sub" id="moncorp-kpi-ieg-sub">
         Índice de Eficácia da Gestão
@@ -12153,11 +12126,11 @@ function moncorpRenderizarKpis() {
   if (elFaixas && r.indicadoresPorFaixa) {
     var f = r.indicadoresPorFaixa;
     elFaixas.innerHTML =
-      '<span class="moncorp-faixa-chip" style="background:#dcfce7;color:#15803d;" title="Superado">' + (f.superado || 0) + ' superados</span>' +
-      '<span class="moncorp-faixa-chip" style="background:#dbeafe;color:#1d4ed8;" title="Atingido">' + (f.atingido || 0) + ' atingidos</span>' +
-      '<span class="moncorp-faixa-chip" style="background:#ffedd5;color:#c2410c;" title="Parcial">' + (f.parcial || 0) + ' parciais</span>' +
-      '<span class="moncorp-faixa-chip" style="background:#fee2e2;color:#b91c1c;" title="Não Atingido">' + (f.naoAtingido || 0) + ' não atingidos</span>' +
-      '<span class="moncorp-faixa-chip" style="background:#f1f5f9;color:#64748b;" title="Sem Apuração">' + (f.semApuracao || 0) + ' sem apuração</span>';
+      '<span class="ds-badge" style="background:#dcfce7;color:#15803d;" title="Superado">' + (f.superado || 0) + ' superados</span>' +
+      '<span class="ds-badge" style="background:#dbeafe;color:#1d4ed8;" title="Atingido">' + (f.atingido || 0) + ' atingidos</span>' +
+      '<span class="ds-badge" style="background:#ffedd5;color:#c2410c;" title="Parcial">' + (f.parcial || 0) + ' parciais</span>' +
+      '<span class="ds-badge" style="background:#fee2e2;color:#b91c1c;" title="Não Atingido">' + (f.naoAtingido || 0) + ' não atingidos</span>' +
+      '<span class="ds-badge" style="background:#f1f5f9;color:#64748b;" title="Sem Apuração">' + (f.semApuracao || 0) + ' sem apuração</span>';
   }
 }
 
@@ -12269,7 +12242,7 @@ function moncorpRenderizarAbaPlanos(thead, tbody, itens) {
         '</a>' +
       '</td>' +
       '<td>' +
-        '<span class="valres-badge-plano">' + escapeHtml(p.tipo || 'Plano') + '</span>' +
+        '<span class="ds-badge-tipo">' + escapeHtml(p.tipo || 'Plano') + '</span>' +
         (vigencia ? '<div style="font-size:11px;color:var(--ds-color-text-muted,#64748b);margin-top:2px;">' + escapeHtml(vigencia) + '</div>' : '') +
       '</td>' +
       '<td>' + escapeHtml(p.unidade || '—') + '</td>' +
@@ -12333,7 +12306,7 @@ function moncorpRenderizarAbaElementos(thead, tbody, itens) {
           escapeHtml(e.nomePlano || 'Plano #' + idP) +
         '</a>' +
       '</td>' +
-      '<td><span class="valres-badge-plano">' + escapeHtml(e.tipo || 'Elemento') + '</span></td>' +
+      '<td><span class="ds-badge-tipo">' + escapeHtml(e.tipo || 'Elemento') + '</span></td>' +
       '<td>' + escapeHtml(e.responsavel || '—') + '</td>' +
       '<td>' + escapeHtml(e.prazo || e.fim || '—') + '</td>' +
       '<td><span class="ds-badge">' + escapeHtml(e.status || 'Não Iniciado') + '</span></td>' +
@@ -12436,7 +12409,7 @@ function moncorpRenderizarAbaRiscos(thead, tbody, itens) {
         (r.unidadePlano ? '<div style="font-size:11px;color:var(--ds-color-text-muted,#64748b);">' + escapeHtml(r.unidadePlano) + '</div>' : '') +
       '</td>' +
       '<td>' +
-        '<span class="moncorp-risco-badge ' + clsNivel + '">' + escapeHtml(r.nivelRisco || 'Baixo') + '</span>' +
+        '<span class="ds-badge ' + clsNivel + '">' + escapeHtml(r.nivelRisco || 'Baixo') + '</span>' +
       '</td>' +
       '<td>' + escapeHtml(r.probabilidade || '—') + ' × ' + escapeHtml(r.impacto || '—') + '</td>' +
       '<td>' +
@@ -12914,17 +12887,6 @@ uiRegistrarAcoes('pages_monitoramento_corporativo', {
   cursor: not-allowed;
 }
 
-.valres-badge-plano {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 6px;
-  border-radius: var(--ds-r-sm);
-  background: var(--ds-color-surface-2, #f1f5f9);
-  color: var(--ds-color-text-muted, #475569);
-  margin-top: 2px;
-}
-
 .valres-analise-box {
   max-width: 240px;
   font-size: 12px;
@@ -13213,7 +13175,7 @@ function valresRenderizarTabela() {
         '<div style="font-weight:600;color:var(--ds-color-text,#1e293b);">' + escapeHtml(i.nomeIndicador || 'Indicador sem nome') + '</div>' +
         '<div style="font-size:12px;color:var(--ds-color-text-muted,#64748b);display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;">' +
           '<span>' + escapeHtml(i.nomePlano || 'Plano') + '</span>' +
-          (i.tipoPlano ? '<span class="valres-badge-plano">' + escapeHtml(i.tipoPlano) + '</span>' : '') +
+          (i.tipoPlano ? '<span class="ds-badge-tipo">' + escapeHtml(i.tipoPlano) + '</span>' : '') +
         '</div>' +
       '</td>' +
       '<td>' +
@@ -13694,14 +13656,6 @@ body.high-contrast .barra-selecao { background: #000; border-color: var(--ds-col
 .table-full tbody tr.selecionada td { background-color: var(--ds-sidebar-item-active); }
 body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a2e; }
 
-/* Responsável */
-.resp-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: var(--ds-color-surface-2); color: var(--ds-color-text); border-radius: 12px;
-  padding: 2px 8px; font-size: 0.8rem; font-weight: 500;
-}
-.resp-badge .material-symbols-outlined { font-size: 14px; }
-
 /* Estado vazio */
 .planos-vazio {
   display: flex; flex-direction: column; align-items: center;
@@ -13709,9 +13663,6 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 }
 .planos-vazio .material-symbols-outlined { font-size: 54px; opacity: 0.35; }
 .planos-vazio p { font-size: 0.88rem; margin: 0; }
-
-/* Alto contraste */
-body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
 
 /* Colunas ordenáveis: cabeçalho continua clicável (convenção do sistema), mas só a coluna
    ativa mostra a seta — o menu "Ordenar" (coluna de ações) é a via alternativa/descoberta. */
@@ -13905,18 +13856,12 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
 
 /* Célula "Plano": tag de tipo + nome (+ linha secundária no mobile) */
 #page-planos .pll-plano { display: flex; align-items: center; gap: 10px; min-width: 0; }
-#page-planos .pll-tipo {
-  flex-shrink: 0; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; white-space: nowrap;
-  padding: 1px 8px; border-radius: var(--ds-r-md);
-  color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border);
-}
 #page-planos .pll-nome-wrap { min-width: 0; }
 /* Sem cara de link (sem cursor:pointer nem cor de hover): agora a linha inteira decide o
    clique — 1 clique seleciona, duplo clique abre os detalhes (ver .pll-tabela tbody tr) —
    não é mais só o nome que navega sozinho. */
 #page-planos .pll-nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; overflow-wrap: anywhere; }
 #page-planos .pll-vig { white-space: nowrap; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
-#page-planos .resp-badge { background: var(--ds-color-surface-2); color: var(--ds-color-text); border-radius: var(--ds-r-pill); font-size: var(--ds-text-sm); }
 #page-planos .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); }
 
 /* Progresso */
@@ -14568,7 +14513,7 @@ function _renderizarTabela(planos) {
     var tituloResp = nAdic
       ? 'Principal: ' + nomeResp + ' | Adicionais: ' + p.respAdicionaisNomes.join(', ')
       : (nomeRespExib !== nomeResp ? nomeResp : '');
-    var respHtml = '<span class="resp-badge"' +
+    var respHtml = '<span class="ds-resp"' +
       (tituloResp ? ' data-title="' + escapeHtml(tituloResp) + '"' : '') +
       '><span class="material-symbols-outlined">' + iconResp + '</span>' +
       escapeHtml(nomeRespExib) +
@@ -14596,7 +14541,7 @@ function _renderizarTabela(planos) {
           (sel ? ' checked' : '') + '>' +
       '</td>' +
       '<td class="pll-col-plano"><div class="pll-plano">' +
-        '<span class="pll-tipo">' + escapeHtml(p.tipo || '—') + '</span>' +
+        '<span class="ds-badge-tipo pll-tipo">' + escapeHtml(p.tipo || '—') + '</span>' +
         '<div class="pll-nome-wrap">' +
           '<div class="pll-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</div>' +
         '</div></div></td>' +
@@ -15084,14 +15029,6 @@ body.high-contrast .barra-selecao { background: #000; border-color: var(--ds-col
 .table-full tbody tr.selecionada td { background-color: var(--ds-sidebar-item-active); }
 body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a2e; }
 
-/* Responsável */
-.resp-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: var(--ds-color-surface-2); color: var(--ds-color-text); border-radius: 12px;
-  padding: 2px 8px; font-size: 0.8rem; font-weight: 500;
-}
-.resp-badge .material-symbols-outlined { font-size: 14px; }
-
 /* Estado vazio */
 .planos-vazio {
   display: flex; flex-direction: column; align-items: center;
@@ -15099,9 +15036,6 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 }
 .planos-vazio .material-symbols-outlined { font-size: 54px; opacity: 0.35; }
 .planos-vazio p { font-size: 0.88rem; margin: 0; }
-
-/* Alto contraste */
-body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
 
 /* Colunas ordenáveis: cabeçalho continua clicável (convenção do sistema), mas só a coluna
    ativa mostra a seta — o menu "Ordenar" (coluna de ações) é a via alternativa/descoberta. */
@@ -15287,18 +15221,12 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
 
 /* Célula "Plano": tag de tipo + nome (+ linha secundária no mobile) */
 #page-calendario .cal-plano { display: flex; align-items: center; gap: 10px; min-width: 0; }
-#page-calendario .cal-tipo {
-  flex-shrink: 0; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; white-space: nowrap;
-  padding: 1px 8px; border-radius: var(--ds-r-md);
-  color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border);
-}
 #page-calendario .cal-nome-wrap { min-width: 0; }
 /* Sem cara de link (sem cursor:pointer nem cor de hover): agora a linha inteira decide o
    clique — 1 clique seleciona, duplo clique abre os detalhes (ver .cal-tabela tbody tr) —
    não é mais só o nome que navega sozinho. */
 #page-calendario .cal-nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; overflow-wrap: anywhere; }
 #page-calendario .cal-vig { white-space: nowrap; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
-#page-calendario .resp-badge { background: var(--ds-color-surface-2); color: var(--ds-color-text); border-radius: var(--ds-r-pill); font-size: var(--ds-text-sm); }
 #page-calendario .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); }
 
 /* Progresso */
@@ -15374,7 +15302,6 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
   /* a célula "Plano" e seus wrappers "dissolvem": tag e nome viram itens diretos da grade do card */
   #page-calendario .cal-tabela tbody .cal-col-plano, #page-calendario .cal-tabela tbody .cal-plano,
   #page-calendario .cal-tabela tbody .cal-nome-wrap { display: contents; }
-  #page-calendario .cal-tabela tbody .cal-tipo { grid-area: tipo; justify-self: start; }
   #page-calendario .cal-tabela tbody .cal-nome {
     grid-area: nome; min-width: 0; font-size: var(--ds-text-md);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal;
@@ -15412,8 +15339,6 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
 #page-calendario .cal-faixa { margin: 2px 4px; padding: 2px 8px; border: 0; border-radius: var(--ds-r-sm); font: inherit; font-size: 12px; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; display: flex; align-items: center; gap: 4px; }
 #page-calendario .cal-faixa .material-symbols-outlined { font-size: 14px; }
 #page-calendario .cal-faixa--cancelado { text-decoration: line-through; opacity: .6; }
-#page-calendario .cal-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--ds-r-sm); font-size: 12px; font-weight: var(--ds-weight-medium); white-space: nowrap; }
-#page-calendario .cal-tag .material-symbols-outlined { font-size: 14px; }
 #page-calendario .cal-evento-cel { display: flex; align-items: center; gap: 8px; min-width: 0; }
 #page-calendario .cal-evento-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #page-calendario .cal-serie { font-size: 16px; color: var(--ds-color-text-muted); }
@@ -15699,7 +15624,7 @@ function _calAlcanceTexto(e) {
   return '';
 }
 function _calSituacaoHTML(s) { var x = _CAL_SITUACOES[String(s || '').toUpperCase()] || [s, 'neutral']; return '<span class="ds-badge ds-badge--' + x[1] + '">' + escapeHtml(x[0]) + '</span>'; }
-function _calTagHTML(e) { var t = _calTipo(e.tipo); return '<span class="cal-tag" style="' + _calCorStyle(t.tom) + '"><span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(t.t.icone || 'event') + '</span>' + escapeHtml(t.t.rotulo) + '</span>'; }
+function _calTagHTML(e) { var t = _calTipo(e.tipo); return '<span class="ds-badge" style="' + _calCorStyle(t.tom) + '"><span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(t.t.icone || 'event') + '</span>' + escapeHtml(t.t.rotulo) + '</span>'; }
 function _calSerieHTML(e) { return e.idSerie ? '<span class="material-symbols-outlined cal-serie" data-title="Evento recorrente" aria-label="Evento recorrente">repeat</span>' : ''; }
 
 function calRenderizarEsqueleto() {
@@ -16069,7 +15994,7 @@ uiRegistrarAcoes('pages_calendario', {
   <section class="ds-pagina__hero" id="detalhe-hero">
     <div class="ds-pagina__titulo-linha">
       <h1 class="ds-pagina__titulo" id="det-titulo">Carregando...</h1>
-      <span class="badge-status" id="det-status">--</span>
+      <span class="ds-badge" id="det-status">--</span>
       <span id="det-avaliacao-badge" class="hidden" style="display:inline-flex;align-items:center;gap:6px"></span>
     </div>
     <div class="cal-prazos hidden" id="det-prazos"></div>
@@ -16158,9 +16083,7 @@ uiRegistrarAcoes('pages_calendario', {
 
 .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 .text-danger { color: var(--ds-color-danger) !important; border-color: var(--ds-color-danger) !important; }
-.text-danger:hover { background: rgba(217, 48, 37, 0.1) !important; } /* Ajustado para opacidade */
-
-.badge-status { background: var(--ds-color-bg); border: 1px solid var(--ds-color-border); padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; color: var(--ds-color-text); }
+.text-danger:hover { background: rgba(217, 48, 37, 0.1) !important; }
 
 .kpi-card { background: var(--ds-color-bg); padding: 10px 15px; border-radius: 8px; min-width: 140px; border: 1px solid var(--ds-color-border); }
 .kpi-label { font-size: 0.75rem; color: var(--ds-color-text-muted); text-transform: uppercase; font-weight: 600; }
@@ -16265,12 +16188,6 @@ body.high-contrast .mode-btn.active { background: #333; color: #ffff00; }
 .item-desc { font-size: 0.85rem; color: var(--ds-color-text-muted); margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 .item-meta { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
-
-/* Estilo Base das Tags */
-.meta-tag { font-size: 0.75rem; background: var(--ds-color-bg); padding: 2px 6px; border-radius: 4px; color: var(--ds-color-text-muted); border: 1px solid var(--ds-color-border); display: flex; align-items: center; gap: 4px; }
-
-/* Cores específicas de tags (Modo Normal) */
-.tag-custo { color: var(--ds-color-text); font-weight: 500; background: var(--ds-color-warning-bg); border-color: color-mix(in srgb, var(--ds-color-warning-fg) 40%, transparent); }
 .tag-indicador { background-color: var(--ds-color-info-bg); color: var(--ds-color-action); border-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent); cursor: pointer; font-weight: 600; transition: background 0.2s; }
 .tag-indicador:hover { background-color: var(--ds-color-info-bg); text-decoration: underline; }
 .tag-formula { background-color: var(--ds-color-danger-bg); color: var(--ds-color-danger-fg); border-color: color-mix(in srgb, var(--ds-color-danger-fg) 30%, transparent); cursor: help; display: inline-block; margin-top: 4px; font-weight: 500; }
@@ -16372,7 +16289,6 @@ body.org-fs-active, body.org-fs-active #main-content { overflow: hidden !importa
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 2.7em;
 }
 .org-card-base { display: flex; align-items: center; gap: 6px; min-width: 0; margin-top: auto; }
-.org-card-base .resp-badge { font-size: var(--ds-text-xs); min-width: 0; }
 .org-card .acoes-linha {
   position: absolute; top: 50%; transform: translateY(-50%); right: -6px; height: 26px;
   display: inline-flex; align-items: center; justify-content: flex-end; gap: 2px;
@@ -16619,26 +16535,6 @@ body.high-contrast .org-card-plano { background: #000; border: 2px solid #ffff00
   left: 12px !important;
   right: auto !important;
   transform: translateY(-50%) !important;
-}
-.gantt-today-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--ds-color-danger, #d32f2f);
-  color: #fff;
-  font-size: 9.5px;
-  font-weight: 700;
-  padding: 1px 7px;
-  border-radius: 10px;
-  white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-  line-height: 14px;
-  position: relative;
-  z-index: 15;
-  letter-spacing: 0.01em;
-}
-.gantt-today-badge.is-overdue {
-  background: #c62828;
 }
 
 .gantt-th-acoes, .gantt-col-acoes-body {
@@ -16941,8 +16837,6 @@ body.high-contrast .org-card-plano { background: #000; border: 2px solid #ffff00
   margin-bottom: 4px; cursor: help; font-weight: 500; border: 1px solid color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent); transition: background 0.2s;
 }
 .parent-link-badge:hover { background-color: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
-.parent-link-pendente { color: var(--ds-color-warning-fg) !important; background-color: var(--ds-color-warning-bg) !important; border-color: color-mix(in srgb, var(--ds-color-warning-fg) 40%, transparent) !important; }
-.parent-link-pendente:hover { background-color: var(--ds-color-warning-bg) !important; color: var(--ds-color-warning-fg) !important; }
 
 .table-full { width: 100%; border-collapse: collapse; }
 .table-full th { text-align: left; padding: 10px; background: var(--ds-color-bg); border-bottom: 2px solid var(--ds-color-border); font-size: 0.8rem; text-transform: uppercase; color: var(--ds-color-text-muted); }
@@ -16950,7 +16844,6 @@ body.high-contrast .org-card-plano { background: #000; border: 2px solid #ffff00
 .action-group { display: flex; gap: 5px; justify-content: flex-end; }
 .indicator-context { font-size: 0.75rem; color: var(--ds-color-text-muted); display: flex; align-items: center; gap: 5px; margin-bottom: 4px; cursor: help; width: fit-content; }
 .indicator-name { font-weight: 600; color: var(--ds-color-text); font-size: 0.95rem; display: block; }
-.indicator-resp-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--ds-color-text-muted); background: var(--ds-color-bg); padding: 2px 6px; border-radius: 4px; margin-top: 4px; border: 1px solid var(--ds-color-border); }
 .cell-item-hierarquia { display: flex; align-items: center; }
 .tree-connector { color: #ccc; margin-right: 8px; font-weight: 300; user-select: none; }
 .type-indicator { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
@@ -16964,11 +16857,9 @@ body.high-contrast .org-card-plano { background: #000; border: 2px solid #ffff00
 /* ========================================================= */
 /* --- AJUSTES ESPECÍFICOS PARA ALTO CONTRASTE (HC) --- */
 /* ========================================================= */
-body.high-contrast .tag-custo,
 body.high-contrast .tag-indicador,
 body.high-contrast .tag-formula,
-body.high-contrast .parent-link-badge,
-body.high-contrast .badge-status {
+body.high-contrast .parent-link-badge{
   background-color: #000 !important;
   color: #fff !important;
   border: 1px solid #fff !important;
@@ -16976,7 +16867,6 @@ body.high-contrast .badge-status {
 
 /* Força cores de borda brilhantes para diferenciar os tipos no modo HC */
 body.high-contrast .tag-indicador { border-color: var(--ds-color-action) !important; color: var(--ds-color-action) !important; }
-body.high-contrast .tag-custo { border-color: var(--ds-color-warning) !important; color: var(--ds-color-warning) !important; }
 
 /* Remove fundos de hover que podem ficar ruins no HC */
 body.high-contrast .btn-icon-del:hover { background-color: #000; border-color: var(--ds-color-danger); color: var(--ds-color-danger); }
@@ -16990,7 +16880,6 @@ body.high-contrast .gantt-today-line { background: #fff; }
 body.high-contrast .gantt-grid-line { border-left-color: #fff; }
 body.high-contrast .gantt-scale-tick { border-left-color: #fff; }
 body.high-contrast .gantt-scale-tick-label { color: #fff; }
-body.high-contrast .gantt-today-badge { background: #fff; color: #000; }
 body.high-contrast .gantt-milestone { border: 2px solid #000; background: #fff !important; }
 body.high-contrast .gantt-header-bar,
 body.high-contrast .gantt-th-task,
@@ -17091,18 +16980,12 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
 
 /* --- GESTÃO DE RISCOS --- */
 .riscos-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
-.risco-nivel-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:700; }
 
 /* Pills com limite de itens visíveis (Natureza/Responsável) — cada pill tem
    max-width/ellipsis própria, então mesmo um valor isolado muito longo não
    escapa da célula (causa raiz do scroll horizontal que só a coluna Natureza
    tinha: chips sem truncamento dentro de uma tabela table-layout:fixed). */
 .risco-chips-wrap { display:flex; gap:4px; flex-wrap:wrap; min-width:0; }
-.risco-chip {
-  font-size:0.75rem; background:var(--ds-color-bg); border:1px solid var(--ds-color-border);
-  padding:2px 6px; border-radius:4px; white-space:nowrap;
-  max-width:110px; overflow:hidden; text-overflow:ellipsis; display:inline-block; vertical-align:bottom;
-}
 .risco-chip-mais { background:var(--ds-color-surface); font-weight:600; color:var(--ds-color-text-muted); flex-shrink:0; }
 
 /* Botão redondo compacto (adicionar ação de tratamento / causa-consequência
@@ -17395,24 +17278,10 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
   line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   min-width: 0; flex: 0 1 auto;
 }
-
-/* Responsável: padrão resp-badge idêntico ao de pages_planos_lista.html */
-.resp-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: var(--ds-color-surface-2); color: var(--ds-color-text);
-  border-radius: var(--ds-r-pill);
-  padding: 2px 8px; font-size: var(--ds-text-sm, 0.8rem); font-weight: 500;
-  max-width: 100%; box-sizing: border-box;
-}
-.resp-badge .material-symbols-outlined { font-size: 14px; flex-shrink: 0; }
-.resp-badge .el-resp-nome {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
-}
 .resp-mais {
   color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs);
   flex-shrink: 0; margin-left: 2px;
 }
-body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
 
 /* Chips de Informações Adicionais na Linha da Tabela (Estilo Anexos do Gmail) */
 .el-meta-chips {
@@ -17809,23 +17678,6 @@ body.high-contrast .el-chip-meta {
   min-width: 0;
 }
 
-/* Tipo label inline no card */
-.item-tipo-prefix {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--ds-color-text-muted);
-  white-space: nowrap;
-  margin-right: 4px;
-  flex-shrink: 0;
-}
-
-/* Chip colorido do tipo (quando o plano define cor para o tipo) */
-.item-tipo-chip {
-  padding: 0 7px;
-  border-radius: 9px;
-  line-height: 1.5;
-}
-
 /* ── TOOLTIP CUSTOMIZADO ─────────────────────────────── */
 #det-tb-tooltip {
   position: fixed;
@@ -17856,11 +17708,6 @@ body.high-contrast .el-chip-meta {
    ============================================================================ */
 
 #solicitacao-banner { margin-bottom: 16px !important; border-radius: var(--ds-r-xl) !important; }
-
-#page-plano-detalhe .badge-status {
-  border: none; background: var(--ds-color-surface-2); border-radius: var(--ds-r-pill);
-  padding: 3px 12px; font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); line-height: 1.4;
-}
 
 #page-plano-detalhe #detalhe-hero-acoes .det-split-main { min-height: 40px; }
 
@@ -18145,7 +17992,6 @@ tr.is-open .rsc-seta { transform: rotate(90deg); }
 .detp-risco-val.is-fora { color: var(--ds-color-warning-fg); }
 .detp-risco-val.is-ok { color: var(--ds-color-success-fg); }
 .detp-risco-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.detp-risco-chip { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); padding: 2px 8px; border-radius: var(--ds-r-md); background: var(--ds-color-surface-2); color: var(--ds-color-text); }
 .detp-risco-sec-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .detp-risco-sec-cab strong { font-size: var(--ds-text-base); color: var(--ds-color-text); }
 .detp-risco-sec-cab span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
@@ -18253,7 +18099,6 @@ body.high-contrast .rsc-tabela tr.rsc-linha { border-color: #fff; }
 .tree-children { border-left-color: var(--ds-glass-border); }
 .item-code { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); letter-spacing: .4px; }
 .item-title { font-size: var(--ds-text-md); line-height: 1.35; }
-.meta-tag { background: var(--ds-color-surface-2); border-radius: var(--ds-r-pill); padding: 2px 10px; }
 .view-mode-toggle { background: var(--ds-glass-bg); border-color: var(--ds-glass-border); border-radius: var(--ds-r-pill); }
 .mode-btn { border-radius: var(--ds-r-pill); }
 .mode-btn.active { background: var(--ds-color-surface); color: var(--ds-primary-700); }
@@ -18277,6 +18122,10 @@ body.high-contrast .view-mode-toggle { background: #000; border-color: #fff; }
   }
 }
 </style>
+.tag-indicador { cursor: pointer; }
+.tag-indicador:hover { text-decoration: underline; }
+.parent-link-badge { margin-bottom: 4px; cursor: help; }
+
 
 <script>
 // Dividido por responsabilidade (fase d — docs/refatoracao_frontend.md). Mesmo <script>, mesmo escopo global;
@@ -20460,25 +20309,12 @@ uiRegistrarAcoes('plano', {
 
 /* Célula "Plano": tag de tipo + nome */
 #page-execucao-planos .exl-plano { display: flex; align-items: center; gap: 10px; min-width: 0; }
-#page-execucao-planos .exl-tipo {
-  flex-shrink: 0; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; white-space: nowrap;
-  padding: 1px 8px; border-radius: var(--ds-r-md);
-  color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border);
-}
 #page-execucao-planos .exl-nome-wrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 #page-execucao-planos .exl-nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; overflow-wrap: break-word; text-wrap: pretty; }
 #page-execucao-planos .exl-vig-sub { display: none; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 
 /* Vigência e Indicador de Atraso */
 #page-execucao-planos .exl-vig { color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); white-space: nowrap; }
-
-/* Responsável */
-#page-execucao-planos .resp-badge {
-  display: inline-flex; align-items: center; gap: 4px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  background: var(--ds-color-surface-2); color: var(--ds-color-text); border-radius: var(--ds-r-pill);
-  padding: 2px 8px; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
-}
-#page-execucao-planos .resp-badge .material-symbols-outlined { font-size: 14px; }
 
 /* Minhas tarefas: barra de progresso (Design System: ds-kpi-track com ds-tone-info) */
 #page-execucao-planos .exl-prog { display: inline-flex; align-items: center; gap: 10px; }
@@ -20554,10 +20390,6 @@ uiRegistrarAcoes('plano', {
   #page-execucao-planos .exl-card-prog { margin-top: 8px; display: flex; align-items: center; }
   #page-execucao-planos .exl-card-prog .exl-prog { width: 100%; }
   #page-execucao-planos .exl-card-prog .exl-prog-barra { flex: 1; }
-}
-
-/* Alto contraste */
-body.high-contrast #page-execucao-planos .exl-tipo { border-color: #fff; color: #fff; }
 </style>
 
 <script>
@@ -21045,7 +20877,7 @@ function _execRenderizarTabela(planos) {
     var iconResp = p.tipoResponsavel === 'USER' ? 'person' : 'apartment';
     var respExib = nomeRespExibicao(p.nomeResponsavel, p.tipoResponsavel);
     var respHtml = p.nomeResponsavel
-      ? '<span class="resp-badge"' + (respExib !== p.nomeResponsavel ? ' data-title="' + escapeHtml(p.nomeResponsavel) + '"' : '') + '><span class="material-symbols-outlined">' + iconResp + '</span>' + escapeHtml(respExib) + '</span>'
+      ? '<span class="ds-resp"' + (respExib !== p.nomeResponsavel ? ' data-title="' + escapeHtml(p.nomeResponsavel) + '"' : '') + '><span class="material-symbols-outlined">' + iconResp + '</span>' + escapeHtml(respExib) + '</span>'
       : '—';
 
     var pct = p.totalTarefas > 0 ? Math.round(100 * p.tarefasConcluidas / p.totalTarefas) : 0;
@@ -21068,7 +20900,7 @@ function _execRenderizarTabela(planos) {
       + '</td>';
 
     var planoTd = '<td class="exl-col-plano"><div class="exl-plano">'
-      + '<span class="exl-tipo">' + escapeHtml(p.tipo || '—') + '</span>'
+      + '<span class="ds-badge-tipo exl-tipo">' + escapeHtml(p.tipo || '—') + '</span>'
       + '<div class="exl-nome-wrap">'
       + '<span class="exl-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</span>'
       + '<div class="exl-vig-sub"><span>' + escapeHtml(vigencia) + '</span>' + alertaHtml + '</div>'
@@ -21286,7 +21118,7 @@ uiRegistrarAcoes('pages_execucao_planos', {
   <section class="ds-pagina__hero" id="ext-hero">
     <div class="ds-pagina__titulo-linha">
       <h1 class="ds-pagina__titulo" id="ext-titulo">Carregando...</h1>
-      <span class="badge-status" id="ext-status">--</span>
+      <span class="ds-badge" id="ext-status">--</span>
     </div>
     <div class="cal-prazos hidden" id="ext-prazos"></div>
   </section>
@@ -21391,22 +21223,6 @@ uiRegistrarAcoes('pages_execucao_planos', {
 </div>
 
 <style>
-/* ==========================================================================
-   ESTILOS ESPECÍFICOS: WORKSPACE DE REGISTRO DE EXECUÇÃO
-   ========================================================================== */
-
-/* O layout (hero, ações, abas e filtros fixos) é o .ds-pagina do design system; filtros, busca e lista usam os componentes canônicos. */
-#page-execucao-tarefas .badge-status {
-  border: none;
-  background: var(--ds-color-surface-2);
-  border-radius: var(--ds-r-pill);
-  font-size: var(--ds-text-xs);
-  font-weight: var(--ds-weight-semibold);
-  padding: 3px 12px;
-  display: inline-flex;
-  align-items: center;
-  line-height: 1.4;
-}
 #page-execucao-tarefas #ext-col-prog { width: 196px; }
 #page-execucao-tarefas #ext-col-reg { width: 340px; }
 @media (max-width: 768px) { #page-execucao-tarefas #ext-col-prog { width: 140px; } }
@@ -21621,7 +21437,7 @@ function _extpRenderDetalhes() {
   var htmlSobre =
     _detpLinha('Tipo', escapeHtml(p.tipo || '—') + (catLabel ? ' · ' + escapeHtml(catLabel) : '')) +
     _detpLinha('Vigência', escapeHtml(vig)) +
-    _detpLinha('Status', p.status ? '<span class="badge-status" style="background:' + cor[0] + ';color:' + cor[1] + '">' + escapeHtml(p.status) + '</span>' : '') +
+    _detpLinha('Status', p.status ? '<span class="ds-badge" style="background:' + cor[0] + ';color:' + cor[1] + '">' + escapeHtml(p.status) + '</span>' : '') +
     _detpLinha('Visibilidade', escapeHtml(p.visibilidade || 'Público'));
 
   var responsaveis = [{ nome: p.nomeUnidade, tipo: p.tipoResponsavel, papel: 'Principal' }]
@@ -22219,10 +22035,6 @@ uiRegistrarAcoes('pages_execucao_tarefas', {
 #page-colaboracao .colab-card-info { flex:1; min-width:200px; }
 #page-colaboracao .colab-card-titulo { font-weight:600; color:var(--ds-color-text); }
 #page-colaboracao .colab-card-meta { font-size:0.8rem; color:var(--ds-color-text-muted); margin-top:2px; }
-#page-colaboracao .colab-status-pill { font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:12px; }
-#page-colaboracao .status-pendente { background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg); }
-#page-colaboracao .status-aceita { background: var(--ds-color-success-bg); color: var(--ds-color-success-fg); }
-#page-colaboracao .status-recusada, #page-colaboracao .status-cancelada { background: var(--ds-color-danger-bg); color: var(--ds-color-danger-fg); }
 </style>
 
 <script>
@@ -22306,14 +22118,14 @@ function colabRenderizarMinhas() {
     container.innerHTML = '<div class="el-empty-state"><span class="material-symbols-outlined el-esi">list_alt</span><p class="el-esti">Você ainda não solicitou nenhuma colaboração</p></div>';
     return;
   }
-  var statusCls = { Pendente: 'status-pendente', Aceita: 'status-aceita', Recusada: 'status-recusada', Cancelada: 'status-cancelada' };
+  var statusCls = { Pendente: 'ds-badge--warning', Aceita: 'ds-badge--success', Recusada: 'ds-badge--danger', Cancelada: 'ds-badge--danger' };
   container.innerHTML = itens.map(function(s) {
     return '<div class="colab-card">'
       + '<div class="colab-card-info">'
       +   '<div class="colab-card-titulo">' + escapeHtml(s.tituloElemento) + '</div>'
       +   '<div class="colab-card-meta">Plano: ' + escapeHtml(s.nomePlano) + ' · Solicitado em ' + escapeHtml(s.criadoEm) + '</div>'
       + '</div>'
-      + '<span class="colab-status-pill ' + (statusCls[s.status] || '') + '">' + escapeHtml(s.status) + '</span>'
+      + '<span class="ds-badge ' + (statusCls[s.status] || '') + '">' + escapeHtml(s.status) + '</span>'
       + (s.status === 'Pendente' ? '<button class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="pages_colaboracao.8" data-aclick0="' + s.id + '">Cancelar</button>' : '')
       + '</div>';
   }).join('');
@@ -22674,18 +22486,12 @@ uiRegistrarAcoes('pages_colaboracao', {
 
 /* Célula "Plano": tag de tipo + nome (+ vigência abaixo em telas estreitas) */
 #page-avaliacao-planos .avl-plano { display: flex; align-items: center; gap: 10px; min-width: 0; }
-#page-avaliacao-planos .avl-tipo {
-  flex-shrink: 0; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; white-space: nowrap;
-  padding: 1px 8px; border-radius: var(--ds-r-md);
-  color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border);
-}
 #page-avaliacao-planos .avl-nome-wrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 #page-avaliacao-planos .avl-nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; overflow-wrap: break-word; text-wrap: pretty; }
 #page-avaliacao-planos .avl-vig-sub { display: none; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 #page-avaliacao-planos .avl-cat { display: inline-flex; align-items: center; gap: 5px; font-size: var(--ds-text-sm); white-space: nowrap; }
 #page-avaliacao-planos .avl-cat .material-symbols-outlined { font-size: 16px; color: var(--ds-color-text-muted); }
 #page-avaliacao-planos .avl-vig { white-space: nowrap; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
-#page-avaliacao-planos .resp-badge { background: var(--ds-color-surface-2); color: var(--ds-color-text); border-radius: var(--ds-r-pill); font-size: var(--ds-text-sm); }
 
 /* Coluna "Aguardando": dias (vermelho acima do prazo) + autoavaliação / pares */
 #page-avaliacao-planos .avl-espera { display: flex; flex-direction: column; gap: 3px; white-space: nowrap; }
@@ -22782,7 +22588,6 @@ uiRegistrarAcoes('pages_colaboracao', {
 
 /* Alto contraste */
 body.high-contrast #page-avaliacao-planos .avl-tabela tbody tr.avl-linha.selecionada { outline: 1px solid #fff; }
-body.high-contrast #page-avaliacao-planos .avl-tipo { border-color: #fff; color: #fff; }
 
 /* Chip de conceito e estrelas — GLOBAIS (compartilhados com outras páginas) */
 .av-conceito-chip {
@@ -23172,7 +22977,7 @@ function _avRenderizarTabela(planos) {
     var vig = _avVigencia(p);
     var planoTd =
       '<td class="avl-col-plano"><div class="avl-plano">' +
-        '<span class="avl-tipo">' + escapeHtml(p.tipo || '') + '</span>' +
+        '<span class="ds-badge-tipo avl-tipo">' + escapeHtml(p.tipo || '') + '</span>' +
         '<span class="avl-nome-wrap"><span class="avl-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</span>' +
         (aguardando ? '<span class="avl-vig-sub">Vigência ' + escapeHtml(vig) + '</span>' : '') +
       '</span></div></td>';
@@ -23324,7 +23129,7 @@ function _avRespBadge(p) {
   var icon = (p.tipoResponsavel === 'USER') ? 'person' : 'apartment';
   var nomeCompleto = p.responsavel || 'Não definido';
   var nomeExib = nomeRespExibicao(nomeCompleto, p.tipoResponsavel);
-  return '<span class="resp-badge"' + (nomeExib !== nomeCompleto ? ' data-title="' + escapeHtml(nomeCompleto) + '"' : '') +
+  return '<span class="ds-resp"' + (nomeExib !== nomeCompleto ? ' data-title="' + escapeHtml(nomeCompleto) + '"' : '') +
     '><span class="material-symbols-outlined">' + icon + '</span>' + escapeHtml(nomeExib) + '</span>';
 }
 
@@ -23469,7 +23274,7 @@ uiRegistrarAcoes('pages_avaliacao_planos', {
 
   <section class="ds-pagina__hero" id="ax-hero">
     <h1 class="ds-pagina__titulo" id="ax-det-titulo"></h1>
-    <span class="badge-status" id="ax-det-status"></span>
+    <span class="ds-badge" id="ax-det-status"></span>
   </section>
 
   <div class="ds-pagina__acoes" id="ax-hero-acoes">
@@ -23532,13 +23337,6 @@ uiRegistrarAcoes('pages_avaliacao_planos', {
 </div>
 
 <style>
-/* ===== Página de avaliação — novo design system (tokens --ds-*), tudo escopado em
-   #page-avaliacao-executar. Reaproveita globais: .ds-btn, .ds-icon-action, .det-split*,
-   .detp-* (painel lateral), .acoes-menu (menu da seta), .el-empty-state, .badge-status. ===== */
-#page-avaliacao-executar .badge-status {
-  border: none; background: var(--ds-color-surface-2); border-radius: var(--ds-r-pill);
-  padding: 3px 12px; font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); line-height: 1.4;
-}
 #page-avaliacao-executar #ax-hero-acoes .det-split-main { min-height: 40px; white-space: nowrap; }
 #page-avaliacao-executar #ax-btn-detalhes[aria-expanded="true"] { color: var(--ds-color-action); background: var(--ds-sidebar-item-active); }
 
@@ -23623,7 +23421,6 @@ uiRegistrarAcoes('pages_avaliacao_planos', {
 #page-avaliacao-executar .ax-el-cab { display: flex; flex-direction: column; gap: 8px; }
 #page-avaliacao-executar .ax-el-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 #page-avaliacao-executar .ax-el-meta strong { color: var(--ds-color-text); }
-#page-avaliacao-executar .ax-tipo-chip { font-size: 11px; font-weight: var(--ds-weight-semibold); padding: 1px 8px; border-radius: 9px; background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); border: 1px solid var(--ds-color-border); }
 #page-avaliacao-executar .ax-el-cab h2 { margin: 0; font-size: 22px; line-height: 1.25; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); text-wrap: pretty; overflow-wrap: anywhere; }
 #page-avaliacao-executar .ax-subs { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 #page-avaliacao-executar .ax-sub { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); }
@@ -24419,7 +24216,7 @@ function _axRenderCardElemento() {
   const rotProx = !pendentes ? (ultimo ? 'Revisar e concluir' : 'Próximo') : 'Próximo pendente';
 
   const tipoChip = el.tipo
-    ? '<span class="ax-tipo-chip"' + (el.corTipo ? ' style="background:' + el.corTipo + '14;color:' + el.corTipo + ';border-color:' + el.corTipo + '44"' : '') + '>' + escapeHtml(el.tipo) + '</span>'
+    ? uiBadgeTipoHTML(el.tipo, el.corTipo)
     : '';
   const notas = (estadoAxAval.config && estadoAxAval.config.NOTAS) || [];
   const escala = notas.slice().sort(function(a, b) { return a.nota - b.nota; }).map(function(o) {
@@ -24727,7 +24524,7 @@ function _axpRenderDetalhes() {
   const htmlSobre =
     _axpLinha('Tipo', escapeHtml(d.tipo || '') + (cat ? ' · ' + escapeHtml(cat) : '')) +
     _axpLinha('Vigência', escapeHtml(String(vig))) +
-    _axpLinha('Status', d.status ? '<span class="badge-status" style="background:' + (cor ? cor[0] : '') + ';color:' + (cor ? cor[1] : '') + '">' + escapeHtml(d.status) + '</span>' : '') +
+    _axpLinha('Status', d.status ? '<span class="ds-badge" style="background:' + (cor ? cor[0] : '') + ';color:' + (cor ? cor[1] : '') + '">' + escapeHtml(d.status) + '</span>' : '') +
     _axpLinha('Avaliação', av ? _axEstrelasCor(av.nota, av.cor) + ' ' + escapeHtml(av.conceito || '') : 'Sem avaliação vigente') +
     _axpLinha((d.planosSuperiores && d.planosSuperiores.length > 1) ? 'Planos superiores' : 'Plano superior',
       (d.planosSuperiores || []).map(function(s) { return escapeHtml(s.nome || ''); }).join(', ')) +
@@ -27166,12 +26963,6 @@ uiRegistrarAcoes('pages_mensagens_enviadas', {
 .contact-email { display: block; color: var(--ds-color-text); margin-bottom: 2px; }
 .contact-phone { display: block; color: var(--ds-color-text-muted); font-size: 0.75rem; }
 
-.badge-papel { 
-  background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); 
-  color: var(--ds-color-text); padding: 2px 6px; border-radius: 4px; 
-  font-size: 0.7rem; display: inline-block; margin-right: 3px; margin-bottom: 3px;
-}
-
 .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
 .status-active { background-color: var(--ds-color-success); }
 .status-inactive { background-color: var(--ds-color-danger); }
@@ -27418,7 +27209,7 @@ function atualizarTabelaUsuarios() {
     // Papéis (Badges)
     let papeisHtml = '<span style="color: var(--ds-color-text-muted); font-size:0.8rem">-</span>';
     if(u.papeis && u.papeis.length > 0) {
-      papeisHtml = u.papeis.map(p => `<span class="badge-papel">${escapeHtml(p)}</span>`).join('');
+      papeisHtml = u.papeis.map(p => `<span class="ds-badge">${escapeHtml(p)}</span>`).join('');
     }
 
     // Status
@@ -28539,15 +28330,10 @@ uiRegistrarAcoes('pages_servidores_carga', {
 .unidade-toggle-galho .material-symbols-outlined { font-size: 18px; transition: transform 0.15s; }
 .unidade-toggle-galho.aberto .material-symbols-outlined { transform: rotate(90deg); }
 .unidade-toggle-espaco { width: 22px; flex-shrink: 0; }
-.unidade-sigla-chip {
-  flex-shrink: 0; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 10px;
-  background: var(--ds-primary-50, #e8f0fe); color: var(--ds-primary-700);
-}
 .unidade-nome { flex: 1; min-width: 0; font-size: 0.9rem; color: var(--ds-color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .unidade-meta { display: flex; align-items: center; gap: 12px; flex-shrink: 0; font-size: 0.78rem; color: var(--ds-color-text-muted); }
 .unidade-meta-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .unidade-meta-item .material-symbols-outlined { font-size: 15px; }
-.unidade-badge-inativa { font-size: 0.68rem; font-weight: 600; padding: 1px 7px; border-radius: 10px; background: var(--ds-color-danger-bg); color: var(--ds-color-danger-fg); flex-shrink: 0; }
 
 body.high-contrast .unidade-row { border-color: #fff; }
 </style>
@@ -28665,10 +28451,10 @@ function _unidadeLinhaHTML(u, isAdmin) {
     : '';
   return '<div class="unidade-row' + (u.ativa ? '' : ' unidade-row-inativa') + '" data-unidade-id="' + u.id + '" data-unidade-pai="' + (u.idPai || '') + '" data-unidade-prof="' + u.profundidade + '" style="padding-left:' + (6 + recuo) + 'px">' +
     galho +
-    '<span class="unidade-sigla-chip">' + escapeHtml(u.sigla) + '</span>' +
+    '<span class="ds-badge ds-badge--info">' + escapeHtml(u.sigla) + '</span>' +
     '<span class="unidade-nome" data-title="' + escapeJsAttr(u.nome) + '">' + escapeHtml(u.nome) + '</span>' +
     '<div class="unidade-meta">' + metaItens.join('') + '</div>' +
-    (u.ativa ? '' : '<span class="unidade-badge-inativa">Inativa</span>') +
+    (u.ativa ? '' : '<span class="ds-badge ds-badge--danger">Inativa</span>') +
     (acoes ? '<div style="flex-shrink:0">' + acoes + '</div>' : '') +
   '</div>';
 }
@@ -28933,13 +28719,6 @@ uiRegistrarAcoes('pages_unidades', {
   overflow-x: auto;
 }
 
-.log-acao-badge { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
-.acao-CRIAR { background: var(--ds-color-success-bg); color: var(--ds-color-success); }
-.acao-EDITAR { background: var(--ds-color-info-bg); color: var(--ds-color-action); }
-.acao-EXCLUIR { background: var(--ds-color-danger-bg); color: var(--ds-color-danger); }
-.acao-TRAMITE { background: var(--ds-color-warning-bg); color: var(--ds-color-warning); }
-.acao-LOGIN { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); }
-
 /* --- PAGINAÇÃO (NOVO) --- */
 .pagination-bar {
   display: flex;
@@ -29022,12 +28801,6 @@ uiRegistrarAcoes('pages_unidades', {
   
   /* Paginação Mobile */
   .pagination-bar { justify-content: center; flex-direction: column; }
-}
-
-/* --- ALTO CONTRASTE --- */
-body.high-contrast .log-acao-badge { background: #000 !important; border: 1px solid #fff; color: #fff !important; }
-body.high-contrast .acao-EXCLUIR { border-color: var(--ds-color-danger) !important; color: var(--ds-color-danger) !important; }
-body.high-contrast .acao-CRIAR { border-color: var(--ds-color-success) !important; color: var(--ds-color-success) !important; }
 body.high-contrast .diff-box pre { background: #000; color: #fff; border: 1px solid #fff; }
 body.high-contrast .log-meta-info { background: #000; border: 1px solid #fff; }
 body.high-contrast .pagination-bar { background: #000; border-color: #fff; }
@@ -29125,11 +28898,11 @@ function atualizarTabelaPaginada() {
     // O índice original no cache global (para abrir modal corretamente)
     const originalIndex = startIndex + index; 
     
-    let acaoClass = 'acao-LOGIN';
-    if(log.acao === 'CRIAR') acaoClass = 'acao-CRIAR';
-    if(log.acao === 'EDITAR' || log.acao === 'ATUALIZAR') acaoClass = 'acao-EDITAR';
-    if(log.acao === 'EXCLUIR') acaoClass = 'acao-EXCLUIR';
-    if(log.acao === 'TRAMITE' || log.acao === 'SUBMETER' || log.acao === 'APROVAR') acaoClass = 'acao-TRAMITE';
+    let acaoClass = 'ds-badge--neutral';
+    if(log.acao === 'CRIAR') acaoClass = 'ds-badge--success';
+    if(log.acao === 'EDITAR' || log.acao === 'ATUALIZAR') acaoClass = 'ds-badge--info';
+    if(log.acao === 'EXCLUIR') acaoClass = 'ds-badge--danger';
+    if(log.acao === 'TRAMITE' || log.acao === 'SUBMETER' || log.acao === 'APROVAR') acaoClass = 'ds-badge--warning';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -29138,7 +28911,7 @@ function atualizarTabelaPaginada() {
         <div style="font-weight:500">${escapeHtml(log.usuario)}</div>
         <div style="font-size:0.75rem; color:var(--ds-color-text-muted)">${escapeHtml(log.email)}</div>
       </td>
-      <td><span class="log-acao-badge ${acaoClass}">${escapeHtml(log.acao)}</span></td>
+      <td><span class="ds-badge ${acaoClass}">${escapeHtml(log.acao)}</span></td>
       <td style="font-size:0.85rem">${escapeHtml(log.entidade)}</td>
       <td style="font-size:0.9rem">${escapeHtml(log.descricao)}</td>
       <td>

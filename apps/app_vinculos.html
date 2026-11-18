@@ -41,14 +41,11 @@
 .vinc-sit { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: var(--ds-r-md); color: var(--vinc-cor); outline-offset: 1px; }
 .vinc-sit .material-symbols-outlined { font-size: 18px; }
 
-/* nível do plano: mesmo visual de .pll-tipo (lista de planos), com largura fixa para os nomes alinharem */
+/* nível do plano: pílula .ds-badge-tipo, com largura fixa para os nomes alinharem */
 .vinc-plano { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.vinc-nivel { flex: none; box-sizing: border-box; width: 96px; text-align: center; overflow: hidden; text-overflow: ellipsis;
-  font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; white-space: nowrap; line-height: 16px;
-  padding: 1px 6px; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); }
+.vinc-nivel { flex: none; box-sizing: border-box; width: 96px; justify-content: center; }
 .vinc-nivel--vazio { visibility: hidden; }
 .vinc-nome { min-width: 0; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.vinc-lista .resp-badge { max-width: 100%; }
 
 .vinc-prog { display: flex; align-items: center; gap: 8px; }
 .vinc-prog .ds-kpi-track { width: 64px; flex: none; }
@@ -125,7 +122,7 @@
   .vinc-lista tbody tr.vinc-row td.el-col-expand { grid-area: exp; }
   .vinc-lista tbody tr.vinc-row td.vinc-c-sit { grid-area: sit; }
   .vinc-lista tbody tr.vinc-row td.vinc-c-nome, .vinc-lista tbody tr.vinc-row .vinc-plano { display: contents; }
-  .vinc-lista tbody tr.vinc-row .vinc-nivel { grid-area: nivel; width: auto; overflow: visible; }
+  .vinc-lista tbody tr.vinc-row .vinc-nivel { flex: none; box-sizing: border-box; width: 96px; justify-content: center; }
   .vinc-lista tbody tr.vinc-row .vinc-nivel--vazio { display: none; }
   .vinc-lista tbody tr.vinc-row .vinc-nome { grid-area: nome; font-size: var(--ds-text-md); }
   .vinc-lista tbody tr.vinc-row td.vinc-c-status { grid-area: status; justify-self: start; }
@@ -142,7 +139,7 @@
   .vinc-lista tbody tr.el-linha-msg { display: block; }
   .vinc-lista tbody tr.el-linha-msg td { display: block; padding: 32px 12px !important; }
 }
-body.high-contrast .vinc-nivel { border-color: currentColor; }
+body.high-contrast .vinc-nivel { flex: none; box-sizing: border-box; width: 96px; justify-content: center; }
 </style>
 
 <!-- Container principal da aba Vínculos (injetado em #vinculos-conteudo pelo host) -->
@@ -683,7 +680,7 @@ function _vincBadgeStatus(status) {
     'Excluído': '#f5f5f5|#555'
   };
   var cores = (mapa[status] || '#f5f5f5|#555').split('|');
-  return '<span class="badge-status" style="background:' + cores[0] + ';color:' + cores[1] + '">' + escapeHtml(status || '') + '</span>';
+  return '<span class="ds-badge" style="background:' + cores[0] + ';color:' + cores[1] + '">' + escapeHtml(status || '') + '</span>';
 }
 
 function _vincChave(p) { return p.vtipo + ':' + p.id + (p.idVinculo ? ':' + p.idVinculo : ''); }
@@ -832,7 +829,7 @@ function vincAbrirDetalhesPlano(chave) {
   } else if (p.papel) {
     vinc += _detpLinha('Papel', p.papel === 'PRINCIPAL' ? 'Principal' : 'Adicional');
   }
-  var cab = '<div class="vinc-detp-cab">' + (p.tipo ? '<span class="vinc-nivel">' + escapeHtml(p.tipo) + '</span>' : '')
+  var cab = '<div class="vinc-detp-cab">' + (p.tipo ? '<span class="ds-badge-tipo vinc-nivel">' + escapeHtml(p.tipo) + '</span>' : '')
     + '<h3>' + escapeHtml(p.nome || '') + '</h3></div>';
   var secoes = [
     { titulo: 'Vínculo', html: vinc },
@@ -1193,9 +1190,9 @@ function _vincLinhaHTML(p, podeEditar) {
     ? 'Principal: ' + p.responsavel + ' | Adicionais: ' + p.respAdicionaisNomes.join(', ')
     : (p.responsavel && p.responsavel !== respNome ? p.responsavel : '');
   var resp = p.responsavel
-    ? '<span class="resp-badge el-resp-badge"' + (titResp ? ' data-title="' + escapeHtml(titResp) + '"' : '') + '>'
+    ? '<span class="ds-resp"' + (titResp ? ' data-title="' + escapeHtml(titResp) + '"' : '') + '>'
       + '<span class="material-symbols-outlined">' + (p.tipoResponsavel === 'USER' ? 'person' : 'apartment') + '</span>'
-      + '<span class="el-resp-nome">' + escapeHtml(respNome) + '</span>'
+      + '<span>' + escapeHtml(respNome) + '</span>'
       + (nAdic > 0 ? '<span class="resp-mais">+' + nAdic + '</span>' : '') + '</span>'
     : '<span class="vinc-vazio">—</span>';
   var status = p.status
@@ -1207,7 +1204,7 @@ function _vincLinhaHTML(p, podeEditar) {
       + '<div class="ds-kpi-track"><div class="ds-kpi-fill ds-tone-info" style="width:' + pct.toFixed(0) + '%"></div></div>'
       + '<span class="vinc-prog-txt">' + pct.toFixed(0) + '%</span></div>';
   var tip = escapeHtml(_vincTipSituacao(p));
-  var nivel = p.tipo ? '<span class="vinc-nivel" data-title="' + escapeHtml(p.tipo) + '">' + escapeHtml(p.tipo) + '</span>' : '<span class="vinc-nivel vinc-nivel--vazio" aria-hidden="true"></span>';
+  var nivel = p.tipo ? '<span class="ds-badge-tipo vinc-nivel" data-title="' + escapeHtml(p.tipo) + '">' + escapeHtml(p.tipo) + '</span>' : '<span class="ds-badge-tipo vinc-nivel vinc-nivel--vazio" aria-hidden="true"></span>';
 
   return '<tr class="vinc-row vinc-row--' + p.vtipo + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"' + (desv ? ' data-orf="' + idj + '"' : '')
     + ' data-on-click="vinc.33" data-aclick0="' + chj + '" ' + uiAtributosAcao(abrirDet, 'dblclick') + '>'

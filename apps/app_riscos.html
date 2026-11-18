@@ -574,7 +574,6 @@ tr.is-open .rsc-seta { transform: rotate(90deg); }
 .detp-risco-val.is-fora { color: var(--ds-color-warning-fg); }
 .detp-risco-val.is-ok { color: var(--ds-color-success-fg); }
 .detp-risco-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.detp-risco-chip { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); padding: 2px 8px; border-radius: var(--ds-r-md); background: var(--ds-color-surface-2); color: var(--ds-color-text); }
 .detp-risco-sec-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .detp-risco-sec-cab strong { font-size: var(--ds-text-base); color: var(--ds-color-text); }
 .detp-risco-sec-cab span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
@@ -1100,7 +1099,7 @@ function _riscosRenderPainel(r) {
 
   var apetite = r.apetiteRisco === 'Não' ? '<span class="detp-risco-val is-fora">Fora do apetite</span>'
     : r.apetiteRisco === 'Sim' ? '<span class="detp-risco-val is-ok">Dentro do apetite</span>' : '<span class="detp-risco-val">—</span>';
-  var nats = (r.naturezasRisco || []).map(function(n) { return '<span class="detp-risco-chip">' + escapeHtml(n) + '</span>'; }).join('')
+  var nats = (r.naturezasRisco || []).map(function(n) { return '<span class="ds-badge">' + escapeHtml(n) + '</span>'; }).join('')
     || '<span class="detp-risco-val">—</span>';
   var resps = (r.responsaveis || []).map(function(x, i, arr) {
     var nomeFmt = typeof nomeRespExibicao === 'function' ? nomeRespExibicao(x.nome, x.tipo) : x.nome;
@@ -2061,9 +2060,9 @@ function _riscoLinhaHTML(r, podeEditar) {
       ? 'Principal: ' + primeiro + ' | Adicionais: ' + resps.slice(1).map(function(x) { return typeof nomeRespExibicao === 'function' ? nomeRespExibicao(x.nome, x.tipo) : x.nome; }).join(', ')
       : (p0.nome !== primeiro ? p0.nome : '');
     var ico = p0.tipo === 'USER' ? 'person' : 'apartment';
-    respHtml = '<span class="resp-badge el-resp-badge"' + (respTitle ? ' data-title="' + escapeHtml(respTitle) + '"' : '') + '>'
+    respHtml = '<span class="ds-resp"' + (respTitle ? ' data-title="' + escapeHtml(respTitle) + '"' : '') + '>'
       + '<span class="material-symbols-outlined">' + ico + '</span>'
-      + '<span class="el-resp-nome">' + escapeHtml(primeiro || 'Não definido') + '</span>'
+      + '<span>' + escapeHtml(primeiro || 'Não definido') + '</span>'
       + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '')
       + '</span>';
   }
