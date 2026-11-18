@@ -22,10 +22,6 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
 .ind-vinc-chips { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .ind-vinc-mob { display: none; }
 .ind-freq { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ind-resp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
-.ind-resp .material-symbols-outlined { font-size: 16px; color: var(--ds-color-text-muted); flex-shrink: 0; }
-.ind-resp-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.ind-resp .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); flex-shrink: 0; }
 
 /* Pintura da linha (só fundo, sem barra lateral — mesmos tons da aba Vínculos).
    Só o indicador SEM METAS é pintado (vínculo desfeito/pendente é indicado apenas pelo badge). */
@@ -41,6 +37,7 @@ body.high-contrast .ind-tabela tr.ind-linha[class*="ind-caso-"] td.ind-col-nome 
   gap: 4px; border-radius: var(--ds-r-md); white-space: nowrap; flex-shrink: 0;
 }
 .ind-decisao .ind-btn-proativo .material-symbols-outlined { font-size: 16px; }
+.ind-tabela .ind-decisao .acoes-linha { opacity: 1; }
 
 /* cobertura por ano (coluna Metas) */
 .ind-cob { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; row-gap: 2px; }
@@ -1902,18 +1899,24 @@ function _indLinhaHTML(p, anos, podeEditar) {
     resp = '—';
   }
 
-  // Indicador sem metas: o convite "Definir metas" fica na coluna Metas (a última coluna é só informação + ações no hover)
-  var convite = isPendente && podeEditar
-    ? '<div class="ind-decisao"><button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm ind-btn-proativo" data-on-click="ind.20" data-aclick0="' + idj + '" aria-label="Definir metas">'
-      + '<span class="material-symbols-outlined">add</span><span>Definir metas</span></button></div>'
-    : '';
-  var acoes = acoesLinhaHTML('ind-' + idj, [
+  var itensAcao = [
     { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + idj + "')", principal: true, oculto: !_indPermiteMetas() },
     { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + idj + "')", principal: true, oculto: !podeEditar },
     { icone: 'download', rotulo: 'Exportar', desabilitado: true },
     { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + idj + "')", principal: true },
     { icone: 'delete', rotulo: 'Excluir indicador', onclick: "confirmarExclusaoIndicador('" + idj + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar }
-  ], { maxDireto: 2 });
+  ];
+  // Indicador sem metas (situação específica): sem o padrão do hover. O botão principal "Definir metas" fica sempre visível na última coluna e o resto vai no ⋮.
+  var celulaAcoes;
+  if (isPendente && podeEditar) {
+    var menu = acoesLinhaHTML('ind-' + idj, itensAcao.filter(function(a) { return a.rotulo !== 'Nova meta'; }), { maxDireto: 0 });
+    celulaAcoes = '<td class="ds-col-sobreposta ind-col-freq"><div class="ind-decisao">'
+      + '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm ind-btn-proativo" data-on-click="ind.20" data-aclick0="' + idj + '" aria-label="Definir metas">'
+      + '<span class="material-symbols-outlined">add</span><span>Definir metas</span></button>' + menu + '</div></td>';
+  } else {
+    celulaAcoes = '<td class="ds-col-sobreposta ind-col-freq"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="ind-freq" data-title="' + escapeHtml(_indFreqTxt(p)) + '">' + escapeHtml(p.frequencia || '—') + '</span></div>'
+      + '<div class="ds-celula-sobreposta__acoes">' + acoesLinhaHTML('ind-' + idj, itensAcao, { maxDireto: 2 }) + '</div></div></td>';
+  }
 
   var cls = 'ind-linha'
     + (isPendente ? ' is-pendente-meta' : '')
@@ -1928,10 +1931,9 @@ function _indLinhaHTML(p, anos, podeEditar) {
     + '<td class="el-col-expand"><button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" data-on-click="ind.25" data-aclick0="' + idj + '" aria-label="Expandir"><span class="material-symbols-outlined ind-seta" aria-hidden="true">chevron_right</span></button></td>'
     + '<td class="ind-col-nome"><div class="ind-nome-cel"><div class="ind-titulo-cel"><span class="ind-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</span>' + sup + '</div>'
     + '</div></td>'
-    + '<td class="ind-col-cob">' + (sup ? '<div class="ind-vinc-mob">' + sup + '</div>' : '') + _indCoberturaHTML(p, anos) + convite + '</td>'
+    + '<td class="ind-col-cob">' + (sup ? '<div class="ind-vinc-mob">' + sup + '</div>' : '') + _indCoberturaHTML(p, anos) + '</td>'
     + '<td class="ind-col-resp">' + resp + '</td>'
-    + '<td class="ds-col-sobreposta ind-col-freq"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="ind-freq" data-title="' + escapeHtml(_indFreqTxt(p)) + '">' + escapeHtml(p.frequencia || '—') + '</span></div>'
-    + '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>'
+    + celulaAcoes
     + '</tr>';
 
   if (aberto) {

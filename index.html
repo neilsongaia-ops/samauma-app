@@ -557,6 +557,8 @@ tr:hover td { background-color: var(--ds-sidebar-item-hover); }
   --ds-color-relacao: #ad1457;  /* relacionamento entre elementos (badge hub + linhas do organograma) */
   --ds-color-indicador: #8e44ad;  /* ícone de indicador (speed), em qualquer tela */
   --ds-color-elemento: #00796b;  /* ícone de elemento (category), em qualquer tela */
+  --ds-color-notificacao: var(--ds-color-danger-fg);  /* indicador de não lido/novo (sino, aba do Fórum…): fundo do badge e do ponto */
+  --ds-color-on-notificacao: #ffffff;  /* texto sobre --ds-color-notificacao */
 
   /* -- Status de plano (FONTE ÚNICA — substitui as ~5 cópias divergentes) -- */
   --ds-status-elaboracao-bg: #fff8e1; --ds-status-elaboracao-fg: #b06000;
@@ -1097,14 +1099,6 @@ body.high-contrast .ds-tabs-nav__item.active { border-bottom-color: var(--ds-col
 .ds-tabs-nav__seta--ini { left: 0; background: linear-gradient(to left, transparent, var(--ds-color-surface) 55%); }
 .ds-tabs-nav__seta--fim { right: 0; background: linear-gradient(to right, transparent, var(--ds-color-surface) 55%); }
 @media (max-width: 768px) { .ds-tabs-nav__seta { display: none !important; } }
-/* Selo de não lidas sobre a aba (ex.: Fórum) */
-.ds-tabs-nav__selo {
-  position: absolute; top: 2px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px;
-  display: inline-flex; align-items: center; justify-content: center; pointer-events: none;
-  background: var(--ds-color-danger); color: var(--ds-color-on-action); border-radius: var(--ds-r-pill);
-  font-size: 0.62rem; font-weight: var(--ds-weight-bold); line-height: 1;
-}
-
 /* Contador dentro da aba (navegação ou segmentada); vazio some */
 .ds-tab-count {
   display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-width: 20px;
@@ -1122,6 +1116,9 @@ body.high-contrast .ds-tabs-nav__item.active { border-bottom-color: var(--ds-col
 .ds-tabs-nav__item.active .ds-tab-count--sucesso { background: var(--ds-color-success-bg); color: var(--ds-color-success-fg); }
 .ds-tab-count--alerta,
 .ds-tabs-nav__item.active .ds-tab-count--alerta { background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg); }
+/* não lido/novo: o vermelho de notificação (o mesmo do sino) */
+.ds-tab-count--notificacao,
+.ds-tabs-nav__item.active .ds-tab-count--notificacao { background: var(--ds-color-notificacao); color: var(--ds-color-on-notificacao); }
 
 /* ---- Abas do painel lateral (Detalhes / Atividade / Lixeira…) — .ds-tabs-painel ---- */
 .ds-tabs-painel { display: flex; align-items: center; gap: 4px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--ds-color-border); flex-shrink: 0; }
@@ -2203,7 +2200,6 @@ body.high-contrast .hdr-vinc-opcao, body.high-contrast .sidebar-footer .hdr-vinc
 .tb-burger { display: none; color: var(--ds-color-text); margin-left: -8px; }
 
 .tb-icon-btn { position: relative; }
-.tb-dot { position: absolute; top: 7px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--ds-color-danger-fg); }
 
 /* --- MENU SUSPENSO DO USUÁRIO --- */
 .user-menu {
@@ -8769,7 +8765,7 @@ function _cfgSecaoHTML(g, lista, violPorChave) {
       '<button type="button" class="cfgp-limite-ver" data-cfg-viol="' + escapeHtml(v.chave) + '" aria-expanded="' + aberto + '">' + (aberto ? 'Ocultar' : 'Ver itens') +
       '<span class="material-symbols-outlined" style="font-size:18px">' + (aberto ? 'expand_less' : 'expand_more') + '</span></button></div>' +
       (aberto ? '<ul class="cfgp-limite-lista">' + v.itens.map(function (it) {
-        var ico = it.entidade === 'PLANO' ? 'description' : (it.entidade === 'INDICADOR' ? 'monitoring' : 'category');
+        var ico = it.entidade === 'PLANO' ? 'description' : (it.entidade === 'INDICADOR' ? 'speed' : 'category');
         var qtdTxt = it.entidade === 'PLANO' ? ' planos superiores' : (v.chave === 'INDICADOR_ELEMENTOS_LIMITE' ? ' elementos' : (v.chave === 'INDICADOR_RECEBE_VINCULO_LIMITE' ? ' subordinados' : ' superiores'));
         // indicador não tem painel de detalhes próprio: aparece só como texto
         var titulo = it.entidade === 'INDICADOR' ? '<span>' + escapeHtml(it.titulo) + '</span>'
@@ -9825,7 +9821,7 @@ uiRegistrarAcoes('components_message', {
 <style>
   /* ---- sino ---- */
   .ntf-badge { position: absolute; top: 3px; right: 2px; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box; border-radius: 999px;
-    background: var(--ds-color-danger-fg); color: #fff; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
+    background: var(--ds-color-notificacao); color: var(--ds-color-on-notificacao); font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; line-height: 1; }
   #ntf-sino-btn { position: relative; }
   .ntf-sino-painel { position: fixed; top: 52px; right: 12px; width: 380px; max-width: calc(100vw - 16px); background: var(--ds-glass-bg-strong); backdrop-filter: blur(16px) saturate(1.3);
     border: 1px solid var(--ds-glass-border); border-radius: 10px; box-shadow: var(--ds-glass-shadow-strong); overflow: hidden; z-index: 1000; }
@@ -19847,7 +19843,7 @@ function _appsRenderizarAbas(appsInstalados) {
       '<span>' + escapeHtml(app.nome) + '</span>' + descontinuadoHtml +
       '<span class="ds-tab-count hidden" id="cnt-tab-' + app.pageParam + '"></span>' +
       '<span class="ds-tab-count ds-tab-count--alerta hidden" id="alt-tab-' + app.pageParam + '"></span>' +
-      '<span class="ds-tabs-nav__selo hidden" id="tab-badge-' + app.pageParam + '"></span>';
+      '<span class="ds-tab-count ds-tab-count--notificacao hidden" id="tab-badge-' + app.pageParam + '"></span>';
 
     // Insere os botões de app antes do botão de adicionar apps
     if (btnAdd) {
