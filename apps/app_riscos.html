@@ -250,37 +250,6 @@
   </div>
 </div>
 
-<!-- MODAL: NOVA CAUSA/CONSEQUÊNCIA -->
-<div id="modal-causa-rapida" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalCausaRapida" data-on-click="risco.15">
-  <div class="modal-card" style="max-width:480px">
-    <div class="modal-header">
-      <h3>Nova Causa e Consequência</h3>
-      <button class="btn-icon-close" data-on-click="risco.16">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-    <div class="modal-body">
-      <form id="form-causa-rapida" data-on-submit="risco.17">
-        <input type="hidden" id="causa-rapida-id-risco">
-        <div class="form-group">
-          <label style="font-size:0.82rem;font-weight:600">Causa</label>
-          <input type="text" id="causa-rapida-causa" class="form-control" placeholder="Causa...">
-        </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label style="font-size:0.82rem;font-weight:600">Consequência</label>
-          <input type="text" id="causa-rapida-consequencia" class="form-control" placeholder="Consequência correspondente...">
-        </div>
-      </form>
-    </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-outline" data-on-click="risco.16">Cancelar</button>
-      <button type="submit" form="form-causa-rapida" class="btn btn-primary">
-        <span class="material-symbols-outlined icon">add</span> Adicionar
-      </button>
-    </div>
-  </div>
-</div>
-
 <!-- ================================================================
      ESTILOS DO APP RISCOS
      ================================================================ -->
@@ -356,16 +325,10 @@ body.high-contrast .wiz-rail-item.wiz-rail-atual { background: #222; }
   border: 1px solid var(--ds-color-border); border-radius: 6px; margin-bottom: 5px; background: var(--ds-color-surface);
 }
 .trat-item:last-child { margin-bottom: 0; }
-.trat-num {
-  width: 18px; height: 18px; border-radius: 50%; background: var(--ds-primary-700); color: #fff;
-  display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; flex-shrink: 0;
-}
-.trat-body { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; row-gap: 2px; }
 .trat-acao { font-weight: 600; color: var(--ds-color-text); font-size: 0.84rem; white-space: nowrap; }
 .trat-desc { font-size: 0.78rem; color: var(--ds-color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
 .trat-meta { font-size: 0.74rem; color: var(--ds-color-text-muted); display: flex; gap: 10px; flex-wrap: wrap; }
 @media (max-width: 640px) {
-  .trat-body { flex-direction: column; align-items: flex-start; gap: 3px; }
   .trat-desc { max-width: 100%; white-space: normal; }
 }
 
@@ -472,18 +435,12 @@ body.high-contrast .risco-nat-chip.active { background: #000; border-color: #fff
 .rsc-tabela tbody tr.rsc-linha td { padding-top: 12px; padding-bottom: 12px; }
 .rsc-tabela tbody tr.rsc-linha.is-open td { border-bottom-color: transparent; }
 
-.rsc-seta { font-size: 20px; color: var(--ds-color-text-muted); transition: transform var(--ds-duration-fast) var(--ds-ease-standard); }
-tr.is-open .rsc-seta { transform: rotate(90deg); }
 
 .rsc-titulo-cel { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .rsc-titulo { font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium); color: var(--ds-color-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .rsc-alerta-ico { font-size: 16px; flex-shrink: 0; color: var(--ds-color-warning-fg); }
 .rsc-pi { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rsc-resp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
-.rsc-resp .material-symbols-outlined { font-size: 16px; color: var(--ds-color-text-muted); flex-shrink: 0; }
-.rsc-resp-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.rsc-resp .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); flex-shrink: 0; }
 
 /* Linha com risco pendente de tratamento: fundo na cor do nível */
 .rsc-tabela tr.rsc-linha.is-nivel-rb { --rsc-cor: var(--ds-color-success-fg); }
@@ -506,35 +463,38 @@ body.high-contrast .rsc-tabela tr.rsc-linha.is-pendente-tratamento:not(.selecion
 .rsc-tabela tr.rsc-ativa td { background: var(--ds-sidebar-item-active); }
 
 /* linha expandida */
-.rsc-tabela tr.rsc-det td { padding: 0 16px 14px 88px; cursor: default; border-bottom: 1px solid var(--ds-glass-border); }
-.rsc-tabela tr.rsc-det:hover td { background: transparent; }
-.rsc-tabela tr.rsc-det.selecionada td, .rsc-tabela tr.rsc-det.rsc-ativa td { background: color-mix(in srgb, var(--ds-sidebar-item-active) 45%, transparent); }
+.rsc-tabela tr.rsc-det > td { padding: 12px 16px 20px 88px; cursor: default; border-bottom: 1px solid var(--ds-glass-border); }
+.rsc-tabela tr.rsc-det:hover > td { background: transparent; }
+.rsc-tabela tr.rsc-det.selecionada > td, .rsc-tabela tr.rsc-det.rsc-ativa > td { background: color-mix(in srgb, var(--ds-sidebar-item-active) 45%, transparent); }
 .rsc-vinculo { display: flex; align-items: center; gap: 6px; min-height: 28px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.rsc-vinculo .material-symbols-outlined { font-size: 16px; }
-.rsc-vinculo span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rsc-causa-linha {
-  display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 0 8px; margin: 0 -8px;
-  border-radius: var(--ds-r-md); cursor: pointer;
-}
-.rsc-causa-linha:hover { background: var(--ds-sidebar-item-hover); }
-.rsc-causa-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ds-color-border-strong); flex-shrink: 0; }
-.rsc-causa-txt, .rsc-cons-txt { flex: 1 1 0; min-width: 0; font-size: var(--ds-text-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rsc-causa-txt { color: var(--ds-color-text); }
-.rsc-cons-txt { color: var(--ds-color-text-muted); }
-.rsc-causa-seta { font-size: 18px; color: var(--ds-color-border-strong); flex-shrink: 0; }
-.rsc-causa-n { flex-shrink: 0; min-width: 64px; text-align: right; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; }
+/* tabela de causas (borda suave; a linha inteira reage ao hover) e, solto logo abaixo dela, o campo de nova causa */
+.rsc-det [data-rsc-tabela] { border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-xl); overflow: hidden; }
+.rsc-det [data-rsc-tabela] table { width: 100%; margin: 0; table-layout: fixed; border-collapse: collapse; }
+.rsc-det [data-rsc-tabela] col:last-child { width: 176px; }
+.rsc-det [data-rsc-tabela] :is(th, td) { padding: 0 12px; border: 0 solid var(--ds-glass-border); border-width: 0 var(--ds-borda) var(--ds-borda) 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rsc-det [data-rsc-tabela] th { position: static; height: 32px; font-size: var(--ds-text-xs); }
+.rsc-det [data-rsc-tabela] :is(th, td):last-child { border-right: 0; text-align: right; }
+.rsc-det [data-rsc-tabela] td { height: 44px; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
+.rsc-det [data-rsc-tabela] tbody tr:last-child > td { border-bottom: 0; }
+.rsc-det [data-rsc-tabela] tbody tr:not(:hover) > td { background: transparent; }
+.rsc-det [data-rsc-tabela] tbody tr:hover > td { background: var(--ds-sidebar-item-hover); cursor: pointer; }
+.rsc-det [data-rsc-tabela] input { width: 100%; height: 32px; padding: 0 8px; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-md); outline: none; background: var(--ds-color-surface); font: inherit; color: var(--ds-color-text); }
+.rsc-causa-n { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 .rsc-causa-n.is-sem { color: var(--ds-color-warning-fg); font-weight: var(--ds-weight-semibold); }
-.rsc-det-acoes { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
-.rsc-link {
-  display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 8px; background: none; border: none;
-  border-radius: var(--ds-r-md); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold);
-  color: var(--ds-color-action); cursor: pointer;
-}
+.rsc-causa-linha { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: 10px; }
+.rsc-causa-linha [data-rsc-etapa2] { display: contents; }
+.rsc-causa-seta { flex-shrink: 0; font-size: var(--ds-icon-md); color: var(--ds-color-border-strong); }
+.rsc-causa-linha label { display: flex; align-items: center; gap: 6px; flex: 0 1 280px; min-width: 0; padding: 0 8px; border: var(--ds-borda) dashed var(--ds-color-border); border-radius: var(--ds-r-md); }
+.rsc-causa-linha label:focus-within { border-style: solid; border-color: var(--ds-color-action); }
+.rsc-causa-linha label .material-symbols-outlined { font-size: var(--ds-icon-md); color: var(--ds-color-text-muted); }
+.rsc-causa-linha input { flex: 1; min-width: 0; height: 32px; border: 0; background: transparent; outline: none; font: inherit; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
+.rsc-link { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 8px; background: none; border: none; border-radius: var(--ds-r-md); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-action); cursor: pointer; }
 .rsc-link:first-child { margin-left: -8px; }
 .rsc-link:hover { background: var(--ds-color-info-bg); }
 .rsc-link .material-symbols-outlined { font-size: 18px; }
 
 /* painel lateral (dentro do #detp-panel) */
+.detp-risco-vinculo [data-ico="elemento"] { color: var(--ds-color-elemento); }
 .detp-risco-titulo { font-size: 1.15rem; font-weight: var(--ds-weight-semibold); line-height: 1.35; margin: 0 0 6px; color: var(--ds-color-text); text-wrap: pretty; }
 .detp-risco-vinculo { display: flex; align-items: center; gap: 6px; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); margin-bottom: 18px; }
 .detp-risco-vinculo .material-symbols-outlined { font-size: 16px; }
@@ -603,7 +563,8 @@ body.high-contrast .rsc-tabela tr.rsc-linha.is-pendente-tratamento:not(.selecion
   .rsc-tabela tr.rsc-det { display: block; margin-bottom: 10px; border: 1px solid var(--ds-color-border); border-top: none; border-radius: 0 0 var(--ds-r-lg) var(--ds-r-lg); }
   .rsc-tabela tr.rsc-det td { display: block; padding: 0 12px 12px; border: none; }
   .rsc-tabela tr.rsc-linha:not(.is-open) { margin-bottom: 10px; }
-  .rsc-cons-txt, .rsc-causa-seta { display: none; }
+  .rsc-causa-linha { flex-wrap: wrap; }
+  .rsc-det [data-rsc-tabela] col:last-child { width: 96px; }
 }
 body.high-contrast .rsc-tabela tr.rsc-linha { border-color: #fff; }
 .rsc-pag { margin: 0 !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; }
@@ -641,6 +602,7 @@ var estadoRiscos = {
   sort: { col: 'prioridade', dir: 'asc' },
   paginaAtual: 1, itensPorPagina: 10,
   expandidos: {},
+  rascunhos: {},      // id do risco -> { causa, consequencia, etapa } digitado na linha expandida
   selecionados: {},   // id -> true
   painelId: null      // risco aberto no #detp-panel
 };
@@ -801,8 +763,6 @@ window.abrirModalRisco = abrirModalRisco;
 window.fecharModalRisco = fecharModalRisco;
 window.abrirModalTratamentoForm = abrirModalTratamentoForm;
 window.fecharModalTratamentoForm = fecharModalTratamentoForm;
-window.abrirModalCausaRapida = abrirModalCausaRapida;
-window.fecharModalCausaRapida = fecharModalCausaRapida;
 window.riscosToggleSelecionarTodos = riscosToggleSelecionarTodos;
 window.riscosCancelarSelecao = riscosCancelarSelecao;
 window.estadoRiscos = estadoRiscos;
@@ -935,29 +895,29 @@ function handleSalvarTratamento(e) {
 }
 
 // ================================================================
-// MODAL: NOVA CAUSA/CONSEQUÊNCIA
+// CAUSA/CONSEQUÊNCIA DIRETO NA LINHA EXPANDIDA
 // ================================================================
 
-function handleSalvarCausaRapida(e) {
-  e.preventDefault();
-  var idRisco = document.getElementById('causa-rapida-id-risco').value;
-  var causa = document.getElementById('causa-rapida-causa').value.trim();
-  var consequencia = document.getElementById('causa-rapida-consequencia').value.trim();
-  if (!causa && !consequencia) {
-    if (typeof showMessage === 'function') showMessage('warning', 'Atenção', 'Informe ao menos a causa ou a consequência.');
-    return;
-  }
-
-  if (typeof mostrarLoader === 'function') mostrarLoader();
-  _riscosSDK.chamar('apiAdicionarCausaConsequencia', idRisco, causa, consequencia).then(function(res) {
-    if (typeof esconderLoader === 'function') esconderLoader();
-    fecharModalCausaRapida();
-    var risco = _riscoPorId(idRisco);
+// Grava o par digitado na linha expandida (novo, ou edição quando vem idCausa). Só com os dois campos preenchidos; o servidor confere de novo.
+function riscosGravarCausa(idRisco, idCausa) {
+  var id = String(idRisco), chave = _riscoChaveRasc(id, idCausa);
+  var d = estadoRiscos.rascunhos[chave] || {};
+  var causa = (d.causa || '').trim(), consequencia = (d.consequencia || '').trim();
+  if (!causa || !consequencia) return;
+  var sel = idCausa ? '[data-novo="' + id + '"][data-edita="' + idCausa + '"]' : _riscoSeletorNovo(id);
+  var btn = document.querySelector(sel + ' [data-rsc-gravar]');
+  if (btn) btn.disabled = true;
+  var chamada = idCausa
+    ? _riscosSDK.chamar('apiAtualizarCausaConsequencia', id, String(idCausa), causa, consequencia)
+    : _riscosSDK.chamar('apiAdicionarCausaConsequencia', id, causa, consequencia);
+  chamada.then(function(res) {
+    var risco = _riscoPorId(id);
     if (risco && res && res.causasConsequencias) risco.causasConsequencias = res.causasConsequencias;
+    delete estadoRiscos.rascunhos[chave];
     _riscosRenderCorpo();
-    if (typeof showMessage === 'function') showMessage('success', 'Adicionado', 'Causa/consequência adicionada.');
+    if (!idCausa) riscosNovaCausa(id);
   }, function(err) {
-    if (typeof esconderLoader === 'function') esconderLoader();
+    if (btn) btn.disabled = false;
     if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
   });
 }
@@ -1101,7 +1061,7 @@ function _riscosRenderPainel(r) {
     + '</div>'
     + '<div class="detp-secao">'
     +   '<h3 class="detp-risco-titulo">' + escapeHtml(r.risco || '') + '</h3>'
-    +   '<div class="detp-risco-vinculo"><span class="material-symbols-outlined">' + (r.tipoRisco === 'GERAL' ? 'flag' : 'category') + '</span>' + escapeHtml(_riscoVinculoTxt(r)) + '</div>'
+    +   '<div class="detp-risco-vinculo"><span class="material-symbols-outlined"' + (r.tipoRisco === 'GERAL' || !r.objetoAnalisado ? '' : ' data-ico="elemento"') + '>' + (r.tipoRisco === 'GERAL' || !r.objetoAnalisado ? 'flag' : 'category') + '</span>' + escapeHtml(_riscoVinculoTxt(r)) + '</div>'
     +   '<div class="detp-risco-grade">'
     +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Nível</span><span class="ds-badge" style="align-self:flex-start;background:' + c.bg + ';color:' + c.text + '">' + escapeHtml(_RISCO_NIVEL_ROTULO[r.nivelRisco] || '—') + '</span></div>'
     +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Apetite ao risco</span>' + apetite + '</div>'
@@ -1478,8 +1438,95 @@ function _riscoCobertura(r) {
   return { porCausa: cob, descobertas: descobertas };
 }
 
+// Elemento do risco como "cód. nome" (o código vem do resumo de elementos do plano); risco sem elemento = "Risco geral do plano".
 function _riscoVinculoTxt(r) {
-  return r.tipoRisco === 'GERAL' || !r.objetoAnalisado ? 'Risco geral do plano' : 'Vinculado a ' + r.objetoAnalisado;
+  if (r.tipoRisco === 'GERAL' || !r.objetoAnalisado) return 'Risco geral do plano';
+  var el = (_elementosResumoCache || []).filter(function(e) { return String(e.id) === String(r.idElemento); })[0];
+  return (el && el.codigo ? el.codigo + ' ' : '') + r.objetoAnalisado;
+}
+
+// Campos de causa/consequência da linha expandida: o de "adicionar" (data-novo) e o de edição de um par existente (data-novo + data-edita).
+// O rascunho de cada um fica em estadoRiscos.rascunhos (chave = id do risco, ou id:idCausa na edição) e sobrevive aos re-renders.
+function _riscoChaveRasc(idRisco, idCausa) { return String(idRisco) + (idCausa ? ':' + idCausa : ''); }
+function _riscoNovoEl(el) { return el.closest('[data-novo]'); }
+function _riscoSeletorNovo(id) { return '[data-novo="' + String(id) + '"]:not([data-edita])'; }
+
+// Foca o campo "Adicionar causa" da linha expandida do risco (expande a linha se preciso).
+function riscosNovaCausa(id) {
+  var k = String(id);
+  if (!estadoRiscos.expandidos[k]) { estadoRiscos.expandidos[k] = true; _riscosRenderCorpo(); }
+  var campo = document.querySelector(_riscoSeletorNovo(k) + ' [data-rsc-causa]');
+  if (campo) { campo.focus(); campo.scrollIntoView({ block: 'nearest' }); }
+}
+
+// Abre a edição do par na própria linha, com os textos atuais.
+function riscosEditarCausa(idRisco, idCausa) {
+  var r = _riscoPorId(idRisco), p = r && (r.causasConsequencias || []).filter(function(x) { return String(x.id) === String(idCausa); })[0];
+  if (!p) return;
+  estadoRiscos.rascunhos[_riscoChaveRasc(idRisco, idCausa)] = { causa: p.causa || '', consequencia: p.consequencia || '', etapa: 2 };
+  _riscosRenderCorpo();
+  var campo = document.querySelector('[data-novo="' + String(idRisco) + '"][data-edita="' + String(idCausa) + '"] [data-rsc-causa]');
+  if (campo) { campo.focus(); campo.select(); }
+}
+
+function riscosCancelarEdicaoCausa(idRisco, idCausa) {
+  delete estadoRiscos.rascunhos[_riscoChaveRasc(idRisco, idCausa)];
+  _riscosRenderCorpo();
+}
+
+// Pede confirmação (a exclusão leva as ações de tratamento da causa) e exclui o par.
+function riscosExcluirCausa(idRisco, idCausa) {
+  var r = _riscoPorId(idRisco), p = r && (r.causasConsequencias || []).filter(function(x) { return String(x.id) === String(idCausa); })[0];
+  if (!p) return;
+  var n = (r.tratamentos || []).filter(function(t) { return String(t.idCausa) === String(idCausa); }).length;
+  var aviso = n ? (n === 1 ? ' A <strong>1 ação</strong> de tratamento ligada a ela também será excluída.' : ' As <strong>' + n + ' ações</strong> de tratamento ligadas a ela também serão excluídas.') : '';
+  showConfirm('Excluir causa/consequência?', 'Deseja excluir a causa <strong>' + escapeHtml(p.causa || '') + '</strong>?' + aviso, function() {
+    _riscosSDK.chamar('apiExcluirCausaConsequencia', String(idRisco), String(idCausa)).then(function(res) {
+      r.causasConsequencias = res.causasConsequencias;
+      r.tratamentos = (r.tratamentos || []).filter(function(t) { return (res.idsTratamentosExcluidos || []).indexOf(String(t.id)) === -1; });
+      delete estadoRiscos.rascunhos[_riscoChaveRasc(idRisco, idCausa)];
+      _riscosRenderCorpo();
+    }, function(err) {
+      if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+    });
+  });
+}
+
+// Mostra o campo da consequência (e o gravar) depois que a causa foi digitada.
+function _riscoAbrirEtapaConsequencia(novo) {
+  var chave = _riscoChaveRasc(novo.dataset.novo, novo.dataset.edita);
+  var d = estadoRiscos.rascunhos[chave] || (estadoRiscos.rascunhos[chave] = {});
+  d.etapa = 2;
+  novo.querySelector('[data-rsc-etapa2]').classList.remove('hidden');
+  novo.querySelector('[data-rsc-cons]').focus();
+}
+
+function riscosRascunhoDigitado(campo) {
+  var novo = _riscoNovoEl(campo), chave = _riscoChaveRasc(novo.dataset.novo, novo.dataset.edita);
+  var d = estadoRiscos.rascunhos[chave] || (estadoRiscos.rascunhos[chave] = {});
+  d.causa = novo.querySelector('[data-rsc-causa]').value;
+  d.consequencia = novo.querySelector('[data-rsc-cons]').value;
+  novo.querySelector('[data-rsc-gravar]').disabled = !(d.causa.trim() && d.consequencia.trim());
+}
+
+// Causa: Enter ou Tab (com a causa preenchida) abre a consequência; Esc cancela a edição.
+function riscosCausaTecla(ev, campo) {
+  var novo = _riscoNovoEl(campo);
+  if (ev.key === 'Escape' && novo.dataset.edita) { riscosCancelarEdicaoCausa(novo.dataset.novo, novo.dataset.edita); return; }
+  if (ev.isComposing || !campo.value.trim()) return;
+  if (ev.key === 'Enter' || (ev.key === 'Tab' && !ev.shiftKey && novo.querySelector('[data-rsc-etapa2]').classList.contains('hidden'))) {
+    ev.preventDefault();
+    _riscoAbrirEtapaConsequencia(novo);
+  }
+}
+
+// Consequência: Enter com os dois campos preenchidos grava; Esc cancela a edição.
+function riscosConsTecla(ev, campo) {
+  var novo = _riscoNovoEl(campo);
+  if (ev.key === 'Escape' && novo.dataset.edita) { riscosCancelarEdicaoCausa(novo.dataset.novo, novo.dataset.edita); return; }
+  if (ev.isComposing || ev.key !== 'Enter') return;
+  ev.preventDefault();
+  if (novo.querySelector('[data-rsc-causa]').value.trim() && campo.value.trim()) riscosGravarCausa(novo.dataset.novo, novo.dataset.edita);
 }
 
 function riscosToggleExpand(id) {
@@ -2007,7 +2054,7 @@ function _riscoItensAcao(r, podeEditar) {
   itens.push(
     { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "riscosAbrirPainel('" + idj + "')", principal: true },
     { icone: 'edit', rotulo: 'Editar risco', onclick: "editarRisco('" + idj + "')", principal: true, oculto: !podeEditar },
-    { icone: 'playlist_add', rotulo: 'Adicionar causa/consequência', onclick: "abrirModalCausaRapida('" + idj + "')", oculto: !podeEditar }
+    { icone: 'playlist_add', rotulo: 'Adicionar causa/consequência', onclick: "riscosNovaCausa('" + idj + "')", oculto: !podeEditar }
   );
   if (!pend) itens.push({ icone: 'build', rotulo: 'Adicionar ação de tratamento', onclick: "riscosNovaAcaoTratamento('" + idj + "')", oculto: !podeEditar });
   itens.push(
@@ -2015,6 +2062,25 @@ function _riscoItensAcao(r, podeEditar) {
     { icone: 'delete', rotulo: 'Excluir risco', onclick: "confirmarExclusaoRisco('" + idj + "','" + escapeJsAttr(r.risco) + "')", perigo: true, oculto: !podeEditar }
   );
   return itens;
+}
+
+// Campos de causa → consequência: "adicionar" (idCausa vazio; abaixo da tabela, solto) ou editar um par existente (idCausa preenchido; no lugar da linha da tabela, com ✓ e ✕).
+function _riscoCamposCausaHTML(idj, idCausa, rasc) {
+  var edita = !!idCausa, completo = (rasc.causa || '').trim() && (rasc.consequencia || '').trim();
+  var ac = edita ? ' data-aclick1="' + idCausa + '"' : '';
+  var campoCausa = '<input type="text" data-rsc-causa maxlength="500" placeholder="' + (edita ? 'Causa' : 'Adicionar causa') + '" value="' + escapeHtml(rasc.causa || '') + '" data-on-keydown="risco.56" data-on-input="risco.58" aria-label="Causa">';
+  var campoCons = '<input type="text" data-rsc-cons maxlength="500" placeholder="Consequência" value="' + escapeHtml(rasc.consequencia || '') + '" data-on-keydown="risco.57" data-on-input="risco.58" aria-label="Consequência">';
+  var gravar = '<button type="button" class="ds-icon-action ds-icon-action--sm" data-rsc-gravar data-on-click="risco.59" data-aclick0="' + idj + '"' + ac + ' data-title="Gravar" aria-label="Gravar causa/consequência"' + (completo ? '' : ' disabled') + '><span class="material-symbols-outlined">check</span></button>';
+  if (edita) {
+    return '<tr data-novo="' + idj + '" data-edita="' + idCausa + '"><td>' + campoCausa + '</td><td data-rsc-etapa2>' + campoCons + '</td>'
+      + '<td class="ds-col-sobreposta">' + gravar + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.62" data-aclick0="' + idj + '"' + ac + ' data-title="Cancelar" aria-label="Cancelar edição"><span class="material-symbols-outlined">close</span></button></td></tr>';
+  }
+  return '<div class="rsc-causa-linha" data-novo="' + idj + '">'
+    + '<label><span class="material-symbols-outlined" aria-hidden="true">add</span>' + campoCausa + '</label>'
+    + '<span data-rsc-etapa2' + (rasc.etapa === 2 ? '' : ' class="hidden"') + '>'
+    +   '<span class="material-symbols-outlined rsc-causa-seta" aria-hidden="true">arrow_right_alt</span>'
+    +   '<label>' + campoCons + '</label>' + gravar
+    + '</span></div>';
 }
 
 function _riscoLinhaHTML(r, podeEditar) {
@@ -2081,24 +2147,31 @@ function _riscoLinhaHTML(r, podeEditar) {
     + '</tr>';
 
   if (aberto) {
-    var causas = (r.causasConsequencias || []).map(function(p) {
+    var temVarios = (r.causasConsequencias || []).length > 1;
+    var linhasPares = (r.causasConsequencias || []).map(function(p) {
       var n = cob.porCausa[String(p.id)] || 0;
-      return '<div class="rsc-causa-linha" data-on-click="risco.52" data-aclick0="' + idj + '" data-title="Ver no painel de detalhes">'
-        + '<span class="rsc-causa-dot"></span>'
-        + '<span class="rsc-causa-txt" data-title="' + escapeHtml(p.causa || '') + '">' + escapeHtml(p.causa || '—') + '</span>'
-        + '<span class="material-symbols-outlined rsc-causa-seta" aria-hidden="true">arrow_right_alt</span>'
-        + '<span class="rsc-cons-txt" data-title="' + escapeHtml(p.consequencia || '') + '">' + escapeHtml(p.consequencia || '—') + '</span>'
-        + '<span class="rsc-causa-n' + (n ? '' : ' is-sem') + '">' + (n ? n + (n === 1 ? ' ação' : ' ações') : 'Sem ação') + '</span>'
-        + '</div>';
+      var pid = escapeHtml(String(p.id));
+      var edit = estadoRiscos.rascunhos[_riscoChaveRasc(id, p.id)];
+      if (edit && podeEditar) return _riscoCamposCausaHTML(idj, pid, edit);
+      var jid = escapeJsAttr(id), jpid = escapeJsAttr(String(p.id));
+      var acoes = podeEditar ? acoesLinhaHTML('causa-' + idj + '-' + pid, [
+        { icone: 'build', rotulo: 'Adicionar ação de tratamento', onclick: "riscosNovaAcaoTratamento('" + jid + "','" + jpid + "')" },
+        { icone: 'edit', rotulo: 'Editar causa/consequência', onclick: "riscosEditarCausa('" + jid + "','" + jpid + "')" },
+        { icone: 'delete', rotulo: 'Excluir causa/consequência', onclick: "riscosExcluirCausa('" + jid + "','" + jpid + "')", cor: 'var(--ds-color-danger-fg)', oculto: !temVarios }
+      ], { maxDireto: 3 }) : '';
+      return '<tr data-on-click="risco.52" data-aclick0="' + idj + '">'
+        + '<td' + ((p.causa || '').length > 40 ? ' data-title="' + escapeHtml(p.causa) + '"' : '') + '>' + escapeHtml(p.causa || '—') + '</td>'
+        + '<td' + ((p.consequencia || '').length > 40 ? ' data-title="' + escapeHtml(p.consequencia) + '"' : '') + '>' + escapeHtml(p.consequencia || '—') + '</td>'
+        + '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="rsc-causa-n' + (n ? '' : ' is-sem') + '">' + (n ? n + (n === 1 ? ' ação' : ' ações') : 'Sem ação') + '</span></div>'
+        +   '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td></tr>';
     }).join('');
-    if (!causas) causas = '<div class="rsc-vinculo" style="font-style:italic">Nenhuma causa cadastrada.</div>';
+    var tabela = linhasPares
+      ? '<div data-rsc-tabela><table><colgroup><col><col><col></colgroup>'
+        + '<thead><tr><th>Causa</th><th>Consequência</th><th>Ação</th></tr></thead><tbody>' + linhasPares + '</tbody></table></div>'
+      : '';
+    var novo = podeEditar ? _riscoCamposCausaHTML(idj, '', estadoRiscos.rascunhos[id] || {}) : (linhasPares ? '' : '<div class="rsc-vinculo">Nenhuma causa cadastrada.</div>');
     html += '<tr class="rsc-det' + (sel ? ' selecionada' : '') + (ativo ? ' rsc-ativa' : '') + '"><td colspan="6">'
-      + '<div class="rsc-vinculo"><span class="material-symbols-outlined">' + (r.tipoRisco === 'GERAL' ? 'flag' : 'category') + '</span><span>' + escapeHtml(_riscoVinculoTxt(r)) + '</span></div>'
-      + causas
-      + '<div class="rsc-det-acoes">'
-      +   (podeEditar ? '<button type="button" class="rsc-link" data-on-click="risco.53" data-aclick0="' + idj + '"><span class="material-symbols-outlined">add</span>Causa</button>' : '')
-      +   '<button type="button" class="rsc-link" data-on-click="risco.52" data-aclick0="' + idj + '">Ver tratamento<span class="material-symbols-outlined">chevron_right</span></button>'
-      + '</div>'
+      + tabela + novo
       + '</td></tr>';
   }
   return html;
@@ -2155,7 +2228,7 @@ function _riscosRenderCorpo() {
 }
 
 function riscosCliqueLinha(ev, id) {
-  if (ev.target.closest('button, a, input, .acoes-linha, .rsc-link')) return;
+  if (ev.target.closest('button, a, input, label, .acoes-linha, .rsc-link')) return;
   var idStr = String(id);
   if (ev.shiftKey && _riscosUltimoClicado) {
     var listaVisivel = _riscosSortLista(_riscosFiltrar(_riscosListaAtiva()));
@@ -2175,7 +2248,7 @@ function riscosCliqueLinha(ev, id) {
 }
 
 function riscosDuploCliqueLinha(ev, id) {
-  if (ev.target.closest('button, a, input, .acoes-linha, .rsc-link')) return;
+  if (ev.target.closest('button, a, input, label, .acoes-linha, .rsc-link')) return;
   riscosAbrirPainel(id);
 }
 
@@ -2601,19 +2674,6 @@ function fecharModalTratamentoForm() {
   if (typeof desbloquearFundo === 'function') desbloquearFundo();
   _tratFormIdRisco = null;
 }
-function abrirModalCausaRapida(idRisco) {
-  document.getElementById('causa-rapida-id-risco').value = idRisco;
-  document.getElementById('causa-rapida-causa').value = '';
-  document.getElementById('causa-rapida-consequencia').value = '';
-  document.getElementById('modal-causa-rapida').classList.remove('hidden');
-  if (typeof bloquearFundo === 'function') bloquearFundo();
-  document.getElementById('causa-rapida-causa').focus();
-}
-
-function fecharModalCausaRapida() {
-  document.getElementById('modal-causa-rapida').classList.add('hidden');
-  if (typeof desbloquearFundo === 'function') desbloquearFundo();
-}
 
 // app_riscos_eventos — registro das ações delegadas (uiRegistrarAcoes)
 uiRegistrarAcoes('risco', {
@@ -2631,9 +2691,6 @@ uiRegistrarAcoes('risco', {
   '12': function (event) { fecharModalTratamentoForm(); },
   '13': function (event) { handleSalvarTratamento(event); },
   '14': function (event) { onMudarPeriodicidadeTrat(); },
-  '15': function (event) { if(event.target===this) fecharModalCausaRapida(); },
-  '16': function (event) { fecharModalCausaRapida(); },
-  '17': function (event) { handleSalvarCausaRapida(event); },
   '18': function (event) { _rwizIrParaRail(uiArgLit(this.dataset.rclick0)); },
   '19': function (event) { removerCausaConsequenciaRisco(uiArgLit(this.dataset.rclick0)); },
   '20': function (event) { toggleNaturezaRisco(this); },
@@ -2669,9 +2726,16 @@ uiRegistrarAcoes('risco', {
   '50': function (event) { riscosToggleSelecao(uiArgJs(this.dataset.achange0), this.checked); },
   '51': function (event) { event.stopPropagation(); riscosToggleExpand(uiArgJs(this.dataset.aclick0)); },
   '52': function (event) { riscosAbrirPainel(uiArgJs(this.dataset.aclick0)); },
-  '53': function (event) { abrirModalCausaRapida(uiArgJs(this.dataset.aclick0)); },
+  '53': function (event) { riscosNovaCausa(uiArgJs(this.dataset.aclick0)); },
   '54': function (event) { riscosNovaAcaoTratamento(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); },
-  '55': function (event) { _riscosSDK.fecharPainel(); }
+  '55': function (event) { _riscosSDK.fecharPainel(); },
+  '56': function (event) { riscosCausaTecla(event, this); },
+  '57': function (event) { riscosConsTecla(event, this); },
+  '58': function (event) { riscosRascunhoDigitado(this); },
+  '59': function (event) { event.stopPropagation(); riscosGravarCausa(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
+  '60': function (event) { event.stopPropagation(); riscosEditarCausa(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
+  '61': function (event) { event.stopPropagation(); riscosExcluirCausa(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
+  '62': function (event) { event.stopPropagation(); riscosCancelarEdicaoCausa(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); }
 });
 
 
