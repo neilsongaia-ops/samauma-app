@@ -267,7 +267,6 @@ body.org-fs-active, body.org-fs-active #main-content { overflow: hidden !importa
 }
 .org-card-top { position: relative; display: flex; align-items: center; gap: 6px; height: 20px; min-width: 0; }
 .org-card-top .org-flex { flex: 1; min-width: 0; }
-.org-card .el-tipo-badge { max-width: 135px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; }
 .org-card .el-codigo { font-size: var(--ds-text-xs); flex-shrink: 0; white-space: nowrap; }
 .org-card.org-movido .el-codigo { color: var(--ds-color-info-fg); }
 .org-era { font-size: 11px; font-weight: var(--ds-weight-semibold); color: var(--ds-color-info-fg); white-space: nowrap; flex-shrink: 0; }
@@ -3600,7 +3599,7 @@ function _orgIniciarDrag(id) {
   var g = document.getElementById('org-ghost');
   if (!g) { g = document.createElement('div'); g.id = 'org-ghost'; g.className = 'org-ghost'; document.body.appendChild(g); }
   g.innerHTML = '<div class="org-ghost-card"><div class="org-ghost-top">'
-    + (el.tipo ? '<span class="el-tipo-badge"' + (cor ? ' style="background:' + cor + '22;color:' + cor + ';border:1px solid ' + cor + '55"' : '') + '>' + escapeHtml(el.tipo) + '</span>' : '')
+    + uiBadgeTipoHTML(el.tipo, cor)
     + '<span class="el-codigo">' + escapeHtml(_orgCodigos(_orgEst.ordem)[id] || '') + '</span>'
     + (nSub ? '<span class="org-ghost-sub">+' + nSub + ' sub</span>' : '') + '</div>'
     + '<div class="org-ghost-titulo">' + escapeHtml(el.titulo || '') + '</div></div>'
@@ -4016,7 +4015,7 @@ function criarNoDOM(item) {
           ${respHtml}
           ${indicadorTagHtml}
           ${custoHtml}
-          ${uiChipPrazoHTML(item.prazo || item.fim, item.atrasoRegular)}
+          ${uiChipPrazoHTML(item.prazo || item.fim)}
           ${(item.solicitacoesColaboracaoPendentes && item.solicitacoesColaboracaoPendentes.length) ? `<span class="meta-tag" style="background: var(--ds-color-warning-bg);color: var(--ds-color-warning-fg);border-color:color-mix(in srgb, var(--ds-color-warning-fg) 40%, transparent);cursor:pointer" data-on-click="el.74" data-aclick0="${item.id}"><span class="material-symbols-outlined" style="font-size:13px;vertical-align:text-bottom;margin-right:2px">group_add</span>${item.solicitacoesColaboracaoPendentes.length} solicitação(ões) de colaboração</span>` : ''}
         </div>
       </div>
@@ -5116,9 +5115,9 @@ function renderizarTabelaEstrutura() {
     // Element content & tipo badge
     var tipoHtml = '';
     if (corTipo) {
-      tipoHtml = '<span class="el-tipo-badge" style="background:' + corTipo + '22;color:' + corTipo + ';border:1px solid ' + corTipo + '55">' + escapeHtml(no.tipo) + '</span>';
+      tipoHtml = uiBadgeTipoHTML(no.tipo, corTipo);
     } else if (no.tipo) {
-      tipoHtml = '<span class="el-tipo-badge" style="background:var(--ds-color-surface-2);color:var(--ds-color-text-muted)">' + escapeHtml(no.tipo) + '</span>';
+      tipoHtml = uiBadgeTipoHTML(no.tipo);
     }
 
     // Chips de informações adicionais (estilo anexos do Gmail: pills médias com ícones)
@@ -5127,7 +5126,7 @@ function renderizarTabelaEstrutura() {
     var qtdInd = Number(no.qtdIndicadores || 0);
 
     var chipsList = [];
-    if (no.prazo || no.fim) chipsList.push(uiChipPrazoHTML(no.prazo || no.fim, no.atrasoRegular));
+    if (no.prazo || no.fim) chipsList.push(uiChipPrazoHTML(no.prazo || no.fim));
     if (custoFmt) {
       chipsList.push('<span class="el-chip-meta el-chip-custo" data-title="Custo estimado: ' + escapeHtml(custoFmt) + '"><span class="material-symbols-outlined">payments</span><span class="el-chip-meta-txt">' + escapeHtml(custoFmt) + '</span></span>');
     }
@@ -5328,9 +5327,7 @@ function renderizarOrganograma() {
     var movido = cod[id] !== _orgEst.base[id];
     var sel = _elSelecionados.has(id);
 
-    var tipoHtml = cor
-      ? '<span class="el-tipo-badge" style="background:' + cor + '22;color:' + cor + ';border:1px solid ' + cor + '55">' + escapeHtml(el.tipo) + '</span>'
-      : (el.tipo ? '<span class="el-tipo-badge">' + escapeHtml(el.tipo) + '</span>' : '');
+    var tipoHtml = uiBadgeTipoHTML(el.tipo, cor);
 
     var respHtml = '';
     if (el.quem && el.quem.length) {
@@ -5343,7 +5340,7 @@ function renderizarOrganograma() {
         + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '') + '</span>';
     }
     var nInd = Number(el.qtdIndicadores || 0);
-    var indHtml = uiChipPrazoHTML(el.prazo || el.fim, el.atrasoRegular) + (nInd ? '<span class="el-chip-meta el-chip-ind" data-title="' + nInd + (nInd === 1 ? ' indicador' : ' indicadores') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + nInd + '</span></span>' : '');
+    var indHtml = uiChipPrazoHTML(el.prazo || el.fim) + (nInd ? '<span class="el-chip-meta el-chip-ind" data-title="' + nInd + (nInd === 1 ? ' indicador' : ' indicadores') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + nInd + '</span></span>' : '');
 
     var acoes = acoesLinhaHTML('org-tb-' + id, [
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
@@ -5506,9 +5503,9 @@ function renderizarTabelaDetalhes() {
     // Item (O Quê)
     var tipoHtml = '';
     if (corTipo) {
-      tipoHtml = '<span class="el-tipo-badge" style="background:' + corTipo + '22;color:' + corTipo + ';border:1px solid ' + corTipo + '55">' + escapeHtml(item.tipo) + '</span>';
+      tipoHtml = uiBadgeTipoHTML(item.tipo, corTipo);
     } else if (item.tipo) {
-      tipoHtml = '<span class="el-tipo-badge" style="background:var(--ds-color-surface-2);color:var(--ds-color-text-muted)">' + escapeHtml(item.tipo) + '</span>';
+      tipoHtml = uiBadgeTipoHTML(item.tipo);
     }
 
     var supInfo = obterInfoSuperioresElemento(item);

@@ -555,6 +555,7 @@ tr:hover td { background-color: var(--ds-sidebar-item-hover); }
   --ds-color-info:    #1967d2; --ds-color-info-bg:    #e8f0fe; --ds-color-info-fg:    #1967d2;
   --ds-color-pending: #7b2cbf;
   --ds-color-relacao: #ad1457;  /* relacionamento entre elementos (badge hub + linhas do organograma) */
+  --ds-color-indicador: #8e44ad;  /* ícone de indicador (speed), em qualquer tela */
 
   /* -- Status de plano (FONTE ÚNICA — substitui as ~5 cópias divergentes) -- */
   --ds-status-elaboracao-bg: #fff8e1; --ds-status-elaboracao-fg: #b06000;
@@ -697,6 +698,7 @@ tr:hover td { background-color: var(--ds-sidebar-item-hover); }
   --ds-risk-alto-bg: #3a2410; --ds-risk-alto-fg: #ffab70;
   --ds-color-action: #5b9bff;
   --ds-color-action-hover: #82b3ff;
+  --ds-color-indicador: #c9a2ff;
   --ds-color-on-action: #06142b;
   --ds-focus-ring: rgba(130,179,255,.55);
 
@@ -752,6 +754,7 @@ body.high-contrast {
   --ds-color-action:        #00ffff;
   --ds-color-action-hover:  #66ffff;
   --ds-color-on-action:     #000000;
+  --ds-color-indicador:     #d6b8ff;
 
 
   /* Marca (navy): sem contraste suficiente em fundo preto — amarelo do tema original. */
@@ -944,6 +947,40 @@ body.high-contrast {
 .ds-input--error, .ds-textarea--error, .ds-select--error { border-color: var(--ds-color-danger); }
 .ds-help { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 .ds-help--error { color: var(--ds-color-danger-fg); }
+
+/* ---- Assistente com trilha lateral: .modal-card--lg > cabeçalho + .ds-wizard (trilha + corpo) + rodapé ---- */
+.modal-card.modal-card--lg { max-width: min(1040px, calc(100vw - 32px)); max-height: none; height: min(680px, calc(100vh - 48px)); }
+.ds-wizard { display: grid; grid-template-columns: 220px minmax(0, 1fr); flex: 1; min-height: 0; border-top: var(--ds-borda) solid var(--ds-color-border); }
+.ds-wizard__trilha { display: flex; flex-direction: column; gap: var(--ds-space-1); padding: var(--ds-space-3); background: var(--ds-color-surface-2); border-right: var(--ds-borda) solid var(--ds-color-border); overflow-y: auto; }
+.ds-wizard__passo { padding: var(--ds-space-1) var(--ds-space-2) var(--ds-space-2); font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ds-wizard__etapa { display: flex; align-items: center; gap: var(--ds-space-3); padding: var(--ds-space-2) var(--ds-space-3); border: 0; border-radius: var(--ds-r-xl); background: transparent; color: var(--ds-color-text); text-align: left; cursor: pointer; font: inherit; }
+.ds-wizard__etapa:hover { background: var(--ds-color-surface); }
+.ds-wizard__etapa.is-ativa { background: var(--ds-color-surface); box-shadow: var(--ds-shadow-1); }
+.ds-wizard__icone { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--ds-r-pill); background: var(--ds-color-border); color: var(--ds-color-text-muted); flex: none; }
+.ds-wizard__icone .material-symbols-outlined { font-size: var(--ds-icon-md); }
+.ds-wizard__etapa.is-ativa .ds-wizard__icone { background: var(--ds-color-action); color: var(--ds-color-on-action); }
+.ds-wizard__texto { display: flex; flex-direction: column; min-width: 0; }
+.ds-wizard__rotulo { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); }
+.ds-wizard__resumo { font-size: var(--ds-text-xs); color: var(--ds-color-success-fg); }
+.ds-wizard__resumo--alerta { color: var(--ds-color-warning-fg); }
+.ds-wizard__corpo { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.ds-wizard__corpo .wizard-steps-viewport { padding-top: var(--ds-space-4); }
+@media (max-width: 768px) {
+  .modal-card.modal-card--lg { height: calc(100vh - 24px); }
+  .ds-wizard { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .ds-wizard__trilha { flex-direction: row; overflow-x: auto; overflow-y: hidden; border-right: 0; border-bottom: var(--ds-borda) solid var(--ds-color-border); }
+  .ds-wizard__passo { display: none; }
+  .ds-wizard__etapa { flex: none; }
+}
+
+/* ---- Lista selecionável (mestre-detalhe): um item ativo, o detalhe fica ao lado ---- */
+.ds-lista-sel { display: flex; flex-direction: column; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-xl); background: var(--ds-color-surface); overflow-y: auto; min-height: 0; }
+.ds-lista-sel__item { display: flex; flex-direction: column; gap: var(--ds-space-1); padding: var(--ds-space-2) var(--ds-space-3); border: 0; border-left: var(--ds-borda-destaque) solid transparent; border-bottom: var(--ds-borda) solid var(--ds-color-border); background: transparent; color: var(--ds-color-text); font: inherit; font-size: var(--ds-text-sm); text-align: left; cursor: pointer; }
+.ds-lista-sel__item:last-child { border-bottom: 0; }
+.ds-lista-sel__item:hover { background: var(--ds-color-surface-2); }
+.ds-lista-sel__item.is-ativo { background: var(--ds-color-info-bg); border-left-color: var(--ds-color-action); }
+.ds-lista-sel-grade { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: var(--ds-space-5); align-items: start; }
+@media (max-width: 768px) { .ds-lista-sel-grade { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---- Layout helpers ---- */
 .ds-stack { display: flex; flex-direction: column; gap: var(--ds-space-4); }
@@ -1343,8 +1380,30 @@ td > .acoes-linha:only-child { display: flex; }
 @media (max-width: 768px) { .ds-col-acoes { width: 48px; } }
 .ds-th-acoes { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
 /* Ícone na coluna de ações (cabeçalho ou célula) é SEMPRE sem borda, fundo e sombra — igual ao .acoes-btn; só o hover destaca. */
-.ds-col-acoes .ds-icon-action, .ds-th-acoes .ds-icon-action { width: 28px; height: 28px; background: none; border-color: transparent; box-shadow: none; color: var(--ds-color-text-muted); }
-.ds-col-acoes .ds-icon-action:hover, .ds-th-acoes .ds-icon-action:hover { background: var(--ds-sidebar-item-hover); border-color: transparent; box-shadow: none; color: var(--ds-color-action); }
+.ds-col-acoes .ds-icon-action, .ds-th-acoes .ds-icon-action, .ds-th-ferramentas .ds-icon-action { width: 28px; height: 28px; background: none; border-color: transparent; box-shadow: none; color: var(--ds-color-text-muted); }
+.ds-col-acoes .ds-icon-action:hover, .ds-th-acoes .ds-icon-action:hover, .ds-th-ferramentas .ds-icon-action:hover { background: var(--ds-sidebar-item-hover); border-color: transparent; box-shadow: none; color: var(--ds-color-action); }
+/* Ações sobrepostas (sem coluna própria): a ÚLTIMA informação da linha dá lugar às ações no hover/foco — ação principal, secundária e ⋮ (acoesLinhaHTML).
+   Célula: .ds-col-sobreposta (<col>/<th>) > .ds-celula-sobreposta > .ds-celula-sobreposta__info (o dado) + .ds-celula-sobreposta__acoes (acoesLinhaHTML).
+   Sem hover (celular/tablet): o dado fica visível e só o ⋮ aparece; o menu lista todas as ações. */
+.ds-col-sobreposta { width: 176px; white-space: nowrap; text-align: right; }
+.ds-celula-sobreposta { display: grid; justify-items: end; align-items: center; min-height: 32px; }
+.ds-celula-sobreposta > * { grid-area: 1 / 1; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard), visibility var(--ds-duration-fast) var(--ds-ease-standard); }
+.ds-celula-sobreposta__acoes { opacity: 0; visibility: hidden; position: relative; z-index: 1; }
+tr:hover .ds-celula-sobreposta__info, tr:focus-within .ds-celula-sobreposta__info, .ds-celula-sobreposta:has([aria-expanded="true"]) .ds-celula-sobreposta__info { opacity: 0; pointer-events: none; }
+tr:hover .ds-celula-sobreposta__acoes, tr:focus-within .ds-celula-sobreposta__acoes, .ds-celula-sobreposta__acoes:has([aria-expanded="true"]) { opacity: 1; visibility: visible; }
+@media (hover: none), (max-width: 768px) {
+  .ds-celula-sobreposta { display: flex; justify-content: flex-end; align-items: center; gap: var(--ds-space-2); }
+  tr .ds-celula-sobreposta .ds-celula-sobreposta__info { opacity: 1; }
+  tr .ds-celula-sobreposta .ds-celula-sobreposta__acoes { opacity: 1; visibility: visible; }
+  .ds-celula-sobreposta .acoes-direto { display: none; }
+  .ds-celula-sobreposta .acoes-so-mobile { display: inline-flex; }
+}
+/* Ferramentas da tabela no cabeçalho da última coluna: só o ícone de ordenar fica visível; ao clicar, os demais surgem da direita para a esquerda. */
+.ds-th-ferramentas { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: var(--ds-space-1); }
+.ds-th-ferramentas__rotulo { margin-right: auto; transition: opacity var(--ds-duration-base) var(--ds-ease-standard); }
+.ds-th-ferramentas.is-aberto .ds-th-ferramentas__rotulo { opacity: 0; }
+.ds-th-ferramentas__extras { position: absolute; right: calc(28px + var(--ds-space-1)); top: 50%; transform: translateY(-50%); display: flex; gap: var(--ds-space-1); padding: var(--ds-space-1); background: var(--ds-color-surface); border-radius: var(--ds-r-sm); clip-path: inset(0 0 0 100%); visibility: hidden; transition: clip-path var(--ds-duration-base) var(--ds-ease-standard), visibility 0s linear var(--ds-duration-base); }
+.ds-th-ferramentas.is-aberto .ds-th-ferramentas__extras { clip-path: inset(0); visibility: visible; transition-delay: 0s; z-index: 2; }
 .ds-th-ord { cursor: pointer; user-select: none; white-space: nowrap; }
 .ds-th-ord:hover { color: var(--ds-color-action); }
 .ds-th-ord__icone { font-size: 14px; vertical-align: middle; margin-left: 3px; color: var(--ds-color-action); }
@@ -1353,11 +1412,10 @@ td > .acoes-linha:only-child { display: flex; }
 .ds-linha-clicavel:hover > td { background: var(--ds-sidebar-item-hover); }
 .ds-alerta-atraso { display: inline-flex; align-items: center; color: var(--ds-color-danger-fg); cursor: help; vertical-align: middle; }
 .ds-alerta-atraso .material-symbols-outlined { font-size: 16px; }
-/* Selo de histórico de atraso: registro (não alerta) de que o elemento já estava atrasado na vigência regular do plano; neutro, nunca some. uiSeloHistoricoAtrasoHTML(texto). */
-.ds-selo-historico { display: inline-flex; align-items: center; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; }
-.ds-selo-historico .material-symbols-outlined { font-size: 16px; }
-.ds-selo-historico:focus-visible { outline: 2px solid var(--ds-color-action); outline-offset: 2px; border-radius: var(--ds-r-sm); }
 .ds-valor-alerta { display: inline-flex; align-items: center; gap: 2px; }
+/* Badge do tipo de elemento: pílula com a cor do tipo (definida ao criar o elemento) aplicada em linha (cor, fundo e borda a partir do hex); sem cor, neutro. uiBadgeTipoHTML(tipo, cor). */
+.ds-badge-tipo { flex-shrink: 0; max-width: 135px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; padding: 1px 8px; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); }
+@media (max-width: 768px) { .ds-badge-tipo { max-width: 80px; } }
 /* Prazo final do elemento: pílula com ícone de calendário (cor própria, diferente dos chips de vínculo e indicador) + data final. uiChipPrazoHTML(dataBR). */
 .ds-chip-prazo { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-pill); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); line-height: 1.25; white-space: nowrap; color: var(--ds-color-text); cursor: default; }
 .ds-chip-prazo .material-symbols-outlined { font-size: 14px; color: var(--ds-color-success); }
@@ -5458,6 +5516,424 @@ uiRegistrarAcoes('components_modal_resultado', {
   '9': function (event) { _resContarAnalise(); }
 });
 </script>
+    <!-- ARQUIVO: components_modal_registro_execucao.html -->
+<!-- Modal "Registrar execução" de UM elemento, em três etapas: Progresso · Desempenho · Riscos.
+     Abertura única: abrirRegistroExecucao({ idPlano, idElemento, etapa? }) — etapa: 'progresso' | 'desempenho' | 'riscos'.
+     Cada etapa grava sozinha (lançamentos independentes); o que foi preenchido nas outras etapas fica no estado do modal.
+     Só classes do design system: assistente com trilha lateral (.ds-wizard) e lista selecionável (.ds-lista-sel). -->
+<div id="rex-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="rex-titulo" data-on-click="components_modal_registro_execucao.1">
+  <div class="modal-card modal-card--lg">
+    <div class="modal-header">
+      <div class="ds-stack ds-stack--2">
+        <span class="ds-help" id="rex-caminho"></span>
+        <h3 id="rex-titulo">Registrar execução</h3>
+      </div>
+      <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="components_modal_registro_execucao.2" data-title="Fechar" aria-label="Fechar">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <div class="ds-wizard">
+      <div class="ds-wizard__trilha" id="rex-trilha" role="tablist"></div>
+      <div class="ds-wizard__corpo">
+        <div class="wizard-steps-viewport" id="rex-viewport">
+          <div class="wizard-step" id="rex-etapa"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <span class="ds-help" id="rex-sessao" aria-live="polite"></span>
+      <button type="button" class="ds-btn ds-btn--ghost" id="rex-btn-voltar" data-on-click="components_modal_registro_execucao.3">Voltar</button>
+      <button type="button" class="ds-btn ds-btn--primary" id="rex-btn-continuar" data-on-click="components_modal_registro_execucao.4">Continuar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var estadoRegistroExec = null;
+
+var _REX_ETAPAS = {
+  progresso:  { rotulo: 'Progresso',  icone: 'task_alt' },
+  desempenho: { rotulo: 'Desempenho', icone: 'speed' },
+  riscos:     { rotulo: 'Riscos',     icone: 'shield' }
+};
+var _REX_NIVEL = {
+  RB: ['ds-badge ds-badge--success', 'Risco baixo'],
+  RM: ['ds-badge ds-badge--warning', 'Risco médio'],
+  RA: ['ds-badge ds-badge--danger', 'Risco alto'],
+  RE: ['ds-badge ds-badge--danger', 'Risco extremo']
+};
+var _REX_IND_ESTADO = {
+  pendente:  ['ds-badge ds-badge--warning', 'Pendente'],
+  validacao: ['ds-badge ds-badge--info', 'Em validação'],
+  lancado:   ['ds-badge ds-badge--success', 'Lançado'],
+  semMeta:   ['ds-badge ds-badge--neutral', 'Sem meta'],
+  bloqueado: ['ds-badge ds-badge--neutral', 'Bloqueado']
+};
+
+function abrirRegistroExecucao(opts) {
+  opts = opts || {};
+  var pg = typeof estadoExecTarefas !== 'undefined' ? estadoExecTarefas : null;
+  var mesmoPlano = pg && String(pg.idPlano) === String(opts.idPlano) && pg.dados;
+  estadoRegistroExec = {
+    idPlano: String(opts.idPlano), idElemento: String(opts.idElemento), etapaPedida: opts.etapa || '',
+    dados: mesmoPlano ? pg.dados : null, riscos: mesmoPlano ? pg.riscos : null,
+    ano: pg && pg.anoSelecionado !== 'todos' ? Number(pg.anoSelecionado) : new Date().getFullYear(),
+    etapas: [], etapa: 0, idIndicador: '', soPendentes: false,
+    rascunho: { progresso: {}, desempenho: {}, riscos: {} }, sessao: { progresso: false, desempenho: {}, riscos: {} }
+  };
+  document.getElementById('rex-modal').classList.remove('hidden');
+  if (typeof bloquearFundo === 'function') bloquearFundo();
+  document.getElementById('rex-etapa').innerHTML = spinnerListaHTML('Carregando…');
+  _rexGarantirDados(function() { _rexPrepararEtapas(); _rexRender(); });
+}
+
+function fecharRegistroExecucao() {
+  document.getElementById('rex-modal').classList.add('hidden');
+  if (typeof desbloquearFundo === 'function') desbloquearFundo();
+  var houve = estadoRegistroExec && (estadoRegistroExec.sessao.progresso || Object.keys(estadoRegistroExec.sessao.desempenho).length || Object.keys(estadoRegistroExec.sessao.riscos).length);
+  estadoRegistroExec = null;
+  if (houve && typeof carregarDadosExecucao === 'function') carregarDadosExecucao();
+}
+
+function _rexGarantirDados(pronto) {
+  var e = estadoRegistroExec, falha = function(err) { document.getElementById('rex-etapa').innerHTML = '<span class="ds-help ds-help--error">' + escapeHtml(err.message) + '</span>'; };
+  var passo2 = function() {
+    if (e.riscos) { pronto(); return; }
+    google.script.run.withSuccessHandler(function(l) { e.riscos = l || []; pronto(); }).withFailureHandler(falha).apiGetRiscos(e.idPlano);
+  };
+  if (e.dados) { passo2(); return; }
+  google.script.run.withSuccessHandler(function(d) { e.dados = d; passo2(); }).withFailureHandler(falha).apiGetTarefasExecucaoPlano(e.idPlano);
+}
+
+function _rexNo(id) { return ((estadoRegistroExec.dados || {}).arvore || []).find(function(n) { return String(n.id) === String(id); }) || null; }
+function _rexIndicadores() { var id = estadoRegistroExec.idElemento; return ((estadoRegistroExec.dados || {}).indicadores || []).filter(function(i) { return String(i.idElemento) === id; }); }
+function _rexRiscos() { var id = estadoRegistroExec.idElemento; return (estadoRegistroExec.riscos || []).filter(function(r) { return String(r.idElemento) === id; }); }
+
+// Estado de um indicador no exercício. PROVISÓRIO: a regra mora no servidor; a rota ainda não entrega a situação de validação do resultado.
+function _rexIndEstado(ind) {
+  var e = estadoRegistroExec;
+  if (e.sessao.desempenho[ind.id]) return { meta: null, res: null, estado: 'validacao' };
+  if (typeof execIndicadorEstado === 'function') return execIndicadorEstado(ind, e.ano);
+  var meta = (ind.metas || []).find(function(m) { return Number(m.ano) === Number(e.ano); }) || null;
+  var res = meta ? (ind.resultados || []).find(function(r) { return String(r.idMeta) === String(meta.id); }) || null : null;
+  return { meta: meta, res: res, estado: ind.resultadoBloqueado ? 'bloqueado' : !meta ? 'semMeta' : res ? 'lancado' : 'pendente' };
+}
+function _rexTratDevido(t) { return !estadoRegistroExec.sessao.riscos[t.id] && typeof execTratamentoDevido === 'function' && execTratamentoDevido(t); }
+
+function _rexResumo(k) {
+  var e = estadoRegistroExec, n = _rexNo(e.idElemento) || {};
+  if (k === 'progresso') {
+    if (e.sessao.progresso) return { devido: false, texto: 'Lançado nesta sessão' };
+    if (n.listaNecessaria) return { devido: true, texto: 'Lista sem itens' };
+    if (n.progressoPendente) return { devido: false, texto: 'Aguardando validação' };
+    if (n.progressoRejeitado) return { devido: true, texto: 'Rejeitado' };
+    var f = typeof execFrentes === 'function' ? execFrentes(n) : { prog: true };
+    return { devido: !!f.prog, texto: f.prog ? 'A lançar' : 'Em dia' };
+  }
+  if (k === 'desempenho') {
+    var inds = _rexIndicadores(), pend = inds.filter(function(i) { return _rexIndEstado(i).estado === 'pendente'; }).length;
+    return { devido: pend > 0, texto: pend ? (inds.length - pend) + ' de ' + inds.length : 'Em dia' };
+  }
+  var dev = 0; _rexRiscos().forEach(function(r) { (r.tratamentos || []).forEach(function(t) { if (_rexTratDevido(t)) dev++; }); });
+  return { devido: dev > 0, texto: dev ? dev + (dev > 1 ? ' devidas' : ' devida') : 'Em dia' };
+}
+
+// As etapas que existem para o elemento; abre na pedida ou na primeira com algo a registrar.
+function _rexPrepararEtapas() {
+  var e = estadoRegistroExec, n = _rexNo(e.idElemento) || {};
+  e.etapas = [];
+  if (n.papel === 'FOLHA') e.etapas.push('progresso');
+  if (_rexIndicadores().length) e.etapas.push('desempenho');
+  if (_rexRiscos().length) e.etapas.push('riscos');
+  var i = e.etapas.indexOf(e.etapaPedida);
+  if (i < 0) i = e.etapas.findIndex(function(k) { return _rexResumo(k).devido; });
+  e.etapa = Math.max(0, i);
+  var inds = _rexIndicadores(), p = inds.find(function(x) { return _rexIndEstado(x).estado === 'pendente'; }) || inds[0];
+  e.idIndicador = p ? String(p.id) : '';
+  document.getElementById('rex-titulo').textContent = (n.codigo ? n.codigo + ' ' : '') + (n.titulo || '');
+  document.getElementById('rex-caminho').textContent = typeof _execCaminho === 'function' ? _execCaminho(n) : '';
+}
+
+function rexIrEtapa(i) {
+  var e = estadoRegistroExec, alvo = Math.max(0, Math.min(e.etapas.length - 1, Number(i)));
+  if (alvo === e.etapa) return;
+  _rexGuardarRascunho();
+  var el = document.getElementById('rex-etapa');
+  el.classList.add(alvo > e.etapa ? 'wizard-slide-out-left' : 'wizard-slide-out-right');
+  setTimeout(function() { e.etapa = alvo; el.classList.remove('wizard-slide-out-left', 'wizard-slide-out-right'); _rexRender(); }, 200);
+}
+function rexVoltar() { if (estadoRegistroExec.etapa > 0) rexIrEtapa(estadoRegistroExec.etapa - 1); }
+function rexContinuar() { var e = estadoRegistroExec; if (e.etapa >= e.etapas.length - 1) fecharRegistroExecucao(); else rexIrEtapa(e.etapa + 1); }
+
+function _rexRender() {
+  var e = estadoRegistroExec;
+  if (!e) return;
+  document.getElementById('rex-trilha').innerHTML = '<span class="ds-wizard__passo">Etapa ' + (e.etapa + 1) + ' de ' + e.etapas.length + '</span>' + e.etapas.map(function(k, i) {
+    var r = _rexResumo(k), on = i === e.etapa;
+    return '<button type="button" role="tab" aria-selected="' + on + '" class="ds-wizard__etapa' + (on ? ' is-ativa' : '') + '" data-on-click="components_modal_registro_execucao.5" data-aclick0="' + i + '">' +
+      '<span class="ds-wizard__icone"><span class="material-symbols-outlined">' + (r.devido || on ? _REX_ETAPAS[k].icone : 'check_circle') + '</span></span>' +
+      '<span class="ds-wizard__texto"><span class="ds-wizard__rotulo">' + _REX_ETAPAS[k].rotulo + '</span>' +
+      '<span class="ds-wizard__resumo' + (r.devido ? ' ds-wizard__resumo--alerta' : '') + '">' + escapeHtml(r.texto) + '</span></span></button>';
+  }).join('');
+  var k = e.etapas[e.etapa];
+  document.getElementById('rex-etapa').innerHTML = k === 'progresso' ? _rexProgressoHTML() : k === 'desempenho' ? _rexDesempenhoHTML() : _rexRiscosHTML();
+  if (k === 'progresso') _rexMontarLista();
+  document.getElementById('rex-btn-voltar').disabled = e.etapa === 0;
+  document.getElementById('rex-btn-continuar').textContent = e.etapa >= e.etapas.length - 1 ? 'Concluir' : 'Continuar';
+  var s = e.sessao, nInd = Object.keys(s.desempenho).length, nTr = Object.keys(s.riscos).length, partes = [];
+  if (s.progresso) partes.push('progresso');
+  if (nInd) partes.push(nInd + (nInd > 1 ? ' resultados' : ' resultado'));
+  if (nTr) partes.push(nTr + (nTr > 1 ? ' ações de tratamento' : ' ação de tratamento'));
+  document.getElementById('rex-sessao').textContent = partes.length ? 'Lançado nesta sessão: ' + partes.join(', ') : '';
+}
+
+// Guarda o que foi digitado na etapa atual (trocar de etapa ou falhar ao gravar não perde nada).
+function _rexGuardarRascunho() {
+  var e = estadoRegistroExec, k = e.etapas[e.etapa], v = function(id) { var el = document.getElementById(id); return el ? el.value : undefined; };
+  if (k === 'progresso') e.rascunho.progresso = { percentual: v('rex-pct'), analise: v('rex-prog-analise'), link: v('rex-prog-link') };
+  if (k === 'desempenho' && e.idIndicador) e.rascunho.desempenho[e.idIndicador] = { valor: v('rex-ind-valor'), data: v('rex-ind-data'), analise: v('rex-ind-analise'), link: v('rex-ind-link') };
+  if (k === 'riscos') document.querySelectorAll('[data-rex-trat]').forEach(function(box) {
+    var id = box.dataset.rexTrat; e.rascunho.riscos[id] = { data: box.querySelector('[data-rex-data]').value, obs: box.querySelector('[data-rex-obs]').value };
+  });
+}
+
+function _rexAvisoHTML(classe, icone, texto) { return '<span class="' + classe + '"><span class="material-symbols-outlined">' + icone + '</span>' + escapeHtml(texto) + '</span>'; }
+function _rexEvidenciaHTML(prefixo, r) {
+  return '<div class="ds-field"><label class="ds-label" for="' + prefixo + '-link">Evidência</label>' +
+    '<div class="ds-cluster"><input type="file" class="ds-input" id="' + prefixo + '-arquivo" multiple aria-label="Arquivo de evidência">' +
+    '<input type="url" class="ds-input" id="' + prefixo + '-link" placeholder="ou link https://…" maxlength="2000" value="' + escapeHtml(r.link || '') + '"></div>' +
+    '<span class="ds-help ds-help--error" id="' + prefixo + '-erro-link" role="alert"></span></div>';
+}
+
+// --- ETAPA PROGRESSO ---
+function _rexProgressoHTML() {
+  var e = estadoRegistroExec, n = _rexNo(e.idElemento) || {}, r = e.rascunho.progresso, avisos = [];
+  if (n.progressoPendente) avisos.push(_rexAvisoHTML('ds-badge ds-badge--info', 'hourglass_top', 'Lançamento aguardando validação; o percentual é o último validado.'));
+  if (n.progressoRejeitado) avisos.push(_rexAvisoHTML('ds-badge ds-badge--danger', 'error', 'Último lançamento rejeitado' + (n.progressoRejeitado.motivo ? ': ' + n.progressoRejeitado.motivo : '') + '.'));
+  if (n.atrasado) avisos.push(_rexAvisoHTML('ds-badge ds-badge--danger', 'schedule', 'Atrasado: esperado hoje ' + Math.round(n.progressoEsperado || 0) + '%.'));
+  var bloqueado = !!n.porLista, pct = r.percentual !== undefined ? r.percentual : Number(n.percentual) || 0;
+  var sit = Number(pct) >= 100 ? 'Concluído' : Number(pct) > 0 ? 'Em andamento' : 'Não iniciado';
+  var podeLancar = !e.sessao.progresso && !n.progressoPendente && !n.listaNecessaria && (n.podeLancar || n.podeLancarPelaLista);
+  return '<div class="ds-stack ds-stack--3">' + (avisos.length ? '<div class="ds-cluster">' + avisos.join('') + '</div>' : '') +
+    (n.listaNecessaria ? '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">checklist</span><span>O progresso vem da lista de verificação, que ainda não tem itens. Crie a lista abaixo para lançar.</span></div>' : '') +
+    '<div class="ds-cluster">' +
+      '<div class="ds-field"><label class="ds-label" for="rex-pct">Progresso acumulado' + (bloqueado ? ' <span class="material-symbols-outlined ds-info" tabindex="0" data-title="O percentual vem da lista de verificação: marcar um item só o risca; lançar envia o percentual da lista à validação.">lock</span>' : '') + '</label>' +
+      '<input type="number" min="0" max="100" class="ds-input" id="rex-pct" value="' + escapeHtml(String(pct)) + '"' + (bloqueado ? ' disabled' : '') + ' data-on-input="components_modal_registro_execucao.6">' +
+      '<span class="ds-help ds-help--error" id="rex-erro-pct" role="alert"></span></div>' +
+      '<div class="ds-field"><span class="ds-label">Situação</span><span class="ds-help" id="rex-sit">' + sit + '</span></div>' +
+      (n.progressoEsperado !== null && n.progressoEsperado !== undefined ? '<div class="ds-field"><span class="ds-label">Esperado hoje</span><span class="ds-help">' + Math.round(n.progressoEsperado) + '%</span></div>' : '') +
+    '</div>' +
+    '<div class="ds-field"><textarea class="ds-textarea" id="rex-prog-analise" maxlength="5000" placeholder="Análise" aria-label="Análise">' + escapeHtml(r.analise || '') + '</textarea></div>' +
+    _rexEvidenciaHTML('rex-prog', r) +
+    '<div class="ds-spread"><span class="ds-help ds-help--error" id="rex-prog-erro" role="alert"></span>' +
+    '<button type="button" class="ds-btn ds-btn--primary ds-btn--sm" id="rex-btn-prog" data-on-click="components_modal_registro_execucao.7"' + (podeLancar ? '' : ' disabled') + '>' + (e.sessao.progresso ? 'Progresso lançado' : 'Lançar progresso') + '</button></div>' +
+    '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Lista de verificação</div><div id="rex-lista-host"></div></div>' +
+    '</div>';
+}
+function _rexMontarLista() {
+  var e = estadoRegistroExec;
+  if (typeof telMontar !== 'function' || !document.getElementById('rex-lista-host')) return;
+  telMontar('rex-lista-host', e.idElemento, function(st) {
+    var n = _rexNo(e.idElemento), inp = document.getElementById('rex-pct');
+    if (n && n.porLista && inp && st.total) inp.value = Math.round(st.concluidas / st.total * 100); // provisório: o servidor recalcula ao lançar
+  });
+}
+function rexSituacaoPct(v) { var s = document.getElementById('rex-sit'); if (s) s.textContent = Number(v) >= 100 ? 'Concluído' : Number(v) > 0 ? 'Em andamento' : 'Não iniciado'; }
+
+async function _rexEvidencia(prefixo, alvo) {
+  var arq = document.getElementById(prefixo + '-arquivo'), link = (document.getElementById(prefixo + '-link') || {}).value || '';
+  link = link.trim();
+  if (link && !/^https?:\/\//i.test(link)) { document.getElementById(prefixo + '-erro-link').textContent = 'Use um link que comece com http:// ou https://.'; return null; }
+  document.getElementById(prefixo + '-erro-link').textContent = '';
+  var out = { linkEvidencia: link };
+  if (arq && arq.files && arq.files.length) {
+    var envios = await SamaumaArquivos.enviar('EVIDENCIA', Array.prototype.slice.call(arq.files), alvo);
+    out.evidenciaRecibo = envios[envios.length - 1].recibo;
+  }
+  return out;
+}
+
+async function rexSalvarProgresso(btn) {
+  var e = estadoRegistroExec, n = _rexNo(e.idElemento) || {};
+  _rexGuardarRascunho();
+  var r = e.rascunho.progresso, erro = document.getElementById('rex-prog-erro'), pct = Number(r.percentual);
+  erro.textContent = '';
+  if (!n.porLista && (r.percentual === '' || isNaN(pct) || pct < 0 || pct > 100)) { document.getElementById('rex-erro-pct').textContent = 'Informe um percentual entre 0 e 100.'; return; }
+  document.getElementById('rex-erro-pct').textContent = '';
+  var ev;
+  try { ev = await _rexEvidencia('rex-prog', { idElemento: e.idElemento, idIndicador: '' }); } catch (err) { erro.textContent = 'Não foi possível enviar os arquivos: ' + err.message; return; }
+  if (!ev) return;
+  return uiExecutarComTrava(btn, function() {
+    return new Promise(function(fim) {
+      var ok = function() { e.sessao.progresso = true; e.rascunho.progresso = {}; fim(); _rexRender(); };
+      var falha = function(err) { erro.textContent = err.message; fim(); };
+      var payload = { analise: r.analise || '', linkEvidencia: ev.linkEvidencia, evidenciaRecibo: ev.evidenciaRecibo };
+      if (n.porLista) google.script.run.withSuccessHandler(ok).withFailureHandler(falha).apiLancarProgressoPelaLista(e.idElemento, payload);
+      else google.script.run.withSuccessHandler(ok).withFailureHandler(falha).apiSalvarExecucaoEResultado(Object.assign({
+        idElemento: e.idElemento, idIndicador: '', percentual: pct, status: pct >= 100 ? 'Concluído' : pct > 0 ? 'Em Andamento' : 'Não Iniciado'
+      }, payload));
+    });
+  });
+}
+
+// --- ETAPA DESEMPENHO: lista de indicadores à esquerda, formulário do indicador ativo à direita (escala de 1 a 14+) ---
+function _rexDesempenhoHTML() {
+  var e = estadoRegistroExec, inds = _rexIndicadores();
+  var ind = inds.find(function(i) { return String(i.id) === e.idIndicador; }) || inds[0];
+  if (!ind) return '';
+  var st = _rexIndEstado(ind), un = ind.unidade ? ' ' + ind.unidade : '', r = e.rascunho.desempenho[String(ind.id)] || {};
+  var pend = inds.filter(function(i) { return _rexIndEstado(i).estado === 'pendente'; }).length;
+  var travado = st.estado === 'bloqueado' || st.estado === 'validacao' || st.estado === 'lancado';
+  var aviso = st.estado === 'bloqueado' ? 'Lançamento bloqueado para este indicador.' : st.estado === 'validacao' ? 'Resultado aguardando validação.' : st.estado === 'lancado' ? 'Resultado do período já lançado.' : st.estado === 'semMeta' ? 'Período sem meta; o resultado pode ser lançado.' : '';
+  var visiveis = e.soPendentes ? inds.filter(function(i) { return String(i.id) === String(ind.id) || _rexIndEstado(i).estado === 'pendente'; }) : inds;
+  var lista = visiveis.map(function(i) {
+    var b = _REX_IND_ESTADO[_rexIndEstado(i).estado];
+    return '<button type="button" class="ds-lista-sel__item' + (String(i.id) === String(ind.id) ? ' is-ativo' : '') + '" data-on-click="components_modal_registro_execucao.8" data-aclick0="' + escapeHtml(String(i.id)) + '">' +
+      '<span>' + escapeHtml(i.nome) + '</span><span class="ds-spread"><span class="ds-inline ds-help"><span class="el-chip-ind"><span class="material-symbols-outlined">speed</span></span>' + e.ano + '</span><span class="' + b[0] + '">' + b[1] + '</span></span></button>';
+  }).join('');
+  return '<div class="ds-lista-sel-grade">' +
+    '<div class="ds-stack ds-stack--2"><div class="ds-spread"><span class="ds-help">' + (inds.length - pend) + ' de ' + inds.length + ' lançados</span>' +
+      '<button type="button" class="ds-link" data-on-click="components_modal_registro_execucao.13"><span class="material-symbols-outlined">' + (e.soPendentes ? 'check_box' : 'check_box_outline_blank') + '</span> Só pendentes</button></div>' +
+      '<div class="ds-lista-sel">' + lista + '</div></div>' +
+    '<div class="ds-stack ds-stack--3">' +
+      '<div class="ds-stack ds-stack--2"><div class="ds-section-title">' + escapeHtml(ind.nome) + '</div>' +
+      '<span class="ds-help">Período ' + e.ano + (ind.unidade ? ' · unidade: ' + escapeHtml(ind.unidade) : '') + (aviso ? ' · ' + aviso : '') + '</span></div>' +
+      '<div class="ds-cluster">' +
+        '<div class="ds-field"><span class="ds-label">Meta ' + e.ano + '</span><span class="ds-help">' + escapeHtml(st.meta ? st.meta.valor + un : 'Sem meta') + '</span></div>' +
+        '<div class="ds-field"><label class="ds-label" for="rex-ind-valor">Valor apurado</label><input type="number" step="0.01" class="ds-input" id="rex-ind-valor" value="' + escapeHtml(r.valor !== undefined ? r.valor : (st.res ? st.res.valorApurado : '')) + '"' + (travado ? ' disabled' : '') + '>' +
+          '<span class="ds-help ds-help--error" id="rex-erro-valor" role="alert"></span></div>' +
+        '<div class="ds-field"><label class="ds-label" for="rex-ind-data">Data da aferição</label><input type="date" class="ds-input" id="rex-ind-data" value="' + escapeHtml(r.data || _rexHojeIso()) + '" max="' + _rexHojeIso() + '"' + (travado ? ' disabled' : '') + '>' +
+          '<span class="ds-help ds-help--error" id="rex-erro-data" role="alert"></span></div>' +
+      '</div>' +
+      (travado ? '' : '<div class="ds-field"><textarea class="ds-textarea" id="rex-ind-analise" maxlength="5000" placeholder="Observação" aria-label="Observação">' + escapeHtml(r.analise || '') + '</textarea></div>' + _rexEvidenciaHTML('rex-ind', r)) +
+      '<div class="ds-spread"><span class="ds-help ds-help--error" id="rex-ind-erro" role="alert"></span>' +
+        '<div class="ds-cluster"><button type="button" class="ds-link" data-on-click="components_modal_registro_execucao.9"' + (pend && !(pend === 1 && st.estado === 'pendente') ? '' : ' disabled') + '>Próximo pendente</button>' +
+        '<button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="components_modal_registro_execucao.10"' + (travado ? ' disabled' : '') + '>Lançar resultado</button></div></div>' +
+    '</div></div>';
+}
+function _rexHojeIso() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+function rexAlternarSoPendentes() { _rexGuardarRascunho(); estadoRegistroExec.soPendentes = !estadoRegistroExec.soPendentes; _rexRender(); }
+function rexEscolherIndicador(id) { _rexGuardarRascunho(); estadoRegistroExec.idIndicador = String(id); _rexRender(); }
+function rexProximoPendente() {
+  var e = estadoRegistroExec, inds = _rexIndicadores(), i0 = inds.findIndex(function(i) { return String(i.id) === e.idIndicador; });
+  for (var k = 1; k <= inds.length; k++) { var x = inds[(i0 + k) % inds.length]; if (_rexIndEstado(x).estado === 'pendente') { rexEscolherIndicador(x.id); return; } }
+}
+
+async function rexSalvarResultado(btn) {
+  var e = estadoRegistroExec, id = e.idIndicador;
+  _rexGuardarRascunho();
+  var r = e.rascunho.desempenho[id] || {}, erro = document.getElementById('rex-ind-erro'), ok = true;
+  erro.textContent = '';
+  document.getElementById('rex-erro-valor').textContent = r.valor === '' || r.valor === undefined ? (ok = false, 'Informe o valor apurado.') : '';
+  document.getElementById('rex-erro-data').textContent = !r.data ? (ok = false, 'Informe a data da aferição.') : r.data > _rexHojeIso() ? (ok = false, 'A data não pode ser futura.') : '';
+  if (!ok) return;
+  var ev;
+  try { ev = await _rexEvidencia('rex-ind', { idElemento: e.idElemento, idIndicador: id }); } catch (err) { erro.textContent = 'Não foi possível enviar os arquivos: ' + err.message; return; }
+  if (!ev) return;
+  return uiExecutarComTrava(btn, function() {
+    return new Promise(function(fim) {
+      google.script.run
+        .withSuccessHandler(function() { e.sessao.desempenho[id] = true; delete e.rascunho.desempenho[id]; fim(); rexProximoPendente(); _rexRender(); })
+        .withFailureHandler(function(err) { erro.textContent = err.message; fim(); })
+        .apiSalvarExecucaoEResultado({ idElemento: e.idElemento, idIndicador: id, dataAfericao: r.data, valorApurado: r.valor, analise: r.analise || '', linkEvidencia: ev.linkEvidencia, evidenciaRecibo: ev.evidenciaRecibo });
+    });
+  });
+}
+
+// --- ETAPA RISCOS: ações de tratamento (registro = executada na data, com observação; sem validação, sem "concluída") ---
+function _rexRiscosHTML() {
+  var e = estadoRegistroExec;
+  return '<div class="ds-stack ds-stack--3">' + _rexRiscos().map(function(r) {
+    var nv = _REX_NIVEL[r.nivelRisco] || ['ds-badge ds-badge--neutral', r.nivelRisco || '—'];
+    var trats = (r.tratamentos || []).map(function(t) {
+      var prox = typeof execProximaTratamento === 'function' ? execProximaTratamento(t) : null, devido = _rexTratDevido(t), feito = e.sessao.riscos[t.id];
+      var proxTxt = feito ? 'Registrada nesta sessão' : prox ? (devido ? 'Devida desde ' : 'Próxima em ') + prox.toLocaleDateString('pt-BR') : 'Sem próxima execução';
+      var per = t.periodicidade === 'Contínuo' && t.intervaloQtd ? 'Contínua · a cada ' + t.intervaloQtd + ' ' + (t.intervaloUnidade || '') : (t.periodicidade || '');
+      var regs = (t.registros || []).slice(0, 3).map(function(g) {
+        return '<div class="ds-spread"><span class="ds-help"><strong>' + escapeHtml(g.dataExecucaoFmt) + '</strong>' + (g.observacao ? ' · ' + escapeHtml(g.observacao) : '') + '</span>' +
+          (g.podeExcluir === false ? '' : '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Excluir registro" aria-label="Excluir registro" data-on-click="components_modal_registro_execucao.11" data-aclick0="' + escapeHtml(String(g.id)) + '"><span class="material-symbols-outlined">close</span></button>') + '</div>';
+      }).join('');
+      var rs = e.rascunho.riscos[t.id] || {};
+      return '<div class="ds-stack ds-stack--2" data-rex-trat="' + escapeHtml(String(t.id)) + '">' +
+        '<div class="ds-spread"><div class="ds-stack ds-stack--2"><strong>' + escapeHtml(t.acao) + '</strong>' +
+          '<span class="ds-help">' + escapeHtml(per) + (t.nomeResponsavel ? ' · ' + escapeHtml(nomeRespExibicao(t.nomeResponsavel, t.tipoResponsavel)) : '') + '</span></div>' +
+          '<span class="' + (feito ? 'ds-badge ds-badge--success' : devido ? 'ds-badge ds-badge--warning' : 'ds-badge ds-badge--neutral') + '"><span class="material-symbols-outlined">event</span>' + escapeHtml(proxTxt) + '</span></div>' +
+        (regs || '<span class="ds-help">Nenhuma execução registrada.</span>') +
+        '<div class="ds-cluster"><input type="date" class="ds-input" data-rex-data value="' + escapeHtml(rs.data || _rexHojeIso()) + '" max="' + _rexHojeIso() + '" aria-label="Data da execução">' +
+          '<input type="text" class="ds-input" data-rex-obs maxlength="2000" placeholder="Observação" aria-label="Observação" value="' + escapeHtml(rs.obs || '') + '">' +
+          '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="components_modal_registro_execucao.12" data-aclick0="' + escapeHtml(String(t.id)) + '">Registrar execução</button></div>' +
+        '<span class="ds-help ds-help--error" id="rex-trat-erro-' + escapeHtml(String(t.id)) + '" role="alert"></span></div>';
+    }).join('');
+    return '<div class="ds-card ds-card--flat ds-stack ds-stack--3"><div class="ds-cluster"><span class="' + nv[0] + '">' + escapeHtml(nv[1]) + '</span><strong>' + escapeHtml(r.risco) + '</strong></div>' +
+      (trats || '<span class="ds-help">Sem ações de tratamento cadastradas.</span>') + '</div>';
+  }).join('') + '</div>';
+}
+
+function _rexRecarregarRiscos(pronto) {
+  var e = estadoRegistroExec;
+  google.script.run.withSuccessHandler(function(l) {
+    e.riscos = l || [];
+    if (typeof estadoExecTarefas !== 'undefined' && String(estadoExecTarefas.idPlano) === e.idPlano) estadoExecTarefas.riscos = e.riscos;
+    if (pronto) pronto(); _rexRender();
+  }).apiGetRiscos(e.idPlano);
+}
+
+function rexRegistrarTratamento(btn, idTratamento) {
+  var e = estadoRegistroExec;
+  _rexGuardarRascunho();
+  var r = e.rascunho.riscos[idTratamento] || {}, erro = document.getElementById('rex-trat-erro-' + idTratamento);
+  if (!r.data) { erro.textContent = 'Informe a data da execução.'; return; }
+  if (r.data > _rexHojeIso()) { erro.textContent = 'A data não pode ser futura.'; return; }
+  return uiExecutarComTrava(btn, function() {
+    return new Promise(function(fim) {
+      google.script.run
+        .withSuccessHandler(function() { e.sessao.riscos[idTratamento] = true; delete e.rascunho.riscos[idTratamento]; _rexRecarregarRiscos(fim); })
+        .withFailureHandler(function(err) { erro.textContent = err.message; fim(); })
+        .apiSalvarRegistroTratamento({ idTratamento: idTratamento, dataExecucao: r.data, observacao: r.obs || '' });
+    });
+  });
+}
+
+function rexExcluirRegistroTratamento(btn, id) {
+  showConfirm('Excluir registro?', 'Esta ação não pode ser desfeita.', function() {
+    uiExecutarComTrava(btn, function() {
+      return new Promise(function(fim) {
+        google.script.run.withSuccessHandler(function() { _rexRecarregarRiscos(fim); })
+          .withFailureHandler(function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); fim(); })
+          .apiExcluirRegistroTratamento(id);
+      });
+    });
+  });
+}
+
+// Esc fecha; Enter avança (fora de textarea e botões).
+document.addEventListener('keydown', function(ev) {
+  var m = document.getElementById('rex-modal');
+  if (!m || m.classList.contains('hidden')) return;
+  if (ev.key === 'Escape') { fecharRegistroExecucao(); ev.preventDefault(); }
+  else if (ev.key === 'Enter' && !/TEXTAREA|BUTTON/.test(ev.target.tagName)) { rexContinuar(); ev.preventDefault(); }
+});
+
+uiRegistrarAcoes('components_modal_registro_execucao', {
+  '1': function (event) { if (event.target === this) fecharRegistroExecucao(); },
+  '2': function (event) { fecharRegistroExecucao(); },
+  '3': function (event) { rexVoltar(); },
+  '4': function (event) { rexContinuar(); },
+  '5': function (event) { rexIrEtapa(uiArgLit(this.dataset.aclick0)); },
+  '6': function (event) { rexSituacaoPct(this.value); },
+  '7': function (event) { return rexSalvarProgresso(this); },
+  '8': function (event) { rexEscolherIndicador(uiArgJs(this.dataset.aclick0)); },
+  '9': function (event) { rexProximoPendente(); },
+  '10': function (event) { return rexSalvarResultado(this); },
+  '11': function (event) { rexExcluirRegistroTratamento(this, uiArgJs(this.dataset.aclick0)); },
+  '12': function (event) { return rexRegistrarTratamento(this, uiArgJs(this.dataset.aclick0)); },
+  '13': function (event) { rexAlternarSoPendentes(); }
+});
+</script>
+
     <!-- ARQUIVO: components_tarefas_elemento.html -->
 <!-- Seção "Tarefas" do elemento (lista a fazer, estilo Planner), montada dentro do modal "Atualizar Execução"
      (components_modal_resultado.html) ao abrir um elemento na execução. Rotas: apiGetTarefasElemento, apiSalvarTarefaElemento,
@@ -7545,46 +8021,6 @@ uiRegistrarAcoes('components_modal_colaboracao', {
 });
 </script>
 
-    <!-- ARQUIVO: components_modal_registro_tratamento.html -->
-<!-- Mini modal "Registrar execução" de uma ação de tratamento, usado pela
-     aba Ações de Tratamento do workspace de Execução
-     (pages_execucao_tarefas.html: extAbrirModalRegistro/extFecharModalRegistro/
-     extSalvarRegistro). Precisa viver FORA de #main-content — igual aos
-     demais components_modal_*: bloquearFundo() aplica inert=true em
-     #main-content, e um modal que fosse descendente dele ficaria inerte
-     (sem poder clicar) junto com o resto da página. -->
-<div id="ext-modal-registro" class="ext-mini-overlay hidden" data-fechar="extFecharModalRegistro" data-on-click="components_modal_registro_tratamento.1">
-  <div class="ext-mini-card">
-    <div class="ext-mini-header">
-      <h4>Registrar execução</h4>
-      <button type="button" class="btn-icon-close" data-on-click="components_modal_registro_tratamento.2"><span class="material-symbols-outlined">close</span></button>
-    </div>
-    <div class="ext-mini-body">
-      <input type="hidden" id="ext-reg-id-tratamento">
-      <div class="ext-mini-field">
-        <label>Data de Execução *</label>
-        <input type="date" id="ext-reg-data" class="ds-input" required>
-      </div>
-      <div class="ext-mini-field">
-        <label>Observação</label>
-        <textarea id="ext-reg-obs" class="ds-textarea" rows="3" maxlength="200"></textarea>
-      </div>
-    </div>
-    <div class="ext-mini-footer">
-      <button type="button" class="ds-btn ds-btn--ghost" data-on-click="components_modal_registro_tratamento.2">Cancelar</button>
-      <button type="button" class="ds-btn ds-btn--primary" data-on-click="components_modal_registro_tratamento.3">Salvar</button>
-    </div>
-  </div>
-</div>
-<script>
-// Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
-uiRegistrarAcoes('components_modal_registro_tratamento', {
-  '1': function (event) { if(event.target===this) extFecharModalRegistro(); },
-  '2': function (event) { extFecharModalRegistro(); },
-  '3': function (event) { extSalvarRegistro(); }
-});
-</script>
-
     <!-- ARQUIVO: components_modal_marketplace_apps.html -->
 <!-- Modal para adicionar/instalar apps disponíveis do catálogo no plano atual -->
 
@@ -8982,7 +9418,8 @@ function acoesLinhaMenu(id, ev) {
   if (_acoesLinhaAberto && _acoesLinhaAberto.id === id) { acoesLinhaFechar(); return; }
   acoesLinhaFechar();
   var reg = _acoesLinhaReg[id];
-  var itens = reg ? (_acoesLinhaMobile() ? reg.todos : reg.menu) : null;
+  var semHover = gatilho && gatilho.closest('.ds-celula-sobreposta') && window.matchMedia('(hover: none)').matches; // célula sobreposta em tablet/celular: os diretos ficam escondidos
+  var itens = reg ? (_acoesLinhaMobile() || semHover ? reg.todos : reg.menu) : null;
   if (!itens || !itens.length || !gatilho) return;
 
   var menu = document.createElement('div');
@@ -9771,10 +10208,6 @@ function uiThOrdHTML(rotulo, ativo, dir, onclick, cls) {
 }
 
 // Alerta de atraso (.ds-alerta-atraso): ícone solto ao lado do que está atrasado, com o motivo no tooltip. Único estilo do sistema para "atrasado".
-// Selo de HISTÓRICO de atraso (neutro, não é alerta): o elemento já estava atrasado na vigência regular do plano e só deixou de estar porque o plano foi prorrogado. Nunca some.
-function uiSeloHistoricoAtrasoHTML(texto) {
-  return '<span class="ds-selo-historico" tabindex="0" data-title="' + escapeHtml(texto) + '" aria-label="' + escapeHtml(texto) + '"><span class="material-symbols-outlined">history</span></span>';
-}
 
 function uiAlertaAtrasoHTML(texto) {
   return '<span class="ds-alerta-atraso" data-title="' + escapeHtml(texto) + '" aria-label="' + escapeHtml(texto) + '"><span class="material-symbols-outlined">warning</span></span>';
@@ -9826,12 +10259,15 @@ function uiPaginadorRodapeAtualizar(id, estado, total) {
 }
 
 // Prazo final de um elemento (.ds-chip-prazo): ícone de calendário + data final (dd/mm/aaaa). Vazio quando não há data.
-function uiChipPrazoHTML(dataBR, atrasoRegular) {
+function uiChipPrazoHTML(dataBR) {
   if (!dataBR) return '';
-  var chip = '<span class="ds-chip-prazo" data-title="Prazo final: ' + escapeHtml(dataBR) + '"><span class="material-symbols-outlined">event</span><span>' + escapeHtml(dataBR) + '</span></span>';
-  if (!atrasoRegular || !atrasoRegular.prazo) return chip;
-  // já estava atrasado quando a vigência regular do plano acabou: o histórico fica ao lado do prazo, mesmo depois de o elemento ser concluído
-  return chip + uiSeloHistoricoAtrasoHTML('Estava atrasado na vigência regular do plano (prazo original ' + atrasoRegular.prazo + '). Deixou de estar atrasado porque o plano foi prorrogado' + (atrasoRegular.novaVigencia ? ' até ' + atrasoRegular.novaVigencia : '') + '.');
+  return '<span class="ds-chip-prazo" data-title="Prazo final: ' + escapeHtml(dataBR) + '"><span class="material-symbols-outlined">event</span><span>' + escapeHtml(dataBR) + '</span></span>';
+}
+
+// Badge do tipo de elemento (.ds-badge-tipo): herda a cor definida para o tipo no plano (hex, aplicada em linha); sem cor, neutro. Vazio sem tipo.
+function uiBadgeTipoHTML(tipo, cor) {
+  if (!tipo) return '';
+  return '<span class="ds-badge-tipo"' + (cor ? ' style="color:' + escapeHtml(cor) + ';background:' + escapeHtml(cor) + '22;border-color:' + escapeHtml(cor) + '55"' : '') + '>' + escapeHtml(tipo) + '</span>';
 }
 
 function uiProgressoHTML(pct, dica) {
@@ -15928,7 +16364,6 @@ body.org-fs-active, body.org-fs-active #main-content { overflow: hidden !importa
 }
 .org-card-top { position: relative; display: flex; align-items: center; gap: 6px; height: 20px; min-width: 0; }
 .org-card-top .org-flex { flex: 1; min-width: 0; }
-.org-card .el-tipo-badge { max-width: 135px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; }
 .org-card .el-codigo { font-size: var(--ds-text-xs); flex-shrink: 0; white-space: nowrap; }
 .org-card.org-movido .el-codigo { color: var(--ds-color-info-fg); }
 .org-era { font-size: 11px; font-weight: var(--ds-weight-semibold); color: var(--ds-color-info-fg); white-space: nowrap; flex-shrink: 0; }
@@ -16950,11 +17385,6 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
   width: 100%;
   box-sizing: border-box;
 }
-.el-tipo-badge {
-  flex-shrink: 0; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .4px; white-space: nowrap;
-  padding: 1px 8px; border-radius: var(--ds-r-md);
-  color: var(--ds-color-text-muted); background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border);
-}
 .el-codigo {
   font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted);
   flex-shrink: 0; white-space: nowrap;
@@ -17032,7 +17462,7 @@ body.high-contrast .resp-badge { background: #1a1a1a; color: #ddd; }
   color: var(--ds-color-primary, #2670e8);
 }
 .el-chip-ind .material-symbols-outlined {
-  color: #8e44ad;
+  color: var(--ds-color-indicador);
 }
 body.high-contrast .el-chip-meta {
   background: #1e1e1e;
@@ -17189,7 +17619,6 @@ body.high-contrast .el-chip-meta {
   .el-tabela .el-col-expand { width: 20px; min-width: 20px; max-width: 20px; }
   .el-tabela tbody tr td { padding: 10px 4px; }
   .el-tabela thead th { padding: 8px 4px; }
-  .el-tipo-badge { max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
 }
 
 /* ── PER-ELEMENT TOOLBAR ─────────────────────────────── */
@@ -20847,7 +21276,9 @@ uiRegistrarAcoes('pages_execucao_planos', {
      - Barra de filtros unificada na mesma linha base: busca expansível estilo Drive, filtro de status dropdown
        com abrirMenuSelecao e limpar filtros à esquerda;
      - À direita na mesma linha base: seletor de exercício plurianual via dropdown;
-     - Registro de execução: lista plana dos elementos executáveis (folhas e elementos com indicador), linha colapsável com a lista de verificação e os indicadores;
+     - Abas por situação: Todos · A registrar · Aguardando validação · Em dia;
+     - Registro de execução: lista plana (sem expansão) dos elementos com algo a registrar (folhas, elementos com indicador e com risco);
+       a linha mostra de relance o que falta em cada frente; "Registrar execução" abre abrirRegistroExecucao (components_modal_registro_execucao.html);
      - Painel lateral (#extp-panel) com abas Detalhes e Atividade;
      - Seletor de exercício só aparece se a vigência do plano cruza mais de um ano. -->
 <div id="page-execucao-tarefas" class="page-content ds-pagina hidden">
@@ -20868,15 +21299,13 @@ uiRegistrarAcoes('pages_execucao_planos', {
     </button>
   </div>
 
-  <!-- LINHA DE ABAS DA PÁGINA (Responsabilidades / Ações de Tratamento) -->
+  <!-- ABAS POR SITUAÇÃO (cada elemento cai em um só grupo: A registrar > Aguardando validação > Em dia) -->
   <div class="ds-tabs-nav ds-pagina__faixa" id="ext-tabs-row">
     <div class="ds-tabs-nav__scroll" role="tablist">
-      <button type="button" role="tab" aria-selected="true" class="ds-tabs-nav__item active" data-aba="tarefas" data-on-click="pages_execucao_tarefas.1" id="ext-btn-tab-resp">
-        <span class="material-symbols-outlined">checklist</span> Responsabilidades
-      </button>
-      <button type="button" role="tab" aria-selected="false" class="ds-tabs-nav__item" data-aba="riscos" data-on-click="pages_execucao_tarefas.2" id="ext-btn-tab-trat">
-        <span class="material-symbols-outlined">shield</span> Ações de Tratamento
-      </button>
+      <button type="button" role="tab" aria-selected="true" class="ds-tabs-nav__item active" data-aba="todos" data-on-click="pages_execucao_tarefas.1">Todos<span class="ds-tab-count"></span></button>
+      <button type="button" role="tab" aria-selected="false" class="ds-tabs-nav__item" data-aba="registrar" data-on-click="pages_execucao_tarefas.2">A registrar<span class="ds-tab-count ds-tab-count--alerta"></span></button>
+      <button type="button" role="tab" aria-selected="false" class="ds-tabs-nav__item" data-aba="validacao" data-on-click="pages_execucao_tarefas.3">Aguardando validação<span class="ds-tab-count ds-tab-count--info"></span></button>
+      <button type="button" role="tab" aria-selected="false" class="ds-tabs-nav__item" data-aba="emdia" data-on-click="pages_execucao_tarefas.4">Em dia<span class="ds-tab-count ds-tab-count--sucesso"></span></button>
     </div>
   </div>
 
@@ -20923,7 +21352,10 @@ uiRegistrarAcoes('pages_execucao_planos', {
           </button>
         </span>
 
-        <span class="ds-filtro hidden" id="ext-filtro-wrap-exercicio">
+        <button type="button" class="ds-link hidden" id="ext-btn-limpar-filtros" data-on-click="pages_execucao_tarefas.7">Limpar filtros</button>
+
+        <div class="ds-tabs ds-tabs--segmented hidden" id="ext-exercicio-modo">
+        <span class="ds-filtro" id="ext-filtro-wrap-exercicio">
           <button type="button" class="ds-filtro__btn" id="ext-filtro-btn-exercicio" data-on-click="pages_execucao_tarefas.28" aria-haspopup="menu"
                   data-title="Exercício de apuração: os elementos cuja vigência alcança o ano">
             <span id="ext-filtro-label-exercicio">Exercício</span><span class="material-symbols-outlined">expand_more</span>
@@ -20932,18 +21364,12 @@ uiRegistrarAcoes('pages_execucao_planos', {
             <span class="material-symbols-outlined">close</span>
           </button>
         </span>
-
-        <button type="button" class="ds-link hidden" id="ext-btn-limpar-filtros" data-on-click="pages_execucao_tarefas.7">Limpar filtros</button>
+        </div>
       </div>
     </div>
 
     <!-- Lista do registro de execução -->
     <div id="ext-container"></div>
-  </div>
-
-  <!-- PAINEL: AÇÕES DE TRATAMENTO -->
-  <div id="ext-painel-riscos" class="hidden">
-    <div id="ext-riscos-container"></div>
   </div>
 
   <!-- PAINEL LATERAL DE DETALHES (#extp-panel) -->
@@ -20961,33 +21387,6 @@ uiRegistrarAcoes('pages_execucao_planos', {
       <div id="extp-view-atividade" class="detp-view hidden"><!-- Injetado via JS --></div>
     </div>
   </aside>
-
-  <!-- MINI MODAL: REGISTRAR EXECUÇÃO DE TRATAMENTO -->
-  <div id="ext-modal-registro" class="ext-mini-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="ext-modal-reg-titulo">
-    <div class="ext-mini-card">
-      <div class="ext-mini-header">
-        <h4 id="ext-modal-reg-titulo">Registrar Execução de Tratamento</h4>
-        <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.39" aria-label="Fechar">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-      <div class="ext-mini-body">
-        <input type="hidden" id="ext-reg-id-tratamento">
-        <div class="ext-mini-field">
-          <label for="ext-reg-data">Data da execução *</label>
-          <input type="date" id="ext-reg-data" class="filtro-input ds-input">
-        </div>
-        <div class="ext-mini-field">
-          <label for="ext-reg-obs">Observação / Evidência</label>
-          <textarea id="ext-reg-obs" class="filtro-input ds-input" rows="3" placeholder="Descreva brevemente o que foi feito…"></textarea>
-        </div>
-      </div>
-      <div class="ext-mini-footer">
-        <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="pages_execucao_tarefas.39">Cancelar</button>
-        <button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_execucao_tarefas.40">Salvar registro</button>
-      </div>
-    </div>
-  </div>
 
 </div>
 
@@ -21009,29 +21408,11 @@ uiRegistrarAcoes('pages_execucao_planos', {
   line-height: 1.4;
 }
 #page-execucao-tarefas #ext-col-prog { width: 196px; }
-@media (max-width: 768px) { #page-execucao-tarefas #ext-col-prog { width: 140px; } #ext-tabela [data-ext-chips] { display: none; } }
+#page-execucao-tarefas #ext-col-reg { width: 340px; }
+@media (max-width: 768px) { #page-execucao-tarefas #ext-col-prog { width: 140px; } }
 
-/* --- Riscos e Tratamentos --- */
-#page-execucao-tarefas .ext-risco-card { background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-xl); padding: var(--ds-space-4); margin-bottom: var(--ds-space-4); }
-#page-execucao-tarefas .ext-risco-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--ds-space-3); margin-bottom: var(--ds-space-3); }
-#page-execucao-tarefas .ext-risco-titulo { font-weight: 600; color: var(--ds-color-text); font-size: 0.95rem; }
-#page-execucao-tarefas .ext-risco-sub { font-size: 0.78rem; color: var(--ds-color-text-muted); margin-top: 2px; }
-#page-execucao-tarefas .ext-risco-sem-trat { font-size: 0.82rem; color: var(--ds-color-text-muted); font-style: italic; }
-
-#page-execucao-tarefas .ext-tratamento { border-top: 1px solid var(--ds-color-border); padding-top: var(--ds-space-3); margin-top: var(--ds-space-3); }
-#page-execucao-tarefas .ext-tratamento:first-child { border-top: none; padding-top: 0; margin-top: 0; }
-#page-execucao-tarefas .ext-tratamento-topo { display: flex; justify-content: space-between; align-items: center; gap: var(--ds-space-3); flex-wrap: wrap; }
-#page-execucao-tarefas .ext-tratamento-acao { font-weight: 500; color: var(--ds-color-text); font-size: 0.88rem; }
-#page-execucao-tarefas .ext-tratamento-meta { display: flex; gap: var(--ds-space-3); flex-wrap: wrap; font-size: 0.75rem; color: var(--ds-color-text-muted); margin-top: 2px; }
-
-#page-execucao-tarefas .ext-registros { margin-top: var(--ds-space-2); display: flex; flex-direction: column; gap: 4px; }
-#page-execucao-tarefas .ext-registro-item { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--ds-color-text-muted); }
-#page-execucao-tarefas .ext-registro-data { font-weight: 600; color: var(--ds-color-text); white-space: nowrap; }
-#page-execucao-tarefas .ext-registro-obs { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#page-execucao-tarefas .ext-registro-del { border: none; background: none; color: var(--ds-color-text-muted); cursor: pointer; display: flex; align-items: center; }
-#page-execucao-tarefas .ext-registro-del:hover { color: var(--ds-color-danger); }
-#page-execucao-tarefas .ext-registro-del .material-symbols-outlined { font-size: 15px; }
-#page-execucao-tarefas .ext-registro-vazio { font-size: 0.76rem; color: var(--ds-color-text-muted); font-style: italic; }
+/* Exercício: contêiner de modo de visualização alinhado à direita da barra de filtros */
+#page-execucao-tarefas #ext-exercicio-modo { margin-left: auto; }
 
 /* --- Estado Vazio --- */
 #page-execucao-tarefas .exl-vazio { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 16px; color: var(--ds-color-text-muted); }
@@ -21056,12 +21437,11 @@ uiRegistrarAcoes('pages_execucao_planos', {
 var estadoExecTarefas = {
   idPlano: null,
   dados: null,
-  aba: 'tarefas',
+  aba: 'todos',
   filtroStatus: 'todos',
   busca: '',
   dentroDe: '',
   anoSelecionado: 'todos',
-  abertas: {}, // linhas expandidas: id do elemento -> true
   historico: {}, // id do elemento -> registros[] já lidos
   ordenacao: { col: '', dir: 'asc' }, // col: '' (ordem do plano) | 'elemento' | 'responsavel' | 'progresso'
   itensPorPagina: 10, paginaAtual: 1,
@@ -21084,7 +21464,7 @@ var EXT_CORES_STATUS_PLANO = {
 // Estado de uma abertura nova da página (o objeto é um só: aqui se volta ao ponto de partida, sem trocá-lo por outro).
 function execTarefasReiniciar(idPlano) {
   Object.assign(estadoExecTarefas, {
-    idPlano: String(idPlano), dados: null, aba: 'tarefas', filtroStatus: 'todos', busca: '', dentroDe: '', anoSelecionado: 'todos', abertas: {}, historico: {},
+    idPlano: String(idPlano), dados: null, aba: 'todos', filtroStatus: 'todos', busca: '', dentroDe: '', anoSelecionado: 'todos', historico: {},
     ordenacao: { col: '', dir: 'asc' }, itensPorPagina: 10, paginaAtual: 1, painelElemento: '', riscos: null
   });
 }
@@ -21094,13 +21474,12 @@ function execTarefasCarregar(preservar) {
   var e = estadoExecTarefas;
   if (!preservar) {
     document.getElementById('ext-titulo').textContent = 'Carregando…';
-    e.riscos = null; e.abertas = {}; e.historico = {};
+    e.riscos = null; e.historico = {}; e.aba = 'todos';
     e.filtroStatus = 'todos'; e.busca = ''; e.dentroDe = ''; e.paginaAtual = 1;
     var buscaEl = document.getElementById('ext-busca');
     if (buscaEl) buscaEl.value = '';
     document.getElementById('ext-search-caixa').classList.add('hidden');
     document.getElementById('ext-search-toggle').classList.remove('hidden');
-    execTarefasMudarAba('tarefas', true);
     document.getElementById('ext-container').innerHTML = spinnerListaHTML('Carregando o registro de execução…');
   }
 
@@ -21117,6 +21496,11 @@ function execTarefasCarregar(preservar) {
       }
       _extFiltrosAtualizarUI();
       execTarefasRenderizar();
+      // riscos do plano: cada risco pertence a um elemento; entram na linha (ações devidas) e na etapa Riscos do modal
+      google.script.run
+        .withSuccessHandler(function(l) { e.riscos = l || []; execTarefasRenderizar(); })
+        .withFailureHandler(function() { e.riscos = []; })
+        .apiGetRiscos(e.idPlano);
     })
     .withFailureHandler(function(err) {
       document.getElementById('ext-container').innerHTML = '<div class="exl-vazio"><span class="material-symbols-outlined">error</span><p>' + escapeHtml(err.message) + '</p></div>';
@@ -21144,7 +21528,7 @@ function execTarefasRenderizarHeader(p, primeiraCarga) {
 
   // O seletor de exercício só existe se a vigência cruza mais de um ano; abre no ano corrente (ou no primeiro)
   var anos = _extAnos();
-  document.getElementById('ext-filtro-wrap-exercicio').classList.toggle('hidden', anos.length < 2);
+  document.getElementById('ext-exercicio-modo').classList.toggle('hidden', anos.length < 2);
   if (primeiraCarga) {
     var anoAtual = new Date().getFullYear();
     estadoExecTarefas.anoSelecionado = anos.length < 2 ? 'todos' : String(anos.indexOf(anoAtual) > -1 ? anoAtual : anos[0]);
@@ -21272,7 +21656,9 @@ function _extpRenderAtividade() {
   // com um elemento aberto na barra lateral, a atividade é o histórico dos lançamentos de progresso dele
   var idEl = estadoExecTarefas.painelElemento;
   if (idEl) {
-    c.innerHTML = '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Histórico de progresso</div><div id="ext-historico-host-' + escapeHtml(idEl) + '">' + spinnerListaHTML('') + '</div></div>';
+    var ar = (_execTarefaDe(idEl) || {}).atrasoRegular;
+    var histAtraso = ar && ar.prazo ? '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Histórico de atraso</div><span class="ds-help">Estava atrasado na vigência regular do plano (prazo original ' + escapeHtml(ar.prazo) + '). Deixou de estar atrasado porque o plano foi prorrogado' + (ar.novaVigencia ? ' até ' + escapeHtml(ar.novaVigencia) : '') + '.</span></div>' : '';
+    c.innerHTML = '<div class="ds-stack ds-stack--3">' + histAtraso + '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Histórico de progresso</div><div id="ext-historico-host-' + escapeHtml(idEl) + '">' + spinnerListaHTML('') + '</div></div></div>';
     _execMontarHistorico(idEl);
     return;
   }
@@ -21317,18 +21703,25 @@ document.addEventListener('click', function(e) {
   if (toggle) toggle.classList.remove('hidden');
 });
 
-// --- ABAS: RESPONSABILIDADES / AÇÕES DE TRATAMENTO ---
+// --- ABAS POR SITUAÇÃO ---
 
-function execTarefasMudarAba(aba, semCarregarRiscos) {
+function execTarefasMudarAba(aba) {
   estadoExecTarefas.aba = aba;
+  estadoExecTarefas.paginaAtual = 1;
+  execTarefasRenderizar();
+}
+
+// Contadores e aba ativa (contam o que passa pelos filtros, antes da aba).
+function _extAbaUI() {
+  var base = _execLinhasBase(), c = { todos: base.length, registrar: 0, validacao: 0, emdia: 0 };
+  base.forEach(function(n) { c[execFrentes(n).grupo]++; });
   document.querySelectorAll('#ext-tabs-row .ds-tabs-nav__item').forEach(function(b) {
-    b.classList.toggle('active', b.dataset.aba === aba);
-    b.setAttribute('aria-selected', b.dataset.aba === aba);
+    var on = b.dataset.aba === estadoExecTarefas.aba;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on);
+    var k = b.querySelector('.ds-tab-count');
+    if (k) k.textContent = c[b.dataset.aba] ? String(c[b.dataset.aba]) : '';
   });
-  document.getElementById('ext-painel-tarefas').classList.toggle('hidden', aba !== 'tarefas');
-  document.getElementById('ext-painel-riscos').classList.toggle('hidden', aba !== 'riscos');
-  if (aba === 'riscos' && !semCarregarRiscos) _execCarregarRiscos();
-  uiPaginaMedir(document.getElementById('page-execucao-tarefas'));
 }
 
 // --- FILTROS (componentes canônicos .ds-filtro / .ds-busca) ---
@@ -21491,9 +21884,21 @@ function _execCasaFiltros(n) {
   return _execNoExercicio(t, e.anoSelecionado);
 }
 
-function _execLinhas() {
+// Entra na lista: folha executável, qualquer elemento com indicador e qualquer elemento com risco.
+function _execEntra(n) { return n.papel === 'FOLHA' || n.temIndicador || _execRiscosDoElemento(n.id).length > 0; }
+function _execLinhasBase() {
   var nos = (estadoExecTarefas.dados && estadoExecTarefas.dados.arvore) || [];
-  return _execLinhasOrdenar(nos.filter(function(n) { return (n.papel === 'FOLHA' || n.temIndicador) && _execCasaFiltros(n); }));
+  return nos.filter(function(n) { return _execEntra(n) && _execCasaFiltros(n); });
+}
+// Na aba Todos, sem coluna escolhida, o que está a registrar vem primeiro (depois, a validar; por fim, em dia), na ordem do plano.
+function _execLinhas() {
+  var a = estadoExecTarefas.aba, l = _execLinhasBase();
+  if (a !== 'todos') l = l.filter(function(n) { return execFrentes(n).grupo === a; });
+  else if (!estadoExecTarefas.ordenacao.col) {
+    var ord = { registrar: 0, validacao: 1, emdia: 2 };
+    l = l.map(function(n, i) { return { n: n, i: i, g: ord[execFrentes(n).grupo] }; }).sort(function(x, y) { return x.g - y.g || x.i - y.i; }).map(function(x) { return x.n; });
+  }
+  return _execLinhasOrdenar(l);
 }
 
 // Ordenação por coluna; sem coluna escolhida vale a ordem do plano (a da árvore).
@@ -21525,6 +21930,7 @@ function extOrdenarPor(col) {
 }
 function extDefinirColuna(col) { estadoExecTarefas.ordenacao.col = col; estadoExecTarefas.paginaAtual = 1; execTarefasRenderizar(); }
 function extDefinirDirecao(dir) { estadoExecTarefas.ordenacao.dir = dir; estadoExecTarefas.paginaAtual = 1; execTarefasRenderizar(); }
+// O ícone de ordenar abre o menu e revela as demais ferramentas da tabela (atualizar, baixar, imprimir); fechar o menu as recolhe.
 function extMenuOrdenar(ev, gatilho) {
   var o = estadoExecTarefas.ordenacao;
   if (ev) ev.stopPropagation();
@@ -21536,6 +21942,9 @@ function extMenuOrdenar(ev, gatilho) {
       { label: 'Decrescente', ativo: o.dir === 'desc', onclick: "extDefinirDirecao('desc')" }
     ] }
   ]);
+  var th = document.querySelector('#ext-tabela .ds-th-ferramentas');
+  estadoExecTarefas.ferramentasAbertas = !!document.getElementById('menu-selecao-aberto');
+  if (th) th.classList.toggle('is-aberto', estadoExecTarefas.ferramentasAbertas);
 }
 
 function _execChipHTML(icone, texto, dica, extra, id) {
@@ -21544,76 +21953,95 @@ function _execChipHTML(icone, texto, dica, extra, id) {
 }
 
 function _execProgressoHTML(n, t) {
+  if (n.papel === 'PAI') return '<span class="ds-help">Calculado: ' + Math.round(Number(n.percentual) || 0) + '%</span>';
   if (n.papel !== 'FOLHA') return '';
-  var dica = n.porLista ? 'O progresso vem da lista de verificação' : '';
-  if (n.progressoEsperado !== null && n.progressoEsperado !== undefined) dica += (dica ? ' · ' : '') + 'Esperado hoje: ' + Math.round(n.progressoEsperado) + '%';
-  var alerta = n.atrasado ? uiAlertaAtrasoHTML('Atrasado: o realizado está abaixo do esperado' + (n.progressoEsperado !== null && n.progressoEsperado !== undefined ? ' (' + Math.round(n.progressoEsperado) + '% esperado)' : '')) : '';
-  return alerta ? '<div class="ds-valor-alerta">' + uiProgressoHTML(n.percentual, dica) + alerta + '</div>' : uiProgressoHTML(n.percentual, dica);
+  var esp = n.progressoEsperado !== null && n.progressoEsperado !== undefined ? Math.round(n.progressoEsperado) : null;
+  var abaixo = esp !== null && (Number(n.percentual) || 0) < esp; // o esperado só aparece quando o progresso está abaixo dele
+  var legenda = n.atrasado ? '<span class="ds-help ds-help--error">Atrasado' + (abaixo ? ' · esperado ' + esp + '%' : '') + '</span>'
+    : n.porLista ? '<span class="ds-help">Pela lista de verificação' + (abaixo ? ' · esperado ' + esp + '%' : '') + '</span>'
+    : abaixo ? '<span class="ds-help">Esperado ' + esp + '%</span>' : '';
+  return '<div class="ds-stack ds-stack--2">' + uiProgressoHTML(n.percentual, '') + legenda + '</div>';
+}
+
+// --- FRENTES A REGISTRAR ---
+// PROVISÓRIO (regra de negócio no cliente até a rota entregar o resumo agregado; ver ENTREGA.md §5).
+function _execAnoRef() { var a = estadoExecTarefas.anoSelecionado; return a === 'todos' ? new Date().getFullYear() : Number(a); }
+function _execRiscosDoElemento(id) { return (estadoExecTarefas.riscos || []).filter(function(r) { return String(r.idElemento) === String(id); }); }
+function _execBRparaData(br) { var p = String(br || '').split('/'); return p.length === 3 ? new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0])) : null; }
+
+// Próxima execução devida da ação de tratamento: pontual = a data de referência, se nunca registrada; contínua = último registro + intervalo (ou a referência).
+function execProximaTratamento(t) {
+  var regs = t.registros || [], ult = regs.length ? _execBRparaData(regs[0].dataExecucaoFmt) : null, ref = _execBRparaData(t.dataReferenciaFmt);
+  if (t.periodicidade !== 'Contínuo' || !t.intervaloQtd) return regs.length ? null : ref;
+  if (!ult) return ref;
+  var d = new Date(ult), q = Number(t.intervaloQtd), u = String(t.intervaloUnidade || '').toLowerCase();
+  if (u.indexOf('sem') === 0) d.setDate(d.getDate() + 7 * q); else if (u.indexOf('m') === 0) d.setMonth(d.getMonth() + q); else d.setDate(d.getDate() + q);
+  return d;
+}
+function execTratamentoDevido(t) { var p = execProximaTratamento(t); return !!p && p <= new Date(); }
+
+// Estado do indicador no exercício: pendente (meta sem resultado), validacao, lancado, semMeta, bloqueado.
+function execIndicadorEstado(ind, ano) {
+  var meta = (ind.metas || []).find(function(m) { return Number(m.ano) === Number(ano); }) || null;
+  var res = meta ? (ind.resultados || []).find(function(r) { return String(r.idMeta) === String(meta.id); }) || null : null;
+  var est = ind.resultadoBloqueado ? 'bloqueado' : !meta ? 'semMeta' : res ? (res.statusValidacao === 'Pendente' ? 'validacao' : 'lancado') : 'pendente';
+  return { meta: meta, res: res, estado: est };
+}
+
+function execFrentes(n) {
+  var ano = _execAnoRef(), inds = _execIndicadoresDoElemento(n.id), folha = n.papel === 'FOLHA';
+  var prog = folha && !n.progressoPendente && Number(n.percentual) < 100 &&
+    (!!n.listaNecessaria || !!n.progressoRejeitado || !!n.atrasado || ((n.podeLancar || n.podeLancarPelaLista) && !Number(n.percentual)));
+  var est = inds.map(function(i) { return execIndicadorEstado(i, ano).estado; });
+  var indPend = est.filter(function(x) { return x === 'pendente'; }).length, indVal = est.filter(function(x) { return x === 'validacao'; }).length;
+  var trDev = 0;
+  _execRiscosDoElemento(n.id).forEach(function(r) { (r.tratamentos || []).forEach(function(t) { if (execTratamentoDevido(t)) trDev++; }); });
+  var validar = !!n.progressoPendente || indVal > 0;
+  return { folha: folha, prog: prog, inds: inds.length, indPend: indPend, trDev: trDev, validar: validar,
+    grupo: (prog || indPend || trDev) ? 'registrar' : validar ? 'validacao' : 'emdia' };
+}
+
+function _execCaminho(n) {
+  var p = [];
+  for (var x = _execNoDe(n.idPai); x; x = _execNoDe(x.idPai)) p.unshift((x.codigo ? x.codigo + ' ' : '') + x.titulo);
+  return p.join(' › ');
+}
+
+// O que há a registrar, de relance (sem o detalhe: o detalhe está no modal).
+function _execARegistrarHTML(n, f) {
+  var b = [];
+  if (n.listaNecessaria) b.push('<span class="ds-badge ds-badge--warning" data-title="A lista de verificação não tem itens: crie a lista para lançar o progresso"><span class="material-symbols-outlined">checklist</span>Criar lista</span>');
+  else if (n.progressoRejeitado) b.push('<span class="ds-badge ds-badge--danger" data-title="' + escapeHtml('Último lançamento rejeitado' + (n.progressoRejeitado.motivo ? ': ' + n.progressoRejeitado.motivo : '')) + '"><span class="material-symbols-outlined">error</span>Rejeitado</span>');
+  else if (f.prog) b.push('<span class="ds-badge ds-badge--warning" data-title="Há progresso a lançar"><span class="material-symbols-outlined">task_alt</span>Progresso</span>');
+  if (f.indPend) b.push(_execChipHTML('speed', (f.inds - f.indPend) + ' de ' + f.inds, f.indPend + ' indicador(es) sem resultado no exercício', 'el-chip-ind'));
+  if (f.trDev) b.push('<span class="ds-badge ds-badge--warning" data-title="Ações de tratamento de risco devidas"><span class="material-symbols-outlined">shield</span>' + f.trDev + (f.trDev > 1 ? ' devidas' : ' devida') + '</span>');
+  if (f.validar) b.push('<span class="ds-badge ds-badge--info" data-title="Lançamento aguardando validação"><span class="material-symbols-outlined">hourglass_top</span>Em validação</span>');
+  if (!b.length) b.push('<span class="ds-badge ds-badge--success"><span class="material-symbols-outlined">check_circle</span>Em dia</span>');
+  return '<div class="el-meta-chips">' + b.join('') + '</div>';
 }
 
 function _execAcoesHTML(n, id) {
-  var acoes = [];
-  acoes.push({ icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "extAbrirDetalhesElemento('" + escapeJsAttr(id) + "')", principal: true });
-  if (n.podeLancar) acoes.push({ icone: 'task_alt', rotulo: 'Lançar progresso', onclick: "_execAbrirModalProgresso('" + escapeJsAttr(id) + "')", principal: true });
-  if (n.podeLancarPelaLista) acoes.push({ icone: 'task_alt', rotulo: 'Lançar progresso pela lista de verificação', onclick: "_execAbrirModalProgresso('" + escapeJsAttr(id) + "')", principal: true });
-  // sem itens na lista o progresso não pode ser lançado: a ação existe, com a dica, e leva à lista
-  if (n.listaNecessaria) acoes.push({ icone: 'task_alt', rotulo: 'Crie a lista de verificação para lançar o progresso', onclick: "_execAbrirLinha('" + escapeJsAttr(id) + "')", principal: true });
-  acoes.push({ icone: 'open_in_new', rotulo: 'Ver no plano', onclick: "carregarDetalhesPlano('" + escapeJsAttr(String(estadoExecTarefas.idPlano)) + "')" });
-  return acoesLinhaHTML('ext-tb-' + id, acoes);
+  return acoesLinhaHTML('ext-tb-' + id, [
+    { icone: 'task_alt', rotulo: 'Registrar execução', onclick: "extRegistrar('" + escapeJsAttr(id) + "')", principal: true },
+    { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "extAbrirDetalhesElemento('" + escapeJsAttr(id) + "')", principal: true },
+    { icone: 'open_in_new', rotulo: 'Ver no plano', onclick: "carregarDetalhesPlano('" + escapeJsAttr(String(estadoExecTarefas.idPlano)) + "')" }
+  ], { maxDireto: 2 });
 }
+
+function extRegistrar(id) { abrirRegistroExecucao({ idPlano: estadoExecTarefas.idPlano, idElemento: String(id) }); }
 
 function _execLinhaHTML(n) {
-  var id = String(n.id), t = _execTarefaDe(id), inds = _execIndicadoresDoElemento(id), aberta = !!estadoExecTarefas.abertas[id];
-
-  var chips = [];
-  if (t && t.fim) chips.push(uiChipPrazoHTML(t.fim, t.atrasoRegular));
-  if (n.progressoRejeitado) chips.push(_execChipHTML('error', '', 'Último lançamento de progresso rejeitado' + (n.progressoRejeitado.motivo ? ': ' + n.progressoRejeitado.motivo : '') + '. O percentual mostrado é o validado.'));
-  if (n.progressoPendente) chips.push(_execChipHTML('hourglass_top', '', 'Lançamento de progresso aguardando validação; o percentual mostrado é o validado.'));
-  if (t && t.tarefasTotal > 0) chips.push(_execChipHTML('checklist', t.tarefasConcluidas + ' de ' + t.tarefasTotal, 'Itens da lista de verificação concluídos', '', 'ext-cont-' + id));
-  if (n.temIndicador) chips.push(_execChipHTML('speed', inds.length ? String(inds.length) : '', 'Elemento com indicador', 'el-chip-ind'));
-
-  var tdElem = '<td class="el-col-elem"><div class="el-elem-content">' +
-    (n.tipo ? '<span class="el-tipo-badge">' + escapeHtml(n.tipo) + '</span>' : '') +
-    '<span class="el-codigo">' + escapeHtml(n.codigo || '') + '</span>' +
-    '<span class="el-titulo" data-title="' + escapeHtml(n.titulo) + '">' + escapeHtml(n.titulo) + '</span>' +
-    (chips.length ? '<div class="el-meta-chips" data-ext-chips>' + chips.join('') + '</div>' : '') +
-    '</div></td>';
-
+  var id = String(n.id), t = _execTarefaDe(id), f = execFrentes(n);
+  var tdElem = '<td class="el-col-elem"><div class="ds-stack ds-stack--2">' +
+    '<div class="el-elem-content">' + uiBadgeTipoHTML(n.tipo, n.corTipo) + '<span class="el-codigo">' + escapeHtml(n.codigo || '') + '</span>' +
+    '<span class="el-titulo" data-title="' + escapeHtml(n.titulo) + '">' + escapeHtml(n.titulo) + '</span></div></div></td>';
   var tdResp = '<td class="el-col-resp">' + ((t && t.quem && t.quem.length)
     ? uiRespHTML(t.quem[0].idResp, t.quem[0].tipo, t.quem.slice(1).map(function(q) { return q.idResp; })) : '') + '</td>';
-
-  var expande = '<button type="button" class="el-toggle-btn' + (aberta ? ' expanded' : '') + '" data-on-click="pages_execucao_tarefas.41" data-aclick0="' + escapeHtml(id) + '" aria-label="' + (aberta ? 'Recolher' : 'Expandir') + '">' +
-    '<span class="material-symbols-outlined">chevron_right</span></button>';
-
-  var tr = '<tr class="ds-linha-clicavel" data-id="' + escapeHtml(id) + '" data-on-click="pages_execucao_tarefas.41" data-aclick0="' + escapeHtml(id) + '"><td class="el-col-expand">' + expande + '</td>' + tdElem + tdResp +
-    '<td>' + _execProgressoHTML(n, t) + '</td><td class="ds-col-acoes">' + _execAcoesHTML(n, id) + '</td></tr>';
-  var detalhe = aberta ? '<tr><td colspan="5">' + _execDetalheHTML(n, id) + '</td></tr>' : '';
-  return tr + detalhe;
-}
-
-// Linha expandida: a lista de verificação (só folha executável) e os indicadores do elemento, cada um com o seu lançamento de desempenho.
-function _execDetalheHTML(n, id) {
-  var inds = _execIndicadoresDoElemento(id);
-  var lista = n.papel === 'FOLHA'
-    ? '<div class="ds-stack ds-stack--2"><div id="ext-lista-host-' + escapeHtml(id) + '"></div></div>' : '';
-  var indicadores = inds.length
-    ? '<div class="ds-stack ds-stack--2"><div class="ds-section-title">Indicadores</div>' + inds.map(function(ind) { return _execIndicadorHTML(id, ind); }).join('') + '</div>' : '';
-  return '<div class="ds-stack ds-stack--3">' + lista + indicadores + '</div>';
-}
-
-function _execIndicadorHTML(idElemento, ind) {
-  var ano = estadoExecTarefas.anoSelecionado, metas = ind.metas || [], resultados = ind.resultados || [];
-  var meta = ano !== 'todos' ? metas.find(function(m) { return Number(m.ano) === Number(ano); }) : (metas[0] || null);
-  var res = meta ? resultados.find(function(r) { return String(r.idMeta) === String(meta.id); }) : (resultados[0] || null);
-  var un = ind.unidade ? ' ' + ind.unidade : '';
-  var atingido = res && meta && Number(res.valorApurado) >= Number(meta.valor);
-  var sit = !res ? '<span class="ds-badge ds-badge--warning">Pendente</span>'
-    : '<span class="ds-badge ' + (atingido ? 'ds-badge--success' : 'ds-badge--neutral') + '">' + escapeHtml(res.valorApurado + un) + '</span>';
-  return '<div class="ds-spread"><div class="ds-inline"><span class="material-symbols-outlined">speed</span><span>' + escapeHtml(ind.nome) + '</span></div>' +
-    '<div class="ds-cluster"><span class="ds-help">Meta' + (meta && meta.ano ? ' ' + meta.ano : '') + ': ' + escapeHtml(meta ? meta.valor + un : 'sem meta no exercício') + '</span>' + sit +
-    (ind.resultadoBloqueado ? '' : '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Lançar desempenho" aria-label="Lançar desempenho" data-on-click="pages_execucao_tarefas.35" data-aclick0="' + escapeHtml(String(idElemento)) + '" data-aclick1="' + escapeHtml(String(ind.id)) + '">' +
-    '<span class="material-symbols-outlined">track_changes</span></button>') +
-    '</div></div>';
+  return '<tr class="ds-linha-clicavel" data-id="' + escapeHtml(id) + '" data-on-click="pages_execucao_tarefas.41" data-aclick0="' + escapeHtml(id) + '">' + tdElem + tdResp +
+    '<td>' + _execProgressoHTML(n, t) + '</td>' +
+    '<td>' + _execARegistrarHTML(n, f) + '</td>' +
+    '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info">' + (t && t.fim ? escapeHtml(t.fim) : '') + '</div>' +
+    '<div class="ds-celula-sobreposta__acoes">' + _execAcoesHTML(n, id) + '</div></div></td></tr>';
 }
 
 function execTarefasRenderizar() {
@@ -21622,7 +22050,8 @@ function execTarefasRenderizar() {
   if (!container || !d) return;
   var linhas = _execLinhas(), corpo;
   var pagina = uiPaginarLista(linhas, estadoExecTarefas);
-  if (!(d.arvore || []).some(function(n) { return n.papel === 'FOLHA' || n.temIndicador; })) {
+  _extAbaUI();
+  if (!(d.arvore || []).some(_execEntra)) {
     corpo = '<tr class="el-linha-msg"><td colspan="5"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">checklist</span><p class="el-esti">Nenhum elemento para você neste plano</p><p>Os elementos em que você é responsável aparecem aqui.</p></div></td></tr>';
   } else if (!linhas.length) {
     corpo = '<tr class="el-linha-msg"><td colspan="5"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">filter_alt_off</span><p class="el-esti">Nenhum resultado para os filtros</p><p>Tente ampliar ou limpar os filtros aplicados.</p></div></td></tr>';
@@ -21630,32 +22059,17 @@ function execTarefasRenderizar() {
     corpo = pagina.map(_execLinhaHTML).join('');
   }
   container.innerHTML = '<div class="el-table-wrap"><table class="el-tabela" id="ext-tabela">' +
-    '<colgroup><col class="el-col-expand"><col class="el-col-elem"><col class="el-col-resp"><col id="ext-col-prog"><col class="ds-col-acoes"></colgroup>' +
-    '<thead><tr><th class="el-col-expand"></th>' + _execThOrd('Elemento', 'elemento', 'el-col-elem') + _execThOrd('Responsável', 'responsavel', 'el-col-resp') + _execThOrd('Progresso', 'progresso', '') +
-    '<th class="ds-col-acoes"><div class="ds-th-acoes">' +
+    '<colgroup><col class="el-col-elem"><col class="el-col-resp"><col id="ext-col-prog"><col><col class="ds-col-sobreposta"></colgroup>' +
+    '<thead><tr>' + _execThOrd('Elemento', 'elemento', 'el-col-elem') + _execThOrd('Responsável', 'responsavel', 'el-col-resp') + _execThOrd('Progresso', 'progresso', '') + '<th>A registrar</th>' +
+    '<th class="ds-col-sobreposta"><div class="ds-th-ferramentas' + (estadoExecTarefas.ferramentasAbertas ? ' is-aberto' : '') + '"><span class="ds-th-ferramentas__rotulo">Prazo</span><span class="ds-th-ferramentas__extras">' +
     '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar" aria-label="Atualizar lista"><span class="material-symbols-outlined">refresh</span></button>' +
-    uiAlternarTudoHTML(_execTudoAberto(), 'data-on-click="pages_execucao_tarefas.46"') +
     '<button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Baixar"><span class="material-symbols-outlined">download</span></button>' +
     '<button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>' +
-    '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.45" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu"><span class="material-symbols-outlined">sort</span></button>' +
+    '</span><button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.45" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu"><span class="material-symbols-outlined">sort</span></button>' +
     '</div></th></tr></thead><tbody>' + corpo + '</tbody></table></div>' +
     (linhas.length ? uiPaginadorRodapeHTML('ext-pag', { tamanho: 'pages_execucao_tarefas.47', anterior: 'pages_execucao_tarefas.48', pagina: 'pages_execucao_tarefas.49', proximo: 'pages_execucao_tarefas.50' }) : '');
   if (linhas.length) uiPaginadorRodapeAtualizar('ext-pag', estadoExecTarefas, linhas.length);
-  _execMontarLista();
   uiPaginaMedir(document.getElementById('page-execucao-tarefas'));
-}
-
-// Lista de verificação (componente de components_tarefas_elemento.html) de cada linha aberta; a contagem na linha acompanha a lista.
-function _execMontarLista() {
-  Object.keys(estadoExecTarefas.abertas).forEach(function(id) {
-    if (!document.getElementById('ext-lista-host-' + id) || typeof telMontar !== 'function') return;
-    telMontar('ext-lista-host-' + id, id, function(st) {
-      var t = _execTarefaDe(id);
-      if (t) { t.tarefasTotal = st.total; t.tarefasConcluidas = st.concluidas; }
-      var chip = document.getElementById('ext-cont-' + id);
-      if (chip) chip.textContent = st.concluidas + ' de ' + st.total;
-    });
-  });
 }
 
 // Histórico dos lançamentos de progresso do elemento (do mais novo ao mais antigo); fica em memória enquanto a página está aberta.
@@ -21696,32 +22110,6 @@ function _execHistoricoHTML(registros) {
 function extMudarTamanhoPagina(valor) { estadoExecTarefas.itensPorPagina = parseInt(valor, 10) || 10; estadoExecTarefas.paginaAtual = 1; execTarefasRenderizar(); }
 function extIrParaPagina(valor) { estadoExecTarefas.paginaAtual = parseInt(valor, 10) || 1; execTarefasRenderizar(); }
 
-function extToggleLinha(id) {
-  var ab = estadoExecTarefas.abertas;
-  if (ab[String(id)]) delete ab[String(id)]; else ab[String(id)] = true;
-  execTarefasRenderizar();
-}
-
-function _execLinhasDaPagina() { return uiPaginarLista(_execLinhas(), estadoExecTarefas); }
-
-function _execTudoAberto() {
-  var l = _execLinhasDaPagina();
-  return l.length > 0 && l.every(function(n) { return estadoExecTarefas.abertas[String(n.id)]; });
-}
-
-// Um botão só: com tudo aberto recolhe, senão abre as linhas da página mostrada (já com os filtros).
-function extExpandirTudo() {
-  var abrir = !_execTudoAberto();
-  estadoExecTarefas.abertas = {};
-  if (abrir) _execLinhasDaPagina().forEach(function(n) { estadoExecTarefas.abertas[String(n.id)] = true; });
-  execTarefasRenderizar();
-}
-
-function _execAbrirLinha(id) {
-  estadoExecTarefas.abertas[String(id)] = true;
-  execTarefasRenderizar();
-}
-
 function _execVazioHTML(msg) {
   return '<div class="exl-vazio"><span class="material-symbols-outlined">checklist</span><p>' + escapeHtml(msg) + '</p></div>';
 }
@@ -21731,164 +22119,12 @@ function _execIndicadoresDoElemento(idEl) {
   return estadoExecTarefas.dados.indicadores.filter(function(i) { return String(i.idElemento) === String(idEl); });
 }
 
-// --- MODAIS DE EXECUÇÃO: PROGRESSO E DESEMPENHO ---
-
-function _execAbrirModalProgresso(idElemento) {
-  var n = _execNoDe(idElemento), t = _execTarefaDe(idElemento) || n;
-  if (!n || typeof abrirModalResultado !== 'function') return;
-  var abrir = function(extra) {
-    abrirModalResultado(Object.assign({
-      idElemento: n.id, tituloElemento: n.titulo, percentualAtual: Number(t.percentual) || 0, statusAtual: t.status || 'Não Iniciado', idIndicador: null, nomeIndicador: null
-    }, extra));
-  };
-  if (!n.porLista) { abrir({}); return; }
-  // com o progresso vindo da lista, o percentual é o que a lista vale agora (não se digita)
-  google.script.run
-    .withSuccessHandler(function(r) { abrir({ porLista: true, percentualAtual: r.percentualDaLista || 0 }); })
-    .withFailureHandler(function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); })
-    .apiGetTarefasElemento(n.id);
-}
-
-function _execAbrirModalLancamentoIndicador(idElemento, idIndicador) {
-  var t = _execTarefaDe(idElemento) || _execNoDe(idElemento);
-  if (!t) return;
-  var inds = _execIndicadoresDoElemento(idElemento);
-  var ind = inds.find(function(i) { return String(i.id) === String(idIndicador); }) || inds[0];
-  if (!ind || typeof abrirModalResultado !== 'function') return;
-  abrirModalResultado({
-    idElemento: t.id, tituloElemento: t.titulo, percentualAtual: Number(t.percentual) || 0, statusAtual: t.status || 'Não Iniciado',
-    progressoPorTarefas: !!(_execNoDe(idElemento)||{}).porLista, idIndicador: ind.id, nomeIndicador: ind.nome + (ind.unidade ? ' (' + ind.unidade + ')' : '')
-  });
-}
-
-// ==================================================================
-// ABA: AÇÕES DE TRATAMENTO
-// ==================================================================
-
-var _EXEC_CORES_NIVEL = {
-  RB: { bg: 'var(--ds-color-success-bg)', text: 'var(--ds-color-success-fg)' },
-  RM: { bg: 'var(--ds-color-warning-bg)', text: 'var(--ds-color-warning-fg)' },
-  RA: { bg: 'var(--ds-risk-alto-bg)', text: 'var(--ds-risk-alto-fg)' },
-  RE: { bg: 'var(--ds-color-danger-bg)', text: 'var(--ds-color-danger-fg)' }
-};
-
-function _execCarregarRiscos() {
-  var container = document.getElementById('ext-riscos-container');
-  if (estadoExecTarefas.riscos) { _execRenderRiscos(); return; }
-  container.innerHTML = spinnerListaHTML('Carregando riscos e tratamentos…');
-
-  google.script.run
-    .withSuccessHandler(function(lista) {
-      estadoExecTarefas.riscos = lista || [];
-      _execRenderRiscos();
-    })
-    .withFailureHandler(function(err) {
-      container.innerHTML = '<div class="exl-vazio"><span class="material-symbols-outlined">error</span><p>' + escapeHtml(err.message) + '</p></div>';
-    })
-    .apiGetRiscos(estadoExecTarefas.idPlano);
-}
-
-function _execRenderRiscos() {
-  var container = document.getElementById('ext-riscos-container');
-  var lista = estadoExecTarefas.riscos || [];
-  if (lista.length === 0) { container.innerHTML = _execVazioHTML('Nenhum risco cadastrado para este plano.'); return; }
-
-  container.innerHTML = lista.map(function(r) {
-    var cor = _EXEC_CORES_NIVEL[r.nivelRisco] || { bg: 'var(--ds-color-border)', text: '#555' };
-    var tratamentosHtml = (r.tratamentos || []).map(function(t) { return _execTratamentoHTML(t); }).join('');
-    return '<div class="ext-risco-card">'
-      + '<div class="ext-risco-topo">'
-      +   '<div><div class="ext-risco-titulo">' + escapeHtml(r.risco) + '</div>'
-      +     (r.objetoAnalisado ? '<div class="ext-risco-sub">' + escapeHtml(r.objetoAnalisado) + '</div>' : '') + '</div>'
-      +   '<span class="risco-nivel-badge" style="background:' + cor.bg + ';color:' + cor.text + '">' + escapeHtml(r.nivelRisco || '—') + '</span>'
-      + '</div>'
-      + (tratamentosHtml || '<div class="ext-risco-sem-trat">Sem ações de tratamento cadastradas.</div>')
-      + '</div>';
-  }).join('');
-}
-
-function _execTratamentoHTML(t) {
-  var registros = (t.registros || []).slice(0, 3);
-  var histHtml = registros.length
-    ? registros.map(function(reg) {
-        return '<div class="ext-registro-item">'
-          + '<span class="ext-registro-data">' + escapeHtml(reg.dataExecucaoFmt) + '</span>'
-          + (reg.observacao ? '<span class="ext-registro-obs" data-title="' + escapeHtml(reg.observacao) + '">' + escapeHtml(reg.observacao) + '</span>' : '<span></span>')
-          + '<button class="ext-registro-del" data-title="Excluir registro" data-on-click="pages_execucao_tarefas.22" data-aclick0="' + reg.id + '"><span class="material-symbols-outlined">close</span></button>'
-          + '</div>';
-      }).join('')
-    : '<div class="ext-registro-vazio">Nenhuma execução registrada ainda.</div>';
-
-  var periodicidadeTxt = t.periodicidade === 'Contínuo' && t.intervaloQtd
-    ? t.periodicidade + ' (' + t.intervaloQtd + ' ' + escapeHtml(t.intervaloUnidade || '') + ')'
-    : (t.periodicidade || '');
-
-  return '<div class="ext-tratamento">'
-    + '<div class="ext-tratamento-topo">'
-    +   '<div><div class="ext-tratamento-acao">' + escapeHtml(t.acao) + '</div>'
-    +     '<div class="ext-tratamento-meta">'
-    +       (t.dataReferenciaFmt ? '<span><span class="material-symbols-outlined" style="font-size:13px;vertical-align:middle">schedule</span> ' + escapeHtml(periodicidadeTxt) + ' desde ' + escapeHtml(t.dataReferenciaFmt) + '</span>' : '')
-    +       (t.nomeResponsavel ? '<span><span class="material-symbols-outlined" style="font-size:13px;vertical-align:middle">person</span> ' + escapeHtml(nomeRespExibicao(t.nomeResponsavel, t.tipoResponsavel)) + '</span>' : '')
-    +     '</div></div>'
-    +   '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="pages_execucao_tarefas.23" data-aclick0="' + t.id + '"><span class="material-symbols-outlined" style="font-size:16px">add_task</span> Registrar execução</button>'
-    + '</div>'
-    + '<div class="ext-registros">' + histHtml + '</div>'
-    + '</div>';
-}
-
-function _execAbrirModalRegistro(idTratamento) {
-  document.getElementById('ext-reg-id-tratamento').value = idTratamento;
-  document.getElementById('ext-reg-data').valueAsDate = new Date();
-  document.getElementById('ext-reg-obs').value = '';
-  document.getElementById('ext-modal-registro').classList.remove('hidden');
-  if (typeof bloquearFundo === 'function') bloquearFundo();
-}
-
-function extFecharModalRegistro() {
-  document.getElementById('ext-modal-registro').classList.add('hidden');
-  if (typeof desbloquearFundo === 'function') desbloquearFundo();
-}
-
-function extSalvarRegistro() {
-  var idTratamento = document.getElementById('ext-reg-id-tratamento').value;
-  var dataExecucao = document.getElementById('ext-reg-data').value;
-  var observacao = document.getElementById('ext-reg-obs').value;
-  if (!dataExecucao) { alert('Informe a data de execução.'); return; }
-
-  google.script.run
-    .withSuccessHandler(function() {
-      extFecharModalRegistro();
-      estadoExecTarefas.riscos = null;
-      _execCarregarRiscos();
-    })
-    .withFailureHandler(function(err) {
-      if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message));
-      else alert('Erro: ' + err.message);
-    })
-    .apiSalvarRegistroTratamento({ idTratamento: idTratamento, dataExecucao: dataExecucao, observacao: observacao });
-}
-
-function _execExcluirRegistro(id) {
-  var confirmado = function() {
-    google.script.run
-      .withSuccessHandler(function() {
-        estadoExecTarefas.riscos = null;
-        _execCarregarRiscos();
-      })
-      .withFailureHandler(function(err) {
-        if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message));
-        else alert('Erro: ' + err.message);
-      })
-      .apiExcluirRegistroTratamento(id);
-  };
-  if (typeof showConfirm === 'function') showConfirm('Excluir registro?', 'Esta ação não pode ser desfeita.', confirmado);
-  else if (confirm('Excluir este registro?')) confirmado();
-}
-
 // Registro das Ações de Delegação Global
 uiRegistrarAcoes('pages_execucao_tarefas', {
-  '1': function (event) { execTarefasMudarAba('tarefas'); },
-  '2': function (event) { execTarefasMudarAba('riscos'); },
+  '1': function (event) { execTarefasMudarAba('todos'); },
+  '2': function (event) { execTarefasMudarAba('registrar'); },
+  '3': function (event) { execTarefasMudarAba('validacao'); },
+  '4': function (event) { execTarefasMudarAba('emdia'); },
   '5': function (event) { extAbrirBusca(); },
   '6': function (event) { extLimparBusca(); },
   '7': function (event) { extLimparFiltros(); },
@@ -21896,22 +22132,16 @@ uiRegistrarAcoes('pages_execucao_tarefas', {
   '10': function (event) { extMenuStatus(event, this); },
   '11': function (event) { execTarefasCarregar(true); },
   '14': function (event) { extMenuDentro(event, this); },
-  '22': function (event) { _execExcluirRegistro(uiArgJs(this.dataset.aclick0)); },
-  '23': function (event) { _execAbrirModalRegistro(uiArgJs(this.dataset.aclick0)); },
   '24': function (event) { extAlternarPainelDetalhes(); },
   '25': function (event) { _extpMudarAba('detalhes'); },
   '26': function (event) { _extpMudarAba('atividade'); },
   '27': function (event) { extFecharPainelDetalhes(); },
   '28': function (event) { extMenuExercicio(event, this); },
-  '35': function (event) { event.stopPropagation(); _execAbrirModalLancamentoIndicador(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
   '38': function (event) { extFiltrar('filtroStatus', 'todos'); },
-  '39': function (event) { extFecharModalRegistro(); },
-  '40': function (event) { extSalvarRegistro(); },
-  '41': function (event) { event.stopPropagation(); extToggleLinha(uiArgJs(this.dataset.aclick0)); },
+  '41': function (event) { if (event.target.closest('.ds-col-sobreposta')) return; extRegistrar(uiArgJs(this.dataset.aclick0)); },
   '43': function (event) { extFiltrar('dentroDe', ''); },
   '44': function (event) { extFiltrar('anoSelecionado', 'todos'); },
   '45': function (event) { extMenuOrdenar(event, this); },
-  '46': function (event) { extExpandirTudo(); },
   '47': function (event) { extMudarTamanhoPagina(this.value); },
   '48': function (event) { extIrParaPagina(estadoExecTarefas.paginaAtual - 1); },
   '49': function (event) { extIrParaPagina(this.value); },
