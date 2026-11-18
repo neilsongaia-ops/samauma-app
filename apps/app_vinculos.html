@@ -21,9 +21,7 @@
 .vinc-lista col.vinc-c-resp,   .vinc-lista .vinc-c-resp   { width: 176px; white-space: nowrap; overflow: hidden; }
 .vinc-lista col.vinc-c-status, .vinc-lista .vinc-c-status { width: 136px; white-space: nowrap; overflow: hidden; }
 .vinc-lista col.vinc-c-prog,   .vinc-lista .vinc-c-prog   { width: 124px; white-space: nowrap; overflow: hidden; }
-.vinc-lista col.vinc-c-acoes,  .vinc-lista .vinc-c-acoes  { width: 116px; text-align: right; padding-left: 4px; padding-right: 12px; white-space: nowrap; overflow: hidden; }
 .vinc-lista.tem-decisao col.vinc-c-acoes, .vinc-lista.tem-decisao .vinc-c-acoes { width: 236px; }
-.vinc-lista thead th.vinc-c-acoes { text-align: right; overflow: visible; }
 .vinc-lista tbody td { box-sizing: border-box; }
 .vinc-lista tbody tr.vinc-row td { padding-top: 10px; padding-bottom: 10px; }
 /* alerta visual: só pendência/desvinculação pinta a linha; vínculo aprovado e válido fica sem cor */
@@ -77,7 +75,6 @@
 .vinc-detp-cab h3 { margin: 0; font-size: 1.15rem; font-weight: 600; line-height: 1.35; color: var(--ds-color-text); }
 .vinc-detp-sit { display: inline-flex; align-items: center; gap: 6px; color: var(--vinc-cor); font-weight: var(--ds-weight-semibold); }
 .vinc-detp-sit .material-symbols-outlined { font-size: 18px; }
-.vinc-detp-guard { color: var(--ds-color-text-muted) !important; }
 
 /* colunas que saem: a célula continua na tabela (largura 0), só o conteúdo some — nada desloca */
 @media (min-width: 769px) and (max-width: 1280px) {
@@ -128,8 +125,7 @@
   .vinc-lista tbody tr.vinc-row td.vinc-c-status { grid-area: status; justify-self: start; }
   .vinc-lista tbody tr.vinc-row td.vinc-c-resp { grid-area: resp; overflow: hidden; }
   .vinc-lista tbody tr.vinc-row td.vinc-c-prog { grid-area: prog; }
-  .vinc-lista tbody tr.vinc-row td.vinc-c-acoes { grid-area: acoes; }
-  .vinc-lista tbody tr.vinc-row .acoes-linha { opacity: 1; }
+  .vinc-lista tbody tr.vinc-row td.vinc-c-acoes { grid-area: acoes; width: auto !important; }
   .vinc-lista .vinc-decisao .ds-btn { display: none; }
   .vinc-lista tbody tr.vinc-sub.vinc-visivel { display: flex; align-items: center; gap: 8px; margin: -4px 0 10px 14px; padding: 8px 12px;
     background: color-mix(in srgb, var(--vinc-cor) 6%, var(--ds-color-surface)); border-radius: var(--ds-r-md); }
@@ -288,15 +284,12 @@ var _VINC_STATUS_SLUG = {
 };
 var _vincOrfAbertos = {};
 var _VINC_ACOES = [
-  { id: 'detalhes',    ico: 'right_panel_open', rot: 'Abrir barra lateral',                     unico: true, ok: function(p) { return true; } },
-  { id: 'abrir',       ico: 'open_in_new',  rot: 'Abrir plano',                    unico: true, ok: function(p) { return true; } },
   { id: 'aprovar',     ico: 'check',        rot: 'Aprovar',                        edita: true,  ok: function(p) { return p.vtipo === 'decidir'; } },
   { id: 'recusar',     ico: 'close',        rot: 'Recusar',                        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'decidir'; } },
   { id: 'cancelar',    ico: 'cancel',       rot: 'Cancelar pedido ou proposta',    edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'aguardando'; } },
   { id: 'desvincular', ico: 'link_off',     rot: 'Desvincular',                    edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'superior' || p.vtipo === 'subordinado'; } },
   { id: 'dispensar',   ico: 'visibility_off', rot: 'Dispensar',                    edita: true,  ok: function(p) { return p.vtipo === 'recusado'; } },
-  { id: 'excluirorf',  ico: 'delete_sweep', rot: 'Excluir vínculos órfãos',        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'desvinculado'; } },
-  { id: 'exportar',    ico: 'download',     rot: 'Exportar',                       ok: function(p) { return true; } }
+  { id: 'excluirorf',  ico: 'delete_sweep', rot: 'Excluir vínculos órfãos',        edita: true,  perigo: true, ok: function(p) { return p.vtipo === 'desvinculado'; } }
 ];
 
 var _VINC_TXT_LOTE = {
@@ -410,19 +403,6 @@ function vincExcluirOrfaos(idSup) {
 function vincAcaoLote(acao) {
   var lista = _vincSelecionadosLista();
   if (!lista.length) return;
-  var p = lista[0];
-  if (acao === 'detalhes') return vincAbrirDetalhesPlano(_vincChave(p));
-  if (acao === 'abrir') return carregarDetalhesPlano(String(p.id));
-  if (acao === 'exportar') return exportarVinculosCSV();
-  var idv = String(p.idVinculo || ''), nome = p.nome || '';
-  if (lista.length === 1) {            // um só item: mesmos diálogos da linha
-    if (acao === 'aprovar')     return p.direcao === 'filho' ? aprovarVinculoPlano(idv, nome) : responderPropostaVinculo(idv, nome, 'ACEITAR');
-    if (acao === 'dispensar')   return vincDispensarRecusado(idv, nome);
-    if (acao === 'recusar')     return p.direcao === 'filho' ? desvincularVinculo(idv, nome, true) : responderPropostaVinculo(idv, nome, 'RECUSAR');
-    if (acao === 'cancelar')    return p.direcao === 'proposta_enviada' ? cancelarPropostaVinculo(idv, nome) : desvincularVinculo(idv, nome);
-    if (acao === 'desvincular') return desvincularVinculo(idv, nome);
-    if (acao === 'excluirorf')  return vincExcluirOrfaos(String(p.id));
-  }
   var t = _VINC_TXT_LOTE[acao];
   if (!t) return;
   showConfirm(t.tit, 'Deseja ' + t.msg + ' ' + lista.length + (acao === 'excluirorf' ? ' planos?' : ' itens selecionados?'), function() {
@@ -663,6 +643,11 @@ function carregarAbaVinculos() {
 }
 
 // app_vinculos_regras — regras de tela e utilitários (sem render de lista)
+// Ícone da situação: o superior PRINCIPAL é uma estrela (um só ícone); os demais seguem o ícone do tipo.
+function _vincIconeSituacao(p) {
+  return p.vtipo === 'superior' && p.papel === 'PRINCIPAL' ? 'star' : _VINC_TIPO[p.vtipo].ico;
+}
+
 function _vincTipSituacao(p) {
   if (p.vtipo === 'desvinculado' || p.vtipo === 'recusado') return p.subTxt;
   var D = _VINC_DIR[p.direcao];
@@ -807,19 +792,19 @@ function vincAbrirDetalhesPlano(chave) {
     ? '<div class="detp-resp-item"><span class="material-symbols-outlined">' + (p.tipoResponsavel === 'USER' ? 'person' : 'apartment') + '</span><span data-title="' + escapeHtml(p.responsavel) + '">' + escapeHtml(nomeRespExibicao(p.responsavel, p.tipoResponsavel)) + '</span><span class="detp-resp-papel">Principal</span></div>'
       + (p.respAdicionaisNomes || []).map(function(n) { return '<div class="detp-resp-item"><span class="material-symbols-outlined">person</span><span>' + escapeHtml(n) + '</span><span class="detp-resp-papel">Adicional</span></div>'; }).join('')
     : '';
-  var sit = '<span class="vinc-detp-sit vinc-row--' + p.vtipo + '"><span class="material-symbols-outlined" aria-hidden="true">' + T.ico + '</span>' + escapeHtml(T.rot) + '</span>';
+  var sit = '<span class="vinc-detp-sit vinc-row--' + p.vtipo + '"><span class="material-symbols-outlined" aria-hidden="true">' + _vincIconeSituacao(p) + '</span>' + escapeHtml(T.rot) + '</span>';
   var vinc = _detpLinha('Situação', sit);
   var guardados = '';
   if (p.vtipo === 'desvinculado') {
     var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(p.id); })[0] || {};
     vinc += p.lixeira ? _detpLinha('Plano', 'Na lixeira · os vínculos voltam a valer se for restaurado') : _detpLinha('Desvinculado em', '<span' + (p.desvinculadoPor ? ' data-title="' + escapeHtml(p.desvinculadoPor) + '"' : '') + '>' + escapeHtml(p.desvinculadoEm || '—') + '</span>')
       + (p.vinculoAtual === 'Pendente' ? _detpLinha('Novo pedido', 'Aguardando aprovação') : '');
-    var it = function(ico, rot, tit, sup) {
-      return '<div class="detp-ind-item"><span class="material-symbols-outlined vinc-detp-guard" data-title="' + rot + '" aria-label="' + rot + '">' + ico + '</span>'
+    var it = function(ico, cls, rot, tit, sup) {
+      return '<div class="detp-ind-item"><span class="material-symbols-outlined ' + cls + '" data-title="' + rot + '" aria-label="' + rot + '">' + ico + '</span>'
         + '<span class="detp-ind-nome" data-title="' + escapeHtml(tit + ' → ' + sup) + '">' + escapeHtml(tit) + ' → ' + escapeHtml(sup) + '</span></div>';
     };
-    guardados = (d.elementos || []).map(function(e) { return it('account_tree', 'Elemento', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
-      + (d.indicadores || []).map(function(i) { return it('monitoring', 'Indicador', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
+    guardados = (d.elementos || []).map(function(e) { return it('category', 'ds-ico-elemento', 'Elemento', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
+      + (d.indicadores || []).map(function(i) { return it('speed', 'ds-ico-indicador', 'Indicador', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
   } else if (p.vtipo === 'recusado') {
     vinc += _detpLinha(p.direcao === 'proposta' ? 'Proposta' : 'Pedido', p.direcao === 'proposta' ? 'Ser superior deste plano' : 'Ser subordinado deste plano')
       + _detpLinha('Recusado em', '<span' + (p.recusadoPor ? ' data-title="' + escapeHtml(p.recusadoPor) + '"' : '') + '>' + escapeHtml(p.recusadoEm || '—') + '</span>')
@@ -908,6 +893,8 @@ function _vincSortLista(lista) {
       var sa = String(a.status || '').toLowerCase();
       var sb = String(b.status || '').toLowerCase();
       res = sa.localeCompare(sb, 'pt') || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
+    } else if (col === 'vigencia') {
+      res = ((Number(a.anoInicio) || 0) - (Number(b.anoInicio) || 0)) || ((Number(a.anoFim) || 0) - (Number(b.anoFim) || 0)) || String(a.nome || '').localeCompare(String(b.nome || ''), 'pt');
     } else if (col === 'progresso') {
       var pa = (a.progresso == null || isNaN(Number(a.progresso))) ? -1 : Number(a.progresso);
       var pb = (b.progresso == null || isNaN(Number(b.progresso))) ? -1 : Number(b.progresso);
@@ -939,7 +926,8 @@ function vincAbrirMenuOrdenar(ev) {
     { valor: 'nome',        label: 'Plano' },
     { valor: 'responsavel', label: 'Responsável' },
     { valor: 'status',      label: 'Status' },
-    { valor: 'progresso',   label: 'Progresso' }
+    { valor: 'progresso',   label: 'Progresso' },
+    { valor: 'vigencia',    label: 'Vigência' }
   ];
   var colAtual = (estadoVinculos.sort && estadoVinculos.sort.col) || 'tipo';
   var dirAtual = (estadoVinculos.sort && estadoVinculos.sort.dir) || 'asc';
@@ -954,6 +942,8 @@ function vincAbrirMenuOrdenar(ev) {
       ] }
     ]);
   }
+  var ferr = document.getElementById('vinc-ferramentas');
+  if (ferr) ferr.classList.toggle('is-aberto', !!document.getElementById('menu-selecao-aberto'));
 }
 
 function vincDefinirColunaOrdenacao(col) {
@@ -973,10 +963,9 @@ function vincDefinirDirecaoOrdenacao(dir) {
 function _vincAtualizarIconesOrdenacao() {
   var col = (estadoVinculos.sort && estadoVinculos.sort.col) || 'tipo';
   var dir = (estadoVinculos.sort && estadoVinculos.sort.dir) || 'asc';
-  ['tipo', 'nome', 'responsavel', 'status', 'progresso'].forEach(function(c) {
+  ['tipo', 'nome', 'responsavel', 'status', 'progresso', 'vigencia'].forEach(function(c) {
     var el = document.getElementById('vinc-sort-icon-' + c);
     if (!el) return;
-    el.className = 'sort-icon';
     el.textContent = c === col ? (dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '';
   });
 }
@@ -1099,20 +1088,20 @@ function renderizarTabelaVinculos() {
 
     + '<div class="el-table-wrap">'
     +   '<table class="el-tabela vinc-lista" id="vinc-tabela">'
-    +     '<colgroup><col class="el-col-check"><col class="el-col-expand"><col class="vinc-c-sit"><col class="vinc-c-nome"><col class="vinc-c-resp"><col class="vinc-c-status"><col class="vinc-c-prog"><col class="vinc-c-acoes"></colgroup>'
+    +     '<colgroup><col class="el-col-check"><col class="el-col-expand"><col class="vinc-c-sit"><col class="vinc-c-nome"><col class="vinc-c-resp"><col class="vinc-c-status"><col class="vinc-c-prog"><col class="ds-col-sobreposta vinc-c-acoes"></colgroup>'
     +     '<thead><tr>'
     +       '<th class="el-col-check"><input type="checkbox" id="chk-select-all-vinc" data-on-change="vinc.20" aria-label="Selecionar todos"></th>'
     +       '<th class="el-col-expand" aria-hidden="true"></th>'
-    +       '<th class="th-sortable vinc-c-sit" data-on-click="vinc.21">Vínculo<span class="sort-icon" id="vinc-sort-icon-tipo"></span></th>'
-    +       '<th class="th-sortable vinc-c-nome" data-on-click="vinc.22">Plano<span class="sort-icon" id="vinc-sort-icon-nome"></span></th>'
-    +       '<th class="th-sortable vinc-c-resp" data-on-click="vinc.23"><span>Responsável</span><span class="sort-icon" id="vinc-sort-icon-responsavel"></span></th>'
-    +       '<th class="th-sortable vinc-c-status" data-on-click="vinc.24"><span>Status</span><span class="sort-icon" id="vinc-sort-icon-status"></span></th>'
-    +       '<th class="th-sortable vinc-c-prog" data-on-click="vinc.25"><span>Progresso</span><span class="sort-icon" id="vinc-sort-icon-progresso"></span></th>'
-    +       '<th class="vinc-c-acoes"><div class="el-th-acoes">'
-    +         '<button type="button" class="el-th-btn" data-on-click="vinc.26" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
-    +         '<button type="button" class="el-th-btn" data-on-click="vinc.27" data-title="Exportar vínculos" aria-label="Exportar vínculos"><span class="material-symbols-outlined">download</span></button>'
-    +         '<button type="button" class="el-th-btn" data-on-click="vinc.28" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
-    +       '</div></th>'
+    +       '<th class="ds-th-ord vinc-c-sit" data-on-click="vinc.21">Vínculo<span class="material-symbols-outlined ds-th-ord__icone" id="vinc-sort-icon-tipo"></span></th>'
+    +       '<th class="ds-th-ord vinc-c-nome" data-on-click="vinc.22">Plano<span class="material-symbols-outlined ds-th-ord__icone" id="vinc-sort-icon-nome"></span></th>'
+    +       '<th class="ds-th-ord vinc-c-resp" data-on-click="vinc.23"><span>Responsável</span><span class="material-symbols-outlined ds-th-ord__icone" id="vinc-sort-icon-responsavel"></span></th>'
+    +       '<th class="ds-th-ord vinc-c-status" data-on-click="vinc.24"><span>Status</span><span class="material-symbols-outlined ds-th-ord__icone" id="vinc-sort-icon-status"></span></th>'
+    +       '<th class="ds-th-ord vinc-c-prog" data-on-click="vinc.25"><span>Progresso</span><span class="material-symbols-outlined ds-th-ord__icone" id="vinc-sort-icon-progresso"></span></th>'
+    +       '<th class="ds-col-sobreposta vinc-c-acoes"><div class="ds-th-ferramentas" id="vinc-ferramentas"><span class="ds-th-ferramentas__rotulo ds-th-ord" data-on-click="vinc.41">Vigência<span class="material-symbols-outlined ds-th-ord__icone" id="vinc-sort-icon-vigencia"></span></span><span class="ds-th-ferramentas__extras">'
+    +         '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="vinc.26" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
+    +         '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="vinc.27" data-title="Exportar vínculos" aria-label="Exportar vínculos"><span class="material-symbols-outlined">download</span></button>'
+    +         '<button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>'
+    +       '</span><button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="vinc.28" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button></div></th>'
     +     '</tr></thead>'
     +     '<tbody id="vinc-tbody"></tbody>'
     +   '</table>'
@@ -1135,53 +1124,81 @@ function renderizarTabelaVinculos() {
   _vincRenderCorpo();
 }
 
+// Chamadas de Aceitar/Aprovar e Recusar de um pedido ou proposta que aguarda decisão deste plano.
+function _vincChamadasDecisao(p) {
+  var idv = escapeHtml(String(p.idVinculo || '')), nome = escapeJsAttr(p.nome || ''), filho = p.direcao === 'filho';
+  return {
+    aceitar: filho ? "aprovarVinculoPlano('" + idv + "','" + nome + "')" : "responderPropostaVinculo('" + idv + "','" + nome + "','ACEITAR')",
+    recusar: filho ? "desvincularVinculo('" + idv + "','" + nome + "',true)" : "responderPropostaVinculo('" + idv + "','" + nome + "','RECUSAR')",
+    rotAceitar: filho ? 'Aprovar' : 'Aceitar'
+  };
+}
+
+// Ações de UM vínculo, na ordem de prioridade da situação: a mesma na linha (hover e ⋮) e na barra de seleção.
+// Aguarda você: aceitar/aprovar e recusar; aguardando: cancelar; recusado: dispensar; desvinculado: excluir órfãos; demais: Detalhes.
+function _vincItensAcao(p, podeEditar) {
+  var chj = escapeHtml(_vincChave(p)), idj = escapeHtml(String(p.id)), idv = escapeHtml(String(p.idVinculo || '')), nome = escapeJsAttr(p.nome || '');
+  var det = { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "vincAbrirDetalhesPlano('" + chj + "')", principal: true };
+  var abrir = { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: "carregarDetalhesPlano('" + idj + "')" };
+  switch (p.vtipo) {
+    case 'decidir':
+      if (!podeEditar) return [det, abrir];
+      var dc = _vincChamadasDecisao(p);
+      return [
+        { icone: 'check', rotulo: dc.rotAceitar, onclick: dc.aceitar, principal: true },
+        { icone: 'close', rotulo: 'Recusar', onclick: dc.recusar, principal: true },
+        det, abrir
+      ];
+    case 'aguardando':
+      return [
+        p.direcao === 'proposta_enviada'
+          ? { icone: 'cancel', rotulo: 'Cancelar proposta', onclick: "cancelarPropostaVinculo('" + idv + "','" + nome + "')", principal: true, oculto: !podeEditar }
+          : { icone: 'cancel', rotulo: 'Cancelar pedido', onclick: "desvincularVinculo('" + idv + "','" + nome + "')", principal: true, oculto: !podeEditar },
+        det, abrir
+      ];
+    case 'recusado':
+      return [
+        { icone: 'visibility_off', rotulo: 'Dispensar', onclick: "vincDispensarRecusado('" + idv + "','" + nome + "')", principal: true, oculto: !podeEditar },
+        det,
+        { icone: 'replay', rotulo: 'Pedir de novo', onclick: "vincPedirDeNovo('" + chj + "')", oculto: !(podeEditar && p.podePedirDeNovo) },
+        abrir
+      ];
+    case 'desvinculado':
+      return [
+        { icone: 'delete_sweep', rotulo: 'Excluir vínculos órfãos', onclick: "vincExcluirOrfaos('" + idj + "')", principal: true, cor: 'var(--ds-color-danger-fg)', oculto: !podeEditar },
+        det, abrir
+      ];
+    default: // superior e subordinado aprovados
+      return [
+        det, Object.assign({ principal: true }, abrir),
+        { icone: 'star', rotulo: 'Definir como principal', onclick: "definirPlanoSuperiorPrincipal('" + idv + "','" + nome + "')",
+          oculto: !(podeEditar && p.vtipo === 'superior' && p.papel && p.papel !== 'PRINCIPAL') },
+        { icone: 'link_off', rotulo: 'Desvincular', onclick: "desvincularVinculo('" + idv + "','" + nome + "')", perigo: true, oculto: !podeEditar }
+      ];
+  }
+}
+
 function _vincLinhaHTML(p, podeEditar) {
   var T = _VINC_TIPO[p.vtipo];
   var chave = _vincChave(p), chj = escapeHtml(chave), idAcoes = 'vinc-' + chave;
   var idj = escapeHtml(String(p.id)), nomeJs = escapeJsAttr(p.nome || '');
   var sel = !!estadoVinculos.selecionados[chave];
-  var decidir = p.vtipo === 'decidir', desv = p.vtipo === 'desvinculado', aguardando = p.vtipo === 'aguardando';
-  var aprovado = p.vtipo === 'superior' || p.vtipo === 'subordinado';
+  var decidir = p.vtipo === 'decidir', desv = p.vtipo === 'desvinculado';
   var aberto = desv && !!_vincOrfAbertos[String(p.id)];
-  var idVincJs = escapeHtml(String(p.idVinculo || ''));
-  var abrirDet = "vincAbrirDetalhesPlano('" + chj + "')";
-  var itPainel = { icone: 'right_panel_open', rotulo: 'Abrir barra lateral', onclick: abrirDet, principal: true };
-  var itAbrir = { icone: 'open_in_new', rotulo: 'Abrir plano', onclick: "carregarDetalhesPlano('" + idj + "')" };
-
   var acoes;
   if (decidir && podeEditar) {
-    var filho = p.direcao === 'filho';
-    var aceitar = filho ? "aprovarVinculoPlano('" + idVincJs + "','" + nomeJs + "')" : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','ACEITAR')";
-    var recusar = filho ? "desvincularVinculo('" + idVincJs + "','" + nomeJs + "',true)" : "responderPropostaVinculo('" + idVincJs + "','" + nomeJs + "','RECUSAR')";
-    var rotAceitar = filho ? 'Aprovar' : 'Aceitar';
-    // ⋮: no desktop só barra lateral + abrir plano (os botões de texto já fazem o resto); no mobile, tudo
-    var menu = acoesLinhaHTML(idAcoes, [
-      { icone: 'check', rotulo: rotAceitar, onclick: aceitar },
-      { icone: 'close', rotulo: 'Recusar', onclick: recusar },
-      { icone: 'right_panel_open', rotulo: 'Abrir barra lateral', onclick: abrirDet },
-      itAbrir
-    ], { maxDireto: 0 });
+    var dc = _vincChamadasDecisao(p);
+    // ⋮: no desktop só Detalhes + Abrir plano (os botões de texto já fazem o resto); no mobile, tudo
+    var menu = acoesLinhaHTML(idAcoes, _vincItensAcao(p, podeEditar), { maxDireto: 0 });
     if (_acoesLinhaReg[idAcoes]) _acoesLinhaReg[idAcoes].menu = _acoesLinhaReg[idAcoes].menu.slice(2);
     acoes = '<div class="vinc-decisao">'
-      + '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm vinc-btn-recusar" ' + uiAtributosAcao('event.stopPropagation(); ' + recusar) + ' data-title="Recusar" aria-label="Recusar">'
+      + '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm vinc-btn-recusar" ' + uiAtributosAcao('event.stopPropagation(); ' + dc.recusar) + ' data-title="Recusar" aria-label="Recusar">'
       +   '<span class="material-symbols-outlined">close</span><span class="vinc-btn-txt">Recusar</span></button>'
-      + '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm" ' + uiAtributosAcao('event.stopPropagation(); ' + aceitar) + ' data-title="' + rotAceitar + '" aria-label="' + rotAceitar + '">'
-      +   '<span class="material-symbols-outlined">check</span><span class="vinc-btn-txt">' + rotAceitar + '</span></button>'
+      + '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm" ' + uiAtributosAcao('event.stopPropagation(); ' + dc.aceitar) + ' data-title="' + dc.rotAceitar + '" aria-label="' + dc.rotAceitar + '">'
+      +   '<span class="material-symbols-outlined">check</span><span class="vinc-btn-txt">' + dc.rotAceitar + '</span></button>'
       + menu + '</div>';
   } else {
-    var itens = [itPainel, itAbrir];
-    if (aprovado) itens.push(
-      { icone: 'star', rotulo: 'Definir como principal', onclick: "definirPlanoSuperiorPrincipal('" + idVincJs + "','" + nomeJs + "')",
-        oculto: !(podeEditar && p.vtipo === 'superior' && p.papel && p.papel !== 'PRINCIPAL') },
-      { icone: 'link_off', rotulo: 'Desvincular', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar });
-    if (aguardando) itens.push(p.direcao === 'proposta_enviada'
-      ? { icone: 'cancel', rotulo: 'Cancelar proposta', onclick: "cancelarPropostaVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar }
-      : { icone: 'cancel', rotulo: 'Cancelar pedido', onclick: "desvincularVinculo('" + idVincJs + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar });
-    if (p.vtipo === 'recusado') itens.push(
-      { icone: 'replay', rotulo: 'Pedir de novo', onclick: "vincPedirDeNovo('" + chj + "')", oculto: !(podeEditar && p.podePedirDeNovo) },
-      { icone: 'visibility_off', rotulo: 'Dispensar', onclick: "vincDispensarRecusado('" + idVincJs + "','" + nomeJs + "')", oculto: !podeEditar });
-    if (desv) itens.push({ icone: 'delete_sweep', rotulo: 'Excluir vínculos órfãos', onclick: "vincExcluirOrfaos('" + idj + "')", perigo: true, oculto: !podeEditar });
-    acoes = acoesLinhaHTML(idAcoes, itens, { maxDireto: 1 });
+    acoes = acoesLinhaHTML(idAcoes, _vincItensAcao(p, podeEditar), { maxDireto: 2 });
   }
 
   var respNome = p.responsavel ? nomeRespExibicao(p.responsavel, p.tipoResponsavel) : '';
@@ -1207,12 +1224,12 @@ function _vincLinhaHTML(p, podeEditar) {
   var nivel = p.tipo ? '<span class="ds-badge-tipo vinc-nivel" data-title="' + escapeHtml(p.tipo) + '">' + escapeHtml(p.tipo) + '</span>' : '<span class="ds-badge-tipo vinc-nivel vinc-nivel--vazio" aria-hidden="true"></span>';
 
   return '<tr class="vinc-row vinc-row--' + p.vtipo + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"' + (desv ? ' data-orf="' + idj + '"' : '')
-    + ' data-on-click="vinc.33" data-aclick0="' + chj + '" ' + uiAtributosAcao(abrirDet, 'dblclick') + '>'
+    + ' data-on-click="vinc.33" data-aclick0="' + chj + '" ' + uiAtributosAcao("vincAbrirDetalhesPlano('" + chj + "')", 'dblclick') + '>'
     + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' data-on-click="vinc.34" data-on-change="vinc.35" data-achange0="' + chj + '" aria-label="Selecionar ' + escapeHtml(p.nome || '') + '"></td>'
     + '<td class="el-col-expand">' + (desv
         ? '<button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" data-on-click="vinc.36" data-aclick0="' + idj + '" aria-expanded="' + aberto + '" aria-label="Vínculos guardados">'
           + '<span class="material-symbols-outlined">chevron_right</span></button>' : '') + '</td>'
-    + '<td class="vinc-c-sit"><span class="vinc-sit" tabindex="0" role="img" data-title="' + tip + '" aria-label="' + escapeHtml(T.rot) + ': ' + tip + '"><span class="material-symbols-outlined" aria-hidden="true">' + T.ico + '</span></span></td>'
+    + '<td class="vinc-c-sit"><span class="vinc-sit" tabindex="0" role="img" data-title="' + tip + '" aria-label="' + escapeHtml(T.rot) + ': ' + tip + '"><span class="material-symbols-outlined" aria-hidden="true">' + _vincIconeSituacao(p) + '</span></span></td>'
     + '<td class="vinc-c-nome"><div class="vinc-plano">' + nivel + '<span class="vinc-nome" data-title="' + escapeHtml(p.nome || '') + '">' + escapeHtml(p.nome || '(sem nome)') + '</span>'
       + (p.vtipo === 'recusado' && !p.podePedirDeNovo && p.motivoNaoPodePedirDeNovo
         ? '<span class="material-symbols-outlined vinc-info" tabindex="0" data-title="' + escapeHtml(p.motivoNaoPodePedirDeNovo) + '" aria-label="' + escapeHtml(p.motivoNaoPodePedirDeNovo) + '">info</span>' : '')
@@ -1220,7 +1237,10 @@ function _vincLinhaHTML(p, podeEditar) {
     + '<td class="vinc-c-resp">' + resp + '</td>'
     + '<td class="vinc-c-status">' + status + '</td>'
     + '<td class="vinc-c-prog">' + progHtml + '</td>'
-    + '<td class="vinc-c-acoes">' + acoes + '</td>'
+    + (decidir && podeEditar
+        ? '<td class="ds-col-sobreposta vinc-c-acoes">' + acoes + '</td>'
+        : '<td class="ds-col-sobreposta vinc-c-acoes"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info">' + escapeHtml((p.anoInicio || '?') + '–' + (p.anoFim || '?')) + '</div>'
+          + '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>')
     + '</tr>';
 }
 
@@ -1229,17 +1249,17 @@ function _vincOrfItensHTML(p) {
   var d = (_vincDadosCache.desvinculados || []).filter(function(x) { return String(x.idPlanoSuperior) === String(p.id); })[0];
   if (!d) return '';
   var vis = _vincOrfAbertos[String(p.id)] ? ' vinc-visivel' : '';
-  var item = function(rot, ico, tit, sup) {
+  var item = function(rot, ico, cls, tit, sup) {
     return '<tr class="vinc-sub' + vis + '" data-orf="' + escapeHtml(String(p.id)) + '">'
       + '<td class="el-col-check"></td><td class="el-col-expand"></td>'
-      + '<td class="vinc-c-sit"><span class="vinc-sub-tipo" tabindex="0" role="img" data-title="' + rot + '" aria-label="' + rot + '"><span class="material-symbols-outlined" aria-hidden="true">' + ico + '</span></span></td>'
+      + '<td class="vinc-c-sit"><span class="vinc-sub-tipo" tabindex="0" role="img" data-title="' + rot + '" aria-label="' + rot + '"><span class="material-symbols-outlined ' + cls + '" aria-hidden="true">' + ico + '</span></span></td>'
       + '<td class="vinc-c-nome" colspan="4"><div class="vinc-sub-cel">'
       +   '<span class="vinc-sub-tit" data-title="' + escapeHtml(tit) + '">' + escapeHtml(tit) + '</span>'
       +   '<span class="vinc-sub-sup" data-title="' + escapeHtml(sup) + '"><span class="material-symbols-outlined" aria-label="vinculado a">arrow_forward</span><span>' + escapeHtml(sup) + '</span></span>'
-      + '</div></td><td class="vinc-c-acoes"></td></tr>';
+      + '</div></td><td class="ds-col-sobreposta vinc-c-acoes"></td></tr>';
   };
-  return (d.elementos || []).map(function(e) { return item('Elemento', 'account_tree', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
-    + (d.indicadores || []).map(function(i) { return item('Indicador', 'monitoring', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
+  return (d.elementos || []).map(function(e) { return item('Elemento', 'category', 'ds-ico-elemento', e.tituloElemento || '', e.tituloElementoSuperior || ''); }).join('')
+    + (d.indicadores || []).map(function(i) { return item('Indicador', 'speed', 'ds-ico-indicador', i.nomeIndicador || '', i.nomeIndicadorSuperior || ''); }).join('');
 }
 
 // expande/recolhe sem re-renderizar (o duplo clique para abrir a barra lateral continua funcionando)
@@ -1403,14 +1423,20 @@ function _vincAtualizarSelecao(listaVisivel) {
   uiPaginaMedir(document.getElementById('page-plano-detalhe'));
 }
 
-// Ações da barra de seleção: só aparecem as que TODOS os itens selecionados aceitam (as "unico" só com 1 item).
+// Ações da barra de seleção: com 1 item, as da linha; com vários, só as que TODOS os itens aceitam (em lote).
 
 function _vincAcoesLoteHTML(selecionados) {
   var n = selecionados.length;
   var podeEditar = !!(_vincCtx && _vincCtx.permissoes && _vincCtx.permissoes.vincular);
   if (!n) return '';
+  if (n === 1) { // um item: as mesmas ações da linha, na mesma ordem (o que é perigoso ganha a cor, sem ir para o ⋮)
+    var itens = _vincItensAcao(selecionados[0], podeEditar).map(function(a) {
+      return a.perigo ? Object.assign({}, a, { perigo: false, cor: 'var(--ds-color-danger-fg)' }) : a;
+    });
+    return acoesLinhaHTML('vincsel-' + _vincChave(selecionados[0]), itens, { maxDireto: 6 });
+  }
   return _VINC_ACOES.filter(function(a) {
-    return (!a.unico || n === 1) && (!a.edita || podeEditar) && selecionados.every(a.ok);
+    return (!a.edita || podeEditar) && selecionados.every(a.ok);
   }).map(function(a) {
     return '<button type="button" class="ds-icon-action" data-on-click="vinc.37" data-aclick0="' + a.id + '" data-title="' + escapeHtml(a.rot) + '" aria-label="' + escapeHtml(a.rot) + '"'
       + (a.perigo ? ' style="color:var(--ds-color-danger-fg)"' : '') + '><span class="material-symbols-outlined">' + a.ico + '</span></button>';
@@ -1628,6 +1654,7 @@ uiRegistrarAcoes('vinc', {
   '37': function (event) { vincAcaoLote(uiArgJs(this.dataset.aclick0)); },
   '38': function (event) { carregarDetalhesPlano(uiArgJs(this.dataset.aclick0)); },
   '39': function (event) { vpVincularSuperior(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); },
+  '41': function (event) { vincOrdenarPorColuna('vigencia'); },
   '40': function (event) { vpSolicitarSubordinado(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); }
 });
 

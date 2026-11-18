@@ -556,6 +556,7 @@ tr:hover td { background-color: var(--ds-sidebar-item-hover); }
   --ds-color-pending: #7b2cbf;
   --ds-color-relacao: #ad1457;  /* relacionamento entre elementos (badge hub + linhas do organograma) */
   --ds-color-indicador: #8e44ad;  /* ícone de indicador (speed), em qualquer tela */
+  --ds-color-elemento: #00796b;  /* ícone de elemento (category), em qualquer tela */
 
   /* -- Status de plano (FONTE ÚNICA — substitui as ~5 cópias divergentes) -- */
   --ds-status-elaboracao-bg: #fff8e1; --ds-status-elaboracao-fg: #b06000;
@@ -699,6 +700,7 @@ tr:hover td { background-color: var(--ds-sidebar-item-hover); }
   --ds-color-action: #5b9bff;
   --ds-color-action-hover: #82b3ff;
   --ds-color-indicador: #c9a2ff;
+  --ds-color-elemento: #4db6ac;
   --ds-color-on-action: #06142b;
   --ds-focus-ring: rgba(130,179,255,.55);
 
@@ -755,6 +757,7 @@ body.high-contrast {
   --ds-color-action-hover:  #66ffff;
   --ds-color-on-action:     #000000;
   --ds-color-indicador:     #d6b8ff;
+  --ds-color-elemento:      #66ffcc;
 
 
   /* Marca (navy): sem contraste suficiente em fundo preto — amarelo do tema original. */
@@ -910,10 +913,11 @@ body.high-contrast {
 .ds-badge { max-width: 220px; }
 .ds-badge > :not(.material-symbols-outlined) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ds-badge .material-symbols-outlined { font-size: var(--ds-icon-xs); flex-shrink: 0; }
-/* Cor do ÍCONE do badge de dado (custo, vínculo, indicador…): o badge segue neutro, só o ícone leva a cor do conceito. */
+/* Cor do ÍCONE do badge de dado (custo, vínculo, indicador…): o badge segue neutro, só o ícone leva a cor do conceito. O ícone solto (fora de badge) de elemento e de indicador usa .ds-ico-elemento / .ds-ico-indicador. */
 .ds-badge--ico-custo .material-symbols-outlined { color: var(--ds-color-action); }
 .ds-badge--ico-vinculo .material-symbols-outlined { color: var(--ds-color-info-fg); }
-.ds-badge--ico-indicador .material-symbols-outlined { color: var(--ds-color-indicador); }
+.ds-ico-indicador, .ds-badge--ico-indicador .material-symbols-outlined { color: var(--ds-color-indicador); }
+.ds-ico-elemento, .ds-badge--ico-elemento .material-symbols-outlined { color: var(--ds-color-elemento); }
 .ds-badge--ico-relacao .material-symbols-outlined { color: var(--ds-color-relacao); }
 .ds-badge--ico-pendente .material-symbols-outlined { color: var(--ds-color-pending); }
 .ds-badge--ico-perigo .material-symbols-outlined { color: var(--ds-color-danger-fg); }
@@ -1411,7 +1415,7 @@ tr:hover .ds-celula-sobreposta__acoes, tr:focus-within .ds-celula-sobreposta__ac
 /* Ferramentas da tabela no cabeçalho da última coluna: só o ícone de ordenar fica visível; ao clicar, os demais surgem da direita para a esquerda. */
 .ds-th-ferramentas { position: relative; display: flex; align-items: center; justify-content: flex-end; gap: var(--ds-space-1); }
 .ds-th-ferramentas__rotulo { margin-right: auto; transition: opacity var(--ds-duration-base) var(--ds-ease-standard); }
-.ds-th-ferramentas.is-aberto .ds-th-ferramentas__rotulo { opacity: 0; }
+.ds-th-ferramentas.is-aberto .ds-th-ferramentas__rotulo { opacity: 0; pointer-events: none; }
 .ds-th-ferramentas__extras { position: absolute; right: calc(28px + var(--ds-space-1)); top: 50%; transform: translateY(-50%); display: flex; gap: var(--ds-space-1); padding: var(--ds-space-1); background: var(--ds-color-surface); border-radius: var(--ds-r-sm); clip-path: inset(0 0 0 100%); visibility: hidden; transition: clip-path var(--ds-duration-base) var(--ds-ease-standard), visibility 0s linear var(--ds-duration-base); }
 .ds-th-ferramentas.is-aberto .ds-th-ferramentas__extras { clip-path: inset(0); visibility: visible; transition-delay: 0s; z-index: 2; }
 /* Impressão: ferramentas e ações somem; o dado da última coluna fica. */
@@ -10219,6 +10223,19 @@ function uiThOrdHTML(rotulo, ativo, dir, onclick, cls) {
     + '<span class="material-symbols-outlined ds-th-ord__icone">' + (ativo ? (dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '') + '</span></th>';
 }
 
+// Chave comparável de uma data (dd/mm/aaaa ou ISO) = 'aaaammdd'; sem data = ''. Serve para ordenar colunas de prazo (sem data vai por último).
+function uiChaveData(d) {
+  var s = String(d || '').trim(), m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(s);
+  return m ? m[3] + m[2] + m[1] : s.slice(0, 10).replace(/-/g, '');
+}
+// Compara duas chaves de uiChaveData na direção dada ('asc'|'desc'); sem data fica sempre no fim.
+function uiCompararChaveData(a, b, dir) {
+  if (a === b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+  return (a < b ? -1 : 1) * (dir === 'desc' ? -1 : 1);
+}
+
 // Alerta de atraso (.ds-alerta-atraso): ícone solto ao lado do que está atrasado, com o motivo no tooltip. Único estilo do sistema para "atrasado".
 
 function uiAlertaAtrasoHTML(texto) {
@@ -13605,13 +13622,13 @@ uiRegistrarAcoes('pages_execucao_validacao', {
                 data-on-change="pages_planos_lista.17"
                 aria-label="Selecionar todos">
             </th>
-            <th class="th-sortable pll-col-plano" data-on-click="pages_planos_lista.18">Nome<span class="sort-icon" id="sort-icon-nome"></span></th>
-            <th class="th-sortable pll-col-resp" data-on-click="pages_planos_lista.20">Responsável<span class="sort-icon" id="sort-icon-responsavel"></span></th>
-            <th class="th-sortable pll-col-status" data-on-click="pages_planos_lista.21">Status<span class="sort-icon" id="sort-icon-status"></span></th>
-            <th class="th-sortable pll-col-prog" data-on-click="pages_planos_lista.22">Progresso<span class="sort-icon" id="sort-icon-progresso"></span></th>
+            <th class="ds-th-ord pll-col-plano" data-on-click="pages_planos_lista.18">Nome<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-nome"></span></th>
+            <th class="ds-th-ord pll-col-resp" data-on-click="pages_planos_lista.20">Responsável<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-responsavel"></span></th>
+            <th class="ds-th-ord pll-col-status" data-on-click="pages_planos_lista.21">Status<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-status"></span></th>
+            <th class="ds-th-ord pll-col-prog" data-on-click="pages_planos_lista.22">Progresso<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-progresso"></span></th>
             <th class="ds-col-sobreposta pll-col-acoes">
               <div class="ds-th-ferramentas" id="pll-ferramentas">
-                <span class="ds-th-ferramentas__rotulo">Vigência</span>
+                <span class="ds-th-ferramentas__rotulo ds-th-ord" data-on-click="pages_planos_lista.19">Vigência<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-vigencia"></span></span>
                 <span class="ds-th-ferramentas__extras">
                   <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_planos_lista.23" data-title="Atualizar" aria-label="Atualizar lista">
                     <span class="material-symbols-outlined">refresh</span>
@@ -13839,8 +13856,6 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 #page-planos .pll-tabela tbody tr.selecionada td { background: var(--ds-sidebar-item-active); }
 #page-planos .pll-tabela tbody tr.pll-linha-msg { cursor: default; }
 #page-planos .pll-tabela tbody tr.pll-linha-msg:hover td { background: transparent !important; }
-#page-planos .th-sortable:hover { color: var(--ds-color-action); }
-#page-planos .sort-icon { color: var(--ds-color-action); }
 /* Checkbox: MESMO padding/alinhamento no cabeçalho e nas linhas (o th tem regra própria de
    text-align/padding, por isso a especificidade explícita aqui) */
 #page-planos .pll-tabela .pll-col-check { width: 48px; text-align: left; padding: 14px 0 14px 16px; }
@@ -14401,7 +14416,6 @@ function _atualizarIconesOrdenacao() {
   ['nome', 'vigencia', 'responsavel', 'status', 'progresso'].forEach(function(c) {
     var el = document.getElementById('sort-icon-' + c);
     if (!el) return;
-    el.className = 'sort-icon';
     el.textContent = c === col ? (dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '';
   });
 }
@@ -21184,7 +21198,7 @@ var estadoExecTarefas = {
   dentroDe: '',
   anoSelecionado: 'todos',
   historico: {}, // id do elemento -> registros[] já lidos
-  ordenacao: { col: '', dir: 'asc' }, // col: '' (ordem do plano) | 'elemento' | 'responsavel' | 'progresso'
+  ordenacao: { col: '', dir: 'asc' }, // col: '' (ordem do plano) | 'elemento' | 'responsavel' | 'progresso' | 'prazo'
   itensPorPagina: 10, paginaAtual: 1,
   painelElemento: '', // id do elemento mostrado na barra lateral ('' = detalhes do plano)
   riscos: null
@@ -21645,6 +21659,7 @@ function _execLinhas() {
 // Ordenação por coluna; sem coluna escolhida vale a ordem do plano (a da árvore).
 function _execLinhasChave(n, col) {
   if (col === 'progresso') return Number(n.percentual) || 0;
+  if (col === 'prazo') { var tp = _execTarefaDe(n.id); return uiChaveData(tp && tp.fim); }
   if (col === 'responsavel') { var t = _execTarefaDe(n.id); return t && t.quem && t.quem.length ? String(t.quem[0].idResp || '').toLowerCase() : String.fromCharCode(0xffff); }
   return ((n.codigo ? n.codigo + ' ' : '') + (n.titulo || '')).toLowerCase();
 }
@@ -21653,6 +21668,7 @@ function _execLinhasOrdenar(linhas) {
   if (!o.col) return linhas;
   var f = o.dir === 'asc' ? 1 : -1;
   return linhas.map(function(n, i) { return { n: n, i: i, k: _execLinhasChave(n, o.col) }; }).sort(function(a, b) {
+    if (o.col === 'prazo') return uiCompararChaveData(a.k, b.k, o.dir) || a.i - b.i;
     var c = typeof a.k === 'number' ? a.k - b.k : String(a.k).localeCompare(String(b.k), 'pt', { numeric: true });
     return c ? c * f : a.i - b.i;
   }).map(function(x) { return x.n; });
@@ -21675,7 +21691,7 @@ function extDefinirDirecao(dir) { estadoExecTarefas.ordenacao.dir = dir; estadoE
 function extMenuOrdenar(ev, gatilho) {
   var o = estadoExecTarefas.ordenacao;
   if (ev) ev.stopPropagation();
-  var colunas = [{ valor: '', label: 'Ordem do plano' }, { valor: 'elemento', label: 'Elemento' }, { valor: 'responsavel', label: 'Responsável' }, { valor: 'progresso', label: 'Progresso' }];
+  var colunas = [{ valor: '', label: 'Ordem do plano' }, { valor: 'elemento', label: 'Elemento' }, { valor: 'responsavel', label: 'Responsável' }, { valor: 'progresso', label: 'Progresso' }, { valor: 'prazo', label: 'Prazo' }];
   abrirMenuSelecao(gatilho || document.getElementById('ext-btn-ordenar'), [
     { label: 'Ordenar por', itens: colunas.map(function(c) { return { label: c.label, ativo: c.valor === o.col, onclick: "extDefinirColuna('" + c.valor + "')" }; }) },
     { label: 'Ordem', itens: [
@@ -21802,7 +21818,7 @@ function execTarefasRenderizar() {
   container.innerHTML = '<div class="el-table-wrap"><table class="el-tabela" id="ext-tabela">' +
     '<colgroup><col class="el-col-elem"><col class="el-col-resp"><col id="ext-col-prog"><col><col class="ds-col-sobreposta"></colgroup>' +
     '<thead><tr>' + _execThOrd('Elemento', 'elemento', 'el-col-elem') + _execThOrd('Responsável', 'responsavel', 'el-col-resp') + _execThOrd('Progresso', 'progresso', '') + '<th>A registrar</th>' +
-    '<th class="ds-col-sobreposta"><div class="ds-th-ferramentas' + (estadoExecTarefas.ferramentasAbertas ? ' is-aberto' : '') + '"><span class="ds-th-ferramentas__rotulo">Prazo</span><span class="ds-th-ferramentas__extras">' +
+    '<th class="ds-col-sobreposta"><div class="ds-th-ferramentas' + (estadoExecTarefas.ferramentasAbertas ? ' is-aberto' : '') + '"><span class="ds-th-ferramentas__rotulo ds-th-ord"' + uiAtributosAcao("extOrdenarPor('prazo')", 'click') + '>Prazo<span class="material-symbols-outlined ds-th-ord__icone">' + (estadoExecTarefas.ordenacao.col === 'prazo' ? (estadoExecTarefas.ordenacao.dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '') + '</span></span><span class="ds-th-ferramentas__extras">' +
     '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_execucao_tarefas.11" data-title="Atualizar" aria-label="Atualizar lista"><span class="material-symbols-outlined">refresh</span></button>' +
     '<button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Baixar"><span class="material-symbols-outlined">download</span></button>' +
     '<button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>' +

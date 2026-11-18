@@ -1344,7 +1344,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                 <th class="el-col-resp">Responsável</th>
                 <th class="ds-col-sobreposta">
                   <div class="ds-th-ferramentas">
-                    <span class="ds-th-ferramentas__rotulo">Prazo</span>
+                    <span class="ds-th-ferramentas__rotulo ds-th-ord" data-on-click="el.78">Prazo<span class="material-symbols-outlined ds-th-ord__icone" data-ord-prazo></span></span>
                     <span class="ds-th-ferramentas__extras">
                       <button type="button" class="ds-icon-action ds-icon-action--sm" id="btn-atualizar-el" data-on-click="el.38" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>
                       <button type="button" class="ds-icon-action ds-icon-action--sm" id="btn-reorganizar" data-on-click="el.39" data-title="Reorganizar" aria-label="Reorganizar"><span class="material-symbols-outlined">low_priority</span></button>
@@ -1512,7 +1512,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                 <th class="w5-col-custo" data-title="Quanto (Custo)">Custo</th>
                 <th class="ds-col-sobreposta" data-title="Quando (Prazo)">
                   <div class="ds-th-ferramentas">
-                    <span class="ds-th-ferramentas__rotulo">Prazo</span>
+                    <span class="ds-th-ferramentas__rotulo ds-th-ord" data-on-click="el.78">Prazo<span class="material-symbols-outlined ds-th-ord__icone" data-ord-prazo></span></span>
                     <span class="ds-th-ferramentas__extras">
                       <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="el.38" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>
                       <button type="button" class="ds-icon-action ds-icon-action--sm" id="btn-imprimir-w5" data-on-click="el.41" data-title="Imprimir" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>
@@ -1670,6 +1670,7 @@ var _elSelecionados = new Set();
 var _elUltimoClicado = null;
 
 let _modoReorganizar = false;
+let _elOrdPrazo = ''; // ordem dos irmãos na lista e no 5W2H: '' (por código) | 'asc' | 'desc' por prazo
 let _reorgAlterado = false; // vira true no primeiro drop: X (cancelar) -> check (confirmar)
 let _elementosSnapshotReorg = null; // guarda a ordem original antes de qualquer alteração
 let _draggingTr = null;
@@ -5014,6 +5015,7 @@ function renderizarTabelaEstrutura() {
   }
 
   var arvore = construirHierarquia(elemFiltrados);
+  arvore.sort(_elCompararIrmaos);
   var totalRaiz = arvore.length;
   var limite = _modoReorganizar ? totalRaiz : _pagRootElementos;
   var visiveis = arvore.slice(0, limite);
@@ -5131,7 +5133,7 @@ function renderizarTabelaEstrutura() {
 
     // Recursão para filhos
     if (temFilhos) {
-      no.children.sort(function(a, b) { return compararCodigos(a.codigo, b.codigo); });
+      no.children.sort(_elCompararIrmaos);
       no.children.forEach(function(child) {
         achatarNo(child, nivel + 1, temFiltroAtivo || _modoReorganizar);
       });
@@ -5430,6 +5432,7 @@ function renderizarTabelaDetalhes() {
   }
 
   const arvore = construirHierarquia(elemFiltrados);
+  arvore.sort(_elCompararIrmaos);
   const listaOrdenada = [];
   arvore.forEach(no => achatarArvoreParaTabela(no, 0, listaOrdenada));
 
@@ -5537,7 +5540,7 @@ function achatarArvoreParaTabela(no, nivel, listaResult) {
   listaResult.push(itemComNivel);
   
   if (no.children && no.children.length > 0) {
-    no.children.sort((a,b) => compararCodigos(a.codigo, b.codigo));
+    no.children.sort(_elCompararIrmaos);
     no.children.forEach(filho => {
       achatarArvoreParaTabela(filho, nivel + 1, listaResult);
     });
@@ -5588,6 +5591,24 @@ function _elImpRender() {
   document.getElementById('elimp-corpo').innerHTML = h;
   if (imp.exigeDecisao && _elImp.acao === 'MOVER') _elImpMontarDestino();
   _elImpAtualizarBotao();
+}
+
+// Irmãos na lista e no 5W2H: por código; com a ordem por prazo ligada, por prazo (sem prazo no fim) e o código desempata.
+// Em Reorganizar vale sempre o código, que é o que se está editando.
+function _elCompararIrmaos(a, b) {
+  if (_elOrdPrazo && !_modoReorganizar) {
+    var c = uiCompararChaveData(uiChaveData(a.prazo || a.fim), uiChaveData(b.prazo || b.fim), _elOrdPrazo);
+    if (c) return c;
+  }
+  return compararCodigos(a.codigo, b.codigo);
+}
+// Clique no título "Prazo": crescente, decrescente, volta à ordem do plano.
+function elAlternarOrdemPrazo() {
+  _elOrdPrazo = _elOrdPrazo === '' ? 'asc' : (_elOrdPrazo === 'asc' ? 'desc' : '');
+  document.querySelectorAll('[data-ord-prazo]').forEach(function(i) {
+    i.textContent = _elOrdPrazo === 'asc' ? 'arrow_upward' : (_elOrdPrazo === 'desc' ? 'arrow_downward' : '');
+  });
+  _elReRenderizarModoAtivo();
 }
 
 function _elReRenderizarModoAtivo() {
@@ -6086,7 +6107,8 @@ uiRegistrarAcoes('el', {
   '74': function (event) { abrirColaboracoesPendentes(uiArgJs(this.dataset.aclick0)); },
   '75': function (event) { elImpEscolher(uiArgJs(this.dataset.achange0)); },
   '76': function (event) { event.stopPropagation(); },
-  '77': function (event) { elAlternarFerramentas(this); }
+  '77': function (event) { elAlternarFerramentas(this); },
+  '78': function (event) { elAlternarOrdemPrazo(); }
 });
 
 
