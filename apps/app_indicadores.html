@@ -20,14 +20,8 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
 .ind-titulo-cel { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .ind-nome { font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium); color: var(--ds-color-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-/* Badges de vínculo com planos superiores: mesmo componente da aba Elementos (.el-chip-meta.el-chip-vinculo) */
+/* Badges de vínculo com planos superiores: mesmo componente da aba Elementos (.ds-badge.ds-badge--ico-vinculo) */
 .ind-vinc-chips { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
-.ind-vinc-chips .el-chip-meta { cursor: help; }
-.ind-vinc-chips .el-chip-meta:focus-visible { outline: 2px solid var(--ds-color-focus, var(--ds-color-primary)); outline-offset: 1px; }
-.ind-vinc-chips .el-chip-aviso { font-size: 14px; color: var(--ds-color-warning-fg); margin-left: -2px; }
-.ind-vinc-chips .el-chip-desvinculado .material-symbols-outlined:first-child { color: var(--ds-color-danger-fg); }
-.ind-vinc-chips .el-chip-pendente .material-symbols-outlined:first-child { color: var(--ds-color-pending); }
-.ind-vinc-chips .el-chip-aguardando { color: var(--ds-color-pending); }
 .ind-vinc-mob { display: none; }
 .ind-freq { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ind-resp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
@@ -1882,8 +1876,8 @@ function _indFaixaHTML(p, anos, podeEditar) {
 function _indChipVinculoHTML(rotulo, semEfeito, pendente, tip) {
   // O ícone único do badge diz o estado: clipe = vínculo válido; relógio roxo = aguardando aprovação; clipe cortado vermelho = desvinculado
   var desv = semEfeito && !pendente, pend = semEfeito && pendente;
-  return '<span class="el-chip-meta el-chip-vinculo' + (desv ? ' el-chip-desvinculado' : '') + (pend ? ' el-chip-pendente' : '') + '" tabindex="0" role="img" data-title="' + escapeHtml(tip) + '" aria-label="' + escapeHtml('Vínculo superior — ' + tip) + '">'
-    + '<span class="material-symbols-outlined" aria-hidden="true">' + (desv ? 'link_off' : (pend ? 'schedule' : 'link')) + '</span><span class="el-chip-meta-txt" aria-hidden="true">' + escapeHtml(rotulo) + '</span>'
+  return '<span class="ds-badge ' + (desv ? 'ds-badge--ico-perigo' : (pend ? 'ds-badge--ico-pendente' : 'ds-badge--ico-vinculo')) + '" tabindex="0" role="img" data-title="' + escapeHtml(tip) + '" aria-label="' + escapeHtml('Vínculo superior — ' + tip) + '">'
+    + '<span class="material-symbols-outlined" aria-hidden="true">' + (desv ? 'link_off' : (pend ? 'schedule' : 'link')) + '</span><span aria-hidden="true">' + escapeHtml(rotulo) + '</span>'
     + '</span>';
 }
 function _indChipsVinculoHTML(p) {

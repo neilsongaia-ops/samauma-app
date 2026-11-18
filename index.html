@@ -907,7 +907,17 @@ body.high-contrast {
   font-size: var(--ds-text-xs); line-height: 1.4; white-space: nowrap;
 }
 .ds-badge, .ds-badge-tipo { font-weight: var(--ds-weight-semibold); background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); }
-.ds-badge .material-symbols-outlined { font-size: var(--ds-icon-xs); }
+.ds-badge { max-width: 220px; }
+.ds-badge > :not(.material-symbols-outlined) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.ds-badge .material-symbols-outlined { font-size: var(--ds-icon-xs); flex-shrink: 0; }
+/* Cor do ÍCONE do badge de dado (custo, vínculo, indicador…): o badge segue neutro, só o ícone leva a cor do conceito. */
+.ds-badge--ico-custo .material-symbols-outlined { color: var(--ds-color-action); }
+.ds-badge--ico-vinculo .material-symbols-outlined { color: var(--ds-color-info-fg); }
+.ds-badge--ico-indicador .material-symbols-outlined { color: var(--ds-color-indicador); }
+.ds-badge--ico-relacao .material-symbols-outlined { color: var(--ds-color-relacao); }
+.ds-badge--ico-pendente .material-symbols-outlined { color: var(--ds-color-pending); }
+.ds-badge--ico-perigo .material-symbols-outlined { color: var(--ds-color-danger-fg); }
+.ds-badge--ico-prazo .material-symbols-outlined { color: var(--ds-color-success); }
 .ds-badge--elaboracao { background: var(--ds-status-elaboracao-bg); color: var(--ds-status-elaboracao-fg); }
 .ds-badge--analise    { background: var(--ds-status-analise-bg);    color: var(--ds-status-analise-fg); }
 .ds-badge--execucao   { background: var(--ds-status-execucao-bg);   color: var(--ds-status-execucao-fg); }
@@ -1404,6 +1414,11 @@ tr:hover .ds-celula-sobreposta__acoes, tr:focus-within .ds-celula-sobreposta__ac
 .ds-th-ferramentas.is-aberto .ds-th-ferramentas__rotulo { opacity: 0; }
 .ds-th-ferramentas__extras { position: absolute; right: calc(28px + var(--ds-space-1)); top: 50%; transform: translateY(-50%); display: flex; gap: var(--ds-space-1); padding: var(--ds-space-1); background: var(--ds-color-surface); border-radius: var(--ds-r-sm); clip-path: inset(0 0 0 100%); visibility: hidden; transition: clip-path var(--ds-duration-base) var(--ds-ease-standard), visibility 0s linear var(--ds-duration-base); }
 .ds-th-ferramentas.is-aberto .ds-th-ferramentas__extras { clip-path: inset(0); visibility: visible; transition-delay: 0s; z-index: 2; }
+/* Impressão: ferramentas e ações somem; o dado da última coluna fica. */
+@media print {
+  .ds-th-ferramentas__extras, .ds-th-ferramentas > .ds-icon-action, .ds-celula-sobreposta__acoes { display: none !important; }
+  .ds-celula-sobreposta__info { opacity: 1 !important; }
+}
 .ds-th-ord { cursor: pointer; user-select: none; white-space: nowrap; }
 .ds-th-ord:hover { color: var(--ds-color-action); }
 .ds-th-ord__icone { font-size: 14px; vertical-align: middle; margin-left: 3px; color: var(--ds-color-action); }
@@ -1416,9 +1431,6 @@ tr:hover .ds-celula-sobreposta__acoes, tr:focus-within .ds-celula-sobreposta__ac
 /* Badge do tipo de elemento: pílula (mesma forma do .ds-badge) com a cor do tipo (definida ao criar o elemento) aplicada em linha (texto e fundo a partir do hex); sem cor, neutro. uiBadgeTipoHTML(tipo, cor). */
 .ds-badge-tipo { flex-shrink: 0; max-width: 135px; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 768px) { .ds-badge-tipo { max-width: 80px; } }
-/* Prazo final do elemento: pílula com ícone de calendário (cor própria, diferente dos chips de vínculo e indicador) + data final. uiChipPrazoHTML(dataBR). */
-.ds-chip-prazo { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--ds-color-surface-2); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-pill); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); line-height: 1.25; white-space: nowrap; color: var(--ds-color-text); cursor: default; }
-.ds-chip-prazo .material-symbols-outlined { font-size: 14px; color: var(--ds-color-success); }
 .acoes-btn {
   width: 32px; height: 32px; padding: 0; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
@@ -5791,7 +5803,7 @@ function _rexDesempenhoHTML() {
   var lista = visiveis.map(function(i) {
     var b = _REX_IND_ESTADO[_rexIndEstado(i).estado];
     return '<button type="button" class="ds-lista-sel__item' + (String(i.id) === String(ind.id) ? ' is-ativo' : '') + '" data-on-click="components_modal_registro_execucao.8" data-aclick0="' + escapeHtml(String(i.id)) + '">' +
-      '<span>' + escapeHtml(i.nome) + '</span><span class="ds-spread"><span class="ds-inline ds-help"><span class="el-chip-ind"><span class="material-symbols-outlined">speed</span></span>' + e.ano + '</span><span class="' + b[0] + '">' + b[1] + '</span></span></button>';
+      '<span>' + escapeHtml(i.nome) + '</span><span class="ds-spread"><span class="ds-badge ds-badge--ico-indicador"><span class="material-symbols-outlined">speed</span>' + e.ano + '</span><span class="' + b[0] + '">' + b[1] + '</span></span></button>';
   }).join('');
   return '<div class="ds-lista-sel-grade">' +
     '<div class="ds-stack ds-stack--2"><div class="ds-spread"><span class="ds-help">' + (inds.length - pend) + ' de ' + inds.length + ' lançados</span>' +
@@ -10258,10 +10270,10 @@ function uiPaginadorRodapeAtualizar(id, estado, total) {
   if (el('proximo')) el('proximo').disabled = pag >= totalPags;
 }
 
-// Prazo final de um elemento (.ds-chip-prazo): ícone de calendário + data final (dd/mm/aaaa). Vazio quando não há data.
+// Prazo final de um elemento (badge com ícone de calendário): data final (dd/mm/aaaa). Vazio quando não há data.
 function uiChipPrazoHTML(dataBR) {
   if (!dataBR) return '';
-  return '<span class="ds-chip-prazo" data-title="Prazo final: ' + escapeHtml(dataBR) + '"><span class="material-symbols-outlined">event</span><span>' + escapeHtml(dataBR) + '</span></span>';
+  return '<span class="ds-badge ds-badge--ico-prazo" data-title="Prazo final: ' + escapeHtml(dataBR) + '"><span class="material-symbols-outlined">event</span><span>' + escapeHtml(dataBR) + '</span></span>';
 }
 
 // Badge do tipo de elemento (.ds-badge-tipo): herda a cor definida para o tipo no plano (hex, aplicada em linha); sem cor, neutro. Vazio sem tipo.
@@ -13564,8 +13576,8 @@ uiRegistrarAcoes('pages_execucao_validacao', {
 
     <!-- Contador + paginação: sempre visível (nem os filtros nem a seleção em lote a
        escondem — ver comentário acima). Sem "Exibir": tamanho de página fixo, sem
-       seletor; atualizar/exportar vivem na coluna do ícone "Ordenar" (cabeçalho da
-       tabela, mesmo estilo sem borda). -->
+       seletor; as ferramentas da tabela (ordenar, atualizar, baixar, imprimir) vivem no
+       cabeçalho da última coluna (.ds-th-ferramentas). -->
     <div class="pll-pag-wrap">
       <span id="planos-pag-counter" class="pll-pag-counter">0 de 0</span>
       <div class="pll-pag-nav">
@@ -13594,22 +13606,24 @@ uiRegistrarAcoes('pages_execucao_validacao', {
                 aria-label="Selecionar todos">
             </th>
             <th class="th-sortable pll-col-plano" data-on-click="pages_planos_lista.18">Nome<span class="sort-icon" id="sort-icon-nome"></span></th>
-            <th class="th-sortable pll-col-vig" data-on-click="pages_planos_lista.19">Vigência<span class="sort-icon" id="sort-icon-vigencia"></span></th>
             <th class="th-sortable pll-col-resp" data-on-click="pages_planos_lista.20">Responsável<span class="sort-icon" id="sort-icon-responsavel"></span></th>
             <th class="th-sortable pll-col-status" data-on-click="pages_planos_lista.21">Status<span class="sort-icon" id="sort-icon-status"></span></th>
             <th class="th-sortable pll-col-prog" data-on-click="pages_planos_lista.22">Progresso<span class="sort-icon" id="sort-icon-progresso"></span></th>
-            <th class="pll-col-acoes">
-              <div class="pll-th-acoes">
-                <button type="button" class="pll-sort-btn" data-on-click="pages_planos_lista.23"
-                        data-title="Atualizar" aria-label="Atualizar lista">
-                  <span class="material-symbols-outlined">refresh</span>
-                </button>
-                <button type="button" class="pll-sort-btn" data-on-click="pages_planos_lista.24"
-                        data-title="Exportar (em desenvolvimento)" aria-label="Exportar">
-                  <span class="material-symbols-outlined">download</span>
-                </button>
-                <button type="button" class="pll-sort-btn" data-on-click="pages_planos_lista.25"
-                        data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false">
+            <th class="ds-col-sobreposta pll-col-acoes">
+              <div class="ds-th-ferramentas" id="pll-ferramentas">
+                <span class="ds-th-ferramentas__rotulo">Vigência</span>
+                <span class="ds-th-ferramentas__extras">
+                  <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_planos_lista.23" data-title="Atualizar" aria-label="Atualizar lista">
+                    <span class="material-symbols-outlined">refresh</span>
+                  </button>
+                  <button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Baixar">
+                    <span class="material-symbols-outlined">download</span>
+                  </button>
+                  <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_planos_lista.32" data-title="Imprimir" aria-label="Imprimir">
+                    <span class="material-symbols-outlined">print</span>
+                  </button>
+                </span>
+                <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_planos_lista.25" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu">
                   <span class="material-symbols-outlined">sort</span>
                 </button>
               </div>
@@ -13618,7 +13632,7 @@ uiRegistrarAcoes('pages_execucao_validacao', {
           </tr>
         </thead>
         <tbody id="tbody-planos">
-          <tr class="pll-linha-msg"><td colspan="8">
+          <tr class="pll-linha-msg"><td colspan="7">
             <div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando planos…</span></div>
           </td></tr>
         </tbody>
@@ -13765,17 +13779,6 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 }
 #page-planos .pll-limpar-link:hover { text-decoration: underline; }
 
-/* Ícones "Atualizar"/"Exportar"/"Ordenar" do cabeçalho: agrupados na mesma coluna, só o
-   ícone, sem caixa/borda em repouso (não são botões de vidro) — atualizar/exportar
-   saíram da barra de filtros e vieram pra cá, no mesmo estilo do ícone de ordenar. */
-#page-planos .pll-th-acoes { display: inline-flex; align-items: center; gap: 2px; }
-#page-planos .pll-sort-btn {
-  display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0;
-  background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); cursor: pointer;
-}
-#page-planos .pll-sort-btn:hover, #page-planos .pll-sort-btn[aria-expanded="true"] { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
-#page-planos .pll-sort-btn .material-symbols-outlined { font-size: 20px; }
-
 /* Cartão da tabela: fluxo normal (quem rola agora é o <main> inteiro, não mais um
    contêiner interno próprio). SEM sangria lateral (removida a pedido do usuário: a
    tabela não deve ficar grudada no sidebar, o padding de 40px do <main> precisa
@@ -13843,24 +13846,20 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 #page-planos .pll-tabela .pll-col-check { width: 48px; text-align: left; padding: 14px 0 14px 16px; }
 #page-planos .pll-tabela thead .pll-col-check { padding-top: 12px; padding-bottom: 12px; }
 #page-planos .pll-tabela input[type="checkbox"] { display: block; margin: 0; width: 16px; height: 16px; }
-#page-planos .pll-col-acoes { width: 1%; white-space: nowrap; text-align: right; }
-/* Especificidade explícita: a regra genérica "thead th { text-align:left }" acima tem mais
-   seletores de tag e venceria a regra de cima nesta coluna especificamente (cabeçalho da
-   coluna de ações/ordenar precisa ficar à direita, alinhado com os botões de ação das linhas) */
-#page-planos .pll-tabela thead th.pll-col-acoes { text-align: right; }
 /* Plano ocupa a folga da tabela (as demais colunas ficam do tamanho do conteúdo) */
 #page-planos .pll-tabela .pll-col-plano { width: 46%; min-width: 260px; }
-#page-planos .pll-tabela td.pll-col-vig, #page-planos .pll-tabela td.pll-col-resp, #page-planos .pll-tabela td.pll-col-status { white-space: nowrap; }
+@media (min-width: 769px) { #page-planos .pll-tabela td.pll-col-plano { max-width: 0; } }
+#page-planos .pll-tabela td.pll-col-resp, #page-planos .pll-tabela td.pll-col-status { white-space: nowrap; }
 /* coluna do card (só mobile) */
 #page-planos .pll-tabela .pll-col-card { display: none; }
 
 /* Célula "Plano": tag de tipo + nome (+ linha secundária no mobile) */
 #page-planos .pll-plano { display: flex; align-items: center; gap: 10px; min-width: 0; }
-#page-planos .pll-nome-wrap { min-width: 0; }
+#page-planos .pll-nome-wrap { flex: 1 1 auto; min-width: 0; }
 /* Sem cara de link (sem cursor:pointer nem cor de hover): agora a linha inteira decide o
    clique — 1 clique seleciona, duplo clique abre os detalhes (ver .pll-tabela tbody tr) —
    não é mais só o nome que navega sozinho. */
-#page-planos .pll-nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; overflow-wrap: anywhere; }
+#page-planos .pll-nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #page-planos .pll-vig { white-space: nowrap; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
 #page-planos .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); }
 
@@ -13869,15 +13868,6 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 #page-planos .pll-prog .ds-kpi-track { width: 72px; flex: none; }
 #page-planos .pll-prog-txt { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); min-width: 34px; }
 #page-planos .pll-sem-prog { color: var(--ds-color-text-muted); }
-
-/* Ações: aparecem ao passar o mouse / focar / quando a linha está selecionada (sempre
-   visíveis em toque e em telas <= 1024px) */
-#page-planos .pll-tabela .acoes-linha { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
-#page-planos .pll-tabela tr:hover .acoes-linha,
-#page-planos .pll-tabela tr:focus-within .acoes-linha,
-#page-planos .pll-tabela tr.selecionada .acoes-linha,
-#page-planos .pll-tabela .acoes-linha:has([aria-expanded="true"]) { opacity: 1; }
-@media (hover: none) { #page-planos .pll-tabela .acoes-linha { opacity: 1; } }
 
 /* Contador + paginação: agora na própria barra de filtros (sem seletor de "Exibir" nem
    rodapé próprio) — [1-8 de 8] [atualizar] [exportar] [< 1 >], pedido explícito do usuário. */
@@ -13888,10 +13878,15 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 }
 #page-planos .ds-icon-action--sm:disabled { opacity: 0.4; cursor: not-allowed; }
 
+/* Impressão: só a tabela (sem menu, filtros nem seleção) */
+@media print {
+  #main-header, #sidebar, #page-planos #pll-filtros-card, #page-planos .pll-col-check { display: none !important; }
+  #page-planos #pll-tabela-card, #page-planos .pll-table-wrap { overflow: visible !important; margin: 0 !important; }
+}
+
 /* Responsivo: <=1024 some Progresso; <=768 Vigência/Responsável descem p/ linha secundária */
 @media (max-width: 1024px) {
   #page-planos .pll-col-prog { display: none; }
-  #page-planos .pll-tabela .acoes-linha { opacity: 1; }
 }
 @media (max-width: 768px) {
   /* Sem sticky empilhado no mobile: a galeria de cards flui normalmente e quem rola é
@@ -13943,12 +13938,12 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
   #page-planos .pll-tabela tbody .pll-tipo { grid-area: tipo; justify-self: start; }
   #page-planos .pll-tabela tbody .pll-nome {
     grid-area: nome; min-width: 0; font-size: var(--ds-text-md);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal;
   }
   #page-planos .pll-tabela tbody .pll-col-acoes { grid-area: acoes; width: auto; }
+  #page-planos .pll-tabela tbody .pll-col-acoes .pll-vig { display: none; }
   #page-planos .pll-tabela tbody .pll-col-card { grid-area: card; display: block; }
   /* colunas de desktop somem nas linhas (o card mostra tudo) */
-  #page-planos .pll-tabela tbody .pll-col-vig, #page-planos .pll-tabela tbody .pll-col-resp,
+  #page-planos .pll-tabela tbody .pll-col-resp,
   #page-planos .pll-tabela tbody .pll-col-status, #page-planos .pll-tabela tbody .pll-col-prog { display: none; }
   /* linhas de mensagem (carregando/vazio) ocupam a largura toda, sem virar card */
   #page-planos .pll-tabela tbody tr.pll-linha-msg { display: block; grid-column: 1 / -1; background: none; border: none; box-shadow: none; padding: 0; }
@@ -14056,7 +14051,7 @@ function _pllIniciar() {
     })
     .withFailureHandler(function(err) {
       document.getElementById('tbody-planos').innerHTML =
-        `<tr><td colspan="8"><div class="planos-vazio">
+        `<tr><td colspan="7"><div class="planos-vazio">
            <span class="material-symbols-outlined">error</span>
            <p>Erro ao carregar planos: ${escapeHtml(err.message)}</p>
          </div></td></tr>`;
@@ -14070,16 +14065,12 @@ function invalidarCacheListaPlanos() {
 
 function _pllMostrarCarregando() {
   var tbody = document.getElementById('tbody-planos');
-  if (tbody) tbody.innerHTML = '<tr class="pll-linha-msg"><td colspan="8"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando planos…</span></div></td></tr>';
+  if (tbody) tbody.innerHTML = '<tr class="pll-linha-msg"><td colspan="7"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando planos…</span></div></td></tr>';
 }
 
 function atualizarListaPlanos() {
   invalidarCacheListaPlanos();
   initPlanos();
-}
-
-function pllExportarPlaceholder() {
-  showMessage('info', 'Em desenvolvimento', 'A exportação de planos será disponibilizada em breve.');
 }
 
 // Constrói o objeto "otimista" para o cabeçalho da página de detalhe a
@@ -14373,6 +14364,9 @@ function pllAbrirMenuOrdenar(ev, gatilho) {
       { label: 'Decrescente', ativo: dirAtual === 'desc', onclick: "pllDefinirDirecaoMenu('desc')" }
     ] }
   ]);
+  // o ícone de ordenar revela as demais ferramentas (atualizar, baixar, imprimir)
+  var ferr = document.getElementById('pll-ferramentas');
+  if (ferr) ferr.classList.toggle('is-aberto', !!document.getElementById('menu-selecao-aberto'));
 }
 function pllOrdenarPorMenu(col) { estadoPlanos.ordenacao.coluna = col; aplicarFiltros(); }
 function pllDefinirDirecaoMenu(dir) { estadoPlanos.ordenacao.direcao = dir; aplicarFiltros(); }
@@ -14479,7 +14473,7 @@ function _renderizarTabela(planos) {
         ? { icon: 'delete_sweep', titulo: 'A lixeira está vazia', detalhe: 'Planos excluídos aparecem aqui até serem restaurados ou apagados.' }
         : { icon: 'inbox', titulo: 'Nenhum plano encontrado',
           detalhe: 'Não há planos nesta aba no momento.' };
-    tbody.innerHTML = '<tr class="pll-linha-msg"><td colspan="8"><div class="el-empty-state">' +
+    tbody.innerHTML = '<tr class="pll-linha-msg"><td colspan="7"><div class="el-empty-state">' +
       '<span class="material-symbols-outlined el-esi">' + vz.icon + '</span>' +
       '<p class="el-esti">' + vz.titulo + '</p>' +
       '<p>' + vz.detalhe + '</p>' +
@@ -14545,11 +14539,11 @@ function _renderizarTabela(planos) {
         '<div class="pll-nome-wrap">' +
           '<div class="pll-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</div>' +
         '</div></div></td>' +
-      '<td class="pll-col-vig"><span class="pll-vig">' + vigencia + '</span></td>' +
       '<td class="pll-col-resp">' + respHtml + '</td>' +
       '<td class="pll-col-status"><span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' + lixHtml + '</td>' +
       '<td class="pll-col-prog">' + progHtml + '</td>' +
-      '<td class="pll-col-acoes">' + acoes + '</td>' +
+      '<td class="ds-col-sobreposta pll-col-acoes"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="pll-vig">' + vigencia + '</span></div>' +
+        '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>' +
       // Card (só mobile): status + vigência + responsável + progresso, tudo à vista, sem rolar de lado
       '<td class="pll-col-card"><div class="pll-card-meta">' +
         '<span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' +
@@ -14989,14 +14983,14 @@ uiRegistrarAcoes('pages_planos_lista', {
   '21': function (event) { ordenarPorColuna('status'); },
   '22': function (event) { ordenarPorColuna('progresso'); },
   '23': function (event) { atualizarListaPlanos(); },
-  '24': function (event) { pllExportarPlaceholder(); },
   '25': function (event) { pllAbrirMenuOrdenar(event, this); },
   '26': function (event) { mudarAba(uiArgJs(this.dataset.aclick0)); },
   '27': function (event) { toggleSelecaoPlano(uiArgJs(this.dataset.achange0), this.checked); },
   '28': function (event) { executarAcaoLotePlanos('restaurar'); },
   '29': function (event) { executarAcaoLotePlanos('excluirDefinitivo'); },
   '30': function (event) { executarAcaoLotePlanos('excluir'); },
-  '31': function (event) { _pllConfNomeDigitado = this.value; }
+  '31': function (event) { _pllConfNomeDigitado = this.value; },
+  '32': function (event) { window.print(); }
 });
 </script>
 
@@ -17214,13 +17208,6 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
   box-sizing: border-box;
 }
 
-.w5-tabela col.w5-col-prazo, .w5-tabela .w5-col-prazo {
-  width: 120px; min-width: 110px; max-width: 130px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  font-size: var(--ds-text-sm); color: var(--ds-color-text-muted);
-  box-sizing: border-box;
-}
-
 .w5-tabela col.w5-col-custo, .w5-tabela .w5-col-custo {
   width: 120px; min-width: 100px; max-width: 140px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -17229,13 +17216,6 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
   box-sizing: border-box;
 }
 
-.w5-tabela col.w5-col-acoes, .w5-tabela .w5-col-acoes {
-  width: 130px; min-width: 120px; max-width: 140px;
-  white-space: nowrap; text-align: right;
-  padding-left: 4px; padding-right: 16px;
-  box-sizing: border-box;
-}
-.w5-tabela thead th.w5-col-acoes { text-align: right; }
 
 /* Na visualização 5W2H, os elementos ficam alinhados sem indentação */
 .w5-tabela tbody tr .el-elem-content { padding-left: 0 !important; }
@@ -17290,55 +17270,6 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
   gap: 6px;
   flex-shrink: 0;
 }
-.el-chip-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--ds-color-surface-2);
-  border: 1px solid var(--ds-color-border);
-  border-radius: var(--ds-r-pill);
-  padding: 2px 8px;
-  font-size: var(--ds-text-xs, 0.75rem);
-  font-weight: var(--ds-weight-medium, 500);
-  color: var(--ds-color-text);
-  line-height: 1.25;
-  white-space: nowrap;
-  max-width: 220px;
-  box-sizing: border-box;
-  cursor: default;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-  user-select: none;
-}
-.el-chip-meta:hover {
-  background: var(--ds-sidebar-item-hover, var(--ds-color-surface-3));
-  border-color: var(--ds-color-border-strong, var(--ds-color-border));
-}
-.el-chip-meta .material-symbols-outlined {
-  font-size: 14px;
-  color: var(--ds-color-text-muted);
-  flex-shrink: 0;
-}
-.el-chip-meta-txt {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-.el-chip-custo .material-symbols-outlined {
-  color: var(--ds-color-action, #0f7b6c);
-}
-.el-chip-vinculo .material-symbols-outlined {
-  color: var(--ds-color-primary, #2670e8);
-}
-.el-chip-ind .material-symbols-outlined {
-  color: var(--ds-color-indicador);
-}
-body.high-contrast .el-chip-meta {
-  background: #1e1e1e;
-  border-color: #444;
-  color: #eee;
-}
-
 .el-toggle-btn {
   width: 24px; height: 24px; padding: 0; border: none; background: none;
   cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
@@ -17448,7 +17379,6 @@ body.high-contrast .el-chip-meta {
 @media (max-width: 1024px) {
   .el-tabela col.el-col-resp, .el-tabela .el-col-resp { width: 140px; min-width: 120px; max-width: 140px; }
   .w5-tabela col.w5-col-resp, .w5-tabela .w5-col-resp { width: 140px; min-width: 120px; max-width: 140px; }
-  .w5-tabela col.w5-col-prazo, .w5-tabela .w5-col-prazo { display: none; }
   .el-tabela .acoes-linha { opacity: 1; }
 }
 
@@ -17465,7 +17395,6 @@ body.high-contrast .el-chip-meta {
   .w5-tabela col.w5-col-resp, .w5-tabela .w5-col-resp { display: none; }
   .w5-tabela col.w5-col-check, .w5-tabela .w5-col-check { width: 36px; min-width: 36px; max-width: 36px; padding-left: 10px; padding-right: 0; }
   .w5-tabela col.w5-col-cod, .w5-tabela .w5-col-cod { width: 60px; min-width: 50px; max-width: 70px; }
-  .w5-tabela col.w5-col-acoes, .w5-tabela .w5-col-acoes { width: 128px; min-width: 128px; max-width: 128px; padding-left: 2px; padding-right: 8px; }
   .el-tabela tbody tr td { padding: 12px 8px; }
   .el-tabela thead th { padding: 10px 8px; }
   .el-elem-content { gap: 6px; }
@@ -17483,7 +17412,6 @@ body.high-contrast .el-chip-meta {
   .el-th-btn .material-symbols-outlined { font-size: 18px; }
   .el-tabela .el-col-acoes { width: 114px; min-width: 114px; max-width: 114px; padding-right: 4px; }
   .el-tabela .el-col-check { width: 30px; min-width: 30px; max-width: 30px; padding-left: 6px; }
-  .w5-tabela .w5-col-acoes { width: 114px; min-width: 114px; max-width: 114px; padding-right: 4px; }
   .w5-tabela .w5-col-check { width: 30px; min-width: 30px; max-width: 30px; padding-left: 6px; }
   .el-tabela .el-col-expand { width: 20px; min-width: 20px; max-width: 20px; }
   .el-tabela tbody tr td { padding: 10px 4px; }
@@ -19241,9 +19169,9 @@ function abrirDetalhesElementoPainel(id) {
   var htmlAcoes = '';
   if (podeEditar) {
     htmlAcoes = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">' +
-      '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" data-on-click="plano.15" data-aclick0="' + id + '"><span class="material-symbols-outlined">edit</span> Editar</button>' +
       '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" data-on-click="plano.16" data-aclick0="' + id + '"><span class="material-symbols-outlined">add</span> Adicionar filho</button>' +
-      '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" data-on-click="plano.17" data-aclick0="' + id + '"><span class="material-symbols-outlined">monitoring</span> Indicadores</button>' +
+      '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" data-on-click="plano.17" data-aclick0="' + id + '"><span class="material-symbols-outlined">speed</span> Adicionar indicador</button>' +
+      '<button type="button" class="ds-btn ds-btn--glass-secondary ds-btn--sm" data-on-click="plano.15" data-aclick0="' + id + '"><span class="material-symbols-outlined">edit</span> Editar</button>' +
       '<button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" style="color:var(--ds-color-danger-fg)" data-on-click="plano.18" data-aclick0="' + id + '" data-aclick1="' + escapeJsAttr(el.titulo) + '"><span class="material-symbols-outlined">delete</span> Excluir</button>' +
       '</div>';
   }
@@ -21761,8 +21689,8 @@ function extMenuOrdenar(ev, gatilho) {
 }
 
 function _execChipHTML(icone, texto, dica, extra, id) {
-  return '<span class="el-chip-meta' + (extra ? ' ' + extra : '') + '" data-title="' + escapeHtml(dica) + '"><span class="material-symbols-outlined">' + icone + '</span>' +
-    (texto ? '<span class="el-chip-meta-txt"' + (id ? ' id="' + id + '"' : '') + '>' + escapeHtml(texto) + '</span>' : '') + '</span>';
+  return '<span class="ds-badge' + (extra ? ' ' + extra : '') + '" data-title="' + escapeHtml(dica) + '"><span class="material-symbols-outlined">' + icone + '</span>' +
+    (texto ? '<span' + (id ? ' id="' + id + '"' : '') + '>' + escapeHtml(texto) + '</span>' : '') + '</span>';
 }
 
 function _execProgressoHTML(n, t) {
@@ -21826,7 +21754,7 @@ function _execARegistrarHTML(n, f) {
   if (n.listaNecessaria) b.push('<span class="ds-badge ds-badge--warning" data-title="A lista de verificação não tem itens: crie a lista para lançar o progresso"><span class="material-symbols-outlined">checklist</span>Criar lista</span>');
   else if (n.progressoRejeitado) b.push('<span class="ds-badge ds-badge--danger" data-title="' + escapeHtml('Último lançamento rejeitado' + (n.progressoRejeitado.motivo ? ': ' + n.progressoRejeitado.motivo : '')) + '"><span class="material-symbols-outlined">error</span>Rejeitado</span>');
   else if (f.prog) b.push('<span class="ds-badge ds-badge--warning" data-title="Há progresso a lançar"><span class="material-symbols-outlined">task_alt</span>Progresso</span>');
-  if (f.indPend) b.push(_execChipHTML('speed', (f.inds - f.indPend) + ' de ' + f.inds, f.indPend + ' indicador(es) sem resultado no exercício', 'el-chip-ind'));
+  if (f.indPend) b.push(_execChipHTML('speed', (f.inds - f.indPend) + ' de ' + f.inds, f.indPend + ' indicador(es) sem resultado no exercício', 'ds-badge--ico-indicador'));
   if (f.trDev) b.push('<span class="ds-badge ds-badge--warning" data-title="Ações de tratamento de risco devidas"><span class="material-symbols-outlined">shield</span>' + f.trDev + (f.trDev > 1 ? ' devidas' : ' devida') + '</span>');
   if (f.validar) b.push('<span class="ds-badge ds-badge--info" data-title="Lançamento aguardando validação"><span class="material-symbols-outlined">hourglass_top</span>Em validação</span>');
   if (!b.length) b.push('<span class="ds-badge ds-badge--success"><span class="material-symbols-outlined">check_circle</span>Em dia</span>');

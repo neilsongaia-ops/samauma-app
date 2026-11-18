@@ -105,10 +105,6 @@ body.high-contrast .wiz-rail-item.wiz-rail-atual { background: #222; }
 .elwiz-sub { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); margin: 0 0 18px; }
 /* Explicações ficam em tooltip (i) ao lado do rótulo — nada de subtítulos/ajudas fixas (menos ruído visual). */
 .el-alerta-ico { font-size: 16px; color: var(--ds-color-warning-fg); flex-shrink: 0; }
-.el-chip-meta.el-chip-vinculo .el-chip-aviso { font-size: 14px; color: var(--ds-color-warning-fg); margin-left: -2px; }
-.el-chip-meta.el-chip-vinculo.el-chip-desvinculado .material-symbols-outlined:first-child { color: var(--ds-color-danger-fg); }
-.el-chip-meta.el-chip-vinculo.el-chip-pendente .material-symbols-outlined:first-child { color: var(--ds-color-pending); }
-.el-chip-meta.el-chip-vinculo .el-chip-aguardando { color: var(--ds-color-pending); }
 .elwiz-info { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; margin-left: 4px; }
 .elwiz-obrig { font-size: 10px; font-weight: var(--ds-weight-bold); letter-spacing: .3px; text-transform: uppercase; color: var(--ds-color-danger-fg); }
 .elwiz-divisor { border-top: 1px solid var(--ds-glass-border); margin: 20px 0; }
@@ -369,8 +365,7 @@ body.org-fs-active, body.org-fs-active #main-content { overflow: hidden !importa
 body.high-contrast .org-card { border-color: #fff; }
 body.high-contrast .org-seg { background: #fff; }
 body.high-contrast .org-card-plano { background: #000; border: 2px solid #ffff00; color: #ffff00; }
-/* Relacionamentos entre elementos (simétricos): mesma cor do badge .el-chip-rel, tracejado para não confundir com a hierarquia */
-.el-chip-meta.el-chip-rel .material-symbols-outlined { color: var(--ds-color-relacao); }
+/* Relacionamentos entre elementos (simétricos): mesma cor do badge de relação (.ds-badge--ico-relacao), tracejado para não confundir com a hierarquia */
 .org-rel-layer { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; }
 .org-rel { opacity: .28; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
 .org-rel path { fill: none; stroke: var(--ds-color-relacao); stroke-width: 1.5; stroke-dasharray: 5 3; stroke-linejoin: miter; }
@@ -892,13 +887,6 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
   box-sizing: border-box;
 }
 
-.w5-tabela col.w5-col-prazo, .w5-tabela .w5-col-prazo {
-  width: 120px; min-width: 110px; max-width: 130px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  font-size: var(--ds-text-sm); color: var(--ds-color-text-muted);
-  box-sizing: border-box;
-}
-
 .w5-tabela col.w5-col-custo, .w5-tabela .w5-col-custo {
   width: 120px; min-width: 100px; max-width: 140px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -907,13 +895,6 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
   box-sizing: border-box;
 }
 
-.w5-tabela col.w5-col-acoes, .w5-tabela .w5-col-acoes {
-  width: 130px; min-width: 120px; max-width: 140px;
-  white-space: nowrap; text-align: right;
-  padding-left: 4px; padding-right: 16px;
-  box-sizing: border-box;
-}
-.w5-tabela thead th.w5-col-acoes { text-align: right; }
 
 /* Na visualização 5W2H, os elementos ficam alinhados sem indentação */
 .w5-tabela tbody tr .el-elem-content { padding-left: 0 !important; }
@@ -1353,7 +1334,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
               <col class="el-col-expand">
               <col class="el-col-elem">
               <col class="el-col-resp">
-              <col class="el-col-acoes">
+              <col class="ds-col-sobreposta">
             </colgroup>
             <thead>
               <tr id="el-th-normal">
@@ -1361,23 +1342,17 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                 <th class="el-col-expand"></th>
                 <th class="el-col-elem">Elemento</th>
                 <th class="el-col-resp">Responsável</th>
-                <th class="el-col-acoes">
-                  <div class="el-th-acoes">
-                    <button type="button" class="el-th-btn" id="btn-atualizar-el" data-on-click="el.38" data-title="Atualizar" aria-label="Atualizar">
-                      <span class="material-symbols-outlined">refresh</span>
-                    </button>
-                    <button type="button" class="el-th-btn" id="btn-reorganizar" data-on-click="el.39" data-title="Reorganizar" aria-label="Reorganizar">
-                      <span class="material-symbols-outlined">low_priority</span>
-                    </button>
-                    <button type="button" class="el-th-btn" id="btn-expandir-arvore" data-on-click="el.40" data-title="Expandir Tudo" aria-label="Expandir Tudo">
-                      <span class="material-symbols-outlined">unfold_more</span>
-                    </button>
-                    <button type="button" class="el-th-btn" id="btn-imprimir-elem" data-on-click="el.41" data-title="Imprimir" aria-label="Imprimir">
-                      <span class="material-symbols-outlined">print</span>
-                    </button>
-                    <button type="button" class="el-th-btn" id="btn-exportar-elem" data-on-click="el.42" data-title="Exportar" aria-label="Exportar">
-                      <span class="material-symbols-outlined">download</span>
-                    </button>
+                <th class="ds-col-sobreposta">
+                  <div class="ds-th-ferramentas">
+                    <span class="ds-th-ferramentas__rotulo">Prazo</span>
+                    <span class="ds-th-ferramentas__extras">
+                      <button type="button" class="ds-icon-action ds-icon-action--sm" id="btn-atualizar-el" data-on-click="el.38" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>
+                      <button type="button" class="ds-icon-action ds-icon-action--sm" id="btn-reorganizar" data-on-click="el.39" data-title="Reorganizar" aria-label="Reorganizar"><span class="material-symbols-outlined">low_priority</span></button>
+                      <button type="button" class="ds-icon-action ds-icon-action--sm" id="btn-expandir-arvore" data-on-click="el.40" data-title="Expandir Tudo" aria-label="Expandir Tudo"><span class="material-symbols-outlined">unfold_more</span></button>
+                      <button type="button" class="ds-icon-action ds-icon-action--sm" id="btn-imprimir-elem" data-on-click="el.41" data-title="Imprimir" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>
+                      <button type="button" class="ds-icon-action ds-icon-action--sm" id="btn-exportar-elem" data-on-click="el.42" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>
+                    </span>
+                    <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="el.77" data-title="Opções" aria-label="Opções" aria-haspopup="true"><span class="material-symbols-outlined">more_vert</span></button>
                   </div>
                 </th>
               </tr>
@@ -1452,23 +1427,13 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
             </div>
             <span class="org-sep hidden" id="org-rel-sep"></span>
 
-            <!-- Orientação: De cima para baixo / Da esquerda para a direita (estilo el-th-btn) -->
-            <div class="el-th-acoes" role="group" aria-label="Orientação do organograma">
-              <button type="button" class="el-th-btn org-ori-btn ativo" id="org-btn-v" data-on-click="el.50"
-                      data-title="De cima para baixo" aria-label="De cima para baixo" aria-pressed="true">
-                <span class="material-symbols-outlined">lan</span></button>
-              <button type="button" class="el-th-btn org-ori-btn" id="org-btn-h" data-on-click="el.51"
-                      data-title="Da esquerda para a direita" aria-label="Da esquerda para a direita" aria-pressed="false">
-                <span class="material-symbols-outlined">account_tree</span></button>
-            </div>
-
-            <span class="org-sep"></span>
-
-            <!-- Expandir / Recolher -->
+            <!-- Orientação e expansão: um ícone cada; o ícone mostra o formato/estado atual e o clique alterna -->
             <div class="el-th-acoes">
-              <button type="button" class="el-th-btn" data-on-click="el.52" data-title="Expandir tudo" aria-label="Expandir tudo">
-                <span class="material-symbols-outlined">unfold_more</span></button>
-              <button type="button" class="el-th-btn" data-on-click="el.53" data-title="Recolher até o 2º nível" aria-label="Recolher tudo">
+              <button type="button" class="el-th-btn" id="org-btn-ori" data-on-click="el.50"
+                      data-title="De cima para baixo" aria-label="Alternar orientação do organograma">
+                <span class="material-symbols-outlined">lan</span></button>
+              <button type="button" class="el-th-btn" id="org-btn-exp" data-on-click="el.52"
+                      data-title="Recolher até o 2º nível" aria-label="Expandir ou recolher tudo">
                 <span class="material-symbols-outlined">unfold_less</span></button>
             </div>
 
@@ -1535,9 +1500,8 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
               <col class="w5-col-cod">
               <col class="w5-col-item">
               <col class="w5-col-resp">
-              <col class="w5-col-prazo">
               <col class="w5-col-custo">
-              <col class="w5-col-acoes">
+              <col class="ds-col-sobreposta">
             </colgroup>
             <thead>
               <tr>
@@ -1545,19 +1509,16 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                 <th class="w5-col-cod">Código</th>
                 <th class="w5-col-item">Item (O Quê)</th>
                 <th class="w5-col-resp" data-title="Quem (Responsável)">Responsável</th>
-                <th class="w5-col-prazo" data-title="Quando (Prazo)">Prazo</th>
                 <th class="w5-col-custo" data-title="Quanto (Custo)">Custo</th>
-                <th class="w5-col-acoes">
-                  <div class="el-th-acoes">
-                    <button type="button" class="el-th-btn" data-on-click="el.38" data-title="Atualizar" aria-label="Atualizar">
-                      <span class="material-symbols-outlined">refresh</span>
-                    </button>
-                    <button type="button" class="el-th-btn" id="btn-imprimir-w5" data-on-click="el.41" data-title="Imprimir" aria-label="Imprimir">
-                      <span class="material-symbols-outlined">print</span>
-                    </button>
-                    <button type="button" class="el-th-btn" id="btn-exportar-w5" data-on-click="el.42" data-title="Exportar" aria-label="Exportar">
-                      <span class="material-symbols-outlined">download</span>
-                    </button>
+                <th class="ds-col-sobreposta" data-title="Quando (Prazo)">
+                  <div class="ds-th-ferramentas">
+                    <span class="ds-th-ferramentas__rotulo">Prazo</span>
+                    <span class="ds-th-ferramentas__extras">
+                      <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="el.38" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>
+                      <button type="button" class="ds-icon-action ds-icon-action--sm" id="btn-imprimir-w5" data-on-click="el.41" data-title="Imprimir" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>
+                      <button type="button" class="ds-icon-action ds-icon-action--sm" id="btn-exportar-w5" data-on-click="el.42" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>
+                    </span>
+                    <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="el.77" data-title="Opções" aria-label="Opções" aria-haspopup="true"><span class="material-symbols-outlined">more_vert</span></button>
                   </div>
                 </th>
               </tr>
@@ -3338,19 +3299,26 @@ function orgZoomAjustar() {
   _orgEst.zoom = Math.max(0.3, Math.min(1, (vp.clientWidth - 16) / L.w, (vp.clientHeight - 16) / L.h));
   _orgAplicarZoom(); vp.scrollLeft = 0; vp.scrollTop = 0;
 }
-function orgSetOrientacao(vertical) {
-  _orgEst.V = !!vertical;
-  ['v', 'h'].forEach(function(k) {
-    var b = document.getElementById('org-btn-' + k), on = (k === 'v') === _orgEst.V;
-    if (b) { b.classList.toggle('ativo', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
-  });
-  renderizarOrganograma();
-}
+function orgAlternarOrientacao() { _orgEst.V = !_orgEst.V; renderizarOrganograma(); }
 function orgExpandirTudo() { _orgEst.colapsados = {}; renderizarOrganograma(); }
 function orgRecolherTudo() {
   var o = _orgEst.ordem || {}, c = {};
   (o.root || []).forEach(function(id) { (o[id] || []).forEach(function(k) { if ((o[k] || []).length) c[k] = true; }); });
   _orgEst.colapsados = c; renderizarOrganograma();
+}
+// Com algo recolhido o botão expande tudo; com tudo aberto recolhe até o 2º nível.
+function orgAlternarExpansao() { if (Object.keys(_orgEst.colapsados || {}).length) orgExpandirTudo(); else orgRecolherTudo(); }
+// Os ícones da barra mostram o estado atual (orientação e expansão); chamada a cada desenho do diagrama.
+function _orgAtualizarBotoesVisao() {
+  var ori = document.getElementById('org-btn-ori'), exp = document.getElementById('org-btn-exp');
+  var recolhido = Object.keys(_orgEst.colapsados || {}).length > 0;
+  function ajustar(b, icone, titulo) {
+    if (!b) return;
+    b.querySelector('.material-symbols-outlined').textContent = icone;
+    b.dataset.title = titulo;
+  }
+  ajustar(ori, _orgEst.V ? 'lan' : 'account_tree', _orgEst.V ? 'De cima para baixo' : 'Da esquerda para a direita');
+  ajustar(exp, recolhido ? 'unfold_more' : 'unfold_less', recolhido ? 'Expandir tudo' : 'Recolher até o 2º nível');
 }
 
 function orgToggleFullscreen(force) {
@@ -3953,11 +3921,11 @@ function criarNoDOM(item) {
 
   // Ações do item: 3 diretas + ⋮ (components_acoes_linha.html)
   const desktopToolbar = acoesLinhaHTML(tbId, [
-    { icone: 'edit', rotulo: 'Editar', onclick: `abrirModalEdicaoElemento('${item.id}')`, principal: true, oculto: !podeEditarElemento },
     { icone: 'add', rotulo: 'Adicionar filho', onclick: `prepararNovoFilho('${item.id}')`, principal: true, oculto: !podeEditarElemento },
-    { icone: 'monitoring', rotulo: 'Indicadores', onclick: `abrirModalIndicador('${item.id}')`, principal: true, oculto: !podeEditarElemento },
+    { icone: 'speed', rotulo: 'Adicionar indicador', onclick: `abrirModalIndicador('${item.id}')`, principal: true, oculto: !podeEditarElemento },
+    { icone: 'edit', rotulo: 'Editar', onclick: `abrirModalEdicaoElemento('${item.id}')`, oculto: !podeEditarElemento },
     { icone: 'delete', rotulo: 'Excluir', onclick: `confirmarExclusaoElemento('${item.id}','${escapeJsAttr(item.titulo)}')`, perigo: true, oculto: !podeEditarElemento }
-  ]);
+  ], { maxDireto: 2 });
   const mobileKebab = '';
 
   const temFilhos = item.children && item.children.length > 0;
@@ -4179,8 +4147,8 @@ function _chipVinculoUnicoHTML(qtd, semEfeito, tip, rotulo, pendente) {
   var desv = semEfeito && !pendente, pend = semEfeito && pendente;
   var ico = desv ? 'link_off' : (pend ? 'schedule' : 'link');
   var aria = desv ? ' aria-label="Plano desvinculado: vínculo sem efeito"' : (pend ? ' aria-label="Aguardando aprovação do vínculo entre os planos"' : '');
-  return '<span class="el-chip-meta el-chip-vinculo' + (desv ? ' el-chip-desvinculado' : '') + (pend ? ' el-chip-pendente' : '') + '" data-title="' + escapeHtml(tip) + '"><span class="material-symbols-outlined"' + aria + '>' + ico + '</span>'
-    + '<span class="el-chip-meta-txt">' + escapeHtml(rotulo != null ? rotulo : String(qtd)) + '</span></span>';
+  return '<span class="ds-badge ' + (desv ? 'ds-badge--ico-perigo' : (pend ? 'ds-badge--ico-pendente' : 'ds-badge--ico-vinculo')) + '" data-title="' + escapeHtml(tip) + '"><span class="material-symbols-outlined"' + aria + '>' + ico + '</span>'
+    + '<span>' + escapeHtml(rotulo != null ? rotulo : String(qtd)) + '</span></span>';
 }
 function chipsVinculoElementoHTML(el, supInfo) {
   var grupos = el && el.vinculosPlanos;
@@ -4201,7 +4169,7 @@ function chipContribuiParaHTML(el) {
   if (!n) return '';
   var itens = rel.slice(0, EL_REL_TIP_MAX).map(function (r) { return ((r.codigo || '') + ' ' + (r.titulo || '')).trim(); });
   var tip = (n === 1 ? 'Contribui para: ' : 'Contribui para ' + n + ' elementos: ') + itens.join('; ') + (n > EL_REL_TIP_MAX ? '; e mais ' + (n - EL_REL_TIP_MAX) : '');
-  return '<span class="el-chip-meta el-chip-rel" data-title="' + escapeHtml(tip) + '" aria-label="' + escapeHtml(tip) + '"><span class="material-symbols-outlined">hub</span><span class="el-chip-meta-txt">' + n + '</span></span>';
+  return '<span class="ds-badge ds-badge--ico-relacao" data-title="' + escapeHtml(tip) + '" aria-label="' + escapeHtml(tip) + '"><span class="material-symbols-outlined">hub</span><span>' + n + '</span></span>';
 }
 // Ícone de alerta "acima do limite" (VINCULO_ELEMENTO_LIMITE reduzido com vínculos já existentes): informativo,
 // nunca bloqueia. Igual ao alerta do indicador sem meta: ícone solto ao lado do título, sem chip.
@@ -4480,11 +4448,12 @@ function _elAtualizarSelecaoVisual() {
       var elId = Array.from(_elSelecionados)[0];
       var elObj = (_elElementos || []).find(function(e) { return String(e.id) === elId; });
       acoesCont.innerHTML = acoesLinhaHTML('elsel-' + elId, [
-        { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + elId + "')", principal: true },
-        { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + elId + "')", principal: true, oculto: !podeEditar },
         { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + elId + "')", principal: true, oculto: !podeEditar },
+        { icone: 'speed', rotulo: 'Adicionar indicador', onclick: "abrirModalIndicador('" + elId + "')", principal: true, oculto: !podeEditar },
+        { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + elId + "')", principal: true, oculto: !podeEditar },
+        { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + elId + "')", principal: true },
         { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + elId + "','" + escapeJsAttr(elObj ? elObj.titulo : '') + "')", cor: 'var(--ds-color-danger-fg)', oculto: !podeEditar }
-      ], { maxDireto: 4 });
+      ], { maxDireto: 5 });
     } else {
       acoesCont.innerHTML = podeEditar
         ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" data-on-click="el.63" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>'
@@ -4937,10 +4906,12 @@ function renderizarGantt() {
 
     var tbId = 'gantt-tb-' + el.id;
     var acoes = typeof acoesLinhaHTML === 'function' ? acoesLinhaHTML(tbId, [
+      { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + el.id + "')", principal: true, oculto: !podeEditarElemento },
+      { icone: 'speed', rotulo: 'Adicionar indicador', onclick: "abrirModalIndicador('" + el.id + "')", principal: true, oculto: !podeEditarElemento },
+      { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + el.id + "')", oculto: !podeEditarElemento },
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + el.id + "')", principal: true },
-      { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + el.id + "')", principal: true, oculto: !podeEditarElemento },
       { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + el.id + "','" + escapeJsAttr(el.titulo) + "')", perigo: true, oculto: !podeEditarElemento }
-    ]) : '';
+    ], { maxDireto: 2 }) : '';
 
     // 1. Coluna Tarefa (Fixa à esquerda)
     taskRowsHtml += '<div class="gantt-row gantt-task-row" data-id="' + el.id + '" data-on-click="el.64" data-aclick0="' + el.id + '" data-on-dblclick="el.65" data-adblclick0="' + el.id + '" data-title="' + escapeHtml(el.titulo) + '">';
@@ -5103,16 +5074,15 @@ function renderizarTabelaEstrutura() {
     var qtdInd = Number(no.qtdIndicadores || 0);
 
     var chipsList = [];
-    if (no.prazo || no.fim) chipsList.push(uiChipPrazoHTML(no.prazo || no.fim));
     if (custoFmt) {
-      chipsList.push('<span class="el-chip-meta el-chip-custo" data-title="Custo estimado: ' + escapeHtml(custoFmt) + '"><span class="material-symbols-outlined">payments</span><span class="el-chip-meta-txt">' + escapeHtml(custoFmt) + '</span></span>');
+      chipsList.push('<span class="ds-badge ds-badge--ico-custo" data-title="Custo estimado: ' + escapeHtml(custoFmt) + '"><span class="material-symbols-outlined">payments</span><span>' + escapeHtml(custoFmt) + '</span></span>');
     }
     var chipVinc = chipsVinculoElementoHTML(no, supInfo);
     if (chipVinc) chipsList.push(chipVinc);
     var chipRel = chipContribuiParaHTML(no);
     if (chipRel) chipsList.push(chipRel);
     if (qtdInd > 0) {
-      chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + '</span></span>');
+      chipsList.push('<span class="ds-badge ds-badge--ico-indicador" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span>' + qtdInd + '</span></span>');
     }
     var chipsHtml = chipsList.length > 0 ? '<div class="el-meta-chips">' + chipsList.join('') + '</div>' : '';
 
@@ -5147,13 +5117,14 @@ function renderizarTabelaEstrutura() {
     // Ações
     var tbId = 'el-tb-' + id;
     var acoes = acoesLinhaHTML(tbId, [
+      { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + id + "')", principal: true, oculto: !podeEditarElemento },
+      { icone: 'speed', rotulo: 'Adicionar indicador', onclick: "abrirModalIndicador('" + id + "')", principal: true, oculto: !podeEditarElemento },
+      { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + id + "')", oculto: !podeEditarElemento },
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
-      { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + id + "')", principal: true, oculto: !podeEditarElemento },
-      { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + id + "')", oculto: !podeEditarElemento },
-      { icone: 'monitoring', rotulo: 'Indicadores', onclick: "abrirModalIndicador('" + id + "')", oculto: !podeEditarElemento },
       { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + id + "','" + escapeJsAttr(no.titulo) + "')", perigo: true, oculto: !podeEditarElemento }
-    ]);
-    var tdAcoes = '<td class="el-col-acoes">' + acoes + '</td>';
+    ], { maxDireto: 2 });
+    var tdAcoes = '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info">' + escapeHtml(no.prazo || no.fim || '') + '</div>' +
+      '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>';
 
     tr.innerHTML = tdCheck + tdExpand + tdElem + tdResp + tdAcoes;
     tbody.appendChild(tr);
@@ -5275,6 +5246,7 @@ function renderizarOrganograma() {
   }
 
   var ordem = _orgEst.ordem, V = _orgEst.V;
+  _orgAtualizarBotoesVisao();
   var L = _orgAplicarPosicoes(_orgLayout(ordem, _orgEst.colapsados, V, _orgEst.compactar), ordem);
   _orgEst.layout = L;
   var cod = _orgCodigos(ordem);
@@ -5317,15 +5289,15 @@ function renderizarOrganograma() {
         + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '') + '</span>';
     }
     var nInd = Number(el.qtdIndicadores || 0);
-    var indHtml = uiChipPrazoHTML(el.prazo || el.fim) + (nInd ? '<span class="el-chip-meta el-chip-ind" data-title="' + nInd + (nInd === 1 ? ' indicador' : ' indicadores') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + nInd + '</span></span>' : '');
+    var indHtml = uiChipPrazoHTML(el.prazo || el.fim) + (nInd ? '<span class="ds-badge ds-badge--ico-indicador" data-title="' + nInd + (nInd === 1 ? ' indicador' : ' indicadores') + '"><span class="material-symbols-outlined">speed</span><span>' + nInd + '</span></span>' : '');
 
     var acoes = acoesLinhaHTML('org-tb-' + id, [
-      { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
       { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + id + "')", principal: true, oculto: !podeEditar },
+      { icone: 'speed', rotulo: 'Adicionar indicador', onclick: "abrirModalIndicador('" + id + "')", principal: true, oculto: !podeEditar },
       { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + id + "')", oculto: !podeEditar },
-      { icone: 'monitoring', rotulo: 'Indicadores', onclick: "abrirModalIndicador('" + id + "')", oculto: !podeEditar },
+      { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
       { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + id + "','" + escapeJsAttr(el.titulo) + "')", perigo: true, oculto: !podeEditar }
-    ]);
+    ], { maxDireto: 2 });
 
     var nk = (ordem[id] || []).length, col = !!_orgEst.colapsados[id];
     var toggle = nk ? '<button type="button" class="org-toggle" data-toggle="' + id + '" style="left:' + (V ? n.w / 2 : n.w) + 'px;top:' + (V ? n.h : n.h / 2) + 'px"'
@@ -5430,6 +5402,12 @@ function renderizarArvore() {
   }
 }
 
+// O ícone de ferramentas do cabeçalho revela/recolhe as demais ferramentas da tabela.
+function elAlternarFerramentas(gatilho) {
+  var f = gatilho && gatilho.closest('.ds-th-ferramentas');
+  if (f) f.classList.toggle('is-aberto');
+}
+
 function renderizarTabelaDetalhes() {
   const tbody = document.getElementById('tbody-5w2h');
   if (!tbody) return;
@@ -5443,11 +5421,11 @@ function renderizarTabelaDetalhes() {
   if (btnExp) btnExp.classList.toggle('hidden', !temElems);
 
   if (!temElems) {
-    tbody.innerHTML = '<tr><td colspan="7"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">inbox</span><p class="el-esti">Nenhum elemento cadastrado</p><p>Clique em "Novo Elemento" para começar.</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">inbox</span><p class="el-esti">Nenhum elemento cadastrado</p><p>Clique em "Novo Elemento" para começar.</p></div></td></tr>';
     return;
   }
   if (elemFiltrados.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">filter_alt_off</span><p class="el-esti">Nenhum resultado para os filtros</p><p>Tente ampliar ou limpar os filtros aplicados.</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6"><div class="el-empty-state"><span class="material-symbols-outlined el-esi">filter_alt_off</span><p class="el-esti">Nenhum resultado para os filtros</p><p>Tente ampliar ou limpar os filtros aplicados.</p></div></td></tr>';
     return;
   }
 
@@ -5493,7 +5471,7 @@ function renderizarTabelaDetalhes() {
     var chipRel = chipContribuiParaHTML(item);
     if (chipRel) chipsList.push(chipRel);
     if (qtdInd > 0) {
-      chipsList.push('<span class="el-chip-meta el-chip-ind" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span class="el-chip-meta-txt">' + qtdInd + '</span></span>');
+      chipsList.push('<span class="ds-badge ds-badge--ico-indicador" data-title="' + qtdInd + (qtdInd === 1 ? ' indicador vinculado' : ' indicadores vinculados') + '"><span class="material-symbols-outlined">speed</span><span>' + qtdInd + '</span></span>');
     }
     var chipsHtml = chipsList.length > 0 ? '<div class="el-meta-chips">' + chipsList.join('') + '</div>' : '';
 
@@ -5524,12 +5502,9 @@ function renderizarTabelaDetalhes() {
     }
     var tdResp = '<td class="w5-col-resp">' + respHtml + '</td>';
 
-    // Prazo (Quando) - apenas data final
+    // Prazo (Quando) - apenas data final, na última coluna (as ações o cobrem no hover)
     var fimFmt = _formatarDataVisual(item.fim);
-    var prazoHtml = fimFmt
-      ? '<span title="Data final: ' + escapeHtml(fimFmt) + '">' + escapeHtml(fimFmt) + '</span>'
-      : '<span style="color:var(--ds-color-text-muted)">-</span>';
-    var tdPrazo = '<td class="w5-col-prazo">' + prazoHtml + '</td>';
+    var prazoHtml = fimFmt ? escapeHtml(fimFmt) : '<span class="ds-help">-</span>';
 
     // Custo (Quanto)
     var custoFmt = formatarCustoElemento(item.custo);
@@ -5541,15 +5516,16 @@ function renderizarTabelaDetalhes() {
     // Ações
     var tbId = 'w5-tb-' + id;
     var acoes = acoesLinhaHTML(tbId, [
+      { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + id + "')", principal: true, oculto: !podeEditarElemento },
+      { icone: 'speed', rotulo: 'Adicionar indicador', onclick: "abrirModalIndicador('" + id + "')", principal: true, oculto: !podeEditarElemento },
+      { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + id + "')", oculto: !podeEditarElemento },
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
-      { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + id + "')", principal: true, oculto: !podeEditarElemento },
-      { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + id + "')", oculto: !podeEditarElemento },
-      { icone: 'monitoring', rotulo: 'Indicadores', onclick: "abrirModalIndicador('" + id + "')", oculto: !podeEditarElemento },
       { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + id + "','" + escapeJsAttr(item.titulo) + "')", perigo: true, oculto: !podeEditarElemento }
-    ]);
-    var tdAcoes = '<td class="w5-col-acoes">' + acoes + '</td>';
+    ], { maxDireto: 2 });
+    var tdAcoes = '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info">' + prazoHtml + '</div>' +
+      '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>';
 
-    tr.innerHTML = tdCheck + tdCod + tdItem + tdResp + tdPrazo + tdCusto + tdAcoes;
+    tr.innerHTML = tdCheck + tdCod + tdItem + tdResp + tdCusto + tdAcoes;
     tbody.appendChild(tr);
   });
 
@@ -6085,10 +6061,8 @@ uiRegistrarAcoes('el', {
   '47': function (event) { orgToggleHierarquia(); },
   '48': function (event) { orgRestaurarLayout(); },
   '49': function (event) { orgToggleRelacionamentos(); },
-  '50': function (event) { orgSetOrientacao(true); },
-  '51': function (event) { orgSetOrientacao(false); },
-  '52': function (event) { orgExpandirTudo(); },
-  '53': function (event) { orgRecolherTudo(); },
+  '50': function (event) { orgAlternarOrientacao(); },
+  '52': function (event) { orgAlternarExpansao(); },
   '54': function (event) { orgZoom(1 / 1.2); },
   '55': function (event) { orgZoom(1.2); },
   '56': function (event) { orgZoomAjustar(); },
@@ -6111,7 +6085,8 @@ uiRegistrarAcoes('el', {
   '73': function (event) { toggleNode(this.closest('.tree-content').querySelector('.toggle-icon'),uiArgJs(this.dataset.aclick0)); },
   '74': function (event) { abrirColaboracoesPendentes(uiArgJs(this.dataset.aclick0)); },
   '75': function (event) { elImpEscolher(uiArgJs(this.dataset.achange0)); },
-  '76': function (event) { event.stopPropagation(); }
+  '76': function (event) { event.stopPropagation(); },
+  '77': function (event) { elAlternarFerramentas(this); }
 });
 
 
