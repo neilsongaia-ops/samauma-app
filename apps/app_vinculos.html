@@ -1223,7 +1223,7 @@ function _vincLinhaHTML(p, podeEditar) {
   var tip = escapeHtml(_vincTipSituacao(p));
   var nivel = p.tipo ? '<span class="ds-badge-tipo vinc-nivel" data-title="' + escapeHtml(p.tipo) + '">' + escapeHtml(p.tipo) + '</span>' : '<span class="ds-badge-tipo vinc-nivel vinc-nivel--vazio" aria-hidden="true"></span>';
 
-  return '<tr class="vinc-row vinc-row--' + p.vtipo + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"' + (desv ? ' data-orf="' + idj + '"' : '')
+  return '<tr class="ds-linha-lista vinc-row vinc-row--' + p.vtipo + (sel ? ' selecionada' : '') + '" data-chave="' + chj + '"' + (desv ? ' data-orf="' + idj + '"' : '')
     + ' data-on-click="vinc.33" data-aclick0="' + chj + '" ' + uiAtributosAcao("vincAbrirDetalhesPlano('" + chj + "')", 'dblclick') + '>'
     + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' data-on-click="vinc.34" data-on-change="vinc.35" data-achange0="' + chj + '" aria-label="Selecionar ' + escapeHtml(p.nome || '') + '"></td>'
     + '<td class="el-col-expand">' + (desv

@@ -5032,6 +5032,7 @@ function renderizarTabelaEstrutura() {
     var corTipo = _corDoTipo(no.tipo);
 
     var tr = document.createElement('tr');
+    tr.className = 'ds-linha-lista';
     tr.dataset.id = id;
     tr.dataset.level = String(nivel);
     tr.dataset.pai = no.idPai ? String(no.idPai) : '';
@@ -5445,6 +5446,7 @@ function renderizarTabelaDetalhes() {
     var isRaiz = item.nivel === 0;
 
     var tr = document.createElement('tr');
+    tr.className = 'ds-linha-lista';
     tr.dataset.id = id;
     tr.dataset.level = String(item.nivel);
     tr.dataset.pai = item.idPai ? String(item.idPai) : '';

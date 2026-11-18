@@ -1612,7 +1612,7 @@ function _monitRenderCorpo() {
       var acoes = (typeof acoesLinhaHTML === 'function') ? acoesLinhaHTML('mon-ind-' + id, [
         { icone: 'right_panel_open', rotulo: 'Detalhes do indicador', onclick: "monitAbrirPainelIndicador('" + id + "')", principal: true }
       ]) : '';
-      var linha = '<tr class="mon-linha-ind' + (aberto ? ' is-open' : '') + '" data-on-click="mon.21" data-aclick0="' + id + '" data-on-dblclick="mon.22" data-adblclick0="' + id + '" aria-expanded="' + aberto + '">'
+      var linha = '<tr class="ds-linha-lista mon-linha-ind' + (aberto ? ' is-open' : '') + '" data-on-click="mon.21" data-aclick0="' + id + '" data-on-dblclick="mon.22" data-adblclick0="' + id + '" aria-expanded="' + aberto + '">'
         + '<td><div class="mon-ind"><span class="material-symbols-outlined mon-seta" aria-hidden="true">chevron_right</span>'
         +   '<span class="mon-ind-nome" data-title="' + escapeHtml(ind.nome) + '">' + escapeHtml(ind.nome) + '</span>' + pol + '</div></td>'
         + '<td class="mon-col-alc"><div class="mon-barra-wrap" data-title="' + (tem ? 'Alcance ' + _fmtNumBR(ind.alcance) + '% da meta (traço = 100%)' : (ind.temMeta ? 'Sem resultados validados' : 'Sem meta cadastrada')) + '">'

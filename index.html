@@ -640,6 +640,7 @@ tr:hover td { background-color: var(--ds-sidebar-item-hover); }
   --ds-borda: 1px; --ds-borda-forte: 2px; --ds-borda-destaque: 3px;
   /* Tamanho de ícone (Material Symbols): xs 14 · sm 15 · md 18 · lg 20 · xl 24 */
   --ds-icon-xs: 14px; --ds-icon-sm: 15px; --ds-icon-md: 18px; --ds-icon-lg: 20px; --ds-icon-xl: 24px;
+  --ds-linha-altura: 60px;
   /* Título de página (h1 do .ds-pagina): 30px; 26px no mobile */
   --ds-text-titulo-pagina: 1.875rem;
 
@@ -1424,6 +1425,8 @@ tr:hover .ds-celula-sobreposta__acoes, tr:focus-within .ds-celula-sobreposta__ac
 .ds-th-ord:hover { color: var(--ds-color-action); }
 .ds-th-ord__icone { font-size: 14px; vertical-align: middle; margin-left: 3px; color: var(--ds-color-action); }
 .ds-th-ord__icone:empty { display: none; }
+/* Altura mínima de toda linha principal de lista (a da lista de planos); o mobile vira cartão e não usa */
+@media (min-width: 769px) { .ds-linha-lista > td { height: var(--ds-linha-altura); } }
 .ds-linha-clicavel { cursor: pointer; }
 .ds-linha-clicavel:hover > td { background: var(--ds-sidebar-item-hover); }
 .ds-alerta-atraso { display: inline-flex; align-items: center; color: var(--ds-color-danger-fg); cursor: help; vertical-align: middle; }
@@ -14531,6 +14534,7 @@ function _renderizarTabela(planos) {
           '<span class="pll-prog-txt">' + pct.toFixed(0) + '%</span></div>';
 
     var tr = document.createElement('tr');
+    tr.classList.add('ds-linha-lista');
     if (sel) tr.classList.add('selecionada');
     // 1 clique seleciona a linha (mesmo efeito do checkbox), duplo clique abre os
     // detalhes — pedido explícito do usuário. Guard em ambas ignora cliques no próprio
@@ -17750,58 +17754,6 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
 #page-plano-detalhe #view-forum { margin: 0; }
 
 
-/* ============================================================================
-   ABA RISCOS (nova UI): matriz 5×5 + "Por nível" + filtros com modos só-ícone e botão dividido
-   "Novo risco" + lista de cartões expansíveis. Fonte: Claude Design (riscos.html).
-   ============================================================================ */
-.rsc-topo { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; margin-top: 16px; margin-bottom: 16px; }
-.rsc-card {
-  border-radius: var(--ds-r-2xl); padding: 20px; min-width: 0;
-  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); box-shadow: none !important;
-}
-.rsc-card h3 { font-size: var(--ds-text-md); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); margin: 0; }
-.rsc-card-sub { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); margin: 2px 0 14px; }
-
-/* Matriz */
-.rsc-matriz-wrap { display: flex; gap: 8px; align-items: stretch; }
-.rsc-eixo-y { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .6px; color: var(--ds-color-text-muted); }
-.rsc-matriz { flex: 1; min-width: 0; display: grid; grid-template-columns: 84px repeat(5, minmax(0, 1fr)); gap: 4px; }
-.rsc-eixo-l { display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.rsc-eixo-c { text-align: center; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); padding-top: 4px; }
-.rsc-eixo-x { text-align: center; font-size: 11px; font-weight: var(--ds-weight-bold); letter-spacing: .6px; color: var(--ds-color-text-muted); margin-top: 6px; }
-.rsc-cel {
-  --rsc-cor: var(--ds-color-success-fg);
-  min-height: 42px; border: 2px solid transparent; border-radius: var(--ds-r-md); cursor: pointer;
-  background: color-mix(in srgb, var(--rsc-cor) 13%, var(--ds-color-surface));
-  color: var(--rsc-cor); font-family: var(--ds-font-sans); font-size: var(--ds-text-base); font-weight: var(--ds-weight-bold);
-  transition: transform var(--ds-duration-fast) var(--ds-ease-standard), border-color var(--ds-duration-fast) var(--ds-ease-standard);
-}
-.rsc-cel--RM { --rsc-cor: var(--ds-color-warning-fg); }
-.rsc-cel--RA { --rsc-cor: var(--ds-risk-alto-fg); }
-.rsc-cel--RE { --rsc-cor: var(--ds-color-danger-fg); }
-.rsc-cel:hover { border-color: color-mix(in srgb, var(--rsc-cor) 55%, transparent); }
-.rsc-cel.is-sel { border-color: var(--ds-color-action); box-shadow: var(--ds-shadow-focus); }
-
-/* Por nível */
-.rsc-niveis { display: flex; flex-direction: column; gap: 6px; }
-.rsc-nivel-linha {
-  display: grid; grid-template-columns: 78px minmax(0, 1fr) 28px; align-items: center; gap: 12px; width: 100%;
-  padding: 6px 8px; border: 1px solid transparent; border-radius: var(--ds-r-lg); background: none; cursor: pointer;
-  font-family: var(--ds-font-sans);
-}
-.rsc-nivel-linha:hover { background: var(--ds-sidebar-item-hover); }
-.rsc-nivel-linha.is-sel { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); }
-.rsc-nivel-tag { display: inline-flex; justify-content: center; padding: 3px 12px; border-radius: var(--ds-r-pill); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); }
-.rsc-barra { height: 6px; border-radius: var(--ds-r-pill); background: var(--ds-sidebar-item-hover); overflow: hidden; }
-.rsc-barra-fill { display: block; height: 100%; border-radius: var(--ds-r-pill); }
-.rsc-nivel-n { text-align: right; font-size: var(--ds-text-base); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
-.rsc-alerta {
-  display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: var(--ds-r-lg);
-  font-size: var(--ds-text-sm); background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg);
-}
-.rsc-alerta--ok { background: var(--ds-color-success-bg); color: var(--ds-color-success-fg); }
-.rsc-alerta .material-symbols-outlined { font-size: 18px; }
-
 .elementos-filtros .ds-select { width: auto; min-width: 140px; }
 .det-modos { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); border: 1px solid var(--ds-glass-border); }
 .det-modo {
@@ -17818,209 +17770,20 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
 .det-split .det-split-main { border-radius: var(--ds-r-sm) 0 0 var(--ds-r-sm); padding: 0 18px; }
 .det-split .det-split-seta { border-radius: 0 var(--ds-r-sm) var(--ds-r-sm) 0; padding: 0 8px; min-width: 40px; border-left: 1px solid rgba(255,255,255,.35); }
 .det-split .det-split-main.hidden + .det-split-seta { border-radius: var(--ds-r-sm); border-left: 0; }
-
-/* ── RISCOS: tabela (reaproveita .el-tabela) ─────────────────── */
-.rsc-tabela col.rsc-col-risco,  .rsc-tabela .rsc-col-risco  { width: auto; max-width: 0; overflow: hidden; }
-.rsc-tabela col.rsc-col-nivel,  .rsc-tabela .rsc-col-nivel  { width: 104px; }
-.rsc-tabela col.rsc-col-pi,     .rsc-tabela .rsc-col-pi     { width: 190px; }
-.rsc-tabela col.rsc-col-resp,   .rsc-tabela .rsc-col-resp   { width: 190px; }
-.rsc-tabela col.rsc-col-acoes,  .rsc-tabela .rsc-col-acoes  { width: 195px; min-width: 195px; text-align: right; padding-left: 4px; padding-right: 12px; box-sizing: border-box; }
-.rsc-tabela tbody tr.rsc-linha { cursor: pointer; }
-.rsc-tabela tbody tr.rsc-linha td { padding-top: 12px; padding-bottom: 12px; }
-.rsc-tabela tbody tr.rsc-linha.is-open td { border-bottom-color: transparent; }
-
-.rsc-seta { font-size: 20px; color: var(--ds-color-text-muted); transition: transform var(--ds-duration-fast) var(--ds-ease-standard); }
-tr.is-open .rsc-seta { transform: rotate(90deg); }
-
-.rsc-nome-cel { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.rsc-titulo-cel { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.rsc-titulo { font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium); color: var(--ds-color-text);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.rsc-sub { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rsc-alerta-ico { font-size: 16px; flex-shrink: 0; }
-.rsc-nivel-pill { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: var(--ds-r-pill);
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); white-space: nowrap; }
-.rsc-pi { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rsc-resp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
-.rsc-resp .material-symbols-outlined { font-size: 16px; color: var(--ds-color-text-muted); flex-shrink: 0; }
-.rsc-resp-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.rsc-resp .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); flex-shrink: 0; }
-
-/* Linha com pendência de causa/tratamento (estilo is-decidir de Vínculos) */
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento td { background: color-mix(in srgb, var(--ds-color-warning-bg) 45%, var(--ds-color-surface)); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-warning); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento:hover td { background: var(--ds-color-warning-bg); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento .rsc-sub { color: var(--ds-color-warning-fg); font-weight: var(--ds-weight-semibold); }
-
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rb td { background: color-mix(in srgb, var(--ds-color-success-bg) 40%, var(--ds-color-surface)); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rb td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-success); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rb:hover td { background: var(--ds-color-success-bg); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rb .rsc-sub { color: var(--ds-color-success-fg); font-weight: var(--ds-weight-semibold); }
-
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-ra td { background: color-mix(in srgb, var(--ds-risk-alto-bg) 45%, var(--ds-color-surface)); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-ra td:first-child { box-shadow: inset 3px 0 0 var(--ds-risk-alto-fg); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-ra:hover td { background: var(--ds-risk-alto-bg); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-ra .rsc-sub { color: var(--ds-risk-alto-fg); font-weight: var(--ds-weight-semibold); }
-
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-re td,
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-extremo td { background: color-mix(in srgb, var(--ds-color-danger-bg) 45%, var(--ds-color-surface)); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-re td:first-child,
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-extremo td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-danger); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-re:hover td,
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-extremo:hover td { background: var(--ds-color-danger-bg); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-re .rsc-sub,
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-extremo .rsc-sub { color: var(--ds-color-danger-fg); font-weight: var(--ds-weight-semibold); }
-
-.rsc-decisao { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; white-space: nowrap; }
-.rsc-decisao .rsc-btn-proativo {
-  height: 30px; min-height: 30px; padding: 0 10px;
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
-  gap: 4px; border-radius: var(--ds-r-md); white-space: nowrap; flex-shrink: 0;
-}
-.rsc-decisao .rsc-btn-proativo .material-symbols-outlined { font-size: 16px; }
-
-/* ações da linha só no hover/seleção (padrão da tabela de Elementos); linhas pendentes mostram sempre */
-.rsc-tabela tr.rsc-linha:not(.is-pendente-tratamento) .acoes-linha { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
-.rsc-tabela tr.rsc-linha:hover .acoes-linha,
-.rsc-tabela tr.rsc-linha.selecionada .acoes-linha,
-.rsc-tabela tr.rsc-linha.rsc-ativa .acoes-linha,
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento .acoes-linha,
-.rsc-tabela tr.rsc-linha .acoes-linha:focus-within,
-.rsc-tabela tr.rsc-linha .acoes-linha:has([aria-expanded="true"]) { opacity: 1; }
-.rsc-tabela tr.rsc-ativa td { background: var(--ds-sidebar-item-active); }
-
-/* linha expandida */
-.rsc-tabela tr.rsc-det td { padding: 0 16px 14px 88px; cursor: default; border-bottom: 1px solid var(--ds-glass-border); }
-.rsc-tabela tr.rsc-det:hover td { background: transparent; }
-.rsc-tabela tr.rsc-det.selecionada td, .rsc-tabela tr.rsc-det.rsc-ativa td { background: color-mix(in srgb, var(--ds-sidebar-item-active) 45%, transparent); }
-.rsc-vinculo { display: flex; align-items: center; gap: 6px; min-height: 28px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.rsc-vinculo .material-symbols-outlined { font-size: 16px; }
-.rsc-vinculo span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rsc-causa-linha {
-  display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 0 8px; margin: 0 -8px;
-  border-radius: var(--ds-r-md); cursor: pointer;
-}
-.rsc-causa-linha:hover { background: var(--ds-sidebar-item-hover); }
-.rsc-causa-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ds-color-border-strong); flex-shrink: 0; }
-.rsc-causa-txt, .rsc-cons-txt { flex: 1 1 0; min-width: 0; font-size: var(--ds-text-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rsc-causa-txt { color: var(--ds-color-text); }
-.rsc-cons-txt { color: var(--ds-color-text-muted); }
-.rsc-causa-seta { font-size: 18px; color: var(--ds-color-border-strong); flex-shrink: 0; }
-.rsc-causa-n { flex-shrink: 0; min-width: 64px; text-align: right; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; }
-.rsc-causa-n.is-sem { color: var(--ds-color-warning-fg); font-weight: var(--ds-weight-semibold); }
-.rsc-det-acoes { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
-.rsc-link {
-  display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 8px; background: none; border: none;
-  border-radius: var(--ds-r-md); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold);
-  color: var(--ds-color-action); cursor: pointer;
-}
-.rsc-link:first-child { margin-left: -8px; }
-.rsc-link:hover { background: var(--ds-color-info-bg); }
-.rsc-link .material-symbols-outlined { font-size: 18px; }
-
-/* painel lateral (dentro do #detp-panel existente) */
-.detp-risco-titulo { font-size: 1.15rem; font-weight: var(--ds-weight-semibold); line-height: 1.35; margin: 0 0 6px; color: var(--ds-color-text); text-wrap: pretty; }
-.detp-risco-vinculo { display: flex; align-items: center; gap: 6px; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); margin-bottom: 18px; }
-.detp-risco-vinculo .material-symbols-outlined { font-size: 16px; }
-.detp-risco-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
-.detp-risco-grade .span-2 { grid-column: 1 / -1; }
-.detp-risco-campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.detp-risco-rot { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.detp-risco-val { font-size: var(--ds-text-base); color: var(--ds-color-text); }
-.detp-risco-val.is-fora { color: var(--ds-color-warning-fg); }
-.detp-risco-val.is-ok { color: var(--ds-color-success-fg); }
-.detp-risco-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.detp-risco-sec-cab { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.detp-risco-sec-cab strong { font-size: var(--ds-text-base); color: var(--ds-color-text); }
-.detp-risco-sec-cab span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.detp-risco-sec-cab .ds-icon-action { margin-left: auto; }
 .detp-causa-card { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-xl); margin-bottom: 10px; }
 .detp-causa-card:last-child { margin-bottom: 0; }
 .detp-causa-txt { font-size: var(--ds-text-base); line-height: 1.45; color: var(--ds-color-text); overflow-wrap: anywhere; }
 .detp-causa-acoes { display: flex; flex-direction: column; gap: 2px; padding-top: 10px; border-top: 1px solid var(--ds-glass-border); }
-.detp-trat-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; }
-.detp-trat-item > .material-symbols-outlined { font-size: 18px; color: var(--ds-color-success-fg); margin-top: 1px; }
-.detp-trat-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.detp-trat-acao { font-size: var(--ds-text-base); line-height: 1.4; color: var(--ds-color-text); }
-.detp-trat-meta { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.detp-trat-item .acoes-linha { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
-.detp-trat-item:hover .acoes-linha, .detp-trat-item .acoes-linha:focus-within { opacity: 1; }
-.detp-trat-vazio { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: var(--ds-text-sm); color: var(--ds-color-warning-fg); }
-.detp-trat-vazio .material-symbols-outlined { font-size: 18px; }
 
-/* compacto: some Prob. × impacto e Responsável (ficam no painel lateral) */
-@media (max-width: 1100px) {
-  .rsc-tabela .rsc-col-pi, .rsc-tabela .rsc-col-resp { display: none; }
-  .rsc-tabela col.rsc-col-pi, .rsc-tabela col.rsc-col-resp { width: 0; }
-  .rsc-tabela tr.rsc-det td { padding-left: 72px; }
-}
-
-/* mobile: galeria de cards (diretriz docs/design_system.md) */
-@media (max-width: 768px) {
-  .rsc-tabela, .rsc-tabela tbody { display: block; }
-  .rsc-tabela colgroup, .rsc-tabela thead { display: none; }
-  .rsc-tabela tr.rsc-linha {
-    display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "chk nivel acoes" "tit tit tit";
-    gap: 6px 8px; padding: 12px; margin-bottom: 0; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
-  }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento {
-    border-left: 3px solid var(--ds-color-warning);
-    grid-template-areas: "chk nivel acoes" "tit tit tit" "dec dec dec";
-  }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rb { border-left-color: var(--ds-color-success); }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rm { border-left-color: var(--ds-color-warning); }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-ra { border-left-color: var(--ds-risk-alto-fg); }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-re,
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-extremo { border-left-color: var(--ds-color-danger); }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento td {
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento td.rsc-col-acoes {
-    grid-area: dec;
-    width: auto;
-  }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento .rsc-decisao {
-    display: flex; width: 100%; gap: 6px; margin-top: 4px;
-  }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento .rsc-decisao .rsc-btn-proativo {
-    flex: 1; height: 44px; font-size: var(--ds-text-sm);
-  }
-  .rsc-sub { white-space: normal; }
-  .rsc-tabela tr.rsc-linha.is-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
-  .rsc-tabela tr.rsc-linha td { display: block; padding: 0; border: none; }
-  .rsc-tabela tr.rsc-linha td.el-col-expand { display: none; }
-  .rsc-tabela tr.rsc-linha td.el-col-check { grid-area: chk; width: auto; }
-  .rsc-tabela tr.rsc-linha td.rsc-col-nivel { grid-area: nivel; width: auto; }
-  .rsc-tabela tr.rsc-linha td.rsc-col-acoes { grid-area: acoes; width: auto; }
-  .rsc-tabela tr.rsc-linha td.rsc-col-risco { grid-area: tit; max-width: none; }
-  .rsc-tabela tr.rsc-linha .acoes-linha { opacity: 1; }
-  .rsc-tabela tr.rsc-det { display: block; margin-bottom: 10px; border: 1px solid var(--ds-color-border); border-top: none; border-radius: 0 0 var(--ds-r-lg) var(--ds-r-lg); }
-  .rsc-tabela tr.rsc-det td { display: block; padding: 0 12px 12px; border: none; }
-  .rsc-tabela tr.rsc-linha:not(.is-open) { margin-bottom: 10px; }
-  .rsc-cons-txt, .rsc-causa-seta { display: none; }
-}
-body.high-contrast .rsc-tabela tr.rsc-linha { border-color: #fff; }
-
-.rsc-pag { margin: 0 !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; }
-
-@media (max-width: 1024px) { .rsc-topo { grid-template-columns: minmax(0, 1fr); } }
-@media (max-width: 768px) {
-  .rsc-card { padding: 14px; }
-  .rsc-matriz { grid-template-columns: 58px repeat(5, minmax(0, 1fr)); gap: 3px; }
-  .rsc-eixo-l, .rsc-eixo-c { font-size: 10px; }
-  .rsc-cel { min-height: 36px; }
-}
-
-/* ordenação de colunas (compartilhada por Indicadores, Monitoramento e Riscos); o resto do CSS de Indicadores vive em app_indicadores.html */
-:is(.ind-tabela, .mon-tabela, .rsc-tabela) thead th.th-sortable { cursor: pointer; user-select: none; transition: color var(--ds-duration-fast) var(--ds-ease-standard); }
-:is(.ind-tabela, .mon-tabela, .rsc-tabela) thead th.th-sortable:hover { color: var(--ds-color-action); }
-:is(.ind-tabela, .mon-tabela, .rsc-tabela) thead th .sort-icon {
+/* ordenação de colunas legada (só o Monitoramento; as demais listas usam .ds-th-ord) */
+.mon-tabela thead th.th-sortable { cursor: pointer; user-select: none; transition: color var(--ds-duration-fast) var(--ds-ease-standard); }
+.mon-tabela thead th.th-sortable:hover { color: var(--ds-color-action); }
+.mon-tabela thead th .sort-icon {
   display: inline-flex; align-items: center; vertical-align: middle;
   font-family: 'Material Symbols Outlined'; font-size: 16px;
   font-weight: normal; margin-left: 4px; color: var(--ds-color-action);
 }
-:is(.ind-tabela, .mon-tabela, .rsc-tabela) thead th .sort-icon:empty { display: none; }
+.mon-tabela thead th .sort-icon:empty { display: none; }
 
 /* Seções e cards de vidro */
 .el-vis-section, .el-filtros-cards-section {

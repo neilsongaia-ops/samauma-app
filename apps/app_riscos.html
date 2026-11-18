@@ -71,9 +71,9 @@
             </div>
           </div>
 
-          <!-- ETAPA 2: CAUSAS E CONSEQUÊNCIAS (opcional) -->
+          <!-- ETAPA 2: CAUSAS E CONSEQUÊNCIAS (ao menos um par) -->
           <div class="wizard-step hidden" data-step="2" id="wizard-risco-step-2">
-            <h2 class="rwiz-titulo">Causas e consequências</h2>
+            <h2 class="rwiz-titulo">Causas e consequências <span class="rwiz-obrig">obrigatório</span></h2>
             <p class="rwiz-sub">O que pode causar o risco e suas consequências.</p>
 
             <div class="rwiz-row-2">
@@ -90,6 +90,7 @@
               <span class="material-symbols-outlined icon-sm">add</span> Inserir par
             </button>
             <div id="risco-causas-lista" class="risco-causas-lista"></div>
+            <small class="ds-help ds-help--error hidden" id="risco-causas-erro"></small>
           </div>
 
           <!-- ETAPA 3: AVALIAÇÃO -->
@@ -434,7 +435,6 @@ body.high-contrast .risco-nat-chip.active { background: #000; border-color: #fff
 }
 .rsc-nivel-linha:hover { background: var(--ds-sidebar-item-hover); }
 .rsc-nivel-linha.is-sel { border-color: var(--ds-color-action); background: var(--ds-sidebar-item-active); }
-.rsc-nivel-tag { display: inline-flex; justify-content: center; padding: 3px 12px; border-radius: var(--ds-r-pill); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); }
 .rsc-barra { height: 6px; border-radius: var(--ds-r-pill); background: var(--ds-sidebar-item-hover); overflow: hidden; }
 .rsc-barra-fill { display: block; height: 100%; border-radius: var(--ds-r-pill); }
 .rsc-nivel-n { text-align: right; font-size: var(--ds-text-base); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
@@ -466,7 +466,6 @@ body.high-contrast .risco-nat-chip.active { background: #000; border-color: #fff
 /* ── RISCOS: tabela (reaproveita .el-tabela) ─────────────────── */
 .rsc-tabela col.rsc-col-risco,  .rsc-tabela .rsc-col-risco  { width: auto; max-width: 0; overflow: hidden; }
 .rsc-tabela col.rsc-col-nivel,  .rsc-tabela .rsc-col-nivel  { width: 104px; }
-.rsc-tabela col.rsc-col-pi,     .rsc-tabela .rsc-col-pi     { width: 190px; }
 .rsc-tabela col.rsc-col-resp,   .rsc-tabela .rsc-col-resp   { width: 190px; }
 .rsc-tabela col.rsc-col-acoes,  .rsc-tabela .rsc-col-acoes  { width: 195px; min-width: 195px; text-align: right; padding-left: 4px; padding-right: 12px; box-sizing: border-box; }
 .rsc-tabela tbody tr.rsc-linha { cursor: pointer; }
@@ -476,44 +475,24 @@ body.high-contrast .risco-nat-chip.active { background: #000; border-color: #fff
 .rsc-seta { font-size: 20px; color: var(--ds-color-text-muted); transition: transform var(--ds-duration-fast) var(--ds-ease-standard); }
 tr.is-open .rsc-seta { transform: rotate(90deg); }
 
-.rsc-nome-cel { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .rsc-titulo-cel { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .rsc-titulo { font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium); color: var(--ds-color-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.rsc-sub { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rsc-alerta-ico { font-size: 16px; flex-shrink: 0; }
-.rsc-nivel-pill { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: var(--ds-r-pill);
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); white-space: nowrap; }
+.rsc-alerta-ico { font-size: 16px; flex-shrink: 0; color: var(--ds-color-warning-fg); }
 .rsc-pi { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rsc-resp { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
 .rsc-resp .material-symbols-outlined { font-size: 16px; color: var(--ds-color-text-muted); flex-shrink: 0; }
 .rsc-resp-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .rsc-resp .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); flex-shrink: 0; }
 
-/* Linha com pendência de causa/tratamento */
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento td { background: color-mix(in srgb, var(--ds-color-warning-bg) 45%, var(--ds-color-surface)); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-warning); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento:hover td { background: var(--ds-color-warning-bg); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento .rsc-sub { color: var(--ds-color-warning-fg); font-weight: var(--ds-weight-semibold); }
-
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rb td { background: color-mix(in srgb, var(--ds-color-success-bg) 40%, var(--ds-color-surface)); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rb td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-success); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rb:hover td { background: var(--ds-color-success-bg); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rb .rsc-sub { color: var(--ds-color-success-fg); font-weight: var(--ds-weight-semibold); }
-
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-ra td { background: color-mix(in srgb, var(--ds-risk-alto-bg) 45%, var(--ds-color-surface)); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-ra td:first-child { box-shadow: inset 3px 0 0 var(--ds-risk-alto-fg); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-ra:hover td { background: var(--ds-risk-alto-bg); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-ra .rsc-sub { color: var(--ds-risk-alto-fg); font-weight: var(--ds-weight-semibold); }
-
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-re td,
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-extremo td { background: color-mix(in srgb, var(--ds-color-danger-bg) 45%, var(--ds-color-surface)); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-re td:first-child,
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-extremo td:first-child { box-shadow: inset 3px 0 0 var(--ds-color-danger); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-re:hover td,
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-extremo:hover td { background: var(--ds-color-danger-bg); }
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-re .rsc-sub,
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-extremo .rsc-sub { color: var(--ds-color-danger-fg); font-weight: var(--ds-weight-semibold); }
+/* Linha com risco pendente de tratamento: fundo na cor do nível */
+.rsc-tabela tr.rsc-linha.is-nivel-rb { --rsc-cor: var(--ds-color-success-fg); }
+.rsc-tabela tr.rsc-linha.is-nivel-rm { --rsc-cor: var(--ds-color-warning-fg); }
+.rsc-tabela tr.rsc-linha.is-nivel-ra { --rsc-cor: var(--ds-risk-alto-fg); }
+.rsc-tabela tr.rsc-linha.is-nivel-re { --rsc-cor: var(--ds-color-danger-fg); }
+.rsc-tabela tr.rsc-linha.is-pendente-tratamento:not(.selecionada) td { background: color-mix(in srgb, var(--rsc-cor) 12%, var(--ds-color-surface)); }
+.rsc-tabela tr.rsc-linha.is-pendente-tratamento:not(.selecionada):hover td { background: color-mix(in srgb, var(--rsc-cor) 20%, var(--ds-color-surface)); }
+body.high-contrast .rsc-tabela tr.rsc-linha.is-pendente-tratamento:not(.selecionada) td { background: var(--ds-color-surface); }
 
 .rsc-decisao { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; white-space: nowrap; }
 .rsc-decisao .rsc-btn-proativo {
@@ -523,14 +502,7 @@ tr.is-open .rsc-seta { transform: rotate(90deg); }
 }
 .rsc-decisao .rsc-btn-proativo .material-symbols-outlined { font-size: 16px; }
 
-/* ações da linha só no hover/seleção */
-.rsc-tabela tr.rsc-linha:not(.is-pendente-tratamento) .acoes-linha { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
-.rsc-tabela tr.rsc-linha:hover .acoes-linha,
-.rsc-tabela tr.rsc-linha.selecionada .acoes-linha,
-.rsc-tabela tr.rsc-linha.rsc-ativa .acoes-linha,
-.rsc-tabela tr.rsc-linha.is-pendente-tratamento .acoes-linha,
-.rsc-tabela tr.rsc-linha .acoes-linha:focus-within,
-.rsc-tabela tr.rsc-linha .acoes-linha:has([aria-expanded="true"]) { opacity: 1; }
+.rsc-tabela .rsc-decisao .acoes-linha { opacity: 1; }
 .rsc-tabela tr.rsc-ativa td { background: var(--ds-sidebar-item-active); }
 
 /* linha expandida */
@@ -594,8 +566,8 @@ tr.is-open .rsc-seta { transform: rotate(90deg); }
 
 /* compacto: some Prob. × impacto e Responsável */
 @media (max-width: 1100px) {
-  .rsc-tabela .rsc-col-pi, .rsc-tabela .rsc-col-resp { display: none; }
-  .rsc-tabela col.rsc-col-pi, .rsc-tabela col.rsc-col-resp { width: 0; }
+  .rsc-tabela .rsc-col-resp { display: none; }
+  .rsc-tabela col.rsc-col-resp { width: 0; }
   .rsc-tabela tr.rsc-det td { padding-left: 72px; }
 }
 
@@ -607,19 +579,9 @@ tr.is-open .rsc-seta { transform: rotate(90deg); }
     display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "chk nivel acoes" "tit tit tit";
     gap: 6px 8px; padding: 12px; margin-bottom: 0; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
   }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento {
-    border-left: 3px solid var(--ds-color-warning);
-    grid-template-areas: "chk nivel acoes" "tit tit tit" "dec dec dec";
-  }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rb { border-left-color: var(--ds-color-success); }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-rm { border-left-color: var(--ds-color-warning); }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-ra { border-left-color: var(--ds-risk-alto-fg); }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-nivel-re,
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento.is-extremo { border-left-color: var(--ds-color-danger); }
-  .rsc-tabela tr.rsc-linha.is-pendente-tratamento td {
-    background: transparent !important;
-    box-shadow: none !important;
-  }
+  .rsc-tabela tr.rsc-linha.is-pendente-tratamento { grid-template-areas: "chk nivel acoes" "tit tit tit" "dec dec dec"; }
+  .rsc-tabela tr.rsc-linha.is-pendente-tratamento:not(.selecionada) { background: color-mix(in srgb, var(--rsc-cor) 12%, var(--ds-color-surface)); }
+  .rsc-tabela tr.rsc-linha.is-pendente-tratamento td { background: transparent !important; }
   .rsc-tabela tr.rsc-linha.is-pendente-tratamento td.rsc-col-acoes {
     grid-area: dec;
     width: auto;
@@ -630,7 +592,6 @@ tr.is-open .rsc-seta { transform: rotate(90deg); }
   .rsc-tabela tr.rsc-linha.is-pendente-tratamento .rsc-decisao .rsc-btn-proativo {
     flex: 1; height: 44px; font-size: var(--ds-text-sm);
   }
-  .rsc-sub { white-space: normal; }
   .rsc-tabela tr.rsc-linha.is-open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-color: transparent; }
   .rsc-tabela tr.rsc-linha td { display: block; padding: 0; border: none; }
   .rsc-tabela tr.rsc-linha td.el-col-expand { display: none; }
@@ -647,6 +608,12 @@ tr.is-open .rsc-seta { transform: rotate(90deg); }
 body.high-contrast .rsc-tabela tr.rsc-linha { border-color: #fff; }
 .rsc-pag { margin: 0 !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; }
 @media (max-width: 1024px) { .rsc-topo { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 768px) {
+  .rsc-card { padding: 14px; }
+  .rsc-matriz { grid-template-columns: 58px repeat(5, minmax(0, 1fr)); gap: 3px; }
+  .rsc-eixo-l, .rsc-eixo-c { font-size: 10px; }
+  .rsc-cel { min-height: 36px; }
+}
 </style>
 
 <!-- Container principal da aba Riscos (injetado em #riscos-conteudo pelo host) -->
@@ -1136,7 +1103,7 @@ function _riscosRenderPainel(r) {
     +   '<h3 class="detp-risco-titulo">' + escapeHtml(r.risco || '') + '</h3>'
     +   '<div class="detp-risco-vinculo"><span class="material-symbols-outlined">' + (r.tipoRisco === 'GERAL' ? 'flag' : 'category') + '</span>' + escapeHtml(_riscoVinculoTxt(r)) + '</div>'
     +   '<div class="detp-risco-grade">'
-    +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Nível</span><span class="rsc-nivel-pill" style="align-self:flex-start;background:' + c.bg + ';color:' + c.text + '">' + escapeHtml(_RISCO_NIVEL_ROTULO[r.nivelRisco] || '—') + '</span></div>'
+    +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Nível</span><span class="ds-badge" style="align-self:flex-start;background:' + c.bg + ';color:' + c.text + '">' + escapeHtml(_RISCO_NIVEL_ROTULO[r.nivelRisco] || '—') + '</span></div>'
     +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Apetite ao risco</span>' + apetite + '</div>'
     +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Probabilidade</span><span class="detp-risco-val">' + escapeHtml(r.probabilidade || '—') + '</span></div>'
     +     '<div class="detp-risco-campo"><span class="detp-risco-rot">Impacto</span><span class="detp-risco-val">' + escapeHtml(r.impacto || '—') + '</span></div>'
@@ -1147,7 +1114,7 @@ function _riscosRenderPainel(r) {
     + '<div class="detp-secao">'
     +   '<div class="detp-risco-sec-cab"><strong>Causas e tratamento</strong>'
     +     '<span>' + pares.length + (pares.length === 1 ? ' causa' : ' causas') + ' · ' + trats.length + (trats.length === 1 ? ' ação' : ' ações') + '</span>'
-    +     (podeEditar ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.53" data-aclick0="' + idj + '" data-title="Adicionar causa e consequência" aria-label="Adicionar causa e consequência"><span class="material-symbols-outlined">add</span></button>' : '')
+    +     (podeEditar ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.53" data-aclick0="' + idj + '" data-title="Adicionar causa/consequência" aria-label="Adicionar causa/consequência"><span class="material-symbols-outlined">add</span></button>' : '')
     +   '</div>'
     +   cards
     + '</div>';
@@ -1451,12 +1418,9 @@ function _riscosBaseSem(camposIgnorados) {
 }
 
 function _riscoPrioridadePeso(r) {
+  if (_riscoPendente(r)) return 1;
   var isFora = r.apetiteRisco ? r.apetiteRisco === 'Não' : (r.nivelRisco === 'RA' || r.nivelRisco === 'RE');
-  var temCausas = (r.causasConsequencias || []).length > 0;
-  var temTrat = (r.tratamentos || []).length > 0;
-  if (isFora && (!temCausas || !temTrat)) return 1;
-  if (isFora && temTrat) return 2;
-  return 3;
+  return isFora ? 2 : 3;
 }
 
 function _riscosSyncSortIcons() {
@@ -1465,7 +1429,6 @@ function _riscosSyncSortIcons() {
   ['risco', 'nivel', 'probimpacto', 'responsavel'].forEach(function(c) {
     var el = document.getElementById('riscos-sort-icon-' + c);
     if (!el) return;
-    el.className = 'sort-icon';
     el.textContent = c === col ? (dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '';
   });
 }
@@ -1580,6 +1543,8 @@ function editarRisco(id) {
 function _renderizarCausasConsequenciasRisco() {
   var container = document.getElementById('risco-causas-lista');
   if (!container) return;
+  var erroCausas = document.getElementById('risco-causas-erro');
+  if (erroCausas && !erroCausas.classList.contains('hidden')) _rwizValidarCausas();
   if (!_riscoParesCC.length) {
     container.innerHTML = '<div class="risco-causa-vazio" style="font-size:0.78rem;padding:6px 2px">Nenhuma causa/consequência adicionada ainda.</div>';
     return;
@@ -1743,6 +1708,8 @@ function riscosAbrirMenuOrdenar(ev) {
       ] }
     ]);
   }
+  var ferr = document.getElementById('riscos-ferramentas');
+  if (ferr) ferr.classList.toggle('is-aberto', !!document.getElementById('menu-selecao-aberto'));
 }
 
 function riscosDefinirColunaOrdenacao(col) {
@@ -1939,21 +1906,19 @@ function renderizarSecaoRiscos() {
 
     + '<div class="el-table-wrap">'
     +   '<table class="el-tabela rsc-tabela" id="riscos-tabela">'
-    +     '<colgroup><col class="el-col-check"><col class="el-col-expand"><col class="rsc-col-risco"><col class="rsc-col-nivel"><col class="rsc-col-pi"><col class="rsc-col-resp"><col class="rsc-col-acoes"></colgroup>'
+    +     '<colgroup><col class="el-col-check"><col class="el-col-expand"><col class="rsc-col-risco"><col class="rsc-col-nivel"><col class="rsc-col-resp"><col class="ds-col-sobreposta rsc-col-acoes"></colgroup>'
     +     '<thead><tr>'
     +       '<th class="el-col-check"><input type="checkbox" id="chk-select-all-riscos" data-on-change="risco.32" aria-label="Selecionar todos"></th>'
     +       '<th class="el-col-expand"></th>'
-    +       '<th class="th-sortable rsc-col-risco" data-on-click="risco.33">Risco<span class="sort-icon" id="riscos-sort-icon-risco"></span></th>'
-    +       '<th class="th-sortable rsc-col-nivel" data-on-click="risco.34">Nível<span class="sort-icon" id="riscos-sort-icon-nivel"></span></th>'
-    +       '<th class="th-sortable rsc-col-pi" data-on-click="risco.35">Prob. × Impacto<span class="sort-icon" id="riscos-sort-icon-probimpacto"></span></th>'
-    +       '<th class="th-sortable rsc-col-resp" data-on-click="risco.36">Responsável<span class="sort-icon" id="riscos-sort-icon-responsavel"></span></th>'
-    +       '<th class="rsc-col-acoes"><div class="el-th-acoes">'
-    +         '<button type="button" class="el-th-btn" data-on-click="risco.37" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
-    +         '<button type="button" class="el-th-btn" id="riscos-btn-expandir" data-on-click="risco.38" data-title="Expandir todos" aria-label="Expandir todos"><span class="material-symbols-outlined">unfold_more</span></button>'
-    +         '<button type="button" class="el-th-btn" id="riscos-btn-imprimir" data-on-click="risco.39" data-title="Imprimir" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>'
-    +         '<button type="button" class="el-th-btn" aria-disabled="true" data-title="Em breve" aria-label="Exportar (em breve)"><span class="material-symbols-outlined">download</span></button>'
-    +         '<button type="button" class="el-th-btn" data-on-click="risco.40" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button>'
-    +       '</div></th>'
+    +       '<th class="ds-th-ord rsc-col-risco" data-on-click="risco.33">Risco<span class="material-symbols-outlined ds-th-ord__icone" id="riscos-sort-icon-risco"></span></th>'
+    +       '<th class="ds-th-ord rsc-col-nivel" data-on-click="risco.34">Nível<span class="material-symbols-outlined ds-th-ord__icone" id="riscos-sort-icon-nivel"></span></th>'
+    +       '<th class="ds-th-ord rsc-col-resp" data-on-click="risco.36">Responsável<span class="material-symbols-outlined ds-th-ord__icone" id="riscos-sort-icon-responsavel"></span></th>'
+    +       '<th class="ds-col-sobreposta rsc-col-acoes"><div class="ds-th-ferramentas" id="riscos-ferramentas"><span class="ds-th-ferramentas__rotulo ds-th-ord" data-on-click="risco.35">Prob. × Impacto<span class="material-symbols-outlined ds-th-ord__icone" id="riscos-sort-icon-probimpacto"></span></span><span class="ds-th-ferramentas__extras">'
+    +         '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.37" data-title="Atualizar" aria-label="Atualizar"><span class="material-symbols-outlined">refresh</span></button>'
+    +         '<button type="button" class="ds-icon-action ds-icon-action--sm" id="riscos-btn-expandir" data-on-click="risco.38" data-title="Expandir todos" aria-label="Expandir todos"><span class="material-symbols-outlined">unfold_more</span></button>'
+    +         '<button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Exportar (em breve)"><span class="material-symbols-outlined">download</span></button>'
+    +         '<button type="button" class="ds-icon-action ds-icon-action--sm" id="riscos-btn-imprimir" data-on-click="risco.39" data-title="Imprimir" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>'
+    +       '</span><button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.40" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined">sort</span></button></div></th>'
     +     '</tr></thead>'
     +     '<tbody id="riscos-lista"></tbody>'
     +   '</table>'
@@ -2012,7 +1977,7 @@ function _riscosRenderNiveis() {
     var pct = total ? (cont[n] / total) * 100 : 0;
     var sel = estadoRiscos.filtroNivel === n;
     return '<button type="button" class="rsc-nivel-linha' + (sel ? ' is-sel' : '') + '" aria-pressed="' + sel + '" data-on-click="risco.46" data-aclick0="' + n + '">'
-      + '<span class="rsc-nivel-tag" style="background:' + c.bg + ';color:' + c.text + '">' + _RISCO_NIVEL_ROTULO[n] + '</span>'
+      + '<span class="ds-badge" style="background:' + c.bg + ';color:' + c.text + '">' + _RISCO_NIVEL_ROTULO[n] + '</span>'
       + '<span class="rsc-barra"><span class="rsc-barra-fill" style="width:' + pct.toFixed(0) + '%;background:' + c.text + '"></span></span>'
       + '<span class="rsc-nivel-n">' + cont[n] + '</span></button>';
   }).join('');
@@ -2028,6 +1993,30 @@ function _riscosRenderNiveis() {
   }
 }
 
+// Risco que exige tratamento (fora do apetite) e ainda não tem nenhuma ação: a única situação que pinta a linha e põe o botão "Definir tratamento".
+function _riscoPendente(r) {
+  var isFora = r.apetiteRisco ? r.apetiteRisco === 'Não' : (r.nivelRisco === 'RA' || r.nivelRisco === 'RE');
+  return isFora && (r.tratamentos || []).length === 0;
+}
+
+// Ações de UM risco, na ordem de prioridade: a mesma na linha (hover e ⋮) e na barra de seleção. No risco pendente, "Definir tratamento" vem primeiro.
+function _riscoItensAcao(r, podeEditar) {
+  var idj = escapeHtml(String(r.id)), pend = podeEditar && _riscoPendente(r);
+  var itens = [];
+  if (pend) itens.push({ icone: 'build', rotulo: 'Definir tratamento', onclick: "riscosNovaAcaoTratamento('" + idj + "')", principal: true });
+  itens.push(
+    { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "riscosAbrirPainel('" + idj + "')", principal: true },
+    { icone: 'edit', rotulo: 'Editar risco', onclick: "editarRisco('" + idj + "')", principal: true, oculto: !podeEditar },
+    { icone: 'playlist_add', rotulo: 'Adicionar causa/consequência', onclick: "abrirModalCausaRapida('" + idj + "')", oculto: !podeEditar }
+  );
+  if (!pend) itens.push({ icone: 'build', rotulo: 'Adicionar ação de tratamento', onclick: "riscosNovaAcaoTratamento('" + idj + "')", oculto: !podeEditar });
+  itens.push(
+    { icone: 'download', rotulo: 'Exportar', desabilitado: true },
+    { icone: 'delete', rotulo: 'Excluir risco', onclick: "confirmarExclusaoRisco('" + idj + "','" + escapeJsAttr(r.risco) + "')", perigo: true, oculto: !podeEditar }
+  );
+  return itens;
+}
+
 function _riscoLinhaHTML(r, podeEditar) {
   var id = String(r.id), idj = escapeHtml(id);
   var c = _CORES_NIVEL_DET[r.nivelRisco] || { bg: 'var(--ds-color-surface-2)', text: 'var(--ds-color-text-muted)' };
@@ -2035,19 +2024,12 @@ function _riscoLinhaHTML(r, podeEditar) {
   var sel = !!estadoRiscos.selecionados[id];
   var ativo = estadoRiscos.painelId === id;
   var cob = _riscoCobertura(r);
+  var isPendente = _riscoPendente(r);
 
-  var isFora = r.apetiteRisco ? r.apetiteRisco === 'Não' : (r.nivelRisco === 'RA' || r.nivelRisco === 'RE');
-  var temCausas = (r.causasConsequencias || []).length > 0;
-  var temTrat = (r.tratamentos || []).length > 0;
-  var isPendente = isFora && (!temCausas || !temTrat);
-  var subTexto = isPendente
-    ? (!temCausas ? 'Pendente: cadastrar causa e consequência' : 'Pendente: cadastrar ação de tratamento')
-    : _riscoVinculoTxt(r);
+  // Triângulo: o risco já tem tratamento, mas ainda há causa sem ação (no pendente, o botão principal já diz o que falta)
   var alerta = '';
-  if (isPendente) {
-    alerta = '<span class="material-symbols-outlined rsc-alerta-ico" style="color:' + c.text + '" data-title="' + escapeHtml(subTexto) + '">warning</span>';
-  } else if (cob.descobertas > 0) {
-    alerta = '<span class="material-symbols-outlined rsc-alerta-ico" data-title="' + cob.descobertas + (cob.descobertas === 1 ? ' causa ainda sem ação de tratamento' : ' causas ainda sem ação de tratamento') + '">error</span>';
+  if (!isPendente && cob.descobertas > 0) {
+    alerta = '<span class="material-symbols-outlined rsc-alerta-ico" data-title="' + cob.descobertas + (cob.descobertas === 1 ? ' causa ainda sem ação de tratamento' : ' causas ainda sem ação de tratamento') + '">warning</span>';
   }
 
   var resps = r.responsaveis || [];
@@ -2067,49 +2049,35 @@ function _riscoLinhaHTML(r, podeEditar) {
       + '</span>';
   }
   var pi = (r.probabilidade || '—') + ' × ' + String(r.impacto || '—').toLowerCase();
+  var piTit = 'Probabilidade ' + String(r.probabilidade || '—').toLowerCase() + ', impacto ' + String(r.impacto || '—').toLowerCase();
 
   var nivelKey = String(r.nivelRisco || 'RM').toLowerCase();
-  var acoes;
+  var nivelBtnCls = 'ds-btn--pendencia-' + nivelKey;
+  var itens = _riscoItensAcao(r, podeEditar);
+  var celulaAcoes;
   if (isPendente && podeEditar) {
-    var fnProativo = temCausas ? "riscosNovaAcaoTratamento('" + idj + "')" : "abrirModalCausaRapida('" + idj + "')";
-    var rotuloProativo = temCausas ? 'Definir tratamento' : 'Definir causa';
-    var nivelBtnCls = 'ds-btn--pendencia-' + nivelKey;
-    var btnProativo = '<button type="button" class="ds-btn ' + nivelBtnCls + ' ds-btn--sm rsc-btn-proativo" ' + uiAtributosAcao('event.stopPropagation(); ' + fnProativo) + ' aria-label="' + escapeHtml(rotuloProativo) + '">'
-      + '<span class="material-symbols-outlined">add</span><span>' + rotuloProativo + '</span></button>';
-
-    var itensMenu = [
-      { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "riscosAbrirPainel('" + idj + "')" },
-      { icone: 'edit', rotulo: 'Editar risco', onclick: "editarRisco('" + idj + "')" }
-    ];
-    if (temCausas) {
-      itensMenu.push({ icone: 'add_link', rotulo: 'Adicionar causa e consequência', onclick: "abrirModalCausaRapida('" + idj + "')" });
-    }
-    itensMenu.push({ icone: 'delete', rotulo: 'Excluir risco', onclick: "confirmarExclusaoRisco('" + idj + "','" + escapeJsAttr(r.risco) + "')", perigo: true });
-
-    acoes = '<div class="rsc-decisao">' + btnProativo + (typeof acoesLinhaHTML === 'function' ? acoesLinhaHTML('risco-' + idj, itensMenu, { maxDireto: 0 }) : '') + '</div>';
+    // situação específica (sem o padrão do hover): o botão principal fica sempre visível e o resto vai no ⋮
+    celulaAcoes = '<td class="ds-col-sobreposta rsc-col-acoes"><div class="rsc-decisao">'
+      + '<button type="button" class="ds-btn ' + nivelBtnCls + ' ds-btn--sm rsc-btn-proativo" ' + uiAtributosAcao('event.stopPropagation(); ' + itens[0].onclick) + ' aria-label="Definir tratamento">'
+      + '<span class="material-symbols-outlined">add</span><span>Definir tratamento</span></button>'
+      + acoesLinhaHTML('risco-' + idj, itens.slice(1), { maxDireto: 0 }) + '</div></td>';
   } else {
-    acoes = typeof acoesLinhaHTML === 'function' ? acoesLinhaHTML('risco-' + idj, [
-      { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "riscosAbrirPainel('" + idj + "')", principal: true },
-      { icone: 'edit', rotulo: 'Editar risco', onclick: "editarRisco('" + idj + "')", principal: true, oculto: !podeEditar },
-      { icone: 'add_link', rotulo: 'Adicionar causa e consequência', onclick: "abrirModalCausaRapida('" + idj + "')", oculto: !podeEditar },
-      { icone: 'build', rotulo: 'Adicionar ação de tratamento', onclick: "riscosNovaAcaoTratamento('" + idj + "')", oculto: !podeEditar },
-      { icone: 'delete', rotulo: 'Excluir risco', onclick: "confirmarExclusaoRisco('" + idj + "','" + escapeJsAttr(r.risco) + "')", perigo: true, oculto: !podeEditar }
-    ]) : '';
+    celulaAcoes = '<td class="ds-col-sobreposta rsc-col-acoes"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="rsc-pi" data-title="' + escapeHtml(piTit) + '">' + escapeHtml(pi) + '</span></div>'
+      + '<div class="ds-celula-sobreposta__acoes">' + acoesLinhaHTML('risco-' + idj, itens, { maxDireto: 2 }) + '</div></div></td>';
   }
 
-  var cls = 'rsc-linha'
-    + (isPendente ? (' is-pendente-tratamento is-nivel-' + nivelKey + (r.nivelRisco === 'RE' ? ' is-extremo' : '')) : '')
+  var cls = 'ds-linha-lista rsc-linha'
+    + (isPendente ? ' is-pendente-tratamento is-nivel-' + nivelKey : '')
     + (aberto ? ' is-open' : '') + (sel ? ' selecionada' : '') + (ativo ? ' rsc-ativa' : '');
 
   var html = '<tr class="' + cls + '" data-id="' + idj + '" aria-expanded="' + aberto + '"'
     + ' data-on-click="risco.47" data-aclick0="' + idj + '" data-on-dblclick="risco.48" data-adblclick0="' + idj + '">'
     + '<td class="el-col-check"><input type="checkbox"' + (sel ? ' checked' : '') + ' data-on-click="risco.49" data-on-change="risco.50" data-achange0="' + idj + '" aria-label="Selecionar risco"></td>'
     + '<td class="el-col-expand"><button type="button" class="el-toggle-btn' + (aberto ? ' expanded' : '') + '" data-on-click="risco.51" data-aclick0="' + idj + '" aria-label="' + (aberto ? 'Recolher' : 'Expandir') + '"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button></td>'
-    + '<td class="rsc-col-risco"><div class="rsc-nome-cel"><div class="rsc-titulo-cel"><span class="rsc-titulo" data-title="' + escapeHtml(r.risco) + '">' + escapeHtml(r.risco) + '</span>' + alerta + '</div><span class="rsc-sub" data-title="' + escapeHtml(subTexto) + '">' + escapeHtml(subTexto) + '</span></div></td>'
-    + '<td class="rsc-col-nivel"><span class="rsc-nivel-pill" style="background:' + c.bg + ';color:' + c.text + '">' + escapeHtml(_RISCO_NIVEL_ROTULO[r.nivelRisco] || '—') + '</span></td>'
-    + '<td class="rsc-col-pi"><span class="rsc-pi" data-title="Probabilidade ' + escapeHtml(String(r.probabilidade || '—').toLowerCase()) + ', impacto ' + escapeHtml(String(r.impacto || '—').toLowerCase()) + '">' + escapeHtml(pi) + '</span></td>'
+    + '<td class="rsc-col-risco"><div class="rsc-titulo-cel"><span class="rsc-titulo" data-title="' + escapeHtml(r.risco) + '">' + escapeHtml(r.risco) + '</span>' + alerta + '</div></td>'
+    + '<td class="rsc-col-nivel"><span class="ds-badge" style="background:' + c.bg + ';color:' + c.text + '">' + escapeHtml(_RISCO_NIVEL_ROTULO[r.nivelRisco] || '—') + '</span></td>'
     + '<td class="rsc-col-resp">' + respHtml + '</td>'
-    + '<td class="rsc-col-acoes">' + acoes + '</td>'
+    + celulaAcoes
     + '</tr>';
 
   if (aberto) {
@@ -2124,7 +2092,7 @@ function _riscoLinhaHTML(r, podeEditar) {
         + '</div>';
     }).join('');
     if (!causas) causas = '<div class="rsc-vinculo" style="font-style:italic">Nenhuma causa cadastrada.</div>';
-    html += '<tr class="rsc-det' + (sel ? ' selecionada' : '') + (ativo ? ' rsc-ativa' : '') + '"><td colspan="7">'
+    html += '<tr class="rsc-det' + (sel ? ' selecionada' : '') + (ativo ? ' rsc-ativa' : '') + '"><td colspan="6">'
       + '<div class="rsc-vinculo"><span class="material-symbols-outlined">' + (r.tipoRisco === 'GERAL' ? 'flag' : 'category') + '</span><span>' + escapeHtml(_riscoVinculoTxt(r)) + '</span></div>'
       + causas
       + '<div class="rsc-det-acoes">'
@@ -2146,7 +2114,7 @@ function _riscosRenderCorpo() {
   _riscosSyncBarra();
 
   if (!_rscCarregado) {
-    if (typeof spinnerListaHTML === 'function') listaEl.innerHTML = '<tr class="el-linha-msg"><td colspan="7">' + spinnerListaHTML() + '</td></tr>';
+    if (typeof spinnerListaHTML === 'function') listaEl.innerHTML = '<tr class="el-linha-msg"><td colspan="6">' + spinnerListaHTML() + '</td></tr>';
     _riscosAtualizarPaginacao(0, 0);
     _riscosAtualizarSelecao([]);
     return;
@@ -2159,7 +2127,7 @@ function _riscosRenderCorpo() {
     var vz;
     if (_riscosCache.length === 0) vz = { icon: 'shield', titulo: 'Nenhum risco cadastrado', detalhe: 'Use "Novo risco" para começar a gestão de riscos do plano.' };
     else vz = { icon: 'search_off', titulo: 'Nenhum risco encontrado', detalhe: 'Tente ajustar os filtros ou a busca para ver outros resultados.' };
-    listaEl.innerHTML = '<tr class="el-linha-msg"><td colspan="7"><div class="el-empty-state"><span class="material-symbols-outlined">' + vz.icon + '</span><p><strong>' + vz.titulo + '</strong></p><p class="sub">' + vz.detalhe + '</p></div></td></tr>';
+    listaEl.innerHTML = '<tr class="el-linha-msg"><td colspan="6"><div class="el-empty-state"><span class="material-symbols-outlined">' + vz.icon + '</span><p><strong>' + vz.titulo + '</strong></p><p class="sub">' + vz.detalhe + '</p></div></td></tr>';
     _riscosAtualizarPaginacao(0, 0);
     _riscosAtualizarSelecao([]);
     return;
@@ -2287,21 +2255,15 @@ function _riscosAtualizarSelecao(listaCompleta) {
   var acoesCont = document.getElementById('riscos-selecao-acoes');
   if (acoesCont) {
     var podeEditar = _rscPodeEditar();
-    var htmlAcoes = '<button type="button" class="ds-icon-action" aria-disabled="true" data-title="Em breve" aria-label="Exportar (em breve)"><span class="material-symbols-outlined">download</span></button>';
-    if (n === 1) {
-      var rId = Object.keys(estadoRiscos.selecionados)[0];
-      if (typeof acoesLinhaHTML === 'function') {
-        htmlAcoes = acoesLinhaHTML('risco-sel-' + rId, [
-          { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "riscosAbrirPainel('" + rId + "')", principal: true },
-          { icone: 'edit', rotulo: 'Editar risco', onclick: "editarRisco('" + rId + "')", principal: true, oculto: !podeEditar },
-          { icone: 'add_link', rotulo: 'Adicionar causa', onclick: "abrirModalCausaRapida('" + rId + "')", principal: true, oculto: !podeEditar },
-          { icone: 'build', rotulo: 'Adicionar ação', onclick: "riscosNovaAcaoTratamento('" + rId + "')", principal: true, oculto: !podeEditar },
-          { icone: 'download', rotulo: 'Exportar', desabilitado: true, principal: true },
-          { icone: 'delete', rotulo: 'Excluir risco', onclick: 'riscosExcluirSelecionados()', perigo: true, oculto: !podeEditar }
-        ], { maxDireto: 4 });
-      }
+    var htmlAcoes = '';
+    if (n === 1) { // um item: as mesmas ações da linha, na mesma ordem (o que é perigoso ganha a cor, sem ir para o ⋮)
+      var unico = _riscoPorId(Object.keys(estadoRiscos.selecionados)[0]);
+      htmlAcoes = acoesLinhaHTML('risco-sel-' + unico.id, _riscoItensAcao(unico, podeEditar).map(function(a) {
+        return a.perigo ? Object.assign({}, a, { perigo: false, cor: 'var(--ds-color-danger-fg)' }) : a;
+      }), { maxDireto: 6 });
     } else {
-      htmlAcoes += (podeEditar ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" data-on-click="risco.31" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>' : '');
+      htmlAcoes = '<button type="button" class="ds-icon-action" aria-disabled="true" data-title="Em breve" aria-label="Exportar (em breve)"><span class="material-symbols-outlined">download</span></button>'
+        + (podeEditar ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" data-on-click="risco.31" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>' : '');
     }
     acoesCont.innerHTML = htmlAcoes;
   }
@@ -2472,6 +2434,17 @@ function _rwizValidarNatureza() {
   return true;
 }
 
+// Todo risco tem ao menos um par de causa e consequência completo (o servidor confere o mesmo).
+function _rwizValidarCausas() {
+  var erro = document.getElementById('risco-causas-erro');
+  var ok = _riscoParesCC.some(function(p) { return (p.causa || '').trim() && (p.consequencia || '').trim(); });
+  if (erro) {
+    erro.textContent = ok ? '' : 'Insira ao menos um par de causa e consequência.';
+    erro.classList.toggle('hidden', ok);
+  }
+  return ok;
+}
+
 function _rwizValidarPassoAtual() {
   var stepEl = document.getElementById('wizard-risco-step-' + estadoWizardRisco.atual);
   if (!stepEl) return true;
@@ -2482,6 +2455,7 @@ function _rwizValidarPassoAtual() {
     if (!campo.checkValidity()) { _rwizExibirErro(campo); campo.focus(); return false; }
   }
   if (estadoWizardRisco.atual === 1 && !_rwizValidarNatureza()) return false;
+  if (estadoWizardRisco.atual === 2 && !_rwizValidarCausas()) return false;
   return true;
 }
 
@@ -2511,6 +2485,7 @@ function _rwizValidarTudoAntesDeSalvar() {
     return false;
   }
   if (!_rwizValidarNatureza()) { _rwizIrPara(1); return false; }
+  if (!_rwizValidarCausas()) { _rwizIrPara(2); return false; }
   return true;
 }
 
