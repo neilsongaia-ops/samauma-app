@@ -21623,7 +21623,7 @@ function _execHistoricoHTML(registros) {
     var quando = r.lancadoEm ? _isoParaBR(String(r.lancadoEm).slice(0, 10)) : '';
     var complemento = (r.analise ? escapeHtml(r.analise) : '') + (r.statusValidacao === 'Rejeitado' && r.motivoRejeicao ? (r.analise ? ' · ' : '') + 'Motivo: ' + escapeHtml(r.motivoRejeicao) : '');
     return '<div class="ds-stack ds-stack--2"><div class="ds-spread"><div class="ds-cluster"><strong>' + de + r.percentual + '%</strong>' +
-      '<span class="ds-help">' + escapeHtml(r.autorNome || '') + (quando ? ' · ' + quando : '') + (r.origem === 'TAREFAS' ? ' · pela lista' : '') + '</span></div>' +
+      '<span class="ds-help">' + escapeHtml(r.autorNome || '') + (quando ? ' · ' + quando : '') + (r.origem === 'TAREFAS' ? ' · pela lista' : '') + ({ SUPERVISOR: ' · pela supervisão', GESTOR: ' · pela gestão do plano', ADMIN: ' · pela administração' }[r.papelLancamento] || '') + '</span></div>' +
       '<div class="ds-cluster">' + (r.temEvidencia ? '<span class="material-symbols-outlined" data-title="Tem evidência" aria-label="Tem evidência">attach_file</span>' : '') +
       '<span class="ds-badge ' + sit[0] + '">' + sit[1] + '</span></div></div>' +
       (complemento ? '<span class="ds-help">' + complemento + '</span>' : '') + '</div>';
