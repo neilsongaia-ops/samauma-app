@@ -25,7 +25,7 @@ tr.is-open .ind-seta { transform: rotate(90deg); }
 
 /* Pintura da linha (só fundo, sem barra lateral — mesmos tons da aba Vínculos).
    Só o indicador SEM METAS é pintado (vínculo desfeito/pendente é indicado apenas pelo badge). */
-.ind-tabela tr.ind-caso-semmeta { --ind-cor: var(--ds-color-warning-fg); }
+.ind-tabela tr.ind-caso-semmeta { --ind-cor: var(--ds-color-warning-fg); } .ind-tabela tr.ind-linha[class~="ind-caso-semvinculo"] { --ind-cor: var(--ds-color-danger-fg); }
 .ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada) td { background: color-mix(in srgb, var(--ind-cor) 12%, var(--ds-color-surface)); }
 .ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada):hover td { background: color-mix(in srgb, var(--ind-cor) 20%, var(--ds-color-surface)); }
 body.high-contrast .ind-tabela tr.ind-linha[class*="ind-caso-"]:not(.selecionada) td { background: #000; }
@@ -571,7 +571,7 @@ var _IND_PER_CURTO = {
 };
 
 var _indUltimoClicado = null;
-var IND_ORDEM_CASO = { semmeta: 0, '': 1 };
+var IND_ORDEM_CASO = { semvinculo: 0, semmeta: 1, '': 2 };
 
 document.addEventListener('click', function(e) {
   var wrap = document.getElementById('ind-search-wrap'), caixa = document.getElementById('ind-search-caixa');
@@ -961,7 +961,10 @@ function _indPermiteEdicao() {
 }
 
 // Definir metas: além de quem edita o plano, com o plano Prorrogado quem responde por ele define as metas dos períodos criados pela prorrogação (o servidor confere cada período).
-function _indPermiteMetas() {
+// Indicador sem vínculo (elemento excluído com a escolha SEM_VINCULO): sem elemento, só se reanexa ou se exclui — não se edita nem se definem metas.
+function _indSemVinculo(p) { return !!p && !p.idElemento; }
+function _indPermiteMetas(p) {
+  if (_indSemVinculo(p)) return false;
   if (_indPermiteEdicao()) return true;
   return !!(_indCtx && _indCtx.permissoes && _indCtx.permissoes.metasPeriodoEstendido);
 }
@@ -1724,7 +1727,7 @@ function indAbrirFiltro(campo, ev) {
   base.forEach(function(p) {
     var v, label;
     if (campo === 'resp') { if (!p.responsavel) return; v = p.responsavel; label = nomeRespExibicao(p.responsavel, p.tipoResponsavel); }
-    else { v = p.elemento ? String(p.elemento.id) : '—'; label = p.elemento ? ((p.elemento.codigo ? p.elemento.codigo + ' ' : '') + p.elemento.titulo) : 'Sem elemento (vínculo perdido)'; }
+    else { v = p.elemento ? String(p.elemento.id) : '—'; label = p.elemento ? ((p.elemento.codigo ? p.elemento.codigo + ' ' : '') + p.elemento.titulo) : 'Sem elemento vinculado'; }
     if (!mapa[v]) mapa[v] = { v: v, label: label, n: 0, cod: p.elemento ? p.elemento.codigo : 'zzz' };
     mapa[v].n++;
   });
@@ -1824,7 +1827,7 @@ function _indFaixaHTML(p, anos, podeEditar) {
           + '</div>';
       }).join('');
     } else {
-      corpo = _indPermiteMetas()
+      corpo = _indPermiteMetas(p)
         ? '<button type="button" class="ind-meta-add" data-on-click="ind.19" data-aclick0="' + idj + '" data-rclick1="' + ano + '" aria-label="Definir meta para ' + ano + '"><span class="material-symbols-outlined">add</span>Meta</button>'
         : '<span class="ind-meta-vazio">—</span>';
     }
@@ -1856,10 +1859,10 @@ function _indChipsVinculoHTML(p) {
   }
   return '<span class="ind-vinc-chips">' + html + '</span>';
 }
-// Único caso que pinta a linha (e sobe ao topo): indicador SEM METAS. Desvinculação/pendência de vínculo de plano superior
+// Casos que pintam a linha (e sobem ao topo): indicador SEM VÍNCULO com elemento (vermelho) e indicador SEM METAS. Desvinculação/pendência de vínculo de plano superior
 // NÃO é alerta aqui (o indicador segue válido no plano): quem sinaliza isso é só o badge de vínculo.
 function _indCasoLinha(p, isPendente) {
-  return isPendente ? 'semmeta' : '';
+  return _indSemVinculo(p) ? 'semvinculo' : (isPendente ? 'semmeta' : '');
 }
 
 function _indLinhaHTML(p, anos, podeEditar) {
@@ -1868,6 +1871,7 @@ function _indLinhaHTML(p, anos, podeEditar) {
   var sel = !!estadoIndicadores.selecionados[id];
   var ativo = estadoIndicadores.painelId === id;
   var isPendente = (!p.metas || p.metas.length === 0);
+  var semVinc = _indSemVinculo(p);
   var sup = _indChipsVinculoHTML(p);
   var caso = _indCasoLinha(p, isPendente);
   var resp;
@@ -1884,19 +1888,23 @@ function _indLinhaHTML(p, anos, podeEditar) {
   }
 
   var itensAcao = [
-    { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + idj + "')", principal: true, oculto: !_indPermiteMetas() },
-    { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + idj + "')", principal: true, oculto: !podeEditar },
+    { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + idj + "')", principal: true, oculto: !_indPermiteMetas(p) },
+    { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + idj + "')", principal: true, oculto: !podeEditar || semVinc },
     { icone: 'download', rotulo: 'Exportar', desabilitado: true },
     { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + idj + "')", principal: true },
     { icone: 'delete', rotulo: 'Excluir indicador', onclick: "confirmarExclusaoIndicador('" + idj + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar }
   ];
-  // Indicador sem metas (situação específica): sem o padrão do hover. O botão principal "Definir metas" fica sempre visível na última coluna e o resto vai no ⋮.
+  // Casos específicos (sem vínculo, sem metas): sem o padrão do hover. O botão principal ("Reanexar" ou "Definir metas") fica sempre visível na última coluna e o resto vai no ⋮.
   var celulaAcoes;
-  if (isPendente && podeEditar) {
+  if ((semVinc || isPendente) && podeEditar) {
     var menu = acoesLinhaHTML('ind-' + idj, itensAcao.filter(function(a) { return a.rotulo !== 'Nova meta'; }), { maxDireto: 0 });
     celulaAcoes = '<td class="ds-col-sobreposta" data-col="metas"><div class="ind-decisao">'
-      + '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm ind-btn-proativo" data-on-click="ind.20" data-aclick0="' + idj + '" aria-label="Definir metas">'
-      + '<span class="material-symbols-outlined">add</span><span>Definir metas</span></button>' + menu + '</div></td>';
+      + (semVinc
+          ? '<button type="button" class="ds-btn ds-btn--pendencia-re ds-btn--sm ind-btn-proativo" data-on-click="ind.55" data-aclick0="' + idj + '" aria-label="Reanexar a um elemento">'
+            + '<span class="material-symbols-outlined">link</span><span>Reanexar</span></button>'
+          : '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm ind-btn-proativo" data-on-click="ind.20" data-aclick0="' + idj + '" aria-label="Definir metas">'
+            + '<span class="material-symbols-outlined">add</span><span>Definir metas</span></button>')
+      + menu + '</div></td>';
   } else {
     celulaAcoes = '<td class="ds-col-sobreposta" data-col="metas"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info">' + _indCoberturaHTML(p, anos) + '</div>'
       + '<div class="ds-celula-sobreposta__acoes">' + acoesLinhaHTML('ind-' + idj, itensAcao, { maxDireto: 2 }) + '</div></div></td>';
@@ -1924,10 +1932,10 @@ function _indLinhaHTML(p, anos, podeEditar) {
     var menor = _indMenorMelhor(p);
     html += '<tr class="ind-det' + (sel ? ' selecionada' : '') + (ativo ? ' ind-ativa' : '') + '"><td colspan="6">'
       + (p.metas.length
-          ? _indFaixaHTML(p, anos, podeEditar)
+          ? _indFaixaHTML(p, anos, podeEditar && !semVinc)
             + '<div class="ind-det-rodape">'
             +   (p.interpretacao ? '<span class="ind-interp"><span class="material-symbols-outlined">' + (menor ? 'trending_down' : 'trending_up') + '</span>' + escapeHtml(p.interpretacao) + '</span>' : '<span class="ind-interp"></span>')
-            +   (_indPermiteMetas() ? '<button type="button" class="rsc-link" data-on-click="ind.27" data-aclick0="' + idj + '"><span class="material-symbols-outlined">add_chart</span>Nova meta</button>' : '')
+            +   (_indPermiteMetas(p) ? '<button type="button" class="rsc-link" data-on-click="ind.27" data-aclick0="' + idj + '"><span class="material-symbols-outlined">add_chart</span>Nova meta</button>' : '')
             +   '<button type="button" class="rsc-link" data-on-click="ind.28" data-aclick0="' + idj + '">Ver configuração<span class="material-symbols-outlined">chevron_right</span></button>'
             + '</div>'
           : '<div class="ind-sem-metas">'
@@ -2185,8 +2193,8 @@ function _indAtualizarSelecao(listaVisivel) {
       var indId = Object.keys(estadoIndicadores.selecionados)[0];
       var indObj = _indListaAtiva().find(function(i) { return String(i.id) === String(indId); });
       acoesCont.innerHTML = acoesLinhaHTML('indsel-' + indId, [
-        { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + indId + "')", principal: true, oculto: !_indPermiteMetas() },
-        { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + indId + "')", principal: true, oculto: !podeEditar },
+        { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + indId + "')", principal: true, oculto: !_indPermiteMetas(indObj) },
+        { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + indId + "')", principal: true, oculto: !podeEditar || _indSemVinculo(indObj) },
         { icone: 'download', rotulo: 'Exportar CSV', onclick: "exportarIndicadoresMetasCSV()", principal: true },
         { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + indId + "')", principal: true },
         { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoIndicador('" + indId + "','" + escapeJsAttr(indObj ? indObj.nome : '') + "')", cor: 'var(--ds-color-danger-fg)', oculto: !podeEditar }
@@ -2210,7 +2218,7 @@ function _indRenderPainel(p) {
   };
   var el = p.elemento
     ? '<span class="material-symbols-outlined">category</span>' + escapeHtml((p.elemento.codigo ? p.elemento.codigo + ' ' : '') + p.elemento.titulo)
-    : '<span class="material-symbols-outlined" style="color:var(--ds-color-danger)">link_off</span><span style="color:var(--ds-color-danger)">Vínculo com elemento perdido</span>';
+    : '<span class="material-symbols-outlined" style="color:var(--ds-color-danger)">link_off</span><span style="color:var(--ds-color-danger)">Sem elemento vinculado</span>';
 
   var anos = _indAnosVigencia(_indMetas.length ? _indMetas : ((dadosDetalhados && dadosDetalhados.metas) || []));
   var anoAtual = new Date().getFullYear();
@@ -2251,7 +2259,7 @@ function _indRenderPainel(p) {
     + '</div>'
     + '<div class="detp-secao">'
     +   '<div class="detp-risco-sec-cab"><strong>Metas</strong><span>' + p.metas.length + (p.metas.length === 1 ? ' meta' : ' metas') + ' · ' + anosCom + ' de ' + anos.length + ' anos</span>'
-    +     (_indPermiteMetas() ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.27" data-aclick0="' + idj + '" data-title="Nova meta" aria-label="Nova meta"><span class="material-symbols-outlined">add</span></button>' : '')
+    +     (_indPermiteMetas(p) ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.27" data-aclick0="' + idj + '" data-title="Nova meta" aria-label="Nova meta"><span class="material-symbols-outlined">add</span></button>' : '')
     +   '</div>'
     +   (anos.length ? '<div class="detp-ind-metas">' + metas + '</div>' : '<p class="detp-texto-bloco" style="color:var(--ds-color-text-muted)">Nenhuma meta definida.</p>')
     + '</div>';
@@ -2852,7 +2860,8 @@ uiRegistrarAcoes('ind', {
   '51': function (event) { indMudarPagina('next'); },
   '52': function (event) { _indwizIrParaRail(uiArgLit(this.dataset.rclick0)); },
   '53': function (event) { _metaCopiarAnterior(); },
-  '54': function (event) { _metaAtualizarCopiar(); }
+  '54': function (event) { _metaAtualizarCopiar(); },
+  '55': function (event) { lxpAbrirReanexar(uiArgJs(this.dataset.aclick0), (_indPorId(uiArgJs(this.dataset.aclick0)) || {}).nome); }
 });
 
 

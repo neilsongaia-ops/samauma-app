@@ -9051,10 +9051,11 @@ function lxpRestaurar(tipo, id) {
 }
 
 // --- Reanexar indicador sem vínculo (escolhe um elemento ativo do plano) ---
-function lxpAbrirReanexar(idIndicador) {
+// nomeIndicador: quando vem da aba Indicadores (a lixeira pode nem ter sido aberta).
+function lxpAbrirReanexar(idIndicador, nomeIndicador) {
   var it = ((_lxp.dados && _lxp.dados.semVinculo) || []).find(function(x) { return String(x.id) === String(idIndicador); });
   _lxp.reanexar = { id: idIndicador, destino: '' };
-  document.getElementById('lxp-reanexar-nome').textContent = it ? (it.nome || '') : '';
+  document.getElementById('lxp-reanexar-nome').textContent = it ? (it.nome || '') : (nomeIndicador || '');
   document.getElementById('lxp-reanexar-ok').disabled = true;
   var cont = document.getElementById('lxp-reanexar-sel');
   cont.innerHTML = '';
@@ -9093,7 +9094,7 @@ function lxpFecharReanexar() {
 function lxpConfirmarReanexar() {
   var r = _lxp.reanexar;
   if (!r || !r.destino) return;
-  var idPlano = _lxp.idPlano;
+  var idPlano = _lxp.idPlano || (dadosDetalhados && dadosDetalhados.plano && dadosDetalhados.plano.id);
   lxpFecharReanexar();
   mostrarLoader();
   google.script.run
@@ -9101,7 +9102,7 @@ function lxpConfirmarReanexar() {
       esconderLoader();
       var n = res && Number(res.responsaveisRemovidos);
       if (n > 0) showMessage('warning', 'Indicador reanexado', (n === 1 ? '1 responsável saiu' : n + ' responsáveis saíram') + ' por não caber no escopo do elemento.');
-      lxpCarregar(true);
+      if (_lxp.idPlano) lxpCarregar(true);
       if (typeof carregarDetalhesPlano === 'function') carregarDetalhesPlano(idPlano, _metaOtimistaDoAtual());
       _lxpAtualizarApps();
     })
