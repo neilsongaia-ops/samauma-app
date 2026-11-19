@@ -641,6 +641,7 @@ tr:hover td { background-color: var(--ds-sidebar-item-hover); }
   /* Tamanho de ícone (Material Symbols): xs 14 · sm 15 · md 18 · lg 20 · xl 24 */
   --ds-icon-xs: 14px; --ds-icon-sm: 15px; --ds-icon-md: 18px; --ds-icon-lg: 20px; --ds-icon-xl: 24px;
   --ds-linha-altura: 60px;
+  --ds-subtabela-cab-fonte: var(--ds-text-xs); --ds-subtabela-cab-altura: 32px; --ds-subtabela-linha-altura: 44px;
   /* Título de página (h1 do .ds-pagina): 30px; 26px no mobile */
   --ds-text-titulo-pagina: 1.875rem;
 
@@ -1425,6 +1426,16 @@ tr:hover > td > .ds-celula-sobreposta > .ds-celula-sobreposta__acoes, tr:focus-w
 .ds-th-ord:hover { color: var(--ds-color-action); }
 .ds-th-ord__icone { font-size: 14px; vertical-align: middle; margin-left: 3px; color: var(--ds-color-action); }
 .ds-th-ord__icone:empty { display: none; }
+/* Subtabela: tabela ou faixa aninhada numa linha expandida. O cabeçalho (.ds-subtabela__cab, ou th) é menor que o da tabela principal (hierarquia visual) */
+.ds-subtabela { border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-xl); overflow: hidden; }
+.ds-subtabela table { width: 100%; margin: 0; table-layout: fixed; border-collapse: collapse; }
+.ds-subtabela__cab, .ds-subtabela th { height: var(--ds-subtabela-cab-altura); padding: 0 12px; font-size: var(--ds-subtabela-cab-fonte); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text-muted); text-transform: none; }
+.ds-subtabela :is(th, td) { position: static; border: 0 solid var(--ds-glass-border); border-width: 0 var(--ds-borda) var(--ds-borda) 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-subtabela :is(th, td):last-child { border-right: 0; text-align: right; }
+.ds-subtabela td { padding: 0 12px; height: var(--ds-subtabela-linha-altura); font-size: var(--ds-text-sm); color: var(--ds-color-text); }
+.ds-subtabela tbody tr:last-child > td { border-bottom: 0; }
+.ds-subtabela tbody tr:not(:hover) > td { background: transparent; }
+.ds-subtabela tbody tr:hover > td { background: var(--ds-sidebar-item-hover); }
 /* Altura mínima de toda linha principal de lista (a da lista de planos); o mobile vira cartão e não usa */
 @media (min-width: 769px) { .ds-linha-lista > td { height: var(--ds-linha-altura); } }
 .ds-linha-clicavel { cursor: pointer; }
@@ -17137,7 +17148,7 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
   border-spacing: 0;
   margin: 0;
 }
-.el-tabela thead th {
+.el-tabela > thead > tr > th {
   position: sticky;
   top: calc(var(--ds-pagina-topo-tabela) - 2px);
   z-index: 40;
@@ -17149,7 +17160,7 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
   box-sizing: border-box;
   overflow: visible;
 }
-.el-tabela thead th.el-col-acoes { text-align: right; }
+.el-tabela > thead > tr > th.el-col-acoes { text-align: right; }
 #el-th-reorganizar th {
   position: sticky;
   top: calc(var(--ds-pagina-topo-tabela) - 2px);
@@ -17238,17 +17249,17 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
   cursor: pointer; user-select: none;
   transition: background var(--ds-duration-fast) var(--ds-ease-standard);
 }
-.el-tabela tbody tr td {
+.el-tabela > tbody > tr > td {
   padding: 14px 16px; vertical-align: middle;
   border-bottom: 1px solid var(--ds-glass-border);
   font-size: var(--ds-text-base); color: var(--ds-color-text);
   box-sizing: border-box;
 }
-.el-tabela tbody tr:hover td { background: var(--ds-sidebar-item-hover); }
-.el-tabela tbody tr.selecionada td { background: var(--ds-sidebar-item-active); }
+.el-tabela > tbody > tr:hover > td { background: var(--ds-sidebar-item-hover); }
+.el-tabela > tbody > tr.selecionada > td { background: var(--ds-sidebar-item-active); }
 .el-tabela tbody tr.el-linha-msg { cursor: default; }
-.el-tabela tbody tr.el-linha-msg:hover td { background: transparent !important; }
-.el-tabela tbody tr.el-linha-msg td {
+.el-tabela > tbody > tr.el-linha-msg:hover > td { background: transparent !important; }
+.el-tabela > tbody > tr.el-linha-msg > td {
   text-align: center;
   padding: 40px 16px;
   border-bottom: none;
@@ -17398,7 +17409,7 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
 
 /* Mobile */
 @media (max-width: 768px) {
-  .el-tabela thead th, #el-th-reorganizar th { position: static; }
+  .el-tabela > thead > tr > th, #el-th-reorganizar th { position: static; }
   .el-filtros { gap: 6px; }
   #view-elementos .el-search-input { width: 150px !important; }
   .el-tabela col.el-col-resp, .el-tabela .el-col-resp { display: none; }
@@ -17409,8 +17420,8 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
   .w5-tabela col.w5-col-resp, .w5-tabela .w5-col-resp { display: none; }
   .w5-tabela col.w5-col-check, .w5-tabela .w5-col-check { width: 36px; min-width: 36px; max-width: 36px; padding-left: 10px; padding-right: 0; }
   .w5-tabela col.w5-col-cod, .w5-tabela .w5-col-cod { width: 60px; min-width: 50px; max-width: 70px; }
-  .el-tabela tbody tr td { padding: 12px 8px; }
-  .el-tabela thead th { padding: 10px 8px; }
+  .el-tabela > tbody > tr > td { padding: 12px 8px; }
+  .el-tabela > thead > tr > th { padding: 10px 8px; }
   .el-elem-content { gap: 6px; }
 
   /* Indentação compacta no mobile para preservar espaço do título */
@@ -17428,8 +17439,8 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
   .el-tabela .el-col-check { width: 30px; min-width: 30px; max-width: 30px; padding-left: 6px; }
   .w5-tabela .w5-col-check { width: 30px; min-width: 30px; max-width: 30px; padding-left: 6px; }
   .el-tabela .el-col-expand { width: 20px; min-width: 20px; max-width: 20px; }
-  .el-tabela tbody tr td { padding: 10px 4px; }
-  .el-tabela thead th { padding: 8px 4px; }
+  .el-tabela > tbody > tr > td { padding: 10px 4px; }
+  .el-tabela > thead > tr > th { padding: 8px 4px; }
 }
 
 /* ── PER-ELEMENT TOOLBAR ─────────────────────────────── */

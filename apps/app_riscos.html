@@ -467,18 +467,8 @@ body.high-contrast .rsc-tabela tr.rsc-linha.is-pendente-tratamento:not(.selecion
 .rsc-tabela tr.rsc-det:hover > td { background: transparent; }
 .rsc-tabela tr.rsc-det.selecionada > td, .rsc-tabela tr.rsc-det.rsc-ativa > td { background: color-mix(in srgb, var(--ds-sidebar-item-active) 45%, transparent); }
 .rsc-vinculo { display: flex; align-items: center; gap: 6px; min-height: 28px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-/* tabela de causas (borda suave; a linha inteira reage ao hover) e, solto logo abaixo dela, o campo de nova causa */
-.rsc-det [data-rsc-tabela] { border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-xl); overflow: hidden; }
-.rsc-det [data-rsc-tabela] table { width: 100%; margin: 0; table-layout: fixed; border-collapse: collapse; }
-.rsc-det [data-rsc-tabela] col:last-child { width: 176px; }
-.rsc-det [data-rsc-tabela] :is(th, td) { padding: 0 12px; border: 0 solid var(--ds-glass-border); border-width: 0 var(--ds-borda) var(--ds-borda) 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rsc-det [data-rsc-tabela] th { position: static; height: 32px; font-size: var(--ds-text-xs); }
-.rsc-det [data-rsc-tabela] :is(th, td):last-child { border-right: 0; text-align: right; }
-.rsc-det [data-rsc-tabela] td { height: 44px; font-size: var(--ds-text-sm); color: var(--ds-color-text); }
-.rsc-det [data-rsc-tabela] tbody tr:last-child > td { border-bottom: 0; }
-.rsc-det [data-rsc-tabela] tbody tr:not(:hover) > td { background: transparent; }
-.rsc-det [data-rsc-tabela] tbody tr:hover > td { background: var(--ds-sidebar-item-hover); cursor: pointer; }
-.rsc-det [data-rsc-tabela] input { width: 100%; height: 32px; padding: 0 8px; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-md); outline: none; background: var(--ds-color-surface); font: inherit; color: var(--ds-color-text); }
+/* subtabela de causas (componente .ds-subtabela): só a largura da coluna de ação; e, solto logo abaixo dela, o campo de nova causa */
+.rsc-det col:last-child { width: 176px; }
 .rsc-causa-n { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 .rsc-causa-n.is-sem { color: var(--ds-color-warning-fg); font-weight: var(--ds-weight-semibold); }
 .rsc-causa-linha { display: flex; align-items: center; gap: 8px; min-width: 0; margin-top: 10px; }
@@ -528,7 +518,7 @@ body.high-contrast .rsc-tabela tr.rsc-linha.is-pendente-tratamento:not(.selecion
 @media (max-width: 1100px) {
   .rsc-tabela .rsc-col-resp { display: none; }
   .rsc-tabela col.rsc-col-resp { width: 0; }
-  .rsc-tabela tr.rsc-det td { padding-left: 72px; }
+  .rsc-tabela tr.rsc-det > td { padding-left: 72px; }
 }
 
 /* mobile: galeria de cards */
@@ -564,7 +554,7 @@ body.high-contrast .rsc-tabela tr.rsc-linha.is-pendente-tratamento:not(.selecion
   .rsc-tabela tr.rsc-det td { display: block; padding: 0 12px 12px; border: none; }
   .rsc-tabela tr.rsc-linha:not(.is-open) { margin-bottom: 10px; }
   .rsc-causa-linha { flex-wrap: wrap; }
-  .rsc-det [data-rsc-tabela] col:last-child { width: 96px; }
+  .rsc-det col:last-child { width: 96px; }
 }
 body.high-contrast .rsc-tabela tr.rsc-linha { border-color: #fff; }
 .rsc-pag { margin: 0 !important; border: none !important; border-radius: 0 !important; box-shadow: none !important; }
@@ -2068,8 +2058,8 @@ function _riscoItensAcao(r, podeEditar) {
 function _riscoCamposCausaHTML(idj, idCausa, rasc) {
   var edita = !!idCausa, completo = (rasc.causa || '').trim() && (rasc.consequencia || '').trim();
   var ac = edita ? ' data-aclick1="' + idCausa + '"' : '';
-  var campoCausa = '<input type="text" data-rsc-causa maxlength="500" placeholder="' + (edita ? 'Causa' : 'Adicionar causa') + '" value="' + escapeHtml(rasc.causa || '') + '" data-on-keydown="risco.56" data-on-input="risco.58" aria-label="Causa">';
-  var campoCons = '<input type="text" data-rsc-cons maxlength="500" placeholder="Consequência" value="' + escapeHtml(rasc.consequencia || '') + '" data-on-keydown="risco.57" data-on-input="risco.58" aria-label="Consequência">';
+  var campoCausa = '<input type="text"' + (edita ? ' class="ds-input"' : '') + ' data-rsc-causa maxlength="500" placeholder="' + (edita ? 'Causa' : 'Adicionar causa') + '" value="' + escapeHtml(rasc.causa || '') + '" data-on-keydown="risco.56" data-on-input="risco.58" aria-label="Causa">';
+  var campoCons = '<input type="text"' + (edita ? ' class="ds-input"' : '') + ' data-rsc-cons maxlength="500" placeholder="Consequência" value="' + escapeHtml(rasc.consequencia || '') + '" data-on-keydown="risco.57" data-on-input="risco.58" aria-label="Consequência">';
   var gravar = '<button type="button" class="ds-icon-action ds-icon-action--sm" data-rsc-gravar data-on-click="risco.59" data-aclick0="' + idj + '"' + ac + ' data-title="Gravar" aria-label="Gravar causa/consequência"' + (completo ? '' : ' disabled') + '><span class="material-symbols-outlined">check</span></button>';
   if (edita) {
     return '<tr data-novo="' + idj + '" data-edita="' + idCausa + '"><td>' + campoCausa + '</td><td data-rsc-etapa2>' + campoCons + '</td>'
@@ -2159,14 +2149,14 @@ function _riscoLinhaHTML(r, podeEditar) {
         { icone: 'edit', rotulo: 'Editar causa/consequência', onclick: "riscosEditarCausa('" + jid + "','" + jpid + "')" },
         { icone: 'delete', rotulo: 'Excluir causa/consequência', onclick: "riscosExcluirCausa('" + jid + "','" + jpid + "')", cor: 'var(--ds-color-danger-fg)', oculto: !temVarios }
       ], { maxDireto: 3 }) : '';
-      return '<tr data-on-click="risco.52" data-aclick0="' + idj + '">'
+      return '<tr class="ds-linha-clicavel" data-on-click="risco.52" data-aclick0="' + idj + '">'
         + '<td' + ((p.causa || '').length > 40 ? ' data-title="' + escapeHtml(p.causa) + '"' : '') + '>' + escapeHtml(p.causa || '—') + '</td>'
         + '<td' + ((p.consequencia || '').length > 40 ? ' data-title="' + escapeHtml(p.consequencia) + '"' : '') + '>' + escapeHtml(p.consequencia || '—') + '</td>'
         + '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="rsc-causa-n' + (n ? '' : ' is-sem') + '">' + (n ? n + (n === 1 ? ' ação' : ' ações') : 'Sem ação') + '</span></div>'
         +   '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td></tr>';
     }).join('');
     var tabela = linhasPares
-      ? '<div data-rsc-tabela><table><colgroup><col><col><col></colgroup>'
+      ? '<div class="ds-subtabela"><table><colgroup><col><col><col></colgroup>'
         + '<thead><tr><th>Causa</th><th>Consequência</th><th>Ação</th></tr></thead><tbody>' + linhasPares + '</tbody></table></div>'
       : '';
     var novo = podeEditar ? _riscoCamposCausaHTML(idj, '', estadoRiscos.rascunhos[id] || {}) : (linhasPares ? '' : '<div class="rsc-vinculo">Nenhuma causa cadastrada.</div>');
