@@ -53,55 +53,30 @@ body.high-contrast .ind-tabela tr.ind-linha[class*="ind-caso-"] td.ind-col-nome 
 .ind-tabela tr.ind-det td { padding: 12px 16px 20px 88px; cursor: default; border-bottom: 1px solid var(--ds-glass-border); }
 .ind-tabela tr.ind-det:hover td { background: transparent; }
 .ind-tabela tr.ind-det.selecionada td, .ind-tabela tr.ind-det.ind-ativa td { background: color-mix(in srgb, var(--ds-sidebar-item-active) 45%, transparent); }
-.ind-det-rodape { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 12px; }
-/* indicador sem metas: um bloco único no lugar da faixa */
-.ind-sem-metas { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px;
-  border: 1px dashed var(--ds-color-border-strong); border-radius: var(--ds-r-xl); }
-.ind-sem-metas > .material-symbols-outlined { font-size: 22px; color: var(--ds-color-warning-fg); }
-.ind-sem-metas-txt { flex: 1 1 240px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.ind-sem-metas-txt strong { font-size: var(--ds-text-base); color: var(--ds-color-text); }
-.ind-sem-metas-txt span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.ind-interp { display: inline-flex; align-items: center; gap: 4px; margin-right: auto; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ind-det-rodape { display: flex; align-items: center; gap: 4px 20px; flex-wrap: wrap; margin-top: 12px; }
+.ind-interp { display: inline-flex; align-items: center; gap: 4px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 .ind-interp .material-symbols-outlined { font-size: 16px; }
 
-/* faixa de metas: uma coluna por ano; gap de 1px sobre fundo = divisórias */
-.ind-faixa {
-  position: relative; display: flex; width: 0; min-width: 100%; box-sizing: border-box;
-  gap: 1px; background: var(--ds-color-border); overflow-x: auto; overflow-y: hidden;
-  -webkit-overflow-scrolling: touch; scrollbar-width: thin;
-}
-.ind-ano { display: flex; flex-direction: column; flex: 1 0 auto; min-width: 96px; background: var(--ds-color-surface); }
-.ind-ano-cab { white-space: nowrap; }
-.ind-ano-cab { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.ind-tabela .ind-faixa { --ind-celula: 128px; position: relative; display: flex; width: 0; min-width: 100%; box-sizing: border-box; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.ind-ano { display: flex; flex-direction: column; flex: 0 0 auto; border-right: var(--ds-borda) solid var(--ds-color-border); }
+.ind-ano-cab { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ind-ano-cab small { font-size: 11px; font-weight: var(--ds-weight-medium); color: var(--ds-color-action); }
 .ind-ano.is-atual { background: color-mix(in srgb, var(--ds-color-action) 5%, var(--ds-color-surface)); }
 .ind-ano.is-atual .ind-ano-cab { color: var(--ds-color-action); box-shadow: inset 0 2px 0 var(--ds-color-action); }
-.ind-ano-corpo { display: flex; flex: 1; min-height: 64px; border-top: 1px solid var(--ds-glass-border); }
-.ind-meta { position: relative; flex: 1 0 76px; width: 76px; min-width: 76px; height: 64px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 10px 12px 12px; }
-.ind-meta + .ind-meta { border-left: 1px solid var(--ds-glass-border); }
-.ind-meta-per { font-size: 11px; color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ind-meta-val { display: flex; align-items: baseline; gap: 4px; min-width: 0; }
-.ind-meta-val strong { white-space: nowrap; font-size: 18px; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); font-variant-numeric: tabular-nums; letter-spacing: -0.3px; }
-.ind-meta-val span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ind-meta-barra { position: absolute; left: 12px; right: 12px; bottom: 6px; height: 3px; border-radius: 2px; background: var(--ds-sidebar-item-hover); }
-.ind-meta-barra i { display: block; height: 100%; border-radius: 2px; background: var(--ds-color-action); }
-.ind-meta-barra.is-menor i { background: var(--ds-color-purple, #8a6fd1); }
-.ind-meta-acoes { position: absolute; top: 4px; right: 4px; display: flex; gap: 2px; border-radius: var(--ds-r-md); background: inherit; opacity: 0;
-  transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
-.ind-meta:hover .ind-meta-acoes, .ind-meta-acoes:focus-within { opacity: 1; }
-.ind-meta-acoes button { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; background: none; border: none;
-  border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); cursor: pointer; }
-.ind-meta-acoes button:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
-.ind-meta-acoes button.perigo:hover { background: var(--ds-color-danger-bg); color: var(--ds-color-danger); }
-.ind-meta-acoes .material-symbols-outlined { font-size: 16px; }
-.ind-meta-add {
-  flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; margin: 8px; border: 1px dashed var(--ds-color-border-strong);
-  border-radius: var(--ds-r-lg); background: none; font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
-  color: var(--ds-color-text-muted); cursor: pointer;
-}
-.ind-meta-add:hover { border-color: var(--ds-color-action); color: var(--ds-color-action); background: var(--ds-color-info-bg); }
-.ind-meta-add .material-symbols-outlined { font-size: 18px; }
-.ind-meta-vazio { flex: 1; display: flex; align-items: center; justify-content: center; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); }
+.ind-faixa + .meta-aviso { margin-top: 12px; }
+.ind-ano-corpo { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--ds-glass-border); }
+.ind-ano-corpo [data-vazio], .ind-meta-per, .ind-meta-val span, [data-un] { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ind-meta { position: relative; flex: 0 0 auto; width: var(--ind-celula); height: 52px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 4px 12px; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-md); overflow: hidden; background: var(--ds-color-surface); }
+.ind-meta-val { display: flex; align-items: baseline; gap: 4px; min-width: 0; font-variant-numeric: tabular-nums; }
+.ind-meta-val strong { white-space: nowrap; font-size: 16px; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ind-meta [data-acoes] { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px; background: var(--ds-color-surface); }
+.ind-meta [data-acoes], [data-novo] [data-ok] { opacity: 0; transition: opacity var(--ds-duration-fast) var(--ds-ease-standard); }
+[data-novo] { display: flex; align-items: center; flex: 0 0 auto; gap: 4px; }
+[data-novo] label { display: flex; align-items: center; gap: 6px; width: var(--ind-celula); height: 52px; box-sizing: border-box; padding: 0 10px; border: var(--ds-borda) dashed var(--ds-color-border); border-radius: var(--ds-r-md); }
+[data-novo] label:focus-within { border-style: solid; border-color: var(--ds-color-action); }
+[data-novo][data-erro] label { border-color: var(--ds-color-danger); }
+[data-novo] input { flex: 1; min-width: 0; padding: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: var(--ds-text-base); color: var(--ds-color-text); font-variant-numeric: tabular-nums; }
+.ind-meta:hover [data-acoes], .ind-meta [data-acoes]:focus-within, [data-novo]:hover [data-ok], [data-novo]:focus-within [data-ok], [data-novo][data-preenchido] [data-ok] { opacity: 1; }
 
 /* painel lateral (dentro do #detp-panel) */
 .detp-ind-formula { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; margin-bottom: 18px; border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); }
@@ -121,7 +96,6 @@ body.high-contrast .ind-tabela tr.ind-linha[class*="ind-caso-"] td.ind-col-nome 
   .ind-tabela col.ind-col-resp, .ind-tabela col[data-col="form"] { width: 0; }
   .ind-tabela tr.ind-det td { padding-left: 72px; }
 }
-@media (max-width: 900px) { .ind-faixa { --ind-anos: 2 !important; } }
 
 /* mobile: galeria de cards */
 @media (max-width: 768px) {
@@ -147,9 +121,8 @@ body.high-contrast .ind-tabela tr.ind-linha[class*="ind-caso-"] td.ind-col-nome 
   .ind-tabela tr.ind-linha td.ind-col-nome { grid-area: nome; }
   .ind-tabela tr.ind-det { display: block; margin-bottom: 10px; border: 1px solid var(--ds-color-border); border-top: none; border-radius: 0 0 var(--ds-r-lg) var(--ds-r-lg); }
   .ind-tabela tr.ind-det td { display: block; padding: 0 12px 12px; border: none; }
-  .ind-meta-acoes { opacity: 1; }
 }
-body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { border-color: #fff; }
+body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-ano { border-color: #fff; }
 /* ============================================================================
    Modal de Indicador (wizard com trilha lateral) e modal "Definir metas" — migração do Claude Design (2026-10-03,
    "Modais Indicadores v2"). Mesmo padrão de Plano/Elemento/Risco; o CSS do wizard é escopado ao modal (o app é
@@ -219,27 +192,8 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
 @media (max-width: 480px) { .indw-row-2 { grid-template-columns: 1fr; gap: 0; } }
 
 /* modal "Definir metas" (grade de períodos) */
-#modal-nova-meta .indw-meta-card { width: 600px; max-width: calc(100vw - 32px); max-height: calc(100vh - 104px); padding: 0; display: flex; flex-direction: column; overflow: hidden; }
-.indw-meta-cab { display: flex; align-items: flex-start; gap: 12px; padding: 20px 20px 12px; }
-.indw-meta-cab > div { flex: 1; min-width: 0; }
-.indw-meta-eyebrow { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); letter-spacing: .3px; color: var(--ds-color-action); }
-.indw-meta-cab h3 { margin: 2px 0 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #form-nova-meta { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; }
-.indw-meta-corpo { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 4px 20px 20px; gap: 16px; }
-.indw-meta-topo { display: grid; grid-template-columns: 230px minmax(0, 1fr) auto; gap: 16px; }
-.indw-meta-topo .ds-field { margin-bottom: 0; min-width: 0; }
-.indw-meta-fill { display: flex; gap: 8px; }
-#meta-grade { display: flex; flex-direction: column; flex: 1; min-height: 0; }
-.meta-grade-rolagem { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface); }
-.meta-grade { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
-.meta-grade th { position: sticky; top: 0; z-index: 2; text-align: left; height: 36px; padding: 0 12px; background: var(--ds-color-surface-2); border-bottom: 1px solid var(--ds-color-border);
   font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); color: var(--ds-color-text-muted); text-transform: none; }
-.meta-grade th:last-child { width: 48%; }
-.meta-grade td { height: 48px; padding: 0 12px; border-bottom: 1px solid var(--ds-glass-border); vertical-align: middle; }
-.meta-grade td.meta-per { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--ds-text-base); }
-.meta-grade td.meta-per .material-symbols-outlined { font-size: 16px; vertical-align: middle; cursor: help; color: var(--ds-color-text-muted); margin-left: 6px; }
-.meta-grade input { width: 100%; max-width: none; }
-.indw-meta-carregando { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 36px 16px; color: var(--ds-color-text-muted);
   font-size: var(--ds-text-sm); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface); }
 .meta-aviso { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--ds-r-lg); background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg); font-size: var(--ds-text-sm); line-height: 1.45; }
 .meta-aviso-titulo { display: flex; align-items: center; gap: 8px; font-weight: var(--ds-weight-semibold); }
@@ -247,11 +201,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
 .meta-aviso-item { display: flex; align-items: center; gap: 8px; min-height: 36px; padding-left: 26px; color: var(--ds-color-text); }
 .meta-aviso-item > span { flex: 1; min-width: 0; }
 .meta-aviso-item > strong { font-variant-numeric: tabular-nums; }
-.indw-meta-rodape { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--ds-glass-border); justify-content: space-between; flex-shrink: 0; }
 @media (max-width: 600px) {
-  #modal-nova-meta .indw-meta-card { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
-  #modal-nova-meta.modal-overlay { padding: 0; }
-  .indw-meta-topo { grid-template-columns: 1fr; }
 }
 </style>
 
@@ -468,53 +418,6 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-faixa { bor
   </div>
 </div>
 
-<!-- MODAL DE METAS POR PERÍODO (data-app-portal="1" envia direto para document.body) — modal simples (uma tarefa só),
-     migração do Claude Design 2026-10-03 -->
-<div id="modal-nova-meta" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalMeta" data-on-click="ind.1">
-  <div class="modal-card indw-meta-card" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-meta">
-    <div class="indw-meta-cab">
-      <div>
-        <span class="indw-meta-eyebrow">DEFINIR METAS</span>
-        <h3 id="titulo-modal-meta">Metas</h3>
-      </div>
-      <button type="button" class="btn-icon-close" data-on-click="ind.12" data-title="Fechar" aria-label="Fechar">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-
-    <form id="form-nova-meta" data-on-submit="ind.13">
-      <input type="hidden" id="input-meta-id-indicador">
-      <div class="indw-meta-corpo">
-        <div class="indw-meta-topo">
-          <div class="ds-field">
-            <label class="ds-label" for="input-meta-ano">Ano de referência <span class="indw-obrig">obrigatório</span></label>
-            <input type="number" id="input-meta-ano" class="ds-input" min="1900" max="9999" required placeholder="Ex: 2026" data-on-change="ind.14">
-          </div>
-          <div class="ds-field">
-            <label class="ds-label" for="input-meta-preencher">Mesmo valor em todos <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Preenche todos os períodos da lista com o valor digitado. Depois você ainda pode ajustar cada um.">info</span></label>
-            <div class="indw-meta-fill">
-              <input type="text" id="input-meta-preencher" class="ds-input" placeholder="Ex: 100" data-on-keydown="ind.15">
-              <button type="button" class="ds-btn ds-btn--ghost" id="btn-meta-aplicar" data-on-click="ind.16">Aplicar</button>
-            </div>
-          </div>
-          <div class="ds-field hidden" id="meta-copiar-campo">
-            <label class="ds-label" for="btn-meta-copiar">Período anterior <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Preenche só os períodos vazios, com a meta do período anterior. Depois você ainda pode ajustar cada um.">info</span></label>
-            <button type="button" class="ds-btn ds-btn--ghost" id="btn-meta-copiar" data-on-click="ind.53"><span class="material-symbols-outlined">content_copy</span>Copiar</button>
-          </div>
-        </div>
-
-        <div id="meta-grade"></div>
-        <div id="meta-fora"></div>
-      </div>
-
-      <div class="indw-meta-rodape">
-        <button type="button" class="ds-btn ds-btn--ghost" style="border-color:transparent" data-on-click="ind.12">Cancelar</button>
-        <button type="submit" class="ds-btn ds-btn--primary" id="btn-submit-meta" disabled><span class="material-symbols-outlined">save</span>Salvar metas</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <!-- CONTAINER PRINCIPAL DA ABA INDICADORES -->
 <div id="indicadores-conteudo">
   <!-- Conteúdo de filtros, tabela e paginação montado por renderizarSecaoIndicadores() -->
@@ -614,8 +517,11 @@ var INDWIZ_MSGS_CAMPO = {
     if (estadoWizardInd.atual >= 3) _indwizSalvar(); else _indwizProximo();
   });
 })();
-var _metaGrade = null;   // resposta de apiGetPeriodosIndicador (períodos + meta de cada um)
-var _metaReq = 0;        // descarta respostas de anos já trocados
+var _indGrades = {};     // idIndicador → { carregando, erro, dados } com a resposta de apiGetGradeMetasIndicador (anos, períodos e meta de cada um)
+var _indGradeFila = {};  // idIndicador → promessa da última gravação (as gravações de um indicador andam em fila: o carimbo muda a cada uma)
+var _indFocoGrade = null; // { id, ano?, editando? }: campo que recebe o foco quando a grade for (re)desenhada
+var _indGradeAbertos = {}; // idIndicador → { início do período: valor digitado e ainda não gravado } dos campos abertos pelo + (só na tela; nada é gravado)
+var _indGradeEdit = {};   // idIndicador → início do período da meta aberta para alteração
 _indicadoresSDK.aoVisibilidade(function(v) {
   _indVis = v;
   if (v.aba && v.pagina && _indCtx && !_indCarregado && !_indCarregando) {
@@ -681,8 +587,7 @@ _indicadoresSDK.aoTecla(function(evt) {
 window.abrirModalIndicador = abrirModalIndicador;
 window.abrirModalEdicaoIndicador = _indComDados(abrirModalEdicaoIndicador);
 window.abrirModalIndicadorGlobal = abrirModalIndicadorGlobal;
-window.abrirModalMeta = _indComDados(abrirModalMeta);
-window.abrirModalEdicaoMeta = _indComDados(abrirModalEdicaoMeta);
+window.indIrParaGrade = _indComDados(indIrParaGrade);
 window.abrirModalListaIndicadores = _indComDados(abrirModalListaIndicadores);
 window.indAbrirPainel = _indComDados(indAbrirPainel);
 window.exportarIndicadoresMetasCSV = _indComDados(exportarIndicadoresMetasCSV);
@@ -751,6 +656,7 @@ function confirmarExclusaoMeta(id, label) {
       mostrarLoader();
       _indicadoresSDK.chamar('apiExcluirMeta', id).then(function() {
         esconderLoader();
+        _indGrades = {};
         carregarAbaIndicadores();
       }, function(err) {
         esconderLoader();
@@ -853,65 +759,181 @@ function handleSalvarIndicador(e) {
   });
 }
 
-// ---- Metas por período: o modal mostra os períodos que a frequência do indicador gera para o ano ----
+// ---- Metas por período: a grade da linha expandida (docs/especificacoes/... §13.5; períodos gerados pelo servidor a partir da frequência) ----
 
-function _metaCarregarGrade() {
-  var idInd = (document.getElementById('input-meta-id-indicador') || {}).value;
-  var ano = parseInt((document.getElementById('input-meta-ano') || {}).value, 10);
-  var box = document.getElementById('meta-grade');
-  var fora = document.getElementById('meta-fora');
-  if (!box) return;
-  _metaGrade = null;
-  _metaSalvarHabilitado(false);
-  if (fora) fora.innerHTML = '';
-  if (!idInd || !ano || ano < 1900 || ano > 9999) { box.innerHTML = ''; return; }
-  box.innerHTML = '<div class="indw-meta-carregando"><div class="lista-spinner"></div>Carregando períodos…</div>';
-  var req = ++_metaReq;
-  _indicadoresSDK.chamar('apiGetPeriodosIndicador', idInd, ano).then(function(res) {
-    if (req !== _metaReq) return;
-    _metaGrade = res;
-    _metaRenderGrade();
-  }, function(err) {
-    if (req !== _metaReq) return;
-    // ex.: indicador Contínuo sem data de início — a mensagem do servidor explica o que falta
-    box.innerHTML = '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">event_busy</span><span>' + escapeHtml((err && err.message) || String(err)) + '</span></div>';
+function _indGradeBox(id) { return document.getElementById('ind-grade-' + id); }
+
+// Redesenha só a grade de um indicador (a linha e o resto da tabela ficam como estão) e leva o foco ao campo pedido em _indFocoGrade.
+function _indGradeRedesenhar(id) {
+  var box = _indGradeBox(id), p = _indPorId(id);
+  if (box) _indGradeGuardarRascunhos(id, box);
+  if (box && p) box.innerHTML = _indGradeHTML(p, _indPermiteMetas(p));
+  var f = _indFocoGrade;
+  if (!f || String(f.id) !== String(id) || !box || !_indGrades[id] || !_indGrades[id].dados) return;
+  _indFocoGrade = null;
+  var alvo = null;
+  if (f.editando) alvo = box.querySelector('[data-novo][data-editando] input');
+  else if (f.inicio) alvo = box.querySelector('[data-novo][data-inicio="' + f.inicio + '"] input');
+  else {
+    if (f.ano) alvo = box.querySelector('.ind-ano[data-ano="' + f.ano + '"] [data-novo] input');
+    if (!alvo) alvo = box.querySelector('[data-novo] input');
+  }
+  if (!alvo) return;
+  alvo.focus();
+  if (f.editando) alvo.select();
+  alvo.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+// Antes de redesenhar: o que foi digitado nos campos abertos e ainda não gravado fica guardado (e volta ao desenhar).
+function _indGradeGuardarRascunhos(id, box) {
+  var ab = _indGradeAbertos[id] = _indGradeAbertos[id] || {};
+  box.querySelectorAll('[data-novo]:not([data-editando])').forEach(function(n) {
+    var v = n.querySelector('input').value.trim(), ini = n.getAttribute('data-inicio');
+    if (v !== '' || ab[ini] !== undefined) ab[ini] = v;
   });
 }
 
-function handleSalvarMetas(e) {
-  e.preventDefault();
-  if (!_metaGrade) return;
-  var idInd = document.getElementById('input-meta-id-indicador').value;
-  var ano = parseInt(document.getElementById('input-meta-ano').value, 10);
-  var metas = [];
-  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) {
-    metas.push({ inicio: inp.getAttribute('data-inicio'), valor: inp.value });
-  });
-  mostrarLoader();
-  _indicadoresSDK.chamar('apiSalvarMetasPeriodo', { idIndicador: idInd, ano: ano, metas: metas, ultimaAlteracao: _metaGrade.ultimaAlteracao }).then(function() {
-    esconderLoader();
-    fecharModalMeta();
-    carregarAbaIndicadores();
+// Busca a grade das linhas abertas que ainda não a têm (chamada ao desenhar a tabela).
+function _indGradeCarregar(id) {
+  id = String(id);
+  var g = _indGrades[id];
+  if (g && (g.carregando || g.dados)) return;
+  _indGrades[id] = { carregando: true };
+  _indicadoresSDK.chamar('apiGetGradeMetasIndicador', id).then(function(res) {
+    _indGrades[id] = { dados: res };
+    _indGradeRedesenhar(id);
   }, function(err) {
-    esconderLoader();
-    showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+    // ex.: indicador Contínuo sem data de início — a mensagem do servidor explica o que falta
+    _indGrades[id] = { erro: (err && err.message) || String(err) };
+    _indGradeRedesenhar(id);
   });
+}
+
+// Contexto de um elemento da grade: caixa do campo, indicador, ano, início do período e o <input>.
+function _indGradeCtx(el) {
+  var box = el.closest('[data-novo]'), faixa = el.closest('.ind-faixa');
+  if (!box || !faixa) return null;
+  return { box: box, id: faixa.getAttribute('data-ind'), ano: parseInt(box.getAttribute('data-ano'), 10), inicio: box.getAttribute('data-inicio'), campo: box.querySelector('input') };
+}
+
+// Enquanto digita: o + vira ✓ (há o que gravar) e o sinal de erro some.
+function indGradeDigitando(campo) {
+  var c = _indGradeCtx(campo);
+  if (!c) return;
+  var tem = campo.value.trim() !== '';
+  c.box.removeAttribute('data-erro');
+  if (tem) c.box.setAttribute('data-preenchido', ''); else c.box.removeAttribute('data-preenchido');
+  var ico = c.box.querySelector('[data-ok] .material-symbols-outlined');
+  if (ico) ico.textContent = tem ? 'check' : 'add';
+  var bt = c.box.querySelector('[data-ok]');
+  if (bt) bt.classList.toggle('hidden', !tem && !c.box.hasAttribute('data-mais'));
+}
+
+// Grava o campo (✓, Enter ou Tab). Vazio: com o teclado, borda vermelha e nada acontece; no clique do +, só leva o foco ao campo.
+function indGradeConfirmar(el, teclado) {
+  var c = _indGradeCtx(el);
+  if (!c) return;
+  var v = c.campo.value.trim();
+  if (v === '') {
+    if (teclado) { c.box.setAttribute('data-erro', ''); c.campo.focus(); } else indGradeAbrirProximo(c);
+    return;
+  }
+  if (!isFinite(Number(v.replace(',', '.')))) { c.box.setAttribute('data-erro', ''); c.campo.focus(); showMessage('error', 'Valor inválido', 'A meta precisa ser um número (ex.: 100 ou 12,5).'); return; }
+  indGradeGravar(c.id, c.ano, c.inicio, v);
+}
+
+// O + de um campo vazio abre o próximo período livre do ano (só na tela: nada é gravado) e leva o foco a ele.
+function indGradeAbrirProximo(c) {
+  var g = _indGrades[c.id], a = g && g.dados.anos.filter(function(x) { return x.ano === c.ano; })[0];
+  if (!a) return;
+  var ab = _indGradeAbertos[c.id] = _indGradeAbertos[c.id] || {};
+  var livres = a.periodos.filter(function(x) { return x.valor === '' && x.editavel !== false && ab[x.inicioISO] === undefined && x.inicioISO !== c.inicio; });
+  var prox = livres.filter(function(x) { return x.inicioISO > c.inicio; })[0] || livres[0];
+  if (!prox) { c.campo.focus(); return; }
+  ab[prox.inicioISO] = '';
+  _indFocoGrade = { id: c.id, inicio: prox.inicioISO };
+  _indGradeRedesenhar(c.id);
+}
+
+function indGradeTecla(ev, campo) {
+  if (ev.isComposing) return;
+  var c = _indGradeCtx(campo);
+  if (!c) return;
+  if (ev.key === 'Escape') {
+    if (c.box.hasAttribute('data-editando')) { indGradeCancelar(c.id); return; }
+    campo.value = ''; indGradeDigitando(campo); campo.blur();
+    return;
+  }
+  if (ev.key === 'Enter' || (ev.key === 'Tab' && !ev.shiftKey)) { ev.preventDefault(); indGradeConfirmar(campo, true); }
+}
+
+function _indGradePeriodo(id, ano, inicio) {
+  var g = _indGrades[id], a = g && g.dados && g.dados.anos.filter(function(x) { return x.ano === ano; })[0];
+  var per = a && a.periodos.filter(function(x) { return x.inicioISO === inicio; })[0];
+  return per ? { a: a, per: per } : null;
+}
+
+function indGradeGravar(id, ano, inicio, valor) {
+  var r = _indGradePeriodo(id, ano, inicio);
+  if (!r) return;
+  if (r.per.valor === valor) { indGradeCancelar(id); return; }
+  _indGradeEnviar(id, r.a, r.per, valor);
+}
+
+// Grava o ano inteiro (o servidor recebe a grade do ano; valor vazio = período sem meta). Desenha já o resultado e abre o campo seguinte; as gravações andam em fila.
+function _indGradeEnviar(id, a, per, valor) {
+  per.valor = valor;
+  delete _indGradeEdit[id];
+  _indFocoGrade = valor !== '' ? { id: id, ano: a.ano } : null;
+  _indGradeRedesenhar(id);
+  if (_indGradeAbertos[id]) delete _indGradeAbertos[id][per.inicioISO];
+  _indGradeFila[id] = (_indGradeFila[id] || Promise.resolve()).then(function() {
+    var g = _indGrades[id];
+    if (!g || !g.dados) return;
+    var metas = a.periodos.map(function(x) { return { inicio: x.inicioISO, valor: x.valor }; });
+    return _indicadoresSDK.chamar('apiSalvarMetasPeriodo', { idIndicador: id, ano: a.ano, metas: metas, ultimaAlteracao: g.dados.ultimaAlteracao }).then(function(res) {
+      g.dados.ultimaAlteracao = res.ultimaAlteracao;
+      _indSincronizar(id);
+    });
+  }).catch(function(err) {
+    showMessage('error', 'Erro', escapeHtml((err && err.message) || String(err)));
+    delete _indGrades[id];
+    _indRenderCorpo();
+  });
+}
+
+function indGradeEditar(id, inicio) {
+  _indGradeEdit[id] = inicio;
+  _indFocoGrade = { id: id, editando: true };
+  _indGradeRedesenhar(id);
+}
+
+function indGradeCancelar(id) {
+  delete _indGradeEdit[id];
+  _indFocoGrade = null;
+  _indGradeRedesenhar(id);
+}
+
+function indGradeExcluir(id, inicio) {
+  var anoDe = _indGrades[id] && _indGrades[id].dados.anos.filter(function(a) { return a.periodos.some(function(x) { return x.inicioISO === inicio; }); })[0];
+  var r = anoDe && _indGradePeriodo(id, anoDe.ano, inicio);
+  if (!r) return;
+  showConfirm('Excluir meta?', 'Deseja excluir a meta de <strong>' + escapeHtml((r.per.rotulo || '') + ' ' + anoDe.ano) + '</strong>?', function() { _indGradeEnviar(id, r.a, r.per, ''); });
+}
+
+// "Definir metas": abre a linha do indicador e leva o foco ao primeiro campo vazio.
+function indIrParaGrade(id) {
+  id = String(id);
+  _indFocoGrade = { id: id, ano: null };
+  if (!estadoIndicadores.expandidos[id]) { estadoIndicadores.expandidos[id] = true; _indRenderCorpo(); } else _indGradeRedesenhar(id);
 }
 
 // ================================================================
 // CICLO DE VIDA DO APP VIA SDK
 // ================================================================
 
-function _indIniciar() {
-  if (!_indCtx || !_indCtx.idPlano) return;
-  _indCarregando = true;
-  renderizarSecaoIndicadores();
-  var tbody = document.getElementById('ind-tbody');
-  if (tbody && !_indCarregado) {
-    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="7" style="padding:0">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner"></div>') + '</td></tr>';
-  }
-
-  _indicadoresSDK.chamar('apiGetAbaIndicadores', _indCtx.idPlano).then(function(res) {
+// Guarda a resposta de apiGetAbaIndicadores, avisa o host e descarta as grades de metas de indicadores que mudaram (carimbo diferente).
+function _indAplicarResposta(res) {
     _indIndicadores = (res && res.indicadores) || [];
     _indIndicadoresSuperiores = (res && res.indicadoresSuperiores) || [];
     _indMetas = (res && res.metas) || [];
@@ -927,6 +949,38 @@ function _indIniciar() {
       metas: _indMetas
     });
     _indicadoresSDK.reportarContagem(_indIndicadores.length);
+  Object.keys(_indGrades).forEach(function(id) {
+    var ind = _indIndicadores.filter(function(i) { return String(i.id) === id; })[0];
+    if (!ind || !_indGrades[id].dados || Number(ind.ultimaAlteracao) !== Number(_indGrades[id].dados.ultimaAlteracao)) delete _indGrades[id];
+  });
+}
+
+// Depois de gravar metas: relê os dados do plano sem redesenhar a tabela (o foco fica onde está) e atualiza só a linha do indicador e o painel.
+function _indSincronizar(id) {
+  _indicadoresSDK.chamar('apiGetAbaIndicadores', _indCtx.idPlano).then(function(res) {
+    _indAplicarResposta(res);
+    var antiga = document.querySelector('#ind-tbody tr.ind-linha[data-id="' + String(id).replace(/"/g, '\\"') + '"]');
+    var p = _indPorId(id);
+    if (antiga && p) {
+      var tmp = document.createElement('tbody');
+      tmp.innerHTML = _indLinhaHTML(p, _indAnosVigencia(_indMetas), _indPermiteEdicao());
+      antiga.replaceWith(tmp.firstElementChild);
+    }
+    if (estadoIndicadores.painelId) { var ip = _indPorId(estadoIndicadores.painelId); if (ip) _indRenderPainel(ip); }
+  });
+}
+
+function _indIniciar() {
+  if (!_indCtx || !_indCtx.idPlano) return;
+  _indCarregando = true;
+  renderizarSecaoIndicadores();
+  var tbody = document.getElementById('ind-tbody');
+  if (tbody && !_indCarregado) {
+    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="7" style="padding:0">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner"></div>') + '</td></tr>';
+  }
+
+  _indicadoresSDK.chamar('apiGetAbaIndicadores', _indCtx.idPlano).then(function(res) {
+    _indAplicarResposta(res);
 
     renderizarSecaoIndicadores();
 
@@ -1117,17 +1171,7 @@ function indToggleExpand(id) {
   var k = String(id);
   estadoIndicadores.expandidos[k] = !estadoIndicadores.expandidos[k];
   _indRenderCorpo();
-  if (estadoIndicadores.expandidos[k]) _indRolarFaixaAnoAtual(k);
 }
-function _indRolarFaixaAnoAtual(k) {
-  var tr = document.querySelector('tr.ind-linha[data-id="' + k.replace(/"/g, '\\"') + '"]');
-  var det = tr && tr.nextElementSibling;
-  var faixa = det && det.querySelector('.ind-faixa');
-  var atual = faixa && faixa.querySelector('.ind-ano.is-atual');
-  if (!atual || faixa.scrollWidth <= faixa.clientWidth) return;
-  faixa.scrollLeft = Math.max(0, atual.offsetLeft - (faixa.clientWidth - atual.offsetWidth) / 2);
-}
-
 function indToggleExpandirTodos() {
   var lista = _indSortLista(_indFiltrar(_indListaAtiva()));
   var start = (estadoIndicadores.paginaAtual - 1) * estadoIndicadores.itensPorPagina;
@@ -1510,41 +1554,6 @@ function _indAplicarTravaDefinicao(edicao) {
 // WIZARD DO MODAL DE INDICADOR (_indwiz*) — mesmo padrão do wizard de Risco (_rwiz*)
 // ================================================================
 
-function _metaPreencherTodos() {
-  var v = (document.getElementById('input-meta-preencher') || {}).value;
-  if (v === undefined || String(v).trim() === '') return;
-  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) { if (!inp.disabled) inp.value = String(v).trim(); });
-  _metaAtualizarCopiar();
-}
-
-// A meta é um nível (ULTIMO/MEDIA): repetir a do período anterior faz sentido; em SOMA é acumulativa e não se copia.
-function _metaPodeCopiar(g) { return !!g && (g.regraAgregacao === 'ULTIMO' || g.regraAgregacao === 'MEDIA'); }
-
-// Cada campo vazio e editável recebe o valor do campo anterior mais próximo que tenha valor (já preenchido ou copiado agora). Só preenche; quem grava é o Salvar.
-function _metaCopiarAnterior() {
-  var ultimo = '';
-  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) {
-    var v = String(inp.value || '').trim();
-    if (v !== '') { ultimo = v; return; }
-    if (!inp.disabled && ultimo !== '') inp.value = ultimo;
-  });
-  _metaAtualizarCopiar();
-}
-
-// Mostra a ação só quando a regra permite e a deixa desabilitada sem campo vazio, editável e com valor anterior para copiar.
-function _metaAtualizarCopiar() {
-  var campo = document.getElementById('meta-copiar-campo');
-  var btn = document.getElementById('btn-meta-copiar');
-  if (!campo || !btn) return;
-  campo.classList.toggle('hidden', !_metaPodeCopiar(_metaGrade));
-  var ultimo = false, copiavel = false;
-  document.querySelectorAll('#meta-grade .meta-valor').forEach(function(inp) {
-    if (String(inp.value || '').trim() !== '') ultimo = true;
-    else if (!inp.disabled && ultimo) copiavel = true;
-  });
-  btn.disabled = !copiavel;
-}
-
 function carregarAbaIndicadores() {
   _indIniciar();
 }
@@ -1796,47 +1805,71 @@ function _indCoberturaHTML(p, anos) {
     + '<span class="ind-cob-txt' + (p.metas.length && !lac ? '' : ' is-lacuna') + '">' + txt + '</span></div>';
 }
 
-function _indFaixaHTML(p, anos, podeEditar) {
-  var idj = escapeHtml(String(p.id));
-  var valores = p.metas.map(function(m) { return Number(String(m.valor).replace(',', '.')); }).filter(isFinite);
-  var max = Math.max.apply(null, [1].concat(valores));
-  var anoAtual = new Date().getFullYear();
-  var menor = _indMenorMelhor(p);
-  var cols = anos.map(function(ano) {
-    var ms = p.metas.filter(function(m) { return Number(m.ano) === ano; })
-      .sort(_indCmpMeta);
-    var corpo;
-    if (ms.length) {
-      corpo = ms.map(function(m) {
-        var mid = escapeHtml(String(m.id));
-        var per = _indEhAnual(m.periodo) ? '' : (_IND_PER_CURTO[m.periodo] || m.periodo);
-        var n = Number(String(m.valor).replace(',', '.'));
-        var pct = isFinite(n) ? Math.max(4, n / max * 100).toFixed(0) : 0;
-        var rotulo = ano + (per ? ' ' + m.periodo : '');
-        var labelJs = escapeJsAttr((m.periodo || '') + '/' + ano + ' — ' + _indValorUnidadeTxt(m.valor, p.unidade));
-        return '<div class="ind-meta">'
-          + (per ? '<span class="ind-meta-per">' + escapeHtml(per) + '</span>' : '')
-          + '<span class="ind-meta-val">' + _indValorUnidadeHTML(m.valor, p.unidade) + '</span>'
-          + '<span class="ind-meta-barra' + (menor ? ' is-menor' : '') + '"><i style="width:' + pct + '%"></i></span>'
-          + (podeEditar
-              ? '<div class="ind-meta-acoes">'
-                + '<button type="button" data-on-click="ind.17" data-aclick0="' + mid + '" data-title="Editar meta" aria-label="Editar meta ' + escapeHtml(rotulo) + '"><span class="material-symbols-outlined">edit</span></button>'
-                + '<button type="button" class="perigo" data-on-click="ind.18" data-aclick0="' + mid + '" data-aclick1="' + labelJs + '" data-title="Excluir meta" aria-label="Excluir meta ' + escapeHtml(rotulo) + '"><span class="material-symbols-outlined">delete</span></button>'
-                + '</div>'
-              : '')
-          + '</div>';
-      }).join('');
-    } else {
-      corpo = _indPermiteMetas(p)
-        ? '<button type="button" class="ind-meta-add" data-on-click="ind.19" data-aclick0="' + idj + '" data-rclick1="' + ano + '" aria-label="Definir meta para ' + ano + '"><span class="material-symbols-outlined">add</span>Meta</button>'
-        : '<span class="ind-meta-vazio">—</span>';
-    }
-    var atual = ano === anoAtual;
-    return '<div class="ind-ano' + (atual ? ' is-atual' : '') + '">'
-      + '<div class="ds-subtabela__cab ind-ano-cab">' + ano + (atual ? '<small>· ano atual</small>' : '') + '</div>'
-      + '<div class="ind-ano-corpo">' + corpo + '</div></div>';
+// Grade de metas da linha expandida: uma coluna por ano da vigência, lado a lado (rolagem horizontal), e em cada ano as metas em linha, com célula de tamanho fixo.
+// Os períodos vêm do servidor (apiGetGradeMetasIndicador, pela frequência). Em cada ano há sempre UM campo tracejado para o próximo período livre: digita-se a meta
+// e Enter/Tab/✓ grava e abre o campo seguinte. Meta gravada vira célula sólida; editar e excluir pelos ícones que aparecem no hover da célula.
+function _indGradeHTML(p, podeEditar) {
+  var g = _indGrades[String(p.id)];
+  if (!g || g.carregando) return spinnerListaHTML();
+  if (g.erro) return '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">event_busy</span><span>' + escapeHtml(g.erro) + '</span></div>';
+  var d = g.dados, anoAtual = new Date().getFullYear(), id = String(p.id);
+  var edita = podeEditar && d.podeEditar, editando = _indGradeEdit[id] || '';
+  if (!d.anos.length) return '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">calendar_today</span><span>O plano não tem vigência definida.</span></div>';
+  var fora = [];
+  var cols = d.anos.map(function(a) {
+    (a.foraDosPeriodos || []).forEach(function(m) { fora.push(m); });
+    var celulas = '', ab = _indGradeAbertos[id] || {};
+    // campos abertos do ano: o primeiro período livre e os abertos pelo +; o + fica só no último (e só se ainda houver período livre)
+    var vazios = a.periodos.filter(function(x) { return x.valor === '' && edita && x.editavel !== false; });
+    var abertos = vazios.filter(function(x, i) { return i === 0 || ab[x.inicioISO] !== undefined; });
+    var inicioMais = abertos.length && vazios.length > abertos.length ? abertos[abertos.length - 1].inicioISO : '';
+    a.periodos.forEach(function(per) {
+      var rot = _indEhAnual(per.rotulo) ? '' : (_IND_PER_CURTO[per.rotulo] || per.rotulo);
+      var livre = edita && per.editavel !== false;
+      if (per.valor !== '') celulas += livre && editando === per.inicioISO ? _indGradeCampoHTML(p, a.ano, per, rot, true) : _indGradeCelulaHTML(p, a.ano, per, rot, livre);
+      else if (livre && abertos.indexOf(per) > -1) celulas += _indGradeCampoHTML(p, a.ano, per, rot, false, ab[per.inicioISO] || '', per.inicioISO === inicioMais);
+    });
+    var atual = a.ano === anoAtual;
+    return '<div class="ind-ano' + (atual ? ' is-atual' : '') + '" data-ano="' + a.ano + '">'
+      + '<div class="ds-subtabela__cab ind-ano-cab">' + a.ano + (atual ? '<small>· ano atual</small>' : '') + '</div>'
+      + '<div class="ind-ano-corpo">' + (celulas || '<span data-vazio>Sem metas</span>') + '</div></div>';
   }).join('');
-  return '<div class="ds-subtabela ind-faixa" style="--ind-anos:' + Math.max(1, anos.length) + '">' + cols + '</div>';
+  var aviso = fora.length
+    ? '<div class="meta-aviso"><div class="meta-aviso-titulo"><span class="material-symbols-outlined">warning</span>Metas fora da frequência atual'
+      + '<span class="material-symbols-outlined ind-info" tabindex="0" data-title="Estas metas não correspondem a nenhum período da frequência atual. Exclua as que não servem mais.">info</span></div>'
+      + fora.map(function(m) {
+        var lab = escapeJsAttr((m.periodo || '') + ' — ' + m.valor);
+        return '<div class="meta-aviso-item"><span>' + escapeHtml(m.periodo || 'Sem período') + '</span><strong>' + escapeHtml(String(m.valor)) + '</strong>'
+          + (edita ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Excluir meta" aria-label="Excluir meta" data-on-click="ind.18" data-aclick0="' + escapeHtml(String(m.id)) + '" data-aclick1="' + lab + '"><span class="material-symbols-outlined">delete</span></button>' : '')
+          + '</div>';
+      }).join('') + '</div>'
+    : '';
+  return '<div class="ds-subtabela ind-faixa" data-ind="' + escapeHtml(id) + '">' + cols + '</div>' + aviso;
+}
+
+// Meta gravada: célula de tamanho fixo; no hover, ícones de editar e excluir (excluir some quando já há resultados no período).
+function _indGradeCelulaHTML(p, ano, per, rot, livre) {
+  var idj = escapeHtml(String(p.id)), ini = escapeHtml(per.inicioISO);
+  var acoes = !livre ? '' : '<div data-acoes>'
+    + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.59" data-aclick0="' + idj + '" data-aclick1="' + ini + '" data-title="Editar meta" aria-label="Editar meta"><span class="material-symbols-outlined">edit</span></button>'
+    + (per.temResultados ? '' : '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.60" data-aclick0="' + idj + '" data-aclick1="' + ini + '" data-title="Excluir meta" aria-label="Excluir meta"><span class="material-symbols-outlined">delete</span></button>')
+    + '</div>';
+  return '<div class="ind-meta" data-title="' + (per.temResultados ? 'Já há resultados neste período: a meta pode ser alterada, não excluída.' : escapeHtml(per.rotulo)) + '">'
+    + (rot ? '<span class="ind-meta-per">' + escapeHtml(rot) + '</span>' : '')
+    + '<span class="ind-meta-val">' + _indValorUnidadeHTML(per.valor, p.unidade) + '</span>' + acoes + '</div>';
+}
+
+// Campo tracejado (próximo período livre, ou um aberto pelo +) ou, com `editando`, a meta gravada aberta para alteração. A unidade fica dentro do campo: à esquerda se monetária.
+function _indGradeCampoHTML(p, ano, per, rot, editando, rascunho, comMais) {
+  var val = editando ? per.valor : (rascunho || ''), pre = val !== '';
+  var uni = p.unidade ? '<span data-un>' + escapeHtml(p.unidade) + '</span>' : '';
+  var campo = '<input type="text" inputmode="decimal" autocomplete="off" placeholder="' + escapeHtml(rot || 'Meta') + '" value="' + escapeHtml(val) + '"'
+    + ' data-on-keydown="ind.57" data-on-input="ind.58" aria-label="Meta de ' + escapeHtml(per.rotulo) + ' de ' + ano + '">';
+  return '<div data-novo data-ano="' + ano + '" data-inicio="' + escapeHtml(per.inicioISO) + '"' + (editando ? ' data-editando' : '') + (pre ? ' data-preenchido' : '') + (comMais ? ' data-mais' : '') + '>'
+    + '<label>' + (_indEhMonetario(p.unidade) ? uni + campo : campo + uni) + '</label>'
+    + '<button type="button" class="ds-icon-action ds-icon-action--sm' + (pre || comMais ? '' : ' hidden') + '" data-ok data-on-click="ind.56" data-title="' + (pre ? 'Gravar meta' : 'Adicionar meta') + '" aria-label="Gravar meta"><span class="material-symbols-outlined">' + (pre ? 'check' : 'add') + '</span></button>'
+    + (editando ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.61" data-aclick0="' + escapeHtml(String(p.id)) + '" data-title="Cancelar" aria-label="Cancelar edição"><span class="material-symbols-outlined">close</span></button>' : '')
+    + '</div>';
 }
 
 // Badges de vínculo superior: um por plano (link + qtd); desvinculado = triângulo, aguardando = relógio roxo; >3 planos vira "+N".
@@ -1888,7 +1921,7 @@ function _indLinhaHTML(p, anos, podeEditar) {
   }
 
   var itensAcao = [
-    { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + idj + "')", principal: true, oculto: !_indPermiteMetas(p) },
+    { icone: 'add_chart', rotulo: 'Definir metas', onclick: "indIrParaGrade('" + idj + "')", principal: true, oculto: !_indPermiteMetas(p) },
     { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + idj + "')", principal: true, oculto: !podeEditar || semVinc },
     { icone: 'download', rotulo: 'Exportar', desabilitado: true },
     { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + idj + "')", principal: true },
@@ -1897,7 +1930,7 @@ function _indLinhaHTML(p, anos, podeEditar) {
   // Casos específicos (sem vínculo, sem metas): sem o padrão do hover. O botão principal ("Reconectar" ou "Definir metas") fica sempre visível na última coluna e o resto vai no ⋮.
   var celulaAcoes;
   if ((semVinc || isPendente) && podeEditar) {
-    var menu = acoesLinhaHTML('ind-' + idj, itensAcao.filter(function(a) { return a.rotulo !== 'Nova meta'; }), { maxDireto: 0 });
+    var menu = acoesLinhaHTML('ind-' + idj, itensAcao.filter(function(a) { return a.rotulo !== 'Definir metas'; }), { maxDireto: 0 });
     celulaAcoes = '<td class="ds-col-sobreposta" data-col="metas"><div class="ind-decisao">'
       + (semVinc
           ? '<button type="button" class="ds-btn ds-btn--pendencia-re ds-btn--sm ind-btn-proativo" data-on-click="ind.55" data-aclick0="' + idj + '" aria-label="Reconectar a um elemento">'
@@ -1930,19 +1963,14 @@ function _indLinhaHTML(p, anos, podeEditar) {
 
   if (aberto) {
     var menor = _indMenorMelhor(p);
+    var unidade = p.unidade ? '<span class="ind-interp">Meta em ' + escapeHtml(p.unidade) + '</span>' : '';
     html += '<tr class="ind-det' + (sel ? ' selecionada' : '') + (ativo ? ' ind-ativa' : '') + '"><td colspan="6">'
-      + (p.metas.length
-          ? _indFaixaHTML(p, anos, podeEditar && !semVinc)
-            + '<div class="ind-det-rodape">'
-            +   (p.interpretacao ? '<span class="ind-interp"><span class="material-symbols-outlined">' + (menor ? 'trending_down' : 'trending_up') + '</span>' + escapeHtml(p.interpretacao) + '</span>' : '<span class="ind-interp"></span>')
-            +   (_indPermiteMetas(p) ? '<button type="button" class="rsc-link" data-on-click="ind.27" data-aclick0="' + idj + '"><span class="material-symbols-outlined">add_chart</span>Nova meta</button>' : '')
-            + '</div>'
-          : '<div class="ind-sem-metas">'
-            + '<span class="material-symbols-outlined">flag</span>'
-            + '<span class="ind-sem-metas-txt"><strong>Nenhuma meta definida</strong><span>'
-            +   escapeHtml([anos.length ? 'Vigência do plano: ' + anos[0] + '–' + anos[anos.length - 1] : '', String(p.frequencia || '').toLowerCase() + (p.unidade ? ', em ' + p.unidade : '')].filter(Boolean).join(' · '))
-            + '</span></span>'
-            + '</div>')
+      + '<div id="ind-grade-' + idj + '">' + _indGradeHTML(p, podeEditar && !semVinc) + '</div>'
+      + '<div class="ind-det-rodape">'
+      +   (p.frequencia ? '<span class="ind-interp"><span class="material-symbols-outlined">event_repeat</span>Aferição ' + escapeHtml(_indFreqTxt(p).toLowerCase()) + '</span>' : '')
+      +   (p.interpretacao ? '<span class="ind-interp"><span class="material-symbols-outlined">' + (menor ? 'trending_down' : 'trending_up') + '</span>' + escapeHtml(p.interpretacao) + '</span>' : '<span class="ind-interp"></span>')
+      +   unidade
+      + '</div>'
       + '</td></tr>';
   }
   return html;
@@ -1980,6 +2008,7 @@ function _indRenderCorpo() {
   _indAtualizarSelecao(listaCompleta);
   _indAtualizarIconesOrdenacao();
 
+  lista.forEach(function(p) { if (estadoIndicadores.expandidos[String(p.id)]) _indGradeCarregar(p.id); });
   var todosAbertos = lista.every(function(p) { return estadoIndicadores.expandidos[String(p.id)]; });
   var be = document.getElementById('ind-btn-expandir');
   if (be) {
@@ -2191,7 +2220,7 @@ function _indAtualizarSelecao(listaVisivel) {
       var indId = Object.keys(estadoIndicadores.selecionados)[0];
       var indObj = _indListaAtiva().find(function(i) { return String(i.id) === String(indId); });
       acoesCont.innerHTML = acoesLinhaHTML('indsel-' + indId, [
-        { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + indId + "')", principal: true, oculto: !_indPermiteMetas(indObj) },
+        { icone: 'add_chart', rotulo: 'Definir metas', onclick: "indIrParaGrade('" + indId + "')", principal: true, oculto: !_indPermiteMetas(indObj) },
         { icone: 'link', rotulo: 'Reconectar a um elemento', onclick: "lxpAbrirReanexar('" + indId + "','" + escapeJsAttr(indObj ? indObj.nome : '') + "')", principal: true, oculto: !podeEditar || !_indSemVinculo(indObj) },
         { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + indId + "')", principal: true, oculto: !podeEditar || _indSemVinculo(indObj) },
         { icone: 'download', rotulo: 'Exportar CSV', onclick: "exportarIndicadoresMetasCSV()", principal: true },
@@ -2258,7 +2287,7 @@ function _indRenderPainel(p) {
     + '</div>'
     + '<div class="detp-secao">'
     +   '<div class="detp-risco-sec-cab"><strong>Metas</strong><span>' + p.metas.length + (p.metas.length === 1 ? ' meta' : ' metas') + ' · ' + anosCom + ' de ' + anos.length + ' anos</span>'
-    +     (_indPermiteMetas(p) ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.27" data-aclick0="' + idj + '" data-title="Nova meta" aria-label="Nova meta"><span class="material-symbols-outlined">add</span></button>' : '')
+    +     (_indPermiteMetas(p) ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.27" data-aclick0="' + idj + '" data-title="Definir metas" aria-label="Definir metas"><span class="material-symbols-outlined">add</span></button>' : '')
     +   '</div>'
     +   (anos.length ? '<div class="detp-ind-metas">' + metas + '</div>' : '<p class="detp-texto-bloco" style="color:var(--ds-color-text-muted)">Nenhuma meta definida.</p>')
     + '</div>';
@@ -2346,40 +2375,6 @@ function achatarArvoreInd(noRaiz) {
     }
   }
   return resultado;
-}
-
-function _metaRenderGrade() {
-  var box = document.getElementById('meta-grade');
-  var fora = document.getElementById('meta-fora');
-  var g = _metaGrade;
-  if (!box || !g) return;
-  var ind = _indPorId(document.getElementById('input-meta-id-indicador').value) || {};
-
-  if (!g.periodos.length) {
-    box.innerHTML = '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">calendar_today</span><span>Nenhum período em ' + escapeHtml(String(g.ano)) + '.</span></div>';
-  } else {
-    box.innerHTML = '<div class="meta-grade-rolagem"><table class="meta-grade"><thead><tr><th>Período</th><th>Meta' + (ind.unidade ? ' (' + escapeHtml(ind.unidade) + ')' : '') + '</th></tr></thead><tbody>'
-      + g.periodos.map(function(p) {
-        var trava = p.temResultados
-          ? '<span class="material-symbols-outlined" tabindex="0" data-title="Já há resultados lançados neste período. A meta pode ser alterada, não removida.">lock</span>' : '';
-        return '<tr><td class="meta-per">' + escapeHtml(p.rotulo) + trava + '</td>'
-          + '<td><input type="text" class="ds-input meta-valor" data-inicio="' + escapeHtml(p.inicioISO) + '" value="' + escapeHtml(p.valor) + '" aria-label="Meta de ' + escapeHtml(p.rotulo) + '" placeholder="Ex: 100" data-on-input="ind.54"' + (p.editavel === false ? ' disabled' : '') + '></td></tr>';
-      }).join('') + '</tbody></table></div>';
-  }
-
-  if (fora) {
-    fora.innerHTML = (g.foraDosPeriodos && g.foraDosPeriodos.length)
-      ? '<div class="meta-aviso"><div class="meta-aviso-titulo"><span class="material-symbols-outlined">warning</span>Metas fora da frequência atual'
-        + '<span class="material-symbols-outlined ind-info" tabindex="0" data-title="Estas metas não correspondem a nenhum período da frequência atual. Exclua as que não servem mais.">info</span></div>'
-        + g.foraDosPeriodos.map(function(m) {
-          var lab = escapeJsAttr((m.periodo || '') + ' — ' + m.valor);
-          return '<div class="meta-aviso-item"><span>' + escapeHtml(m.periodo || 'Sem período') + '</span><strong>' + escapeHtml(String(m.valor)) + '</strong>'
-            + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Excluir meta" aria-label="Excluir meta" data-on-click="ind.18" data-aclick0="' + escapeHtml(String(m.id)) + '" data-aclick1="' + lab + '"><span class="material-symbols-outlined">delete</span></button></div>';
-        }).join('') + '</div>'
-      : '';
-  }
-  _metaSalvarHabilitado(g.periodos.some(function(p) { return p.editavel !== false; }));
-  _metaAtualizarCopiar();
 }
 
 // app_indicadores_modais — modais e wizards (abrir, validar, salvar)
@@ -2763,48 +2758,6 @@ function _indwizIniciar(edicao) {
 
 // Enter avança a etapa (e salva na última), como nos outros wizards
 
-function abrirModalMeta(idIndicador, anoSugerido) {
-  var inpInd = document.getElementById('input-meta-id-indicador');
-  if (inpInd) inpInd.value = idIndicador;
-  var anoFinal = anoSugerido || new Date().getFullYear();
-  var inpAno = document.getElementById('input-meta-ano');
-  if (inpAno) inpAno.value = anoFinal;
-  var pre = document.getElementById('input-meta-preencher');
-  if (pre) pre.value = '';
-  var tituloMeta = document.getElementById('titulo-modal-meta');
-  var indMeta = _indPorId(idIndicador);
-  if (tituloMeta) tituloMeta.textContent = (indMeta && indMeta.nome) || 'Metas';
-  var modal = document.getElementById('modal-nova-meta');
-  if (modal) modal.classList.remove('hidden');
-  _metaCarregarGrade();
-}
-
-// Editar uma meta = abrir a grade do ano dela
-function abrirModalEdicaoMeta(idMeta) {
-  var metas = _indMetas.length ? _indMetas : ((dadosDetalhados && dadosDetalhados.metas) || []);
-  var meta = metas.find(function(m) { return String(m.id) === String(idMeta); });
-  if (!meta) {
-    showMessage('error', 'Erro', 'Meta não encontrada nos dados carregados.');
-    return;
-  }
-  abrirModalMeta(meta.idIndicador, parseInt(meta.ano, 10) || undefined);
-}
-
-function fecharModalMeta() {
-  _metaReq++;
-  var modal = document.getElementById('modal-nova-meta');
-  if (modal) modal.classList.add('hidden');
-}
-
-function _metaSalvarHabilitado(sim) {
-  var btn = document.getElementById('btn-submit-meta');
-  if (btn) btn.disabled = !sim;
-  var ap = document.getElementById('btn-meta-aplicar');
-  if (ap) ap.disabled = !sim;
-  var pre = document.getElementById('input-meta-preencher');
-  if (pre) pre.disabled = !sim;
-}
-
 // app_indicadores_eventos — registro das ações delegadas (uiRegistrarAcoes)
 uiRegistrarAcoes('ind', {
   '1': function (event) { if(event.target===this) window[this.dataset.fechar](); },
@@ -2818,21 +2771,14 @@ uiRegistrarAcoes('ind', {
   '9': function (event) { _indwizSalvar(); },
   '10': function (event) { _indwizIrPara(4, 'frente'); },
   '11': function (event) { _indwizProximo(); },
-  '12': function (event) { fecharModalMeta(); },
-  '13': function (event) { handleSalvarMetas(event); },
-  '14': function (event) { _metaCarregarGrade(); },
-  '15': function (event) { if(event.key==='Enter'){event.preventDefault();_metaPreencherTodos();}; },
-  '16': function (event) { _metaPreencherTodos(); },
-  '17': function (event) { abrirModalEdicaoMeta(uiArgJs(this.dataset.aclick0)); },
   '18': function (event) { confirmarExclusaoMeta(uiArgJs(this.dataset.aclick0),uiArgJs(this.dataset.aclick1)); },
-  '19': function (event) { abrirModalMeta(uiArgJs(this.dataset.aclick0),uiArgLit(this.dataset.rclick1)); },
-  '20': function (event) { event.stopPropagation(); abrirModalMeta(uiArgJs(this.dataset.aclick0)); },
+  '20': function (event) { event.stopPropagation(); indIrParaGrade(uiArgJs(this.dataset.aclick0)); },
   '21': function (event) { indCliqueLinha(event, uiArgJs(this.dataset.aclick0)); },
   '22': function (event) { indDuploCliqueLinha(event, uiArgJs(this.dataset.adblclick0)); },
   '23': function (event) { event.stopPropagation(); },
   '24': function (event) { indToggleSelecao(uiArgJs(this.dataset.achange0), this.checked); },
   '25': function (event) { event.stopPropagation(); indToggleExpand(uiArgJs(this.dataset.aclick0)); },
-  '27': function (event) { abrirModalMeta(uiArgJs(this.dataset.aclick0)); },
+  '27': function (event) { indIrParaGrade(uiArgJs(this.dataset.aclick0)); },
   '29': function (event) { indAbrirBusca(); },
   '30': function (event) { aplicarFiltrosIndicadores(); },
   '31': function (event) { indLimparBusca(); },
@@ -2857,9 +2803,13 @@ uiRegistrarAcoes('ind', {
   '50': function (event) { indIrParaPagina(this.value); },
   '51': function (event) { indMudarPagina('next'); },
   '52': function (event) { _indwizIrParaRail(uiArgLit(this.dataset.rclick0)); },
-  '53': function (event) { _metaCopiarAnterior(); },
-  '54': function (event) { _metaAtualizarCopiar(); },
-  '55': function (event) { lxpAbrirReanexar(uiArgJs(this.dataset.aclick0), (_indPorId(uiArgJs(this.dataset.aclick0)) || {}).nome); }
+  '55': function (event) { lxpAbrirReanexar(uiArgJs(this.dataset.aclick0), (_indPorId(uiArgJs(this.dataset.aclick0)) || {}).nome); },
+  '56': function (event) { indGradeConfirmar(this, false); },
+  '57': function (event) { indGradeTecla(event, this); },
+  '58': function (event) { indGradeDigitando(this); },
+  '59': function (event) { indGradeEditar(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
+  '60': function (event) { indGradeExcluir(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
+  '61': function (event) { indGradeCancelar(uiArgJs(this.dataset.aclick0)); }
 });
 
 

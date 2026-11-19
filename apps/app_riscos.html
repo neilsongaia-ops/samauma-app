@@ -1510,10 +1510,10 @@ function riscosRascunhoDigitado(campo) {
   novo.querySelector('[data-rsc-gravar]').disabled = !(d.causa.trim() && d.consequencia.trim());
 }
 
-// Causa: Enter ou Tab (com a causa preenchida) abre a consequência; Esc cancela a edição.
+// Causa: Enter ou Tab (com a causa preenchida) abre a consequência; Esc limpa/cancela e recomeça.
 function riscosCausaTecla(ev, campo) {
   var novo = _riscoNovoEl(campo);
-  if (ev.key === 'Escape' && novo.dataset.edita) { riscosCancelarEdicaoCausa(novo.dataset.novo, novo.dataset.edita); return; }
+  if (ev.key === 'Escape') { riscosCancelarEdicaoCausa(novo.dataset.novo, novo.dataset.edita); return; }
   if (ev.isComposing || !campo.value.trim()) return;
   if (ev.key === 'Enter' || (ev.key === 'Tab' && !ev.shiftKey && novo.querySelector('[data-rsc-etapa2]').classList.contains('hidden'))) {
     ev.preventDefault();
@@ -1521,10 +1521,10 @@ function riscosCausaTecla(ev, campo) {
   }
 }
 
-// Consequência: Enter com os dois campos preenchidos grava; Esc cancela a edição.
+// Consequência: Enter com os dois campos preenchidos grava; Esc limpa/cancela e recomeça.
 function riscosConsTecla(ev, campo) {
   var novo = _riscoNovoEl(campo);
-  if (ev.key === 'Escape' && novo.dataset.edita) { riscosCancelarEdicaoCausa(novo.dataset.novo, novo.dataset.edita); return; }
+  if (ev.key === 'Escape') { riscosCancelarEdicaoCausa(novo.dataset.novo, novo.dataset.edita); return; }
   if (ev.isComposing || ev.key !== 'Enter') return;
   ev.preventDefault();
   if (novo.querySelector('[data-rsc-causa]').value.trim() && campo.value.trim()) riscosGravarCausa(novo.dataset.novo, novo.dataset.edita);
@@ -2087,6 +2087,7 @@ function _riscoCamposCausaHTML(idj, idCausa, rasc) {
     + '<span data-rsc-etapa2' + (rasc.etapa === 2 ? '' : ' class="hidden"') + '>'
     +   '<span class="material-symbols-outlined rsc-causa-seta" aria-hidden="true">arrow_right_alt</span>'
     +   '<label>' + campoCons + '</label>' + gravar
+    +   '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="risco.62" data-aclick0="' + idj + '" data-title="Limpar" aria-label="Limpar causa e consequência"><span class="material-symbols-outlined">close</span></button>'
     + '</span></div>';
 }
 
