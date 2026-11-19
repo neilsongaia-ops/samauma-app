@@ -1516,7 +1516,7 @@ body.high-contrast .acoes-btn { color: var(--ds-color-text); }
       // para não piscar. Os toggles ficam em components_header.html.
       (function () {
         try {
-          if (localStorage.getItem('sgp_tema') === 'dark') document.documentElement.setAttribute('data-ds-theme', 'dark');
+          if (['dark', 'contrast'].indexOf(localStorage.getItem('sgp_tema')) > -1) document.documentElement.setAttribute('data-ds-theme', 'dark');
           if (localStorage.getItem('sgp_sidebar_recolhida') === 'true') document.documentElement.classList.add('ds-sb-collapsed');
         } catch (e) { /* localStorage indisponível: usa o padrão (claro, sidebar expandida) */ }
       })();
@@ -1653,7 +1653,7 @@ if (!window._uiDelegacaoAtiva) {
          breadcrumb-nav (movido p/ a topbar em runtime).
        • Item ativo: navigate() (index.html) chama hdrNavSincronizarAtivo(); cada item tem data-nav-rota.
        • Funções: initHeader, toggleUserMenu, fecharUserMenu, toggleNavSubmenu,
-         fecharNavSubmenus, toggleMenu, fecharMenuMobile, toggleAltoContraste,
+         fecharNavSubmenus, toggleMenu, fecharMenuMobile, alternarTema,
          abrirPerfil/fecharPerfil, sairDoSistema, _navPlaceholder.
      Estado no <html>: data-ds-theme="dark" e classe ds-sb-collapsed (aplicados no <head>
      do index.html antes da pintura, para não piscar). -->
@@ -1911,9 +1911,6 @@ if (!window._uiDelegacaoAtiva) {
         <button type="button" class="user-menu-item" data-on-click="components_header.28">
           <span class="material-symbols-outlined">tune</span> Preferências de notificação
         </button>
-        <button type="button" class="user-menu-item" data-on-click="components_header.29">
-          <span class="material-symbols-outlined">contrast</span> Alto Contraste
-        </button>
         <button type="button" class="user-menu-item" data-on-click="components_header.30">
           <span class="material-symbols-outlined">help</span> Ajuda
         </button>
@@ -1946,7 +1943,7 @@ if (!window._uiDelegacaoAtiva) {
         <span class="ntf-badge hidden" id="ntf-badge" aria-hidden="true"></span>
       </button>
       <button type="button" class="tb-icon-btn" id="btn-tema" data-on-click="components_header.33"
-        data-title="Alternar tema claro/escuro" aria-label="Alternar tema claro/escuro">
+        data-title="Alternar tema" aria-label="Alternar tema">
         <span class="material-symbols-outlined" id="ico-tema">dark_mode</span>
       </button>
     </div>
@@ -2672,48 +2669,47 @@ window.addEventListener('resize', function() {
   if (window.innerWidth > 768 && _drawerAberto()) toggleMenu();
 });
 
-// --- Lógica de Alto Contraste ---
-function toggleAltoContraste() {
-  const body = document.body;
-  body.classList.toggle('high-contrast');
-  const isHigh = body.classList.contains('high-contrast');
-  localStorage.setItem('sgp_alto_contraste', isHigh);
-}
+// --- Tema: claro → escuro → alto contraste → claro (um só botão, na topbar) ---
+// O head do index.html aplica claro/escuro antes da pintura (sem piscar); aqui ficam o ciclo, a persistência
+// (localStorage['sgp_tema'] = light | dark | contrast) e o ícone. Alto contraste = base escura + body.high-contrast.
+var HDR_TEMAS = ['light', 'dark', 'contrast'];
+var HDR_TEMA_ROTULO = { light: 'claro', dark: 'escuro', contrast: 'alto contraste' };
+var HDR_TEMA_ICONE = { light: 'dark_mode', dark: 'contrast', contrast: 'light_mode' }; // ícone = para onde o próximo clique leva
 
-(function initAcessibilidade() {
-  const isHigh = localStorage.getItem('sgp_alto_contraste') === 'true';
-  if (isHigh) {
-    document.body.classList.add('high-contrast');
-  }
-})();
-
-// --- Tema claro/escuro ---
-// O atributo data-ds-theme já é aplicado no <head> do index.html (antes da
-// pintura); aqui só o toggle + persistência + ícone do botão.
 function _temaAtual() {
+  if (document.body.classList.contains('high-contrast')) return 'contrast';
   return document.documentElement.getAttribute('data-ds-theme') === 'dark' ? 'dark' : 'light';
 }
 
 function aplicarTema(tema) {
-  if (tema === 'dark') document.documentElement.setAttribute('data-ds-theme', 'dark');
-  else document.documentElement.removeAttribute('data-ds-theme');
+  if (tema === 'light') document.documentElement.removeAttribute('data-ds-theme');
+  else document.documentElement.setAttribute('data-ds-theme', 'dark');
+  document.body.classList.toggle('high-contrast', tema === 'contrast');
+  const proximo = HDR_TEMAS[(HDR_TEMAS.indexOf(tema) + 1) % HDR_TEMAS.length];
   const ico = document.getElementById('ico-tema');
-  if (ico) ico.textContent = tema === 'dark' ? 'light_mode' : 'dark_mode';
+  if (ico) ico.textContent = HDR_TEMA_ICONE[tema];
   const btn = document.getElementById('btn-tema');
-  if (btn) btn.setAttribute('aria-pressed', String(tema === 'dark'));
+  if (btn) {
+    const txt = 'Tema ' + HDR_TEMA_ROTULO[tema] + ' — mudar para ' + HDR_TEMA_ROTULO[proximo];
+    btn.setAttribute('data-title', txt);
+    btn.setAttribute('aria-label', txt);
+  }
   if (typeof window._appNotificarTema === 'function') {
-    window._appNotificarTema(tema);
+    window._appNotificarTema(tema === 'light' ? 'light' : 'dark');
   }
 }
 
 function alternarTema() {
-  const novo = _temaAtual() === 'dark' ? 'light' : 'dark';
+  const atual = _temaAtual();
+  const novo = HDR_TEMAS[(HDR_TEMAS.indexOf(atual) + 1) % HDR_TEMAS.length];
   aplicarTema(novo);
   try { localStorage.setItem('sgp_tema', novo); } catch (e) {}
 }
 
 // Sincroniza ícones/aria com o estado já aplicado no <head>
-aplicarTema(_temaAtual());
+var _temaSalvo = null;
+try { _temaSalvo = localStorage.getItem('sgp_tema'); } catch (e) {}
+aplicarTema(HDR_TEMAS.indexOf(_temaSalvo) > -1 ? _temaSalvo : _temaAtual());
 _atualizarBotaoSidebar();
 
 // Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
@@ -2749,7 +2745,6 @@ uiRegistrarAcoes('components_header', {
   '26': function (event) { toggleSidebarRecolhida(); },
   '27': function (event) { abrirPerfil(); },
   '28': function (event) { fecharUserMenu(); navigate('notificacoes', { view: 'prefs' }); fecharMenuMobile(); },
-  '29': function (event) { toggleAltoContraste(); fecharUserMenu(); },
   '30': function (event) { fecharUserMenu(); _navPlaceholder('Ajuda'); },
   '31': function (event) { sairDoSistema(); },
   '32': function (event) { ntfToggleSino(event); },
@@ -8863,7 +8858,7 @@ uiRegistrarAcoes('components_config_plano', {
   <div class="modal-card" style="max-width: 460px;" role="dialog" aria-modal="true" aria-labelledby="lxp-reanexar-titulo">
     <div class="modal-header">
       <div style="min-width:0">
-        <h3 id="lxp-reanexar-titulo">Reanexar indicador<span class="material-symbols-outlined lxp-info" data-title="Volta a ser aferido no elemento escolhido e a contar no desempenho. Responsáveis fora do escopo dele saem.">info</span></h3>
+        <h3 id="lxp-reanexar-titulo">Reconectar indicador<span class="material-symbols-outlined lxp-info" data-title="Volta a ser aferido no elemento escolhido e a contar no desempenho. Responsáveis fora do escopo dele saem.">info</span></h3>
         <p id="lxp-reanexar-nome" class="lxp-sub"></p>
       </div>
       <button class="btn-icon-close" data-on-click="components_lixeira_plano.2" data-title="Fechar" aria-label="Fechar">
@@ -8874,7 +8869,7 @@ uiRegistrarAcoes('components_config_plano', {
     <div class="modal-footer">
       <button type="button" class="ds-btn ds-btn--ghost" data-on-click="components_lixeira_plano.2">Cancelar</button>
       <button type="button" class="ds-btn ds-btn--primary" id="lxp-reanexar-ok" data-on-click="components_lixeira_plano.3" disabled>
-        <span class="material-symbols-outlined">link</span>Reanexar
+        <span class="material-symbols-outlined">link</span>Reconectar
       </button>
     </div>
   </div>
@@ -8991,7 +8986,7 @@ function _lxpCardSemVinculo(it, podeEditar) {
   if (nm) det.push('<span>' + _lxpPlural(nm, 'meta', 'metas') + '</span>');
   if (nr) det.push('<span>' + _lxpPlural(nr, 'resultado', 'resultados') + '</span>');
   var acoes = acoesLinhaHTML('lxp-sv-' + it.id, [
-    { icone: 'link', rotulo: 'Reanexar a um elemento', onclick: "lxpAbrirReanexar('" + escapeJsAttr(it.id) + "')", principal: true, oculto: !podeEditar }
+    { icone: 'link', rotulo: 'Reconectar a um elemento', onclick: "lxpAbrirReanexar('" + escapeJsAttr(it.id) + "')", principal: true, oculto: !podeEditar }
   ], { maxDireto: 0 });
   return '<div class="lxp-card">'
     + '<span class="lxp-card-tag ds-badge ds-badge--warning"><span class="material-symbols-outlined" aria-hidden="true">link_off</span>Sem vínculo</span>'
@@ -9012,7 +9007,7 @@ function lxpRender() {
   var sv = d.semVinculo || [];
   if (sv.length) {
     html += '<div class="lxp-grupo"><div class="lxp-grupo-titulo">Indicadores sem vínculo <span class="lxp-grupo-qtd">· ' + sv.length + '</span>'
-      + '<span class="material-symbols-outlined lxp-info" data-title="Continuam no plano, sem elemento e sem efeito no desempenho, até serem reanexados.">info</span></div>'
+      + '<span class="material-symbols-outlined lxp-info" data-title="Continuam no plano, sem elemento e sem efeito no desempenho, até serem reconectados.">info</span></div>'
       + '<div class="lxp-cards">' + sv.map(function(it) { return _lxpCardSemVinculo(it, podeEditar); }).join('') + '</div></div>';
   }
   LXP_TIPOS.forEach(function(g) {
@@ -9024,7 +9019,7 @@ function lxpRender() {
   cont.innerHTML = html || '<div class="lxp-vazio"><span class="material-symbols-outlined" aria-hidden="true">delete_sweep</span>A lixeira está vazia</div>';
 }
 
-// Os apps (Elementos, Indicadores, Riscos, Monitoramento) guardam a própria lista: depois de restaurar/reanexar, cada um relê a sua
+// Os apps (Elementos, Indicadores, Riscos, Monitoramento) guardam a própria lista: depois de restaurar/reconectar, cada um relê a sua
 function _lxpAtualizarApps() {
   ['atualizarConteudoPlano', 'atualizarAbaIndicadores', '_riscosRecarregarLista', 'atualizarMonitoramento'].forEach(function(fn) {
     try { if (typeof window[fn] === 'function') window[fn](); } catch (e) { console.warn(fn, e); }
@@ -9050,7 +9045,7 @@ function lxpRestaurar(tipo, id) {
     .apiRestaurarItemPlano(idPlano, tipo, id);
 }
 
-// --- Reanexar indicador sem vínculo (escolhe um elemento ativo do plano) ---
+// --- Reconectar indicador sem vínculo (escolhe um elemento ativo do plano) ---
 // nomeIndicador: quando vem da aba Indicadores (a lixeira pode nem ter sido aberta).
 function lxpAbrirReanexar(idIndicador, nomeIndicador) {
   var it = ((_lxp.dados && _lxp.dados.semVinculo) || []).find(function(x) { return String(x.id) === String(idIndicador); });
@@ -9101,14 +9096,14 @@ function lxpConfirmarReanexar() {
     .withSuccessHandler(function(res) {
       esconderLoader();
       var n = res && Number(res.responsaveisRemovidos);
-      if (n > 0) showMessage('warning', 'Indicador reanexado', (n === 1 ? '1 responsável saiu' : n + ' responsáveis saíram') + ' por não caber no escopo do elemento.');
+      if (n > 0) showMessage('warning', 'Indicador reconectado', (n === 1 ? '1 responsável saiu' : n + ' responsáveis saíram') + ' por não caber no escopo do elemento.');
       if (_lxp.idPlano) lxpCarregar(true);
       if (typeof carregarDetalhesPlano === 'function') carregarDetalhesPlano(idPlano, _metaOtimistaDoAtual());
       _lxpAtualizarApps();
     })
     .withFailureHandler(function(err) {
       esconderLoader();
-      showMessage('error', 'Não foi possível reanexar', escapeHtml(err.message));
+      showMessage('error', 'Não foi possível reconectar', escapeHtml(err.message));
     })
     .apiReanexarIndicador(r.id, r.destino);
 }

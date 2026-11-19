@@ -5586,7 +5586,7 @@ function _elImpRender() {
     h += '<div class="elimp-opcoes" role="radiogroup">'
       + opc('MOVER', 'drive_file_move', 'Mover para outro elemento', 'Passam a ser aferidos no elemento escolhido, com metas e resultados. Responsáveis fora do escopo dele saem.',
           '<div class="elimp-destino' + (_elImp.acao === 'MOVER' ? '' : ' hidden') + '" data-on-click="el.76"><div id="elimp-selresp-destino"></div></div>', !destinos.length)
-      + opc('SEM_VINCULO', 'link_off', 'Deixar sem vínculo', 'Continuam no plano, sem elemento e sem efeito no desempenho. Podem ser reanexados depois pela lixeira do plano.')
+      + opc('SEM_VINCULO', 'link_off', 'Deixar sem vínculo', 'Continuam no plano, sem elemento e sem efeito no desempenho. Podem ser reconectados depois pela lixeira do plano.')
       + opc('ARQUIVAR', 'inventory_2', 'Arquivar', 'Vão para a lixeira com metas e resultados e voltam se o elemento for restaurado.')
       + '</div>';
   }

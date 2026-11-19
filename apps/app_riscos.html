@@ -905,6 +905,7 @@ function riscosGravarCausa(idRisco, idCausa) {
     if (risco && res && res.causasConsequencias) risco.causasConsequencias = res.causasConsequencias;
     delete estadoRiscos.rascunhos[chave];
     _riscosRenderCorpo();
+    _riscosRefrescarPainel(id);
     if (!idCausa) riscosNovaCausa(id);
   }, function(err) {
     if (btn) btn.disabled = false;
@@ -1027,9 +1028,17 @@ function _riscosRenderPainel(r) {
 
   var cards = pares.map(function(p) {
     var doGrupo = trats.filter(function(t) { return String(t.idCausa) === String(p.id); });
+    var jid = escapeJsAttr(idRisco), jpid = escapeJsAttr(String(p.id));
+    // editar/excluir o par: as mesmas ações da linha da lista (a última causa não se exclui)
+    var acoesPar = podeEditar ? acoesLinhaHTML('causa-painel-' + idj + '-' + escapeHtml(String(p.id)), [
+      { icone: 'edit', rotulo: 'Editar causa/consequência', onclick: "riscosEditarCausa('" + jid + "','" + jpid + "')", principal: true },
+      { icone: 'delete', rotulo: 'Excluir causa/consequência', onclick: "riscosExcluirCausa('" + jid + "','" + jpid + "')", principal: true, perigo: true, oculto: pares.length < 2 }
+    ]) : '';
     return '<div class="detp-causa-card">'
-      + '<div class="detp-risco-campo"><span class="detp-risco-rot">Causa</span><span class="detp-causa-txt">' + escapeHtml(p.causa || '—') + '</span></div>'
-      + '<div class="detp-risco-campo"><span class="detp-risco-rot">Consequência</span><span class="detp-causa-txt">' + escapeHtml(p.consequencia || '—') + '</span></div>'
+      + '<div class="detp-trat-item"><div class="detp-trat-corpo">'
+      +   '<div class="detp-risco-campo"><span class="detp-risco-rot">Causa</span><span class="detp-causa-txt">' + escapeHtml(p.causa || '—') + '</span></div>'
+      +   '<div class="detp-risco-campo"><span class="detp-risco-rot">Consequência</span><span class="detp-causa-txt">' + escapeHtml(p.consequencia || '—') + '</span></div>'
+      + '</div>' + acoesPar + '</div>'
       + '<div class="detp-causa-acoes">'
       +   (doGrupo.length
             ? doGrupo.map(function(t) { return _riscoTratItemHTML(t, idj, podeEditar); }).join('')
@@ -1454,9 +1463,10 @@ function riscosEditarCausa(idRisco, idCausa) {
   var r = _riscoPorId(idRisco), p = r && (r.causasConsequencias || []).filter(function(x) { return String(x.id) === String(idCausa); })[0];
   if (!p) return;
   estadoRiscos.rascunhos[_riscoChaveRasc(idRisco, idCausa)] = { causa: p.causa || '', consequencia: p.consequencia || '', etapa: 2 };
+  estadoRiscos.expandidos[String(idRisco)] = true; // a edição é na linha expandida (também quando vem do painel lateral)
   _riscosRenderCorpo();
   var campo = document.querySelector('[data-novo="' + String(idRisco) + '"][data-edita="' + String(idCausa) + '"] [data-rsc-causa]');
-  if (campo) { campo.focus(); campo.select(); }
+  if (campo) { campo.scrollIntoView({ block: 'nearest' }); campo.focus(); campo.select(); }
 }
 
 function riscosCancelarEdicaoCausa(idRisco, idCausa) {
@@ -1476,6 +1486,7 @@ function riscosExcluirCausa(idRisco, idCausa) {
       r.tratamentos = (r.tratamentos || []).filter(function(t) { return (res.idsTratamentosExcluidos || []).indexOf(String(t.id)) === -1; });
       delete estadoRiscos.rascunhos[_riscoChaveRasc(idRisco, idCausa)];
       _riscosRenderCorpo();
+      _riscosRefrescarPainel(idRisco);
     }, function(err) {
       if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
     });
@@ -1547,6 +1558,12 @@ function riscosAbrirPainel(id) {
   estadoRiscos.painelId = String(id);
   _riscosRenderPainel(r);
   _riscosRenderCorpo();
+}
+
+// Repinta o painel lateral quando ele mostra o risco que acabou de mudar.
+function _riscosRefrescarPainel(idRisco) {
+  var r = String(estadoRiscos.painelId) === String(idRisco) ? _riscoPorId(idRisco) : null;
+  if (r) _riscosRenderPainel(r);
 }
 
 function riscosNovaAcaoTratamento(idRisco, idCausaPreSelecionada) {

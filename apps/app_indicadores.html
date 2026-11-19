@@ -961,7 +961,7 @@ function _indPermiteEdicao() {
 }
 
 // Definir metas: além de quem edita o plano, com o plano Prorrogado quem responde por ele define as metas dos períodos criados pela prorrogação (o servidor confere cada período).
-// Indicador sem vínculo (elemento excluído com a escolha SEM_VINCULO): sem elemento, só se reanexa ou se exclui — não se edita nem se definem metas.
+// Indicador sem vínculo (elemento excluído com a escolha SEM_VINCULO): sem elemento, só se reconecta ou se exclui — não se edita nem se definem metas.
 function _indSemVinculo(p) { return !!p && !p.idElemento; }
 function _indPermiteMetas(p) {
   if (_indSemVinculo(p)) return false;
@@ -1894,14 +1894,14 @@ function _indLinhaHTML(p, anos, podeEditar) {
     { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + idj + "')", principal: true },
     { icone: 'delete', rotulo: 'Excluir indicador', onclick: "confirmarExclusaoIndicador('" + idj + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar }
   ];
-  // Casos específicos (sem vínculo, sem metas): sem o padrão do hover. O botão principal ("Reanexar" ou "Definir metas") fica sempre visível na última coluna e o resto vai no ⋮.
+  // Casos específicos (sem vínculo, sem metas): sem o padrão do hover. O botão principal ("Reconectar" ou "Definir metas") fica sempre visível na última coluna e o resto vai no ⋮.
   var celulaAcoes;
   if ((semVinc || isPendente) && podeEditar) {
     var menu = acoesLinhaHTML('ind-' + idj, itensAcao.filter(function(a) { return a.rotulo !== 'Nova meta'; }), { maxDireto: 0 });
     celulaAcoes = '<td class="ds-col-sobreposta" data-col="metas"><div class="ind-decisao">'
       + (semVinc
-          ? '<button type="button" class="ds-btn ds-btn--pendencia-re ds-btn--sm ind-btn-proativo" data-on-click="ind.55" data-aclick0="' + idj + '" aria-label="Reanexar a um elemento">'
-            + '<span class="material-symbols-outlined">link</span><span>Reanexar</span></button>'
+          ? '<button type="button" class="ds-btn ds-btn--pendencia-re ds-btn--sm ind-btn-proativo" data-on-click="ind.55" data-aclick0="' + idj + '" aria-label="Reconectar a um elemento">'
+            + '<span class="material-symbols-outlined">link</span><span>Reconectar</span></button>'
           : '<button type="button" class="ds-btn ds-btn--pendencia ds-btn--sm ind-btn-proativo" data-on-click="ind.20" data-aclick0="' + idj + '" aria-label="Definir metas">'
             + '<span class="material-symbols-outlined">add</span><span>Definir metas</span></button>')
       + menu + '</div></td>';
@@ -1936,14 +1936,12 @@ function _indLinhaHTML(p, anos, podeEditar) {
             + '<div class="ind-det-rodape">'
             +   (p.interpretacao ? '<span class="ind-interp"><span class="material-symbols-outlined">' + (menor ? 'trending_down' : 'trending_up') + '</span>' + escapeHtml(p.interpretacao) + '</span>' : '<span class="ind-interp"></span>')
             +   (_indPermiteMetas(p) ? '<button type="button" class="rsc-link" data-on-click="ind.27" data-aclick0="' + idj + '"><span class="material-symbols-outlined">add_chart</span>Nova meta</button>' : '')
-            +   '<button type="button" class="rsc-link" data-on-click="ind.28" data-aclick0="' + idj + '">Ver configuração<span class="material-symbols-outlined">chevron_right</span></button>'
             + '</div>'
           : '<div class="ind-sem-metas">'
             + '<span class="material-symbols-outlined">flag</span>'
             + '<span class="ind-sem-metas-txt"><strong>Nenhuma meta definida</strong><span>'
             +   escapeHtml([anos.length ? 'Vigência do plano: ' + anos[0] + '–' + anos[anos.length - 1] : '', String(p.frequencia || '').toLowerCase() + (p.unidade ? ', em ' + p.unidade : '')].filter(Boolean).join(' · '))
             + '</span></span>'
-            + '<button type="button" class="rsc-link" data-on-click="ind.28" data-aclick0="' + idj + '">Ver configuração<span class="material-symbols-outlined">chevron_right</span></button>'
             + '</div>')
       + '</td></tr>';
   }
@@ -2194,6 +2192,7 @@ function _indAtualizarSelecao(listaVisivel) {
       var indObj = _indListaAtiva().find(function(i) { return String(i.id) === String(indId); });
       acoesCont.innerHTML = acoesLinhaHTML('indsel-' + indId, [
         { icone: 'add_chart', rotulo: 'Nova meta', onclick: "abrirModalMeta('" + indId + "')", principal: true, oculto: !_indPermiteMetas(indObj) },
+        { icone: 'link', rotulo: 'Reconectar a um elemento', onclick: "lxpAbrirReanexar('" + indId + "','" + escapeJsAttr(indObj ? indObj.nome : '') + "')", principal: true, oculto: !podeEditar || !_indSemVinculo(indObj) },
         { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + indId + "')", principal: true, oculto: !podeEditar || _indSemVinculo(indObj) },
         { icone: 'download', rotulo: 'Exportar CSV', onclick: "exportarIndicadoresMetasCSV()", principal: true },
         { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + indId + "')", principal: true },
@@ -2834,7 +2833,6 @@ uiRegistrarAcoes('ind', {
   '24': function (event) { indToggleSelecao(uiArgJs(this.dataset.achange0), this.checked); },
   '25': function (event) { event.stopPropagation(); indToggleExpand(uiArgJs(this.dataset.aclick0)); },
   '27': function (event) { abrirModalMeta(uiArgJs(this.dataset.aclick0)); },
-  '28': function (event) { indAbrirPainel(uiArgJs(this.dataset.aclick0)); },
   '29': function (event) { indAbrirBusca(); },
   '30': function (event) { aplicarFiltrosIndicadores(); },
   '31': function (event) { indLimparBusca(); },
