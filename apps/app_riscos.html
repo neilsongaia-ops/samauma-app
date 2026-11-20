@@ -585,6 +585,7 @@ var _rscVis = { pagina: true, aba: true };
 var _rscCarregado = false;
 var _rscCarregando = false;
 var _riscosCache = [];
+var _rscRespObrigatorio = false; // chave RESP_ITENS_OBRIGATORIO do plano (o servidor confere igual)
 var _elementosResumoCache = [];
 
 var estadoRiscos = {
@@ -782,7 +783,7 @@ function salvarRisco(event) {
   var respsRisco = seletorRespRisco
     ? seletorRespRisco.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; })
     : [];
-  if (respsRisco.length === 0) {
+  if (_rscRespObrigatorio && respsRisco.length === 0) {
     _rwizIrPara(4);
     var erroResp = document.getElementById('risco-resp-erro');
     if (erroResp) { erroResp.textContent = 'Adicione ao menos um responsável pelo risco.'; erroResp.classList.remove('hidden'); }
@@ -852,7 +853,7 @@ function handleSalvarTratamento(e) {
   var dataReferencia = document.getElementById('trat-data-referencia').value;
   if (!dataReferencia) { if (typeof showMessage === 'function') showMessage('error', 'Atenção', 'Informe a data de referência.'); return; }
   var respsTrat = seletorRespTrat ? seletorRespTrat.getLista() : [];
-  if (respsTrat.length === 0) { if (typeof showMessage === 'function') showMessage('error', 'Atenção', 'Adicione ao menos um responsável.'); return; }
+  if (_rscRespObrigatorio && respsTrat.length === 0) { if (typeof showMessage === 'function') showMessage('error', 'Atenção', 'Adicione ao menos um responsável.'); return; }
 
   var idEdicao = document.getElementById('trat-id-edicao').value;
   var causaSel = document.getElementById('trat-causa-vinculo');
@@ -953,6 +954,7 @@ function carregarRiscos() {
     _rscCarregando = false;
     _rscCarregado = true;
     _riscosCache = (res && res.riscos) || [];
+    _rscRespObrigatorio = !!(res && res.configRiscos && res.configRiscos.respObrigatorio);
     _elementosResumoCache = (res && res.elementosResumo) || [];
     estadoRiscos.expandidos = {};
     _rscAtualizarContador();
@@ -1087,6 +1089,7 @@ function _riscosRecarregarLista() {
   _riscosSDK.chamar('apiGetAbaRiscos', idPlano).then(function(res) {
     if (!_rscCtx || String(_rscCtx.idPlano) !== String(idPlano)) return;
     _riscosCache = (res && res.riscos) || [];
+    _rscRespObrigatorio = !!(res && res.configRiscos && res.configRiscos.respObrigatorio);
     _elementosResumoCache = (res && res.elementosResumo) || [];
     _rscAtualizarContador();
     renderizarSecaoRiscos();

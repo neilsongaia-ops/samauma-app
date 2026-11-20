@@ -704,7 +704,7 @@ function handleSalvarIndicador(e) {
     return;
   }
 
-  if (responsaveis.length === 0) {
+  if (_indConfig.respObrigatorio && responsaveis.length === 0) {
     showMessage('warning', 'Atenção', 'Adicione ao menos um Responsável pela Coleta.');
     return;
   }
@@ -2722,7 +2722,7 @@ function _indwizValidarTudoAntesDeSalvar() {
     return false;
   }
   var lista = (typeof seletorRespInd !== 'undefined' && seletorRespInd) ? seletorRespInd.getLista() : [];
-  if (lista.length === 0) {
+  if (_indConfig.respObrigatorio && lista.length === 0) {
     _indwizIrPara(3);
     var erro = document.getElementById('ind-selresp-erro');
     if (erro) { erro.textContent = 'Adicione ao menos um responsável pela coleta.'; erro.classList.remove('hidden'); }
