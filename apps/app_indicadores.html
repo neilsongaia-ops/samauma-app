@@ -62,7 +62,7 @@ body.high-contrast .ind-tabela tr.ind-linha[class*="ind-caso-"] td.ind-col-nome 
 .ind-ano-cab { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ind-ano-cab small { font-size: 11px; font-weight: var(--ds-weight-medium); color: var(--ds-color-action); }
 .ind-ano.is-atual { background: color-mix(in srgb, var(--ds-color-action) 5%, var(--ds-color-surface)); }
-.ind-ano.is-atual .ind-ano-cab { color: var(--ds-color-action); box-shadow: inset 0 2px 0 var(--ds-color-action); }
+.ind-ano.is-atual .ind-ano-cab { color: var(--ds-color-action); }
 .ind-faixa + .meta-aviso { margin-top: 12px; }
 .ind-ano-corpo { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--ds-glass-border); }
 .ind-ano-corpo [data-vazio], .ind-meta-per, .ind-meta-val span, [data-un] { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -86,7 +86,7 @@ body.high-contrast .ind-tabela tr.ind-linha[class*="ind-caso-"] td.ind-col-nome 
 .detp-ind-ano + .detp-ind-ano { border-top: 1px solid var(--ds-glass-border); }
 .detp-ind-ano > b { display: flex; align-items: center; padding: 0 12px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); font-variant-numeric: tabular-nums; }
 .detp-ind-ano.is-atual { background: color-mix(in srgb, var(--ds-color-action) 5%, var(--ds-color-surface)); }
-.detp-ind-ano.is-atual > b { color: var(--ds-color-action); box-shadow: inset 2px 0 0 var(--ds-color-action); }
+.detp-ind-ano.is-atual > b { color: var(--ds-color-action); }
 .detp-ind-ano > div { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; min-height: 44px; padding: 8px 12px; }
 .detp-ind-ano .ind-meta-val strong { font-size: var(--ds-text-base); }
 .detp-ind-ano .is-sem { font-size: var(--ds-text-sm); color: var(--ds-color-warning-fg); }
@@ -734,9 +734,10 @@ function _indGradeCtx(el) {
 }
 
 // Enquanto digita: o + vira ✓ (há o que gravar) e o sinal de erro some.
-function indGradeDigitando(campo) {
+function indGradeDigitando(campo, ev) {
   var c = _indGradeCtx(campo);
   if (!c) return;
+  campo.value = c.box.hasAttribute('data-moeda') ? _indMascaraMoeda(campo.value, !!(ev && /^delete/.test(ev.inputType || ''))) : _indMascaraNumero(campo.value);
   var tem = campo.value.trim() !== '';
   c.box.removeAttribute('data-erro');
   if (tem) c.box.setAttribute('data-preenchido', ''); else c.box.removeAttribute('data-preenchido');
@@ -750,7 +751,7 @@ function indGradeDigitando(campo) {
 function indGradeConfirmar(el, teclado) {
   var c = _indGradeCtx(el);
   if (!c) return;
-  var v = c.campo.value.trim();
+  var moeda = c.box.hasAttribute('data-moeda'), v = _indMetaCanonica(c.campo.value, moeda);
   if (v === '') {
     if (teclado) { c.box.setAttribute('data-erro', ''); c.campo.focus(); } else indGradeAbrirProximo(c);
     return;
@@ -759,12 +760,23 @@ function indGradeConfirmar(el, teclado) {
   indGradeGravar(c.id, c.ano, c.inicio, v);
 }
 
+// Períodos do ano ainda sem meta e sem campo aberto (fora o do próprio campo): o que o + ou o Tab ainda podem abrir.
+function _indGradeLivres(c) {
+  var g = _indGrades[c.id], a = g && g.dados.anos.filter(function(x) { return x.ano === c.ano; })[0];
+  var ab = _indGradeAbertos[c.id] || {};
+  var naTela = _indGradeCamposAbertos(c).map(function(n) { return n.getAttribute('data-inicio'); }); // o primeiro campo livre está na tela sem constar em ab
+  return a ? a.periodos.filter(function(x) { return x.valor === '' && ab[x.inicioISO] === undefined && naTela.indexOf(x.inicioISO) < 0; }) : [];
+}
+
+// Campos de meta abertos (rascunho) do mesmo ano, na ordem da tela.
+function _indGradeCamposAbertos(c) { return Array.prototype.slice.call(c.box.parentElement.querySelectorAll('[data-novo]:not([data-editando])')); }
+
 // O + de um campo vazio abre o próximo período livre do ano (só na tela: nada é gravado) e leva o foco a ele.
 function indGradeAbrirProximo(c) {
   var g = _indGrades[c.id], a = g && g.dados.anos.filter(function(x) { return x.ano === c.ano; })[0];
   if (!a) return;
   var ab = _indGradeAbertos[c.id] = _indGradeAbertos[c.id] || {};
-  var livres = a.periodos.filter(function(x) { return x.valor === '' && ab[x.inicioISO] === undefined && x.inicioISO !== c.inicio; });
+  var livres = _indGradeLivres(c);
   var prox = livres.filter(function(x) { return x.inicioISO > c.inicio; })[0] || livres[0];
   if (!prox) { c.campo.focus(); return; }
   ab[prox.inicioISO] = '';
@@ -781,7 +793,24 @@ function indGradeTecla(ev, campo) {
     campo.value = ''; indGradeDigitando(campo); campo.blur();
     return;
   }
-  if (ev.key === 'Enter' || (ev.key === 'Tab' && !ev.shiftKey)) { ev.preventDefault(); indGradeConfirmar(campo, true); }
+  if (ev.key === 'Enter') { ev.preventDefault(); indGradeConfirmar(campo, true); return; }
+  if (ev.key === 'Tab' && !ev.shiftKey && !c.box.hasAttribute('data-editando')) {
+    // Tab faz o mesmo que o +: vai ao próximo campo aberto do ano ou abre o seguinte (o digitado fica como rascunho, sem gravar).
+    // Nunca prende o foco nem marca erro: sem próximo campo possível, o Tab segue pela tela. Erro só ao gravar (Enter ou ✓).
+    var abertos = _indGradeCamposAbertos(c), i = abertos.indexOf(c.box);
+    if (abertos[i + 1]) { ev.preventDefault(); abertos[i + 1].querySelector('input').focus(); return; }
+    if (_indGradeLivres(c).length) { ev.preventDefault(); indGradeAbrirProximo(c); }
+    return;
+  }
+  if (ev.key === 'Backspace' && campo.value === '' && !c.box.hasAttribute('data-editando')) {
+    // campo vazio aberto pelo +/Tab: Backspace apaga o campo e volta ao anterior (o primeiro campo do ano não se apaga)
+    var abs = _indGradeCamposAbertos(c), j = abs.indexOf(c.box);
+    if (j < 1) return;
+    ev.preventDefault();
+    if (_indGradeAbertos[c.id]) delete _indGradeAbertos[c.id][c.inicio];
+    _indFocoGrade = { id: c.id, inicio: abs[j - 1].getAttribute('data-inicio') };
+    _indGradeRedesenhar(c.id);
+  }
 }
 
 function _indGradePeriodo(id, ano, inicio) {
@@ -1018,6 +1047,32 @@ function _indNum(v) {
 }
 function _indEhMonetario(unidade) {
   return /^(R\$|\$|€|£|monetário)$/i.test(String(unidade || '').trim());
+}
+// Campo monetário da meta: dígitos entram como centavos ("25000000" → "250.000,00"); apagando até zerar, o campo esvazia.
+function _indMascaraMoeda(texto, apagando) {
+  var d = String(texto || '').replace(/\D/g, '').slice(0, 15);
+  if (!d || (apagando && /^0*$/.test(d))) return '';
+  d = ('00' + d).replace(/^0+(?=\d{3})/, '');
+  return d.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + d.slice(-2);
+}
+// Campo de meta não monetário: só número (dígitos, uma vírgula decimal — o ponto vira vírgula — e o sinal de menos no início).
+function _indMascaraNumero(texto) {
+  var t = String(texto || '').replace(/\./g, ',').replace(/[^\d,-]/g, '');
+  var neg = t.charAt(0) === '-', i;
+  t = t.replace(/-/g, '');
+  i = t.indexOf(',');
+  if (i > -1) t = t.slice(0, i + 1) + t.slice(i + 1).replace(/,/g, '');
+  return (neg ? '-' : '') + t;
+}
+// Valor canônico (número em texto) → texto do campo monetário; texto já mascarado volta igual.
+function _indMoedaDeCanonico(valor) {
+  var n = Number(String(valor).replace(',', '.'));
+  return isFinite(n) ? _indMascaraMoeda(n.toFixed(2)) : '';
+}
+// Texto do campo → número em texto canônico (o que se valida e se grava): monetário tira os pontos e troca a vírgula.
+function _indMetaCanonica(texto, monetario) {
+  var t = String(texto || '').trim();
+  return monetario && t ? String(Number(t.replace(/\./g, '').replace(',', '.'))) : t;
 }
 function _indValorUnidadeTxt(valor, unidade) {
   var numStr = _indNum(valor);
@@ -1775,11 +1830,11 @@ function _indGradeCelulaHTML(p, ano, per, rot, livre) {
 
 // Campo tracejado (próximo período livre, ou um aberto pelo +) ou, com `editando`, a meta gravada aberta para alteração. A unidade fica dentro do campo: à esquerda se monetária.
 function _indGradeCampoHTML(p, ano, per, rot, editando, rascunho, comMais) {
-  var val = editando ? per.valor : (rascunho || ''), pre = val !== '';
+  var moeda = _indEhMonetario(p.unidade), val = editando ? (moeda ? _indMoedaDeCanonico(per.valor) : String(per.valor).replace('.', ',')) : (rascunho || ''), pre = val !== '';
   var uni = p.unidade ? '<span data-un>' + escapeHtml(p.unidade) + '</span>' : '';
   var campo = '<input type="text" inputmode="decimal" autocomplete="off" placeholder="' + escapeHtml(rot || 'Meta') + '" value="' + escapeHtml(val) + '"'
     + ' data-on-keydown="ind.57" data-on-input="ind.58" aria-label="Meta de ' + escapeHtml(per.rotulo) + ' de ' + ano + '">';
-  return '<div data-novo data-ano="' + ano + '" data-inicio="' + escapeHtml(per.inicioISO) + '"' + (editando ? ' data-editando' : '') + (pre ? ' data-preenchido' : '') + (comMais ? ' data-mais' : '') + '>'
+  return '<div data-novo data-ano="' + ano + '" data-inicio="' + escapeHtml(per.inicioISO) + '"' + (editando ? ' data-editando' : '') + (moeda ? ' data-moeda' : '') + (pre ? ' data-preenchido' : '') + (comMais ? ' data-mais' : '') + '>'
     + '<label>' + (_indEhMonetario(p.unidade) ? uni + campo : campo + uni) + '</label>'
     + '<button type="button" class="ds-icon-action ds-icon-action--sm' + (pre || comMais ? '' : ' hidden') + '" data-ok data-on-click="ind.56" data-title="' + (pre ? 'Gravar meta' : 'Adicionar meta') + '" aria-label="Gravar meta"><span class="material-symbols-outlined">' + (pre ? 'check' : 'add') + '</span></button>'
     + (editando ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.61" data-aclick0="' + escapeHtml(String(p.id)) + '" data-title="Cancelar" aria-label="Cancelar edição"><span class="material-symbols-outlined">close</span></button>' : '')
@@ -2722,7 +2777,7 @@ uiRegistrarAcoes('ind', {
   '55': function (event) { lxpAbrirReanexar(uiArgJs(this.dataset.aclick0), (_indPorId(uiArgJs(this.dataset.aclick0)) || {}).nome); },
   '56': function (event) { indGradeConfirmar(this, false); },
   '57': function (event) { indGradeTecla(event, this); },
-  '58': function (event) { indGradeDigitando(this); },
+  '58': function (event) { indGradeDigitando(this, event); },
   '59': function (event) { indGradeEditar(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
   '60': function (event) { indGradeExcluir(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
   '61': function (event) { indGradeCancelar(uiArgJs(this.dataset.aclick0)); }
