@@ -3785,6 +3785,13 @@ var SeletorOpcao = (function () {
             </div>
 
             <div class="ds-field">
+              <label class="ds-label" for="input-plano-sigla">Sigla
+                <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Forma curta do nome, usada nas telas onde o nome inteiro não cabe. Sem sigla, o nome é abreviado automaticamente.">info</span></label>
+              <input type="text" name="sigla" id="input-plano-sigla" class="ds-input" maxlength="12" placeholder="Ex.: PDI 2026">
+              <small class="ds-contador"></small>
+            </div>
+
+            <div class="ds-field">
               <label class="ds-label" for="input-tipo-plano">Nível de planejamento <span class="ds-obrig">obrigatório</span>
                 <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Estratégico: define a direção de longo prazo (missão, visão e objetivos da organização). Tático: desdobra um plano estratégico em objetivos e metas de médio prazo. Operacional: ações e entregas do dia a dia, ligadas a um plano tático.">info</span></label>
               <select name="tipo" id="input-tipo-plano" class="ds-select" data-on-change="components_modal_plano.5">
@@ -3829,6 +3836,19 @@ var SeletorOpcao = (function () {
             <h2 class="ds-wizard__titulo-etapa">Complementos</h2>
 
             <div class="ds-field" id="plano-selsup"></div>
+
+            <div class="ds-divisor"></div>
+
+            <div class="ds-field">
+              <label class="ds-label" for="input-plano-visibilidade">Visibilidade
+                <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Público: todos os usuários do sistema veem o plano e seus elementos podem ser abertos à colaboração. Unidade: veem o plano os lotados na unidade do plano e em suas subunidades. Privado: só os envolvidos veem o plano. Em Unidade e Privado a colaboração aberta fica indisponível. Em plano Pessoal o padrão é Privado.">info</span></label>
+              <select name="visibilidade" id="input-plano-visibilidade" class="ds-select" data-on-change="components_modal_plano.11">
+                <option value="Público">Público</option>
+                <option value="Unidade">Unidade</option>
+                <option value="Privado">Privado</option>
+              </select>
+              <small class="ds-help hidden" id="plano-vis-aviso"></small>
+            </div>
 
             <div class="ds-divisor"></div>
 
@@ -3939,7 +3959,7 @@ var _plwSelPrincipal = null, _plwSelAdic = null, _plwSelSup = null;
 var _plwSupDisponiveis = [];
 function _plwEstadoInicial() {
   return { atual: 1, visitadas: {}, transicionando: false, timer: null, edicao: false, bloq: false,
-           nivel: '', supAviso: '', mesmoNivelPermitido: true, ultimaAlteracao: null };
+           nivel: '', supAviso: '', mesmoNivelPermitido: true, ultimaAlteracao: null, visManual: false, visOriginal: '' };
 }
 _plwEstado = _plwEstadoInicial();
 
@@ -4133,9 +4153,26 @@ function _plwUsuariosPermitidos(lista, semPrincipal) {
     return !(p && p.tipo === 'USER' && String(p.id) === String(u.id));
   });
 }
+// Visibilidade padrão por categoria (espelha planoVisibilidadePadrao do servidor): Privado no plano Pessoal, Público nos demais.
+// Vale só na criação e até o criador escolher.
+function _plwAplicarVisibilidadePadrao() {
+  if (_plwEstado.edicao || _plwEstado.visManual) return;
+  var p = _plwPrincipal();
+  _plwEl('input-plano-visibilidade').value = (p && p.tipo === 'USER' && _plwMeuId() === String(p.id)) ? 'Privado' : 'Público';
+  SeletorOpcao.sincronizar(_plwEl('modal-novo-plano'));
+}
+// Edição: tornar o plano privado encerra a colaboração aberta e avisa quem atua nele.
+function _plwVisibilidadeMudou() {
+  _plwEstado.visManual = true;
+  var aviso = _plwEl('plano-vis-aviso'), v = _plwEl('input-plano-visibilidade').value;
+  var tornaPrivado = _plwEstado.edicao && _plwEstado.visOriginal === 'Público' && v !== 'Público';
+  aviso.textContent = tornaPrivado ? 'Ao deixar de ser público, a colaboração aberta é encerrada e quem atua no plano é avisado do dever de sigilo.' : '';
+  aviso.classList.toggle('hidden', !tornaPrivado);
+}
 function _plwPrincipalMudou() {
   _plwSelPrincipal.setErro('');
   var p = _plwPrincipal();
+  _plwAplicarVisibilidadePadrao();
   // O principal não pode repetir como adicional
   if (p) _plwSelAdic.setLista(_plwSelAdic.getLista().filter(function(a) { return !(a.tipo === p.tipo && String(a.id) === String(p.id)); }));
   _plwRenderClassif();
@@ -4158,6 +4195,7 @@ function _plwRenderClassif() {
 function _plwIniciarSeletores() {
   if (_plwSelPrincipal) return;
   SeletorOpcao.melhorar(_plwEl('input-tipo-plano'));
+  SeletorOpcao.melhorar(_plwEl('input-plano-visibilidade'));
   _plwSelPrincipal = SeletorResponsaveis.criar({
     containerId: 'plano-selresp-principal', unico: true, obrigatorio: true,
     label: 'Responsável principal', helpText: 'Unidade ou servidor: é quem define a categoria do plano.',
@@ -4297,6 +4335,8 @@ function _plwResetar(edicao) {
   _plwIniciarSeletores();
   _plwEl('form-novo-plano').reset();
   _plwEl('input-plano-id-edicao').value = '';
+  _plwEl('input-plano-visibilidade').value = 'Público';
+  _plwEl('plano-vis-aviso').classList.add('hidden');
   _plwSelPrincipal.limpar();
   _plwSelAdic.limpar();
   _plwSelSup.limpar();
@@ -4359,6 +4399,9 @@ function abrirModalEdicaoPlano(idPlano) {
       const form = _plwEl('form-novo-plano');
       form.nome.value = plano.nome || '';
       form.observacao.value = plano.observacao || '';
+      form.sigla.value = plano.sigla || '';
+      _plwEl('input-plano-visibilidade').value = (plano.visibilidade === 'Privado' || plano.visibilidade === 'Unidade') ? plano.visibilidade : 'Público';
+      _plwEstado.visOriginal = _plwEl('input-plano-visibilidade').value;
       _plwEl('input-plano-ano-inicio').value = plano.dataInicio || '';
       _plwEl('input-plano-ano-fim').value = plano.dataFim || '';
       _plwDefinirNivel(plano.tipo || '');            // calcula os candidatos a superior (exclui o próprio plano)
@@ -4394,7 +4437,7 @@ function fecharModalPlano() {
 // populados, e são reenviados sem alteração (o backend também valida).
 function _plwAplicarBloqueio(v) {
   _plwEstado.bloq = !!v;
-  ['input-tipo-plano', 'input-plano-ano-inicio', 'input-plano-ano-fim'].forEach(function(id) { _plwEl(id).disabled = !!v; });
+  ['input-tipo-plano', 'input-plano-ano-inicio', 'input-plano-ano-fim', 'input-plano-visibilidade'].forEach(function(id) { _plwEl(id).disabled = !!v; });
   SeletorOpcao.sincronizar(_plwEl('modal-novo-plano'));
   _plwSelPrincipal.setDisabled(!!v);
   _plwSelAdic.setDisabled(!!v);
@@ -4428,6 +4471,7 @@ function _plwReidratar() {
   if (!_plwSelPrincipal) return;
   _plwSelPrincipal.setLista(_plwSelPrincipal.getLista());
   _plwSelAdic.setLista(_plwSelAdic.getLista());
+  _plwAplicarVisibilidadePadrao();
   _plwRenderClassif();
   _plwRenderRail();
 }
@@ -4439,6 +4483,7 @@ function _plwSalvar(e) {
   const form = e.target, principal = _plwPrincipal();
   const dadosPlano = {
     nome: form.nome.value.trim(),
+    sigla: form.sigla.value.trim(),
     tipo: _plwEl('input-tipo-plano').value,
     anoInicio: _plwEl('input-plano-ano-inicio').value, // "AAAA-MM-DD"
     anoFim: _plwEl('input-plano-ano-fim').value,       // "AAAA-MM-DD"
@@ -4446,8 +4491,8 @@ function _plwSalvar(e) {
     tipoResponsavel: principal.tipo,
     responsaveisAdicionais: _plwSelAdic.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; }),
     idsPlanoSuperior: _plwSelSup.getIds(),
-    observacao: form.observacao.value
-    // Visibilidade não é definida aqui: novo plano nasce Privado (apiSalvarPlano).
+    observacao: form.observacao.value,
+    visibilidade: _plwEl('input-plano-visibilidade').value
   };
 
   const idEdicao = _plwEl('input-plano-id-edicao').value;
@@ -4480,7 +4525,7 @@ function _plwSalvar(e) {
         fecharModalPlano();
         // A lista guarda cache local: sem invalidar, o plano novo só aparecia depois do botão de atualizar.
         const depois = function() { if (typeof atualizarListaPlanos === 'function') atualizarListaPlanos(); else if (typeof initPlanos === 'function') initPlanos(); };
-        showMessage('success', 'Plano criado', 'O plano foi criado como privado. A visibilidade se ajusta na página do plano.', depois);
+        showMessage('success', 'Plano criado', 'O plano foi criado como ' + dadosPlano.visibilidade.toLowerCase() + '.', depois);
       })
       .withFailureHandler(function(err) {
         esconderLoader();
@@ -4501,7 +4546,8 @@ uiRegistrarAcoes('components_modal_plano', {
   '7': function (event) { _plwAplicarPreset(uiArgJs(this.dataset.aclick0)); },
   '8': function (event) { _plwVoltar(); },
   '9': function (event) { _plwProximo(); },
-  '10': function (event) { _plwIrParaRail(uiArgLit(this.dataset.rclick0)); }
+  '10': function (event) { _plwIrParaRail(uiArgLit(this.dataset.rclick0)); },
+  '11': function (event) { _plwVisibilidadeMudou(); }
 });
 </script>
 
@@ -7999,7 +8045,9 @@ function _cfgNotificarAlteracao(chave) {
   if (chave === 'VISIBILIDADE_PUBLICA') {
     var it = _cfgItem(chave);
     if (it && dadosDetalhados && dadosDetalhados.plano) {
-      dadosDetalhados.plano.visibilidade = it.valor ? 'Público' : 'Privado';
+      // o interruptor só liga/desliga "público"; desligado, um plano de Unidade continua de Unidade
+      if (it.valor) dadosDetalhados.plano.visibilidade = 'Público';
+      else if (dadosDetalhados.plano.visibilidade === 'Público') dadosDetalhados.plano.visibilidade = 'Privado';
       if (typeof _detpRenderDetalhes === 'function') _detpRenderDetalhes();
       // Colaboração externa depende da visibilidade: atualiza o wizard de elemento se já montado
       if (typeof _wizardElAtualizarBloqueioIndicar === 'function' && typeof seletorIndicarColaboradorElemento !== 'undefined' && seletorIndicarColaboradorElemento) _wizardElAtualizarBloqueioIndicar();
@@ -9456,6 +9504,7 @@ function ntfSeguirLink(l) {
   if (!l) return ntfNeutro();
   if (l.pagina === 'mensagem' && l.idObjeto) return navigate('mensagens', { view: 'leitura', id: l.idObjeto });
   if (l.pagina === 'plano' && l.idPlano) return ntfAbrirPlano(l);
+  if (l.pagina === 'execucao' && l.idPlano) return abrirExecucaoPlano(l.idPlano);
   ntfNeutro();
 }
 var NTF_ABAS_PLANO = { elementos: 'elementos', monitoramento: 'monitoramento', vinculos: 'vinculos', riscos: 'riscos', forum: 'forum', indicadores: 'metas' };
@@ -10893,7 +10942,7 @@ function _hmAcoesItem(p, i) {
   // para a tela com o contexto completo.
   if (p.acao === 'RESPONDER_COLABORACAO') {
     return '<button class="elem-tb-btn" data-title="Aceitar" aria-label="Aceitar"'
-      + ' style="color:var(--ds-color-success)" data-on-click="pages_home.8" data-aclick0="' + escapeJsAttr(p.idItem) + '">'
+      + ' style="color:var(--ds-color-success)" data-on-click="pages_home.8" data-aclick0="' + escapeJsAttr(p.idItem) + '" data-aclick1="' + (p.planoPrivado === true) + '">'
       + '<span class="material-symbols-outlined">check_circle</span></button>'
       + '<button class="elem-tb-btn" data-title="Recusar" aria-label="Recusar"'
       + ' style="color:var(--ds-color-danger)" data-on-click="pages_home.9" data-aclick0="' + escapeJsAttr(p.idItem) + '">'
@@ -10924,25 +10973,27 @@ function hmExecutarAcao(indice) {
 
 // ---- Ações inline -------------------------------------------------------
 
-function hmResponderColaboracao(idSolicitacao, resposta) {
+function hmResponderColaboracao(idSolicitacao, resposta, planoPrivado) {
+  if (resposta === 'ACEITAR' && planoPrivado) { colabPedirCienciaSigilo(true, function(ciente) { hmEnviarRespostaColaboracao(idSolicitacao, resposta, ciente); }); return; }
   const titulo = resposta === 'ACEITAR' ? 'Aceitar colaboração?' : 'Recusar colaboração?';
   const msg = resposta === 'ACEITAR'
     ? 'Você passará a ser responsável por este elemento.'
     : 'A solicitação será recusada.';
-  showConfirm(titulo, msg, function() {
-    mostrarLoader();
-    google.script.run
-      .withSuccessHandler(function() {
-        esconderLoader();
-        showMessage('success', 'Pronto', resposta === 'ACEITAR' ? 'Colaboração aceita.' : 'Solicitação recusada.',
-          function() { atualizarInicio(); });
-      })
-      .withFailureHandler(function(err) {
-        esconderLoader();
-        showMessage('error', 'Erro', escapeHtml(err.message));
-      })
-      .apiResponderSolicitacaoColaboracao(idSolicitacao, resposta, '');
-  });
+  showConfirm(titulo, msg, function() { hmEnviarRespostaColaboracao(idSolicitacao, resposta, false); });
+}
+function hmEnviarRespostaColaboracao(idSolicitacao, resposta, ciente) {
+  mostrarLoader();
+  google.script.run
+    .withSuccessHandler(function() {
+      esconderLoader();
+      showMessage('success', 'Pronto', resposta === 'ACEITAR' ? 'Colaboração aceita.' : 'Solicitação recusada.',
+        function() { atualizarInicio(); });
+    })
+    .withFailureHandler(function(err) {
+      esconderLoader();
+      showMessage('error', 'Erro', escapeHtml(err.message));
+    })
+    .apiResponderSolicitacaoColaboracao(idSolicitacao, resposta, '', ciente);
 }
 
 function hmResponderSolicitacao(idSolicitacao, resposta, contexto) {
@@ -11101,7 +11152,7 @@ uiRegistrarAcoes('pages_home', {
   '5': function (event) { navigate('execucao-planos'); },
   '6': function (event) { navigate('planos'); },
   '7': function (event) { hmExecutarAcao(uiArgLit(this.dataset.rclick0)); },
-  '8': function (event) { hmResponderColaboracao(uiArgJs(this.dataset.aclick0),'ACEITAR'); },
+  '8': function (event) { hmResponderColaboracao(uiArgJs(this.dataset.aclick0),'ACEITAR', this.dataset.aclick1 === 'true'); },
   '9': function (event) { hmResponderColaboracao(uiArgJs(this.dataset.aclick0),'RECUSAR'); },
   '10': function (event) { hmResponderSolicitacao(uiArgJs(this.dataset.aclick0),'CONFIRMAR',uiArgJs(this.dataset.aclick1)); },
   '11': function (event) { hmResponderSolicitacao(uiArgJs(this.dataset.aclick0),'RECUSAR',uiArgJs(this.dataset.aclick1)); },
@@ -21382,16 +21433,27 @@ function colabRenderizarConvites() {
       +   (c.justificativa ? '<div class="colab-card-meta">' + escapeHtml(c.justificativa) + '</div>' : '')
       + '</div>'
       + '<button class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="pages_colaboracao.9" data-aclick0="' + c.id + '">Recusar</button>'
-      + '<button class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_colaboracao.10" data-aclick0="' + c.id + '">Aceitar</button>'
+      + '<button class="ds-btn ds-btn--primary ds-btn--sm" data-on-click="pages_colaboracao.10" data-aclick0="' + c.id + '" data-aclick1="' + (c.planoPrivado === true) + '">Aceitar</button>'
       + '</div>';
   }).join('');
 }
 
-function colabResponderConvite(idSolicitacao, resposta) {
-  google.script.run
-    .withSuccessHandler(function() { colabCarregarConvites(); })
-    .withFailureHandler(function(err) { if (typeof showMessage === 'function') showMessage('error', 'Erro', escapeHtml(err.message)); else alert('Erro: ' + err.message); })
-    .apiResponderSolicitacaoColaboracao(idSolicitacao, resposta, '');
+// Aceitar colaboração em plano privado pede a ciência do dever de sigilo (o servidor exige a mesma confirmação). Também usado pelo Início.
+function colabPedirCienciaSigilo(planoPrivado, aoConfirmar) {
+  if (!planoPrivado) { aoConfirmar(false); return; }
+  showConfirm('Aceitar colaboração em plano privado?',
+    'As informações deste plano são sigilosas. Não as divulgue nem as compartilhe com quem não atua nele. Ao aceitar, você declara estar ciente desse dever.',
+    function() { aoConfirmar(true); });
+}
+
+function colabResponderConvite(idSolicitacao, resposta, planoPrivado) {
+  var enviar = function(ciente) {
+    google.script.run
+      .withSuccessHandler(function() { colabCarregarConvites(); })
+      .withFailureHandler(function(err) { showMessage('error', 'Erro', escapeHtml(err.message)); })
+      .apiResponderSolicitacaoColaboracao(idSolicitacao, resposta, '', ciente);
+  };
+  if (resposta === 'ACEITAR') colabPedirCienciaSigilo(planoPrivado, enviar); else enviar(false);
 }
 
 // --- Modal: solicitar colaboração ---
@@ -21461,7 +21523,7 @@ uiRegistrarAcoes('pages_colaboracao', {
   '7': function (event) { abrirModalSolicitarColab(uiArgJs(this.dataset.aclick0)); },
   '8': function (event) { colabCancelarSolicitacao(uiArgJs(this.dataset.aclick0)); },
   '9': function (event) { colabResponderConvite(uiArgJs(this.dataset.aclick0),'RECUSAR'); },
-  '10': function (event) { colabResponderConvite(uiArgJs(this.dataset.aclick0),'ACEITAR'); }
+  '10': function (event) { colabResponderConvite(uiArgJs(this.dataset.aclick0),'ACEITAR', this.dataset.aclick1 === 'true'); }
 });
 </script>
 

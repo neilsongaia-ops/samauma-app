@@ -1209,7 +1209,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
           <div class="elwiz-divisor"></div>
 
-          <div class="elwiz-secao-titulo" style="font-size:0.95rem">Indicar colaboradores <span class="material-symbols-outlined elwiz-info" aria-hidden="true" data-title="Cada indicado recebe um convite e pode aceitar ou recusar.">info</span><span id="info-el-indicar-publico" class="material-symbols-outlined elwiz-info hidden" aria-hidden="true">info</span></div>
+          <div class="elwiz-secao-titulo" style="font-size:0.95rem">Indicar colaboradores <span class="material-symbols-outlined elwiz-info" aria-hidden="true" data-title="Cada indicado recebe um convite e pode aceitar ou recusar.">info</span><span id="info-el-indicar-privado" class="material-symbols-outlined elwiz-info hidden" aria-hidden="true" data-title="Plano privado: o indicado só acessa este elemento e é avisado do dever de sigilo antes de aceitar.">lock</span></div>
           <div id="el-indicar-wrap">
             <div id="el-indicar-selresp"></div>
           </div>
@@ -5849,11 +5849,11 @@ function _wizardElIniciar(idPaiInternoFixo) {
 // Cria (uma única vez) o seletor múltiplo de responsáveis do elemento.
 // Unidades restritas ao contexto do plano (subárvore da Unidade responsável);
 // servidores restritos às lotações dentro desse mesmo contexto.
-// Colaboração externa só existe em plano Público (regra do servidor): em plano Privado o
-// toggle fica desabilitado e desmarcado, e indicar fica bloqueado, com (i) explicando.
+// Abrir o elemento à colaboração espontânea só existe em plano Público (regra do servidor): em plano Privado o
+// toggle fica desabilitado e desmarcado, com (i) explicando. Indicar colaborador vale em qualquer plano (só a janela é exigida).
 function _elPlanoPublico() {
   const p = dadosDetalhados && dadosDetalhados.plano;
-  return !p || p.visibilidade !== 'Privado';
+  return !p || !p.visibilidade || p.visibilidade === 'Público';
 }
 function _wizardElAtualizarBloqueioIndicar() {
   const publico = _elPlanoPublico();
@@ -5863,17 +5863,14 @@ function _wizardElAtualizarBloqueioIndicar() {
   if (!publico) chk.checked = false;
   chk.closest('.elwiz-switch').classList.toggle('elwiz-switch-off', !publico);
   _wizardElAtualizarLabelColaboracao();
-  ['info-el-colab-publico', 'info-el-indicar-publico'].forEach(function (id) {
-    const ico = document.getElementById(id);
-    ico.classList.toggle('hidden', publico);
-    if (publico) ico.removeAttribute('data-title'); else ico.setAttribute('data-title', dicaPublico);
-  });
-  document.getElementById('error-el-colab-janela').classList.toggle('hidden', estadoColabJanelaAbertaEl || !publico);
-  seletorIndicarColaboradorElemento.setDisabled(!estadoColabJanelaAbertaEl || !publico);
+  const icoColab = document.getElementById('info-el-colab-publico');
+  icoColab.classList.toggle('hidden', publico);
+  if (publico) icoColab.removeAttribute('data-title'); else icoColab.setAttribute('data-title', dicaPublico);
+  document.getElementById('info-el-indicar-privado').classList.toggle('hidden', publico);
+  document.getElementById('error-el-colab-janela').classList.toggle('hidden', estadoColabJanelaAbertaEl);
+  seletorIndicarColaboradorElemento.setDisabled(!estadoColabJanelaAbertaEl);
   const wrap = document.getElementById('el-indicar-wrap');
-  if (!publico) {
-    wrap.setAttribute('data-title', dicaPublico);
-  } else if (estadoColabJanelaAbertaEl) {
+  if (estadoColabJanelaAbertaEl) {
     wrap.removeAttribute('data-title');
   } else {
     wrap.setAttribute('data-title', 'Só é possível indicar colaboradores enquanto o plano está em Elaboração, em Análise, ou em Revisão.');
