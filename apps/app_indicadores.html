@@ -847,7 +847,7 @@ function indGradeAbrirProximo(c) {
   var g = _indGrades[c.id], a = g && g.dados.anos.filter(function(x) { return x.ano === c.ano; })[0];
   if (!a) return;
   var ab = _indGradeAbertos[c.id] = _indGradeAbertos[c.id] || {};
-  var livres = a.periodos.filter(function(x) { return x.valor === '' && x.editavel !== false && ab[x.inicioISO] === undefined && x.inicioISO !== c.inicio; });
+  var livres = a.periodos.filter(function(x) { return x.valor === '' && ab[x.inicioISO] === undefined && x.inicioISO !== c.inicio; });
   var prox = livres.filter(function(x) { return x.inicioISO > c.inicio; })[0] || livres[0];
   if (!prox) { c.campo.focus(); return; }
   ab[prox.inicioISO] = '';
@@ -1014,14 +1014,10 @@ function _indPermiteEdicao() {
   return false;
 }
 
-// Definir metas: além de quem edita o plano, com o plano Prorrogado quem responde por ele define as metas dos períodos criados pela prorrogação (o servidor confere cada período).
+// Definir, alterar e excluir metas: só com o plano em elaboração, análise ou revisão (quem edita o plano; o servidor confere).
 // Indicador sem vínculo (elemento excluído com a escolha SEM_VINCULO): sem elemento, só se reconecta ou se exclui — não se edita nem se definem metas.
 function _indSemVinculo(p) { return !!p && !p.idElemento; }
-function _indPermiteMetas(p) {
-  if (_indSemVinculo(p)) return false;
-  if (_indPermiteEdicao()) return true;
-  return !!(_indCtx && _indCtx.permissoes && _indCtx.permissoes.metasPeriodoEstendido);
-}
+function _indPermiteMetas(p) { return !_indSemVinculo(p) && _indPermiteEdicao(); }
 
 // Junta indicadores + metas + elemento + indicador superior em lista unificada
 function _indDados() {
@@ -1820,12 +1816,12 @@ function _indGradeHTML(p, podeEditar) {
     (a.foraDosPeriodos || []).forEach(function(m) { fora.push(m); });
     var celulas = '', ab = _indGradeAbertos[id] || {};
     // campos abertos do ano: o primeiro período livre e os abertos pelo +; o + fica só no último (e só se ainda houver período livre)
-    var vazios = a.periodos.filter(function(x) { return x.valor === '' && edita && x.editavel !== false; });
+    var vazios = a.periodos.filter(function(x) { return x.valor === '' && edita; });
     var abertos = vazios.filter(function(x, i) { return i === 0 || ab[x.inicioISO] !== undefined; });
     var inicioMais = abertos.length && vazios.length > abertos.length ? abertos[abertos.length - 1].inicioISO : '';
     a.periodos.forEach(function(per) {
       var rot = _indEhAnual(per.rotulo) ? '' : (_IND_PER_CURTO[per.rotulo] || per.rotulo);
-      var livre = edita && per.editavel !== false;
+      var livre = edita;
       if (per.valor !== '') celulas += livre && editando === per.inicioISO ? _indGradeCampoHTML(p, a.ano, per, rot, true) : _indGradeCelulaHTML(p, a.ano, per, rot, livre);
       else if (livre && abertos.indexOf(per) > -1) celulas += _indGradeCampoHTML(p, a.ano, per, rot, false, ab[per.inicioISO] || '', per.inicioISO === inicioMais);
     });
