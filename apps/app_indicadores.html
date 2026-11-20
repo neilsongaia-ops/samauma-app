@@ -518,6 +518,7 @@ var INDWIZ_MSGS_CAMPO = {
   });
 })();
 var _indGrades = {};     // idIndicador → { carregando, erro, dados } com a resposta de apiGetGradeMetasIndicador (anos, períodos e meta de cada um)
+var _indGradePendentes = {}; // idIndicador → gravações da grade ainda na fila (a aba é relida uma vez, quando zera)
 var _indGradeFila = {};  // idIndicador → promessa da última gravação (as gravações de um indicador andam em fila: o carimbo muda a cada uma)
 var _indFocoGrade = null; // { id, ano?, editando? }: campo que recebe o foco quando a grade for (re)desenhada
 var _indGradeAbertos = {}; // idIndicador → { início do período: valor digitado e ainda não gravado } dos campos abertos pelo + (só na tela; nada é gravado)
@@ -887,15 +888,18 @@ function _indGradeEnviar(id, a, per, valor) {
   _indFocoGrade = valor !== '' ? { id: id, ano: a.ano } : null;
   _indGradeRedesenhar(id);
   if (_indGradeAbertos[id]) delete _indGradeAbertos[id][per.inicioISO];
+  _indGradePendentes[id] = (_indGradePendentes[id] || 0) + 1;
   _indGradeFila[id] = (_indGradeFila[id] || Promise.resolve()).then(function() {
     var g = _indGrades[id];
-    if (!g || !g.dados) return;
+    if (!g || !g.dados) { _indGradePendentes[id]--; return; }
     var metas = a.periodos.map(function(x) { return { inicio: x.inicioISO, valor: x.valor }; });
     return _indicadoresSDK.chamar('apiSalvarMetasPeriodo', { idIndicador: id, ano: a.ano, metas: metas, ultimaAlteracao: g.dados.ultimaAlteracao }).then(function(res) {
       g.dados.ultimaAlteracao = res.ultimaAlteracao;
-      _indSincronizar(id);
+      // uma só releitura da aba quando a fila do indicador esvazia (várias metas seguidas não refazem a aba a cada Enter)
+      if (--_indGradePendentes[id] <= 0) _indSincronizar(id);
     });
   }).catch(function(err) {
+    _indGradePendentes[id] = 0;
     showMessage('error', 'Erro', escapeHtml((err && err.message) || String(err)));
     delete _indGrades[id];
     _indRenderCorpo();
