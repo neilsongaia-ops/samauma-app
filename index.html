@@ -419,10 +419,11 @@ main { flex: 1; min-height: 0; padding: var(--ds-main-pad-y) var(--ds-main-pad-x
   display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px;
   min-height: var(--ds-pagina-faixa-h); padding-right: var(--ds-pagina-acoes-w);
 }
-.ds-pagina__titulo-linha { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; min-width: 0; }
+.ds-pagina__titulo-linha { display: flex; align-items: center; flex-wrap: nowrap; gap: 12px; min-width: 0; max-width: 100%; }
+.ds-pagina__titulo-linha > :not(.ds-pagina__titulo) { flex: none; }
 .ds-pagina__titulo {
   margin: 0; font-size: var(--ds-text-titulo-pagina); line-height: 1.15; letter-spacing: -0.8px; font-weight: var(--ds-weight-bold);
-  color: var(--ds-color-text); overflow-wrap: anywhere; text-wrap: pretty;
+  color: var(--ds-color-text); min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .ds-pagina__acoes {
   position: sticky; top: var(--ds-pagina-topo); z-index: 43;
@@ -966,31 +967,59 @@ body.high-contrast {
 .ds-input--error, .ds-textarea--error, .ds-select--error { border-color: var(--ds-color-danger); }
 .ds-help { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 .ds-help--error { color: var(--ds-color-danger-fg); }
+.ds-contador { align-self: flex-end; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); font-variant-numeric: tabular-nums; }
+.ds-contador--limite { color: var(--ds-color-danger-fg); }
 
-/* ---- Assistente com trilha lateral: .modal-card--lg > cabeçalho + .ds-wizard (trilha + corpo) + rodapé ---- */
-.modal-card.modal-card--lg { max-width: min(1040px, calc(100vw - 32px)); max-height: none; height: min(680px, calc(100vh - 48px)); }
-.ds-wizard { display: grid; grid-template-columns: 220px minmax(0, 1fr); flex: 1; min-height: 0; border-top: var(--ds-borda) solid var(--ds-color-border); }
-.ds-wizard__trilha { display: flex; flex-direction: column; gap: var(--ds-space-1); padding: var(--ds-space-3); background: var(--ds-color-surface-2); border-right: var(--ds-borda) solid var(--ds-color-border); overflow-y: auto; }
-.ds-wizard__passo { padding: var(--ds-space-1) var(--ds-space-2) var(--ds-space-2); font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.ds-wizard__etapa { display: flex; align-items: center; gap: var(--ds-space-3); padding: var(--ds-space-2) var(--ds-space-3); border: 0; border-radius: var(--ds-r-xl); background: transparent; color: var(--ds-color-text); text-align: left; cursor: pointer; font: inherit; }
-.ds-wizard__etapa:hover { background: var(--ds-color-surface); }
-.ds-wizard__etapa.is-ativa { background: var(--ds-color-surface); box-shadow: var(--ds-shadow-1); }
-.ds-wizard__icone { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--ds-r-pill); background: var(--ds-color-border); color: var(--ds-color-text-muted); flex: none; }
-.ds-wizard__icone .material-symbols-outlined { font-size: var(--ds-icon-md); }
-.ds-wizard__etapa.is-ativa .ds-wizard__icone { background: var(--ds-color-action); color: var(--ds-color-on-action); }
-.ds-wizard__texto { display: flex; flex-direction: column; min-width: 0; }
-.ds-wizard__rotulo { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); }
-.ds-wizard__resumo { font-size: var(--ds-text-xs); color: var(--ds-color-success-fg); }
-.ds-wizard__resumo--alerta { color: var(--ds-color-warning-fg); }
+/* ---- Assistente em etapas (modal wizard canônico) ----
+   .modal-overlay > .modal-card.modal-card--lg > .btn-icon-close + .ds-wizard > (.ds-wizard__trilha + .ds-wizard__corpo).
+   Trilha: __cabecalho (__contexto em azul + __titulo), __aviso, __etapas > __etapa[.is-ativa|.is-concluida] (__num + __texto: __rotulo e __resumo),
+   __andamento (barra + contador). Corpo: .wizard-steps-viewport > .wizard-step (com __titulo-etapa) e __rodape (botões). */
+.modal-card.modal-card--lg { position: relative; overflow: hidden; padding: 0; width: min(800px, calc(100vw - 32px)); max-width: none; height: min(620px, calc(100vh - 48px)); max-height: none; }
+.modal-card--lg > .btn-icon-close { position: absolute; top: var(--ds-space-3); right: var(--ds-space-3); z-index: 5; }
+.ds-wizard { display: grid; grid-template-columns: 224px minmax(0, 1fr); flex: 1; min-height: 0; }
+.ds-wizard__trilha { display: flex; flex-direction: column; gap: var(--ds-space-3); padding: var(--ds-space-5) var(--ds-space-4); background: var(--ds-color-surface-2); border-right: var(--ds-borda) solid var(--ds-glass-border); overflow-y: auto; min-height: 0; }
+.ds-wizard__cabecalho { display: flex; flex-direction: column; gap: var(--ds-space-1-5); }
+.ds-wizard__contexto { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-size: var(--ds-text-xs); line-height: var(--ds-leading-normal); font-weight: var(--ds-weight-bold); color: var(--ds-color-action); }
+.ds-wizard__titulo { margin: 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ds-wizard__aviso { display: flex; align-items: flex-start; gap: var(--ds-space-1-5); padding: var(--ds-space-2) var(--ds-space-2-5); border-radius: var(--ds-r-lg); background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); font-size: var(--ds-text-xs); line-height: var(--ds-leading-normal); }
+.ds-wizard__aviso--alerta { background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg); }
+.ds-wizard__aviso .material-symbols-outlined { font-size: var(--ds-icon-md); flex: none; }
+.ds-wizard__aviso > span:last-child { min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+.ds-wizard__aviso--corpo { margin-bottom: var(--ds-space-4); }
+.ds-wizard__etapas { display: flex; flex-direction: column; gap: var(--ds-space-1-5); flex: 1; min-height: 0; }
+.ds-wizard__etapa { display: flex; align-items: flex-start; gap: var(--ds-space-2-5); width: 100%; padding: var(--ds-space-2-5); border: var(--ds-borda) solid transparent; border-radius: var(--ds-r-lg); background: none; color: var(--ds-color-text-muted); text-align: left; font-family: var(--ds-font-sans); cursor: pointer; }
+.ds-wizard__etapa:hover { background: var(--ds-sidebar-item-hover); }
+.ds-wizard__etapa.is-ativa { background: var(--ds-color-surface); box-shadow: var(--ds-shadow-1); color: var(--ds-color-text); }
+.ds-wizard__num { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 22px; height: 22px; margin-top: var(--ds-space-0-5); border-radius: var(--ds-r-pill); background: var(--ds-color-border); color: var(--ds-color-text-muted); font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); }
+.ds-wizard__num .material-symbols-outlined { font-size: var(--ds-icon-sm); }
+.ds-wizard__etapa.is-ativa .ds-wizard__num { background: var(--ds-color-action); color: var(--ds-color-on-action); }
+.ds-wizard__etapa.is-concluida .ds-wizard__num { background: var(--ds-color-success); color: var(--ds-color-on-action); }
+.ds-wizard__texto { display: flex; flex-direction: column; gap: var(--ds-space-0-5); min-width: 0; }
+.ds-wizard__rotulo { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ds-wizard__resumo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ds-wizard__andamento { display: flex; flex-direction: column; gap: var(--ds-space-1-5); flex: none; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ds-wizard__barra { height: var(--ds-space-1); border-radius: var(--ds-r-pill); background: var(--ds-color-border); overflow: hidden; }
+.ds-wizard__barra-preenchimento { display: block; height: 100%; border-radius: var(--ds-r-pill); background: var(--ds-color-action); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
 .ds-wizard__corpo { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.ds-wizard__corpo .wizard-steps-viewport { padding-top: var(--ds-space-4); }
+.ds-wizard button.ds-select { position: relative; padding-right: var(--ds-space-10); }
+.ds-wizard button.ds-select::after { content: 'expand_more'; position: absolute; top: 50%; right: var(--ds-space-2); transform: translateY(-50%); font-family: 'Material Symbols Outlined'; font-feature-settings: 'liga'; font-size: var(--ds-icon-lg); line-height: 1; color: var(--ds-color-text-muted); }
+.ds-wizard__corpo .wizard-steps-viewport { padding: var(--ds-space-5) var(--ds-space-8) var(--ds-space-4); }
+.ds-wizard__titulo-etapa { margin: 0 var(--ds-space-8) var(--ds-space-4) 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ds-wizard__rodape { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: var(--ds-space-2); flex: none; padding: var(--ds-space-3) var(--ds-space-4); border-top: var(--ds-borda) solid var(--ds-glass-border); }
+.ds-wizard__rodape-dir { display: flex; align-items: center; gap: var(--ds-space-2); margin-left: auto; }
 @media (max-width: 768px) {
-  .modal-card.modal-card--lg { height: calc(100vh - 24px); }
+  .modal-card.modal-card--lg { width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
   .ds-wizard { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-  .ds-wizard__trilha { flex-direction: row; overflow-x: auto; overflow-y: hidden; border-right: 0; border-bottom: var(--ds-borda) solid var(--ds-color-border); }
-  .ds-wizard__passo { display: none; }
-  .ds-wizard__etapa { flex: none; }
+  .ds-wizard__trilha { gap: var(--ds-space-2); padding: var(--ds-space-3) var(--ds-space-12) var(--ds-space-3) var(--ds-space-4); overflow-y: visible; border-right: 0; border-bottom: var(--ds-borda) solid var(--ds-glass-border); }
+  .ds-wizard__etapas { display: none; }
+  .ds-wizard__corpo .wizard-steps-viewport { padding: var(--ds-space-4); }
 }
+
+/* ---- Formulário: marca de obrigatório, divisor e duas colunas ---- */
+.ds-obrig { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); text-transform: uppercase; color: var(--ds-color-danger-fg); }
+.ds-divisor { margin: var(--ds-space-5) 0; border-top: var(--ds-borda) solid var(--ds-glass-border); }
+.ds-form-linha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ds-space-4); }
+@media (max-width: 480px) { .ds-form-linha { grid-template-columns: minmax(0, 1fr); gap: 0; } }
 
 /* ---- Lista selecionável (mestre-detalhe): um item ativo, o detalhe fica ao lado ---- */
 .ds-lista-sel { display: flex; flex-direction: column; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-xl); background: var(--ds-color-surface); overflow-y: auto; min-height: 0; }
@@ -2807,7 +2836,7 @@ uiRegistrarAcoes('components_header', {
   backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate));
 }
 .selresp-pop.hidden { display: none; }
-.selresp-wrap .plw-chips { margin-top: 8px; }
+.selresp-wrap .plw-chips { margin-top: 8px; }  .selresp-wrap .plw-chips:empty { display: none; }
 .selresp-limite { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; }
 .selresp-limite.hidden { display: none; }
 .plw-pop-item[aria-disabled="true"] { opacity: .45; cursor: not-allowed; }
@@ -2837,7 +2866,7 @@ var SeletorResponsaveis = (function() {
 
     container.innerHTML =
       (cfg.label
-        ? '<div class="selresp-label"><label class="ds-label" style="margin:0">' + esc(cfg.label) + '</label>' +
+        ? '<div class="selresp-label"><label class="ds-label" style="margin:0">' + esc(cfg.label) + '</label><span class="ds-obrig hidden">Obrigatório</span>' +
           (cfg.helpText ? '<span class="material-symbols-outlined selresp-info" data-title="' + esc(cfg.helpText) + '">info</span>' : '') +
           '<span class="material-symbols-outlined selresp-limite hidden" tabindex="0" role="img" aria-label="Limite de responsáveis atingido">info</span></div>'
         : '') +
@@ -2919,8 +2948,8 @@ var SeletorResponsaveis = (function() {
           titulo = 'Unidade: ' + (u ? (u.sigla + ' - ' + u.nome) : r.nome);
           ico = 'apartment';
         }
-        return '<span class="plw-chip" data-title="' + esc(titulo) + '"><span class="material-symbols-outlined">' + ico + '</span>' +
-          '<span class="plw-chip-nome">' + esc(curto) + '</span>' +
+        return '<span class="ds-resp" data-title="' + esc(titulo) + '"><span class="material-symbols-outlined">' + ico + '</span>' +
+          '<span>' + esc(curto) + '</span>' +
           (estado.disabled ? '' : '<button type="button" class="plw-chip-x" data-remover="' + idx + '" aria-label="' + esc('Remover ' + curto) + '">' +
             '<span class="material-symbols-outlined">close</span></button>') + '</span>';
       }).join('');
@@ -3054,7 +3083,12 @@ var SeletorResponsaveis = (function() {
         if (v) estado.aberto = false;
         renderChips(); renderPop();
       },
-      atualizarLimite: function() { renderChips(); renderPop(); }
+      atualizarLimite: function() { renderChips(); renderPop(); },
+      // Marcador "Obrigatório" conforme cfg.getObrigatorio() (chave do plano); chame ao abrir o formulário.
+      atualizarObrigatorio: function() {
+        var m = container.querySelector('.ds-obrig');
+        if (m) m.classList.toggle('hidden', !(cfg.getObrigatorio && cfg.getObrigatorio()));
+      }
     };
   }
 
@@ -3074,7 +3108,7 @@ var SeletorResponsaveis = (function() {
 .selsup-campo { display: flex; flex-direction: column; gap: 4px; position: relative; }
 .selsup-cab { display: flex; align-items: center; gap: 6px; }
 .selsup-cab .ds-label { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
-.selsup-cab .ds-label .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
+.selsup-cab .ds-label > .material-symbols-outlined:first-child { font-size: 18px; color: var(--ds-color-text-muted); }
 .selsup-contador { margin-left: auto; font-size: 11px; font-weight: var(--ds-weight-medium); color: var(--ds-color-text-muted); white-space: nowrap; }
 .selsup-contador--forte { font-weight: var(--ds-weight-bold); }
 .selsup-contador--alerta { font-weight: var(--ds-weight-bold); color: var(--ds-color-warning-fg); }
@@ -3115,13 +3149,9 @@ var SeletorResponsaveis = (function() {
 .selsup-mark { background: var(--ds-color-warning-bg); color: inherit; font-weight: var(--ds-weight-semibold); padding: 0; border-radius: 2px; }
 .selsup-vazio { padding: 18px 12px; text-align: center; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); }
 .selsup-vazio .material-symbols-outlined { font-size: 22px; display: block; margin: 0 auto 4px; }
-.selsup-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.selsup-chip {
-  display: inline-flex; align-items: center; gap: 6px; padding: 3px 6px 3px 8px; border-radius: var(--ds-r-pill); max-width: 100%;
-  border: 1px solid var(--ds-color-border); background: var(--ds-color-surface-2); font-size: 12.8px; color: var(--ds-color-text);
-}
-.selsup-chip--indisponivel { border-style: dashed; opacity: .62; }
-.selsup-chip--erro { border-color: var(--ds-color-danger); background: var(--ds-color-danger-bg); }
+.selsup-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }  .selsup-chips:empty { display: none; }
+.selsup-chip--indisponivel { outline: 1px dashed var(--ds-color-border); opacity: .62; }
+.selsup-chip--erro { outline: 1px solid var(--ds-color-danger); background: var(--ds-color-danger-bg); }
 .selsup-chip-cor { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
 .selsup-chip .material-symbols-outlined.selsup-chip-ico { font-size: 14px; }
 .selsup-chip-codigo { font-size: 11px; font-weight: var(--ds-weight-semibold); white-space: nowrap; }
@@ -3132,12 +3162,12 @@ var SeletorResponsaveis = (function() {
   display: inline-flex; align-items: center; justify-content: center; color: var(--ds-color-text-muted);
 }
 .selsup-chip-x:hover { background: var(--ds-color-border); color: var(--ds-color-danger); }
-.selsup-chip-x .material-symbols-outlined { font-size: 14px; }
+.selsup-chip-x .material-symbols-outlined { font-size: 14px; }  .selsup-input-wrap > .selsup-chip-x { position: absolute; right: 10px; top: 11px; }
 .selsup-mais {
   display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 14px; border: 1px solid var(--ds-color-border);
   background: var(--ds-color-surface); font-size: 12.8px; color: var(--ds-color-action); cursor: pointer; white-space: nowrap;
 }
-.selsup-erro { display: flex; gap: 4px; align-items: flex-start; margin-top: 4px; }
+.selsup-erro { display: flex; gap: 4px; align-items: flex-start; }
 .selsup-erro .material-symbols-outlined { font-size: 16px; }
 .selsup-ajuda { margin-top: 4px; line-height: 1.4; }
 .selsup-ajuda--alerta { color: var(--ds-color-warning-fg); }
@@ -3167,12 +3197,10 @@ var SeletorResponsaveis = (function() {
 .selop-oculto { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; clip: rect(0 0 0 0); }
 .selop-trigger { width: 100%; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .selop-trigger.selop-vazio { color: var(--ds-color-text-muted); }
-.selsup-lista.selop-lista { position: absolute; left: 0; right: 0; top: calc(100% + 4px); margin-top: 0; }
-.selsup-obrig { font-size: 10px; font-weight: var(--ds-weight-bold); letter-spacing: .3px; text-transform: uppercase; color: var(--ds-color-danger-fg); }
+:has(> .selop-lista) { position: relative; }  .selsup-lista.selop-lista { position: absolute; left: 0; right: 0; top: calc(100% + 4px); margin-top: 0; }
 .selsup-desab .selsup-chip-x { display: none; }
 .selsup-desab .selsup-input-wrap > .ds-input { cursor: not-allowed; background: var(--ds-color-surface-2); }
 .selsup-trava { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; margin-left: 4px; }
-.selsup-info { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; margin-left: 4px; }
 </style>
 <script>
 // --- SELETOR DE LISTA COM BUSCA (múltiplo ou único) — nasceu como seletor de elementos de planos superiores (vínculo N:N) ---
@@ -3194,6 +3222,8 @@ var SeletorLista = (function () {
       return (ch.normalize('NFD').replace(/[̀-ͯ]/g, '')[0] || ch);
     }).join('').toLowerCase();
   }
+  // Texto do item escolhido: tipo + código + nome (padrão de referência a um item)
+  function rotuloItem(o) { return ((o.tipo ? o.tipo + ' ' : '') + (o.codigo ? o.codigo + ' — ' : '') + (o.titulo || '')).trim(); }
   function corSegura(c) { return /^#[0-9a-fA-F]{6}$/.test(String(c || '')) ? c : '#1967d2'; }
   function curto(o) { return o.nomeCurtoPlanoOrigem || o.nomePlanoOrigem || ''; }
   function destacar(texto, termo) {
@@ -3255,7 +3285,7 @@ var SeletorLista = (function () {
         '<div class="selsup-cab">' +
           '<label class="ds-label" id="' + uid + '-label" for="' + uid + '-input">' +
             '<span class="material-symbols-outlined" aria-hidden="true">' + esc(T.icone) + '</span>' +
-            esc(T.rotulo) + (T.obrigatorio ? ' <span class="selsup-obrig">obrigatório</span>' : '') + (T.ajuda ? '<span class="material-symbols-outlined selsup-info" aria-hidden="true" data-title="' + esc(T.ajuda) + '">info</span>' : '') +
+            esc(T.rotulo) + (T.obrigatorio ? ' <span class="ds-obrig">obrigatório</span>' : '') + (T.ajuda ? '<span class="material-symbols-outlined ds-info" aria-hidden="true" data-title="' + esc(T.ajuda) + '">info</span>' : '') +
             '<span class="material-symbols-outlined selsup-trava hidden" id="' + uid + '-trava" tabindex="0">lock</span></label>' +
           '<span class="selsup-contador" id="' + uid + '-contador" aria-live="polite"></span>' +
         '</div>' +
@@ -3266,7 +3296,8 @@ var SeletorLista = (function () {
           '<input type="text" class="ds-input" id="' + uid + '-input" role="combobox" autocomplete="off" aria-autocomplete="list" ' +
             'aria-haspopup="listbox" aria-controls="' + uid + '-lista" aria-expanded="false" aria-describedby="' + uid + '-ajuda ' + uid + '-erro">' +
           '<span class="selsup-spinner" id="' + uid + '-spinner" aria-hidden="true"><span class="material-symbols-outlined">progress_activity</span></span>' +
-          '<div class="selsup-lista hidden" id="' + uid + '-lista" role="listbox" aria-multiselectable="true" aria-labelledby="' + uid + '-label"></div>' +
+          '<button type="button" class="selsup-chip-x hidden" id="' + uid + '-limpar" data-title="Limpar" aria-label="Limpar seleção"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>' +
+          '<div class="selsup-lista hidden" id="' + uid + '-lista" role="listbox" aria-multiselectable="' + (!cfg.unico) + '" aria-labelledby="' + uid + '-label"></div>' +
         '</div>' +
         '<div class="selsup-chips" id="' + uid + '-chips" role="list" aria-label="' + esc(T.chipsAria) + '"></div>' +
         '<small class="ds-help ds-help--error selsup-erro hidden" id="' + uid + '-erro" role="alert"></small>' +
@@ -3361,6 +3392,7 @@ var SeletorLista = (function () {
     }
 
     function renderChips() {
+      if (cfg.unico) { elChips.innerHTML = ''; return; } // seleção única: o item aparece no próprio campo
       var c = calc(), disp = disponiveisIds();
       var visiveis = (ST.sel.length > LIMITE_CHIPS && !ST.expandido) ? ST.sel.slice(0, LIMITE_CHIPS - 1) : ST.sel;
       var h = visiveis.map(function (x) {
@@ -3372,7 +3404,7 @@ var SeletorLista = (function () {
         var marca = (indisp || comErro)
           ? '<span class="material-symbols-outlined selsup-chip-ico" aria-hidden="true" style="color:' + (indisp ? 'var(--ds-color-text-muted)' : 'var(--ds-color-danger-fg)') + '">' + (indisp ? 'link_off' : 'error') + '</span>'
           : '<span class="selsup-chip-cor" aria-hidden="true" style="background:' + cor + '"></span>';
-        return '<span class="selsup-chip' + (indisp ? ' selsup-chip--indisponivel' : '') + (comErro ? ' selsup-chip--erro' : '') + '" role="listitem" data-title="' + esc(full) + '">' +
+        return '<span class="ds-resp selsup-chip' + (indisp ? ' selsup-chip--indisponivel' : '') + (comErro ? ' selsup-chip--erro' : '') + '" role="listitem" data-title="' + esc(full) + '">' +
           marca + '<span class="selsup-chip-codigo" style="color:' + cor + '">' + esc(x.codigo || '') + '</span>' +
           '<span class="selsup-chip-titulo">' + esc(x.titulo || '') + '</span>' +
           (curto(x) ? '<span class="selsup-chip-plano">· ' + esc(curto(x)) + '</span>' : '') +
@@ -3404,9 +3436,11 @@ var SeletorLista = (function () {
       raiz.querySelector('.selsup-campo').classList.toggle('selsup-desab', ST.desab);
       $('trava').classList.toggle('hidden', !ST.desab); $('trava').setAttribute('data-title', ST.motivo);
       elInput.readOnly = mobile();
-      elInput.value = mobile() ? '' : ST.busca;
+      if (cfg.unico) { if (!(ST.aberto && !mobile())) elInput.value = ST.sel[0] ? rotuloItem(ST.sel[0]) : ''; }
+      else elInput.value = mobile() ? '' : ST.busca;
+      $('limpar').classList.toggle('hidden', !(cfg.unico && c.n && !ST.desab && !ST.carregando));
       elInput.placeholder = ST.carregando ? 'Carregando itens dos planos superiores…'
-        : (cfg.unico && T.placeholder ? (c.n ? 'Buscar outro elemento' : T.placeholder)
+        : (cfg.unico && T.placeholder ? T.placeholder
         : (c.atingido ? 'Limite atingido — remova um item para escolher outro' : (mobile() ? 'Toque para escolher' : 'Buscar por título, código ou tipo')));
       elInput.classList.toggle('ds-input--error', !!ST.erro);
       elInput.setAttribute('aria-invalid', ST.erro ? 'true' : 'false');
@@ -3436,7 +3470,7 @@ var SeletorLista = (function () {
     }
     function abrirTela() {
       if (tela) return;
-      var host = raiz.closest('.wiz-rail-modal') || document.body;
+      var host = raiz.closest('.wiz-rail-modal, .modal-card--lg') || document.body;
       tela = document.createElement('div');
       tela.className = 'selsup-tela'; tela.setAttribute('role', 'dialog'); tela.setAttribute('aria-modal', 'true'); tela.setAttribute('aria-labelledby', uid + '-tela-tit');
       tela.innerHTML =
@@ -3462,7 +3496,11 @@ var SeletorLista = (function () {
     function fecharTela() { if (tela) { tela.remove(); tela = null; } }
 
     // ---- estado ----
-    function abrir() { if (limite() === 0 || ST.carregando || ST.desab) return; ST.aberto = true; if (mobile()) abrirTela(); renderLista(); }
+    function abrir() {
+      if (limite() === 0 || ST.carregando || ST.desab) return;
+      ST.aberto = true; if (mobile()) abrirTela(); renderLista();
+      if (cfg.unico && ST.sel[0] && !mobile()) elInput.select(); // o texto escolhido é substituído ao digitar
+    }
     function fechar() { ST.aberto = false; ST.busca = ''; ST.ativoId = null; fecharTela(); renderCampo(); }
     function notificar() { if (typeof cfg.onChange === 'function') cfg.onChange(); }
 
@@ -3506,7 +3544,7 @@ var SeletorLista = (function () {
         if (ST.aberto && alvo) adicionar(alvo);
       } else if (e.key === 'Escape') {
         if (ST.aberto) { e.stopPropagation(); e.preventDefault(); fechar(); }
-      } else if (e.key === 'Backspace' && !ST.busca && ST.sel.length) {
+      } else if (e.key === 'Backspace' && !cfg.unico && !ST.busca && ST.sel.length) {
         remover(ST.sel[ST.sel.length - 1].id);
       }
     });
@@ -3517,7 +3555,7 @@ var SeletorLista = (function () {
       e.preventDefault(); // mantém o foco no input
       var id = op.getAttribute('data-id');
       // Clicar num item já escolhido o DESMARCA (mesmo comportamento do seletor do modal de planos)
-      if (op.classList.contains('escolhida')) remover(id);
+      if (op.classList.contains('escolhida')) { if (cfg.unico) fechar(); else remover(id); }
       else if (!op.classList.contains('desabilitada')) adicionar(id);
     });
     elLista.addEventListener('mousemove', function (e) {
@@ -3528,6 +3566,7 @@ var SeletorLista = (function () {
         op.classList.add('ativa'); ST.ativoId = id; elInput.setAttribute('aria-activedescendant', uid + '-opt-' + id);
       }
     });
+    $('limpar').addEventListener('click', function () { if (ST.sel[0]) remover(ST.sel[0].id); elInput.focus(); });
     elChips.addEventListener('click', function (e) {
       var x = e.target.closest('[data-remover]'); if (x) { remover(x.getAttribute('data-remover')); return; }
       if (e.target.closest('[data-mais]')) { ST.expandido = !ST.expandido; renderChips(); }
@@ -4045,18 +4084,11 @@ body.high-contrast .btn-outline:hover { background-color: #333; }
 /* Chips (adicionais / planos superiores) */
 .plw-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .plw-chips:empty { display: none; }
-.plw-chip {
-  display: inline-flex; align-items: center; gap: 6px; height: 30px; max-width: 100%; padding: 0 4px 0 10px;
-  border-radius: var(--ds-r-pill); border: 1px solid var(--ds-color-border); background: var(--ds-color-surface);
-  font-size: var(--ds-text-sm); color: var(--ds-color-text);
-}
-.plw-chip > .material-symbols-outlined { font-size: 16px; color: var(--ds-color-text-muted); }
-.plw-chip-nome { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plw-chip-x {
-  width: 22px; height: 22px; padding: 0; border: none; border-radius: 50%; background: none; cursor: pointer;
+  width: 18px; height: 18px; padding: 0; border: none; border-radius: 50%; background: none; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; color: var(--ds-color-text-muted);
 }
-.plw-chip-x .material-symbols-outlined { font-size: 16px; }
+.plw-chip-x .material-symbols-outlined { font-size: 14px; }
 .plw-chip-x:hover { background: var(--ds-color-danger-bg); color: var(--ds-color-danger-fg); }
 
 /* Rodapé */
@@ -4128,7 +4160,7 @@ body.high-contrast .btn-outline:hover { background-color: #333; }
 }
 body.high-contrast .plw-pop { background: #000; border-color: #fff; }
 body.high-contrast .plw-pop-item.plw-ativo { background: #333; }
-body.high-contrast .plw-select, body.high-contrast .plw-token, body.high-contrast .plw-chip { background: #000; border-color: #fff; color: #fff; }
+body.high-contrast .plw-select, body.high-contrast .plw-token { background: #000; border-color: #fff; color: #fff; }
 </style>
 
 <script>
@@ -4470,8 +4502,8 @@ function _plwRenderClassif() {
 
 // ---------------- adicionais / superiores (chips) ----------------
 function _plwChipHTML(ico, label, title, onRemove) {
-  return '<span class="plw-chip" data-title="' + escapeHtml(title) + '">'
-    + '<span class="material-symbols-outlined">' + ico + '</span><span class="plw-chip-nome">' + escapeHtml(label) + '</span>'
+  return '<span class="ds-resp" data-title="' + escapeHtml(title) + '">'
+    + '<span class="material-symbols-outlined">' + ico + '</span><span>' + escapeHtml(label) + '</span>'
     + (_plwEstado.bloq ? '' : '<button type="button" class="plw-chip-x" aria-label="' + escapeHtml('Remover ' + label) + '" ' + uiAtributosAcao('' + onRemove + '', 'click') + '><span class="material-symbols-outlined">close</span></button>')
     + '</span>';
 }
@@ -5541,32 +5573,36 @@ uiRegistrarAcoes('components_modal_resultado', {
 <!-- Modal "Registrar execução" de UM elemento, em três etapas: Progresso · Desempenho · Riscos.
      Abertura única: abrirRegistroExecucao({ idPlano, idElemento, etapa? }) — etapa: 'progresso' | 'desempenho' | 'riscos'.
      Cada etapa grava sozinha (lançamentos independentes); o que foi preenchido nas outras etapas fica no estado do modal.
-     Só classes do design system: assistente com trilha lateral (.ds-wizard) e lista selecionável (.ds-lista-sel). -->
+     Só classes do design system: assistente em etapas (.ds-wizard) e lista selecionável (.ds-lista-sel). -->
 <div id="rex-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="rex-titulo" data-on-click="components_modal_registro_execucao.1">
   <div class="modal-card modal-card--lg">
-    <div class="modal-header">
-      <div class="ds-stack ds-stack--2">
-        <span class="ds-help" id="rex-caminho"></span>
-        <h3 id="rex-titulo">Registrar execução</h3>
-      </div>
-      <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="components_modal_registro_execucao.2" data-title="Fechar" aria-label="Fechar">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-
+    <button type="button" class="btn-icon-close" data-on-click="components_modal_registro_execucao.2" data-title="Fechar" aria-label="Fechar">
+      <span class="material-symbols-outlined">close</span>
+    </button>
     <div class="ds-wizard">
-      <div class="ds-wizard__trilha" id="rex-trilha" role="tablist"></div>
+      <aside class="ds-wizard__trilha">
+        <div class="ds-wizard__cabecalho">
+          <span class="ds-wizard__contexto" id="rex-caminho"></span>
+          <h3 class="ds-wizard__titulo" id="rex-titulo">Registrar execução</h3>
+        </div>
+        <div class="ds-wizard__etapas" id="rex-trilha" role="tablist"></div>
+        <div class="ds-wizard__andamento">
+          <div class="ds-wizard__barra"><span class="ds-wizard__barra-preenchimento" id="rex-andamento-barra"></span></div>
+          <span id="rex-andamento-texto"></span>
+        </div>
+      </aside>
       <div class="ds-wizard__corpo">
         <div class="wizard-steps-viewport" id="rex-viewport">
           <div class="wizard-step" id="rex-etapa"></div>
         </div>
+        <div class="ds-wizard__rodape">
+          <span class="ds-help" id="rex-sessao" aria-live="polite"></span>
+          <div class="ds-wizard__rodape-dir">
+            <button type="button" class="ds-btn ds-btn--ghost" id="rex-btn-voltar" data-on-click="components_modal_registro_execucao.3">Voltar</button>
+            <button type="button" class="ds-btn ds-btn--primary" id="rex-btn-continuar" data-on-click="components_modal_registro_execucao.4">Continuar</button>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="modal-footer">
-      <span class="ds-help" id="rex-sessao" aria-live="polite"></span>
-      <button type="button" class="ds-btn ds-btn--ghost" id="rex-btn-voltar" data-on-click="components_modal_registro_execucao.3">Voltar</button>
-      <button type="button" class="ds-btn ds-btn--primary" id="rex-btn-continuar" data-on-click="components_modal_registro_execucao.4">Continuar</button>
     </div>
   </div>
 </div>
@@ -5691,13 +5727,15 @@ function rexContinuar() { var e = estadoRegistroExec; if (e.etapa >= e.etapas.le
 function _rexRender() {
   var e = estadoRegistroExec;
   if (!e) return;
-  document.getElementById('rex-trilha').innerHTML = '<span class="ds-wizard__passo">Etapa ' + (e.etapa + 1) + ' de ' + e.etapas.length + '</span>' + e.etapas.map(function(k, i) {
-    var r = _rexResumo(k), on = i === e.etapa;
-    return '<button type="button" role="tab" aria-selected="' + on + '" class="ds-wizard__etapa' + (on ? ' is-ativa' : '') + '" data-on-click="components_modal_registro_execucao.5" data-aclick0="' + i + '">' +
-      '<span class="ds-wizard__icone"><span class="material-symbols-outlined">' + (r.devido || on ? _REX_ETAPAS[k].icone : 'check_circle') + '</span></span>' +
+  document.getElementById('rex-trilha').innerHTML = e.etapas.map(function(k, i) {
+    var r = _rexResumo(k), on = i === e.etapa, feita = !on && !r.devido;
+    return '<button type="button" role="tab" aria-selected="' + on + '" class="ds-wizard__etapa' + (on ? ' is-ativa' : feita ? ' is-concluida' : '') + '" data-on-click="components_modal_registro_execucao.5" data-aclick0="' + i + '">' +
+      '<span class="ds-wizard__num">' + (feita ? '<span class="material-symbols-outlined">check</span>' : i + 1) + '</span>' +
       '<span class="ds-wizard__texto"><span class="ds-wizard__rotulo">' + _REX_ETAPAS[k].rotulo + '</span>' +
-      '<span class="ds-wizard__resumo' + (r.devido ? ' ds-wizard__resumo--alerta' : '') + '">' + escapeHtml(r.texto) + '</span></span></button>';
+      '<span class="ds-wizard__resumo">' + escapeHtml(r.texto) + '</span></span></button>';
   }).join('');
+  document.getElementById('rex-andamento-barra').style.width = Math.round((e.etapa + 1) / e.etapas.length * 100) + '%';
+  document.getElementById('rex-andamento-texto').textContent = 'Etapa ' + (e.etapa + 1) + ' de ' + e.etapas.length;
   var k = e.etapas[e.etapa];
   document.getElementById('rex-etapa').innerHTML = k === 'progresso' ? _rexProgressoHTML() : k === 'desempenho' ? _rexDesempenhoHTML() : _rexRiscosHTML();
   if (k === 'progresso') _rexMontarLista();
@@ -5872,7 +5910,7 @@ function _rexRiscosHTML() {
     var trats = (r.tratamentos || []).map(function(t) {
       var prox = typeof execProximaTratamento === 'function' ? execProximaTratamento(t) : null, devido = _rexTratDevido(t), feito = e.sessao.riscos[t.id];
       var proxTxt = feito ? 'Registrada nesta sessão' : prox ? (devido ? 'Devida desde ' : 'Próxima em ') + prox.toLocaleDateString('pt-BR') : 'Sem próxima execução';
-      var per = t.periodicidade === 'Contínuo' && t.intervaloQtd ? 'Contínua · a cada ' + t.intervaloQtd + ' ' + (t.intervaloUnidade || '') : (t.periodicidade || '');
+      var per = t.periodicidade === 'Personalizada' && t.intervaloQtd ? 'Personalizada · a cada ' + t.intervaloQtd + ' ' + (t.intervaloUnidade || '') : (t.periodicidade || '');
       var regs = (t.registros || []).slice(0, 3).map(function(g) {
         return '<div class="ds-spread"><span class="ds-help"><strong>' + escapeHtml(g.dataExecucaoFmt) + '</strong>' + (g.observacao ? ' · ' + escapeHtml(g.observacao) : '') + '</span>' +
           (g.podeExcluir === false ? '' : '<button type="button" class="ds-icon-action ds-icon-action--sm" data-title="Excluir registro" aria-label="Excluir registro" data-on-click="components_modal_registro_execucao.11" data-aclick0="' + escapeHtml(String(g.id)) + '"><span class="material-symbols-outlined">close</span></button>') + '</div>';
@@ -8774,10 +8812,10 @@ function _cfgSecaoHTML(g, lista, violPorChave) {
       '<button type="button" class="cfgp-limite-ver" data-cfg-viol="' + escapeHtml(v.chave) + '" aria-expanded="' + aberto + '">' + (aberto ? 'Ocultar' : 'Ver itens') +
       '<span class="material-symbols-outlined" style="font-size:18px">' + (aberto ? 'expand_less' : 'expand_more') + '</span></button></div>' +
       (aberto ? '<ul class="cfgp-limite-lista">' + v.itens.map(function (it) {
-        var ico = it.entidade === 'PLANO' ? 'description' : (it.entidade === 'INDICADOR' ? 'speed' : 'category');
-        var qtdTxt = it.entidade === 'PLANO' ? ' planos superiores' : (v.chave === 'INDICADOR_ELEMENTOS_LIMITE' ? ' elementos' : (v.chave === 'INDICADOR_RECEBE_VINCULO_LIMITE' ? ' subordinados' : ' superiores'));
+        var ico = it.entidade === 'PLANO' ? 'description' : (it.entidade === 'INDICADOR' ? 'speed' : (it.entidade === 'RISCO' ? 'shield' : 'category'));
+        var qtdTxt = it.entidade === 'PLANO' ? ' planos superiores' : (v.chave === 'RISCO_PARES_LIMITE' ? ' causas' : v.chave === 'RISCO_TRATAMENTOS_LIMITE' ? ' ações' : v.chave === 'RISCO_POR_ELEMENTO_LIMITE' ? ' riscos' : v.chave === 'INDICADOR_ELEMENTOS_LIMITE' ? ' elementos' : (v.chave === 'INDICADOR_RECEBE_VINCULO_LIMITE' ? ' subordinados' : ' superiores'));
         // indicador não tem painel de detalhes próprio: aparece só como texto
-        var titulo = it.entidade === 'INDICADOR' ? '<span>' + escapeHtml(it.titulo) + '</span>'
+        var titulo = (it.entidade === 'INDICADOR' || it.entidade === 'RISCO') ? '<span>' + escapeHtml(it.titulo) + '</span>'
           : '<a data-cfg-abrir="' + escapeHtml(String(it.idEntidade)) + '" data-cfg-entidade="' + escapeHtml(it.entidade) + '">' + escapeHtml(it.titulo) + '</a>';
         return '<li><span class="material-symbols-outlined" aria-hidden="true">' + ico + '</span>' + titulo +
           '<span class="qtd">' + it.quantidade + qtdTxt + '</span></li>';
@@ -10062,6 +10100,29 @@ function spinnerListaHTML(texto) {
   return '<div class="lista-spinner-wrap"><div class="lista-spinner"></div>'
     + (texto ? '<span>' + escapeHtml(texto) + '</span>' : '')
     + '</div>';
+}
+
+// Contador de caracteres (.ds-contador): `<small class="ds-contador"></small>` logo após um controle com maxlength (mesmo pai) mostra "N/limite".
+// Atualiza sozinho ao digitar; depois de preencher campos por script (abrir modal de edição), chame uiContadoresAtualizar(raiz).
+function uiContadorAtualizar(controle) {
+  var cont = controle && controle.maxLength > 0 && controle.parentElement.querySelector(':scope > .ds-contador');
+  if (!cont) return;
+  cont.textContent = controle.value.length + '/' + controle.maxLength;
+  cont.classList.toggle('ds-contador--limite', controle.value.length >= controle.maxLength);
+}
+function uiContadoresAtualizar(raiz) {
+  (raiz || document).querySelectorAll('.ds-contador').forEach(function (c) {
+    var controle = c.parentElement.querySelector(':scope > input[maxlength], :scope > textarea[maxlength]');
+    if (controle) uiContadorAtualizar(controle);
+  });
+}
+document.addEventListener('input', function (e) { uiContadorAtualizar(e.target); });
+
+// Título de página (.ds-pagina__titulo) com texto dinâmico: ocupa uma linha só (reticências) e o nome completo vai no tooltip. Sem texto, limpa o tooltip.
+function uiTituloPagina(el, texto) {
+  if (!el) return;
+  el.textContent = texto || '';
+  if (texto) el.setAttribute('data-title', texto); else el.removeAttribute('data-title');
 }
 
 // Página (.ds-pagina, styles_design_system.html): mede a altura da faixa de abas e dos filtros e a largura das ações e grava nas
@@ -15494,34 +15555,34 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
     <div class="modal-body">
       <form class="calm-form" id="cal-form" data-on-submit="pages_calendario.14" novalidate>
         <div class="calm-campo">
-          <div class="calm-cab"><label class="ds-label" for="cal-f-tipo">Tipo <span class="selsup-obrig">*</span></label><span class="material-symbols-outlined ds-info hidden" id="cal-f-tipo-info" tabindex="0" data-title="">info</span></div>
+          <div class="calm-cab"><label class="ds-label" for="cal-f-tipo">Tipo <span class="ds-obrig">*</span></label><span class="material-symbols-outlined ds-info hidden" id="cal-f-tipo-info" tabindex="0" data-title="">info</span></div>
           <select id="cal-f-tipo" class="ds-select" required data-on-change="pages_calendario.15"></select>
           <span class="calm-erro" id="cal-e-tipo"></span>
         </div>
         <div class="calm-campo">
-          <div class="calm-cab"><label class="ds-label" for="cal-f-titulo">Título <span class="selsup-obrig">*</span></label><span class="calm-contador" id="cal-c-titulo">0/120</span></div>
+          <div class="calm-cab"><label class="ds-label" for="cal-f-titulo">Título <span class="ds-obrig">*</span></label><span class="calm-contador" id="cal-c-titulo">0/120</span></div>
           <input type="text" id="cal-f-titulo" class="ds-input" maxlength="120" required data-on-input="pages_calendario.16" data-contador="cal-c-titulo">
           <span class="calm-erro" id="cal-e-titulo"></span>
         </div>
         <div class="calm-linha">
           <div class="calm-campo">
-            <label class="ds-label" for="cal-f-inicio">Início <span class="selsup-obrig">*</span></label>
+            <label class="ds-label" for="cal-f-inicio">Início <span class="ds-obrig">*</span></label>
             <input type="date" id="cal-f-inicio" class="ds-input" required>
             <span class="calm-erro" id="cal-e-inicio"></span>
           </div>
           <div class="calm-campo">
-            <label class="ds-label" for="cal-f-fim">Fim <span class="selsup-obrig">*</span></label>
+            <label class="ds-label" for="cal-f-fim">Fim <span class="ds-obrig">*</span></label>
             <input type="date" id="cal-f-fim" class="ds-input" required>
             <span class="calm-erro" id="cal-e-fim"></span>
           </div>
         </div>
         <div class="calm-campo">
-          <label class="ds-label" for="cal-f-escopo">Alcance <span class="selsup-obrig">*</span></label>
+          <label class="ds-label" for="cal-f-escopo">Alcance <span class="ds-obrig">*</span></label>
           <select id="cal-f-escopo" class="ds-select" required data-on-change="pages_calendario.17"></select>
           <span class="calm-erro" id="cal-e-escopo"></span>
         </div>
         <div class="calm-campo hidden" id="cal-w-tipoplano">
-          <label class="ds-label" for="cal-f-tipoplano">Tipo de plano <span class="selsup-obrig">*</span></label>
+          <label class="ds-label" for="cal-f-tipoplano">Tipo de plano <span class="ds-obrig">*</span></label>
           <select id="cal-f-tipoplano" class="ds-select"></select>
         </div>
         <div class="calm-campo hidden" id="cal-w-unidade">
@@ -15529,7 +15590,7 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
           <label class="calm-chave"><span id="cal-sw-sub"></span>Incluir subunidades</label>
         </div>
         <div class="calm-campo hidden" id="cal-w-plano">
-          <label class="ds-label" for="cal-f-plano">Plano <span class="selsup-obrig">*</span></label>
+          <label class="ds-label" for="cal-f-plano">Plano <span class="ds-obrig">*</span></label>
           <div id="cal-f-plano"></div>
         </div>
         <span class="calm-erro" id="cal-e-alvo"></span>
@@ -15941,7 +16002,8 @@ function calPrazosRender(hostId, idPlano) {
   host.innerHTML = ''; host.classList.add('hidden');
   if (!idPlano) return;
   google.script.run.withSuccessHandler(function (lista) {
-    lista = (lista || []).slice(0, 3);
+    // A janela de revisão não vira selo: o plano em revisão mostra o status "Em Revisão".
+    lista = (lista || []).filter(function (p) { return p.tipo !== 'REVISAO'; }).slice(0, 3);
     if (!lista.length) return;
     host.innerHTML = lista.map(function (p) {
       var txt = p.dataInicio === p.dataFim || !p.dataInicio ? p.rotulo + ' até ' + _calBR(p.dataFim) : p.rotulo + ' de ' + _calBR(p.dataInicio) + ' a ' + _calBR(p.dataFim);
@@ -18550,7 +18612,7 @@ function _metaOtimistaDoAtual() {
 
 function limparTelaDetalhes(trocouDePlano, manterAba) {
   const titulo = document.getElementById('det-titulo');
-  if(titulo) titulo.innerText = 'Carregando...';
+  uiTituloPagina(titulo, 'Carregando...');
 
   // Header dinâmico volta ao estado "neutro" (igual ao HTML inicial da
   // página) ANTES de qualquer render (otimista ou real) acontecer. Sem isso,
@@ -19209,7 +19271,7 @@ function renderizarHeader() {
 
   const p = dadosDetalhados.plano;
   detKpiRenderizar();
-  document.getElementById('det-titulo').innerText = p.nome || 'Sem Nome';
+  uiTituloPagina(document.getElementById('det-titulo'), p.nome || 'Sem Nome');
   if (typeof calPrazosRender === 'function') calPrazosRender('det-prazos', p.id);
   // Tipo/vigência/responsável/visibilidade saíram do cabeçalho — vivem em #detp-panel
   // (aba Detalhes), montado por _detpRenderDetalhes() ao fim desta função.
@@ -20994,7 +21056,7 @@ function execTarefasReiniciar(idPlano) {
 function execTarefasCarregar(preservar) {
   var e = estadoExecTarefas;
   if (!preservar) {
-    document.getElementById('ext-titulo').textContent = 'Carregando…';
+    uiTituloPagina(document.getElementById('ext-titulo'), 'Carregando…');
     e.riscos = null; e.historico = {}; e.aba = 'todos';
     e.filtroStatus = 'todos'; e.busca = ''; e.dentroDe = ''; e.paginaAtual = 1;
     var buscaEl = document.getElementById('ext-busca');
@@ -21038,7 +21100,7 @@ function carregarDadosExecucao() {
 // --- HEADER E PAINEL LATERAL DE DETALHES ---
 
 function execTarefasRenderizarHeader(p, primeiraCarga) {
-  document.getElementById('ext-titulo').innerText = p.nome || 'Sem Nome';
+  uiTituloPagina(document.getElementById('ext-titulo'), p.nome || 'Sem Nome');
   if (typeof calPrazosRender === 'function') calPrazosRender('ext-prazos', estadoExecTarefas.idPlano);
 
   var elStatus = document.getElementById('ext-status');
@@ -21495,7 +21557,7 @@ function _execBRparaData(br) { var p = String(br || '').split('/'); return p.len
 // Próxima execução devida da ação de tratamento: pontual = a data de referência, se nunca registrada; contínua = último registro + intervalo (ou a referência).
 function execProximaTratamento(t) {
   var regs = t.registros || [], ult = regs.length ? _execBRparaData(regs[0].dataExecucaoFmt) : null, ref = _execBRparaData(t.dataReferenciaFmt);
-  if (t.periodicidade !== 'Contínuo' || !t.intervaloQtd) return regs.length ? null : ref;
+  if (t.periodicidade !== 'Personalizada' || !t.intervaloQtd) return regs.length ? null : ref;
   if (!ult) return ref;
   var d = new Date(ult), q = Number(t.intervaloQtd), u = String(t.intervaloUnidade || '').toLowerCase();
   if (u.indexOf('sem') === 0) d.setDate(d.getDate() + 7 * q); else if (u.indexOf('m') === 0) d.setMonth(d.getMonth() + q); else d.setDate(d.getDate() + q);
@@ -22980,8 +23042,10 @@ uiRegistrarAcoes('pages_avaliacao_planos', {
 <div id="page-avaliacao-executar" class="page-content ds-pagina hidden">
 
   <section class="ds-pagina__hero" id="ax-hero">
-    <h1 class="ds-pagina__titulo" id="ax-det-titulo"></h1>
-    <span class="ds-badge" id="ax-det-status"></span>
+    <div class="ds-pagina__titulo-linha">
+      <h1 class="ds-pagina__titulo" id="ax-det-titulo"></h1>
+      <span class="ds-badge" id="ax-det-status"></span>
+    </div>
   </section>
 
   <div class="ds-pagina__acoes" id="ax-hero-acoes">
@@ -23338,6 +23402,7 @@ function _axSkelLinha(largura, altura) {
 }
 function _axRenderEsqueleto() {
   document.getElementById('ax-det-titulo').innerHTML = _axSkelLinha('320px', 26);
+  document.getElementById('ax-det-titulo').removeAttribute('data-title');
   document.getElementById('ax-det-status').innerHTML = _axSkelLinha('80px', 12);
   document.getElementById('ax-acao-principal').innerHTML = '<button type="button" class="ds-btn ds-btn--primary det-split-main" disabled>' + _axSkelLinha('140px', 12) + '</button>';
   let kpis = '';
@@ -23387,7 +23452,7 @@ const AX_CORES_STATUS = {
   'Excluído':      ['var(--ds-status-cancelado-bg)', 'var(--ds-status-cancelado-fg)']
 };
 function _axRenderHeader(d) {
-  document.getElementById('ax-det-titulo').textContent = d.nome || 'Sem nome';
+  uiTituloPagina(document.getElementById('ax-det-titulo'), d.nome || 'Sem nome');
   const st = document.getElementById('ax-det-status');
   const cor = AX_CORES_STATUS[d.status] || ['var(--ds-color-surface-2)', 'var(--ds-color-text-muted)'];
   st.textContent = d.status || '';

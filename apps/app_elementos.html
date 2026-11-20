@@ -3924,6 +3924,7 @@ function criarNoDOM(item) {
   const desktopToolbar = acoesLinhaHTML(tbId, [
     { icone: 'add', rotulo: 'Adicionar filho', onclick: `prepararNovoFilho('${item.id}')`, principal: true, oculto: !podeEditarElemento },
     { icone: 'speed', rotulo: 'Adicionar indicador', onclick: `abrirModalIndicador('${item.id}')`, principal: true, oculto: !podeEditarElemento },
+    { icone: 'shield', rotulo: 'Adicionar risco', onclick: `rscAbrirModalDoElemento('${item.id}')`, principal: true, oculto: !podeEditarElemento },
     { icone: 'edit', rotulo: 'Editar', onclick: `abrirModalEdicaoElemento('${item.id}')`, oculto: !podeEditarElemento },
     { icone: 'delete', rotulo: 'Excluir', onclick: `confirmarExclusaoElemento('${item.id}','${escapeJsAttr(item.titulo)}')`, perigo: true, oculto: !podeEditarElemento }
   ], { maxDireto: 2 });
@@ -4451,10 +4452,11 @@ function _elAtualizarSelecaoVisual() {
       acoesCont.innerHTML = acoesLinhaHTML('elsel-' + elId, [
         { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + elId + "')", principal: true, oculto: !podeEditar },
         { icone: 'speed', rotulo: 'Adicionar indicador', onclick: "abrirModalIndicador('" + elId + "')", principal: true, oculto: !podeEditar },
+        { icone: 'shield', rotulo: 'Adicionar risco', onclick: "rscAbrirModalDoElemento('" + elId + "')", principal: true, oculto: !podeEditar },
         { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + elId + "')", principal: true, oculto: !podeEditar },
         { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + elId + "')", principal: true },
         { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + elId + "','" + escapeJsAttr(elObj ? elObj.titulo : '') + "')", cor: 'var(--ds-color-danger-fg)', oculto: !podeEditar }
-      ], { maxDireto: 5 });
+      ], { maxDireto: 6 });
     } else {
       acoesCont.innerHTML = podeEditar
         ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" data-on-click="el.63" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>'
@@ -4909,6 +4911,7 @@ function renderizarGantt() {
     var acoes = typeof acoesLinhaHTML === 'function' ? acoesLinhaHTML(tbId, [
       { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + el.id + "')", principal: true, oculto: !podeEditarElemento },
       { icone: 'speed', rotulo: 'Adicionar indicador', onclick: "abrirModalIndicador('" + el.id + "')", principal: true, oculto: !podeEditarElemento },
+      { icone: 'shield', rotulo: 'Adicionar risco', onclick: "rscAbrirModalDoElemento('" + el.id + "')", principal: true, oculto: !podeEditarElemento },
       { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + el.id + "')", oculto: !podeEditarElemento },
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + el.id + "')", principal: true },
       { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + el.id + "','" + escapeJsAttr(el.titulo) + "')", perigo: true, oculto: !podeEditarElemento }
@@ -5122,6 +5125,7 @@ function renderizarTabelaEstrutura() {
     var acoes = acoesLinhaHTML(tbId, [
       { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + id + "')", principal: true, oculto: !podeEditarElemento },
       { icone: 'speed', rotulo: 'Adicionar indicador', onclick: "abrirModalIndicador('" + id + "')", principal: true, oculto: !podeEditarElemento },
+      { icone: 'shield', rotulo: 'Adicionar risco', onclick: "rscAbrirModalDoElemento('" + id + "')", principal: true, oculto: !podeEditarElemento },
       { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + id + "')", oculto: !podeEditarElemento },
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
       { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + id + "','" + escapeJsAttr(no.titulo) + "')", perigo: true, oculto: !podeEditarElemento }
@@ -5297,6 +5301,7 @@ function renderizarOrganograma() {
     var acoes = acoesLinhaHTML('org-tb-' + id, [
       { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + id + "')", principal: true, oculto: !podeEditar },
       { icone: 'speed', rotulo: 'Adicionar indicador', onclick: "abrirModalIndicador('" + id + "')", principal: true, oculto: !podeEditar },
+      { icone: 'shield', rotulo: 'Adicionar risco', onclick: "rscAbrirModalDoElemento('" + id + "')", principal: true, oculto: !podeEditar },
       { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + id + "')", oculto: !podeEditar },
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
       { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + id + "','" + escapeJsAttr(el.titulo) + "')", perigo: true, oculto: !podeEditar }
@@ -5523,6 +5528,7 @@ function renderizarTabelaDetalhes() {
     var acoes = acoesLinhaHTML(tbId, [
       { icone: 'add', rotulo: 'Adicionar filho', onclick: "prepararNovoFilho('" + id + "')", principal: true, oculto: !podeEditarElemento },
       { icone: 'speed', rotulo: 'Adicionar indicador', onclick: "abrirModalIndicador('" + id + "')", principal: true, oculto: !podeEditarElemento },
+      { icone: 'shield', rotulo: 'Adicionar risco', onclick: "rscAbrirModalDoElemento('" + id + "')", principal: true, oculto: !podeEditarElemento },
       { icone: 'edit', rotulo: 'Editar', onclick: "abrirModalEdicaoElemento('" + id + "')", oculto: !podeEditarElemento },
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
       { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + id + "','" + escapeJsAttr(item.titulo) + "')", perigo: true, oculto: !podeEditarElemento }

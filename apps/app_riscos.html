@@ -9,33 +9,28 @@
 
 <!-- MODAL DE RISCO — wizard com trilha lateral -->
 <div id="modal-risco" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalRisco" data-on-click="risco.1">
-  <div class="modal-card modal-lg wiz-rail-modal">
+  <div class="modal-card modal-card--lg" role="dialog" aria-modal="true" aria-labelledby="modal-risco-titulo">
 
-    <button class="btn-icon-close wiz-rail-close" data-on-click="risco.2" data-title="Fechar" aria-label="Fechar">
+    <button class="btn-icon-close" data-on-click="risco.2" data-title="Fechar" aria-label="Fechar">
       <span class="material-symbols-outlined">close</span>
     </button>
 
-    <div class="wiz-mobile-progress">
-      <div class="wiz-mobile-progress-track"><div class="wiz-mobile-progress-fill" id="rwiz-mob-fill"></div></div>
-      <span id="rwiz-mob-texto">Etapa 1 de 4</span>
-    </div>
-
-    <div class="wiz-body">
-      <aside class="wiz-rail">
-        <div class="wiz-rail-header">
-          <span class="wiz-rail-eyebrow" id="rwiz-eyebrow">&nbsp;</span>
-          <h3 id="modal-risco-titulo">Novo risco</h3>
+    <div class="ds-wizard">
+      <aside class="ds-wizard__trilha">
+        <div class="ds-wizard__cabecalho">
+          <span class="ds-wizard__contexto" id="rwiz-eyebrow">&nbsp;</span>
+          <h3 class="ds-wizard__titulo" id="modal-risco-titulo">Novo risco</h3>
         </div>
 
-        <div class="wiz-rail-lista" id="rwiz-rail-lista"><!-- injetado via JS: _rwizRenderRail() --></div>
+        <div class="ds-wizard__etapas" id="rwiz-rail-lista"><!-- injetado via JS: _rwizRenderRail() --></div>
 
-        <div class="wiz-rail-footer">
-          <div class="wiz-rail-progress"><div class="wiz-rail-progress-fill" id="rwiz-rail-fill"></div></div>
+        <div class="ds-wizard__andamento">
+          <div class="ds-wizard__barra"><span class="ds-wizard__barra-preenchimento" id="rwiz-rail-fill"></span></div>
           <span id="rwiz-rail-contador">Etapa 1 de 4</span>
         </div>
       </aside>
 
-      <div class="wiz-content">
+      <div class="ds-wizard__corpo">
         <div class="wizard-steps-viewport">
         <form id="form-risco" data-on-submit="risco.3" novalidate>
           <input type="hidden" id="risco-id-edicao">
@@ -44,28 +39,29 @@
 
           <!-- ETAPA 1: IDENTIFICAÇÃO -->
           <div class="wizard-step" data-step="1" id="wizard-risco-step-1">
-            <h2 class="rwiz-titulo">Identificação</h2>
-            <p class="rwiz-sub">Objeto analisado, evento e natureza do risco.</p>
+            <h2 class="ds-wizard__titulo-etapa">Identificação</h2>
 
-            <div class="ds-field">
-              <label class="ds-label" for="risco-objeto-select">Objeto analisado <span class="rwiz-obrig">obrigatório</span></label>
-              <select id="risco-objeto-select" class="ds-select" required data-on-change="risco.4">
-                <option value="">— Selecione um elemento —</option>
-              </select>
-              <small class="ds-help ds-help--error hidden" id="risco-objeto-select-erro"></small>
+            <!-- vínculo já definido (modal aberto a partir de um elemento): no lugar do seletor de elemento -->
+            <div id="msg-contexto-elem-risco" class="ds-wizard__aviso ds-wizard__aviso--corpo hidden">
+              <span class="material-symbols-outlined">subdirectory_arrow_right</span>
+              <span>Analisado em <strong id="lbl-elem-risco"></strong></span>
+            </div>
+
+            <div class="ds-field" id="group-risco-objeto">
+              <div id="risco-selelem"></div>
             </div>
 
             <div class="ds-field">
-              <label class="ds-label" for="risco-descricao">Descrição do risco / evento <span class="rwiz-obrig">obrigatório</span></label>
-              <textarea id="risco-descricao" class="ds-textarea" rows="3" required minlength="10" maxlength="400"
+              <label class="ds-label" for="risco-descricao">Descrição do risco / evento <span class="ds-obrig">obrigatório</span></label>
+              <textarea id="risco-descricao" class="ds-textarea" rows="3" required minlength="10" maxlength="500"
                         placeholder="Que evento pode impactar o objetivo? Ex: indisponibilidade dos sistemas durante a migração."
                         data-on-input="risco.5"></textarea>
-              <span class="ds-help" id="risco-descricao-contador">0/400</span>
+              <small class="ds-contador"></small>
               <small class="ds-help ds-help--error hidden" id="risco-descricao-erro"></small>
             </div>
 
             <div class="ds-field">
-              <label class="ds-label">Natureza do risco <span class="rwiz-obrig">obrigatório</span></label>
+              <label class="ds-label">Natureza do risco <span class="ds-obrig">obrigatório</span></label>
               <div class="risco-nat-chips" id="risco-nat-chips"></div>
               <small class="ds-help ds-help--error hidden" id="risco-nat-erro"></small>
             </div>
@@ -73,17 +69,18 @@
 
           <!-- ETAPA 2: CAUSAS E CONSEQUÊNCIAS (ao menos um par) -->
           <div class="wizard-step hidden" data-step="2" id="wizard-risco-step-2">
-            <h2 class="rwiz-titulo">Causas e consequências <span class="rwiz-obrig">obrigatório</span></h2>
-            <p class="rwiz-sub">O que pode causar o risco e suas consequências.</p>
+            <h2 class="ds-wizard__titulo-etapa">Causas e consequências <span class="ds-obrig">obrigatório</span></h2>
 
-            <div class="rwiz-row-2">
+            <div class="ds-form-linha">
               <div class="ds-field" style="margin-bottom:0">
-                <input type="text" id="risco-causa-input" class="ds-input" placeholder="Causa..."
+                <input type="text" id="risco-causa-input" class="ds-input" maxlength="500" placeholder="Causa..."
                        data-on-keydown="risco.6">
+                <small class="ds-contador"></small>
               </div>
               <div class="ds-field" style="margin-bottom:0">
-                <input type="text" id="risco-consequencia-input" class="ds-input" placeholder="Consequência correspondente..."
+                <input type="text" id="risco-consequencia-input" class="ds-input" maxlength="500" placeholder="Consequência correspondente..."
                        data-on-keydown="risco.6">
+                <small class="ds-contador"></small>
               </div>
             </div>
             <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" style="margin:8px 0 12px" data-on-click="risco.7">
@@ -95,12 +92,11 @@
 
           <!-- ETAPA 3: AVALIAÇÃO -->
           <div class="wizard-step hidden" data-step="3" id="wizard-risco-step-3">
-            <h2 class="rwiz-titulo">Avaliação</h2>
-            <p class="rwiz-sub">Probabilidade, impacto e apetite ao risco.</p>
+            <h2 class="ds-wizard__titulo-etapa">Avaliação</h2>
 
-            <div class="rwiz-row-2">
+            <div class="ds-form-linha">
               <div class="ds-field">
-                <label class="ds-label" for="risco-probabilidade">Probabilidade <span class="rwiz-obrig">obrigatório</span></label>
+                <label class="ds-label" for="risco-probabilidade">Probabilidade <span class="ds-obrig">obrigatório</span></label>
                 <select id="risco-probabilidade" class="ds-select" required data-on-change="risco.8">
                   <option value="" disabled selected>Selecione...</option>
                   <option value="Muito Baixa">Muito Baixa (peso 1)</option>
@@ -112,7 +108,7 @@
                 <small class="ds-help ds-help--error hidden" id="risco-probabilidade-erro"></small>
               </div>
               <div class="ds-field">
-                <label class="ds-label" for="risco-impacto">Impacto <span class="rwiz-obrig">obrigatório</span></label>
+                <label class="ds-label" for="risco-impacto">Impacto <span class="ds-obrig">obrigatório</span></label>
                 <select id="risco-impacto" class="ds-select" required data-on-change="risco.8">
                   <option value="" disabled selected>Selecione...</option>
                   <option value="Muito Baixo">Muito Baixo (peso 1)</option>
@@ -145,16 +141,16 @@
 
           <!-- ETAPA 4: RESPONSÁVEIS -->
           <div class="wizard-step hidden" data-step="4" id="wizard-risco-step-4">
-            <h2 class="rwiz-titulo">Responsáveis</h2>
-            <p class="rwiz-sub">Quem acompanha este risco.</p>
+            <h2 class="ds-wizard__titulo-etapa">Responsáveis</h2>
             <div id="risco-selresp"></div>
             <small class="ds-help ds-help--error hidden" id="risco-resp-erro"></small>
           </div>
         </form>
         </div><!-- /.wizard-steps-viewport -->
 
-        <div class="modal-footer">
-          <button type="button" class="ds-btn ds-btn--ghost" style="margin-right:auto" data-on-click="risco.2">Cancelar</button>
+        <div class="ds-wizard__rodape">
+          <button type="button" class="ds-btn ds-btn--ghost" data-on-click="risco.2">Cancelar</button>
+          <div class="ds-wizard__rodape-dir">
           <button type="button" class="ds-btn ds-btn--ghost hidden" id="btn-risco-voltar" data-on-click="risco.9">
             <span class="material-symbols-outlined icon">arrow_back</span> Voltar
           </button>
@@ -164,6 +160,7 @@
           <button type="submit" form="form-risco" class="ds-btn ds-btn--primary hidden" id="btn-risco-salvar">
             <span class="material-symbols-outlined icon">save</span> Salvar risco
           </button>
+          </div>
         </div>
       </div>
     </div>
@@ -190,11 +187,13 @@
 
         <div class="form-group" style="margin-bottom:10px">
           <label style="font-size:0.82rem;font-weight:600">Ação de Tratamento *</label>
-          <input type="text" id="trat-acao" class="form-control" placeholder="Descreva a ação...">
+          <input type="text" id="trat-acao" class="form-control" maxlength="500" placeholder="Descreva a ação...">
+          <small class="ds-contador"></small>
         </div>
         <div class="form-group" style="margin-bottom:10px">
           <label style="font-size:0.82rem;font-weight:600">Detalhamento</label>
-          <textarea id="trat-descricao" class="form-control" rows="2" placeholder="Detalhes adicionais..."></textarea>
+          <textarea id="trat-descricao" class="form-control" rows="2" maxlength="500" placeholder="Detalhes adicionais..."></textarea>
+          <small class="ds-contador"></small>
         </div>
         <div class="form-row" style="margin-bottom:10px">
           <div class="form-group" style="flex:1;margin-bottom:0">
@@ -207,7 +206,7 @@
               <option value="Trimestral">Trimestral</option>
               <option value="Semestral">Semestral</option>
               <option value="Anual">Anual</option>
-              <option value="Contínuo">Contínuo (personalizado)</option>
+              <option value="Personalizada">Personalizada</option>
             </select>
           </div>
           <div class="form-group hidden" id="trat-intervalo-wrap" style="flex:1;margin-bottom:0">
@@ -254,66 +253,7 @@
      ESTILOS DO APP RISCOS
      ================================================================ -->
 <style>
-/* ── Modal Wizard com Trilha Lateral ─────────────────────────── */
-.wiz-rail-modal { max-width: 780px; max-height: 90vh; padding: 0; position: relative; overflow: hidden; }
-.wiz-rail-close { position: absolute; top: 14px; right: 14px; z-index: 5; }
-.wiz-body { display: flex; min-height: 0; max-height: 90vh; }
-
-.wiz-rail {
-  flex: 0 0 230px; display: flex; flex-direction: column; gap: 14px;
-  padding: 20px 16px; background: var(--ds-color-surface-2); border-right: 1px solid var(--ds-glass-border);
-  border-radius: var(--ds-r-xl) 0 0 var(--ds-r-xl); overflow-y: auto;
-}
-.wiz-rail-header h3 { margin: 2px 0 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
-.wiz-rail-eyebrow { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); letter-spacing: .3px; color: var(--ds-color-action); }
-
-.wiz-rail-lista { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; }
-.wiz-rail-item {
-  display: flex; align-items: flex-start; gap: 10px; text-align: left; width: 100%;
-  padding: 10px; border: 1px solid transparent; border-radius: var(--ds-r-lg); background: none; cursor: pointer;
-  font-family: var(--ds-font-sans); color: var(--ds-color-text-muted);
-}
-.wiz-rail-item:hover { background: var(--ds-sidebar-item-hover); }
-.wiz-rail-item.wiz-rail-atual { background: var(--ds-color-surface); box-shadow: var(--ds-shadow-1); color: var(--ds-color-text); }
-.wiz-rail-num {
-  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); background: var(--ds-color-surface-2); color: var(--ds-color-text-muted);
-  margin-top: 1px;
-}
-.wiz-rail-item.wiz-rail-atual .wiz-rail-num { background: var(--ds-color-action); color: var(--ds-color-on-action); }
-.wiz-rail-item.wiz-rail-concluido .wiz-rail-num { background: var(--ds-color-success); color: #fff; }
-.wiz-rail-item.wiz-rail-concluido .wiz-rail-num .material-symbols-outlined { font-size: 14px; }
-.wiz-rail-item-titulo { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); display: flex; align-items: center; gap: 6px; }
-.wiz-rail-item-desc { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); margin-top: 2px; line-height: 1.3; }
-
-.wiz-rail-footer { flex-shrink: 0; }
-.wiz-rail-progress { height: 4px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); overflow: hidden; margin-bottom: 6px; }
-.wiz-rail-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-r-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
-.wiz-rail-footer span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-
-.wiz-mobile-progress { display: none; padding: 14px 16px 0; gap: 6px; flex-direction: column; }
-.wiz-mobile-progress-track { height: 4px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); overflow: hidden; }
-.wiz-mobile-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-r-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
-.wiz-mobile-progress span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-
-.wiz-content { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; max-height: 90vh; }
-.wiz-content .wizard-steps-viewport { padding-top: 20px; }
-.wizard-steps-viewport .wizard-step { max-width: 480px; margin: 0 auto; }
-
-@media (max-width: 860px) {
-  .wiz-rail-modal { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
-  .wiz-rail { display: none; }
-  .wiz-mobile-progress { display: flex; }
-  .modal-overlay:has(.wiz-rail-modal) { padding: 0; }
-}
-body.high-contrast .wiz-rail { background: #000; border-color: #fff; }
-body.high-contrast .wiz-rail-item.wiz-rail-atual { background: #222; }
-
-.rwiz-titulo { font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); margin: 0 0 2px; }
-.rwiz-sub { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); margin: 0 0 18px; }
-.rwiz-obrig { font-size: 10px; font-weight: var(--ds-weight-bold); letter-spacing: .3px; text-transform: uppercase; color: var(--ds-color-danger-fg); }
-.rwiz-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 480px) { .rwiz-row-2 { grid-template-columns: 1fr; } }
+/* Modal de Risco: usa o assistente canônico (.ds-wizard); aqui só o que é próprio dele. */
 .rwiz-nivel-preview {
   padding: 8px 12px; border-radius: var(--ds-r-md); font-weight: 700; font-size: 1rem; text-align: center;
   background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); border: 1px solid var(--ds-color-border);
@@ -585,6 +525,9 @@ var _rscVis = { pagina: true, aba: true };
 var _rscCarregado = false;
 var _rscCarregando = false;
 var _riscosCache = [];
+var _rscAoCarregar = []; // chamadas à espera do fim da carga de riscos
+var _rwizParesIniciais = 0;
+var _rscLimites = {}; // limites RISCO_* do plano (null = sem limite; o servidor confere igual)
 var _rscRespObrigatorio = false; // chave RESP_ITENS_OBRIGATORIO do plano (o servidor confere igual)
 var _elementosResumoCache = [];
 
@@ -626,16 +569,15 @@ var _MENSAGENS_APETITE_CLI = {
   RA: 'O risco alto deverá ser priorizado para tratamento, pois está fora do limite de apetite tolerado. A definição de ação de tratamento é obrigatória.',
   RE: 'O risco extremo deverá ser priorizado para tratamento, pois está fora do limite de apetite tolerado. A definição de ação de tratamento é obrigatória.'
 };
-var estadoWizardRisco = { atual: 1, passos: [1, 2, 3, 4] };
+var estadoWizardRisco = { atual: 1, passos: [1, 2, 3, 4], visitadas: {}, transicionando: false, timer: null };
 var RWIZ_TITULOS = [
-  { titulo: 'Identificação', desc: 'Objeto analisado, evento e natureza do risco.' },
-  { titulo: 'Causas e consequências', desc: 'O que pode causar o risco e suas consequências.' },
-  { titulo: 'Avaliação', desc: 'Probabilidade, impacto e apetite ao risco.' },
-  { titulo: 'Responsáveis', desc: 'Quem acompanha este risco.' }
+  { titulo: 'Identificação', desc: 'Objeto, evento e natureza' },
+  { titulo: 'Causas e consequências', desc: 'Ao menos um par' },
+  { titulo: 'Avaliação', desc: 'Probabilidade e impacto' },
+  { titulo: 'Responsáveis', desc: 'Quem acompanha' }
 ];
 
 var RWIZ_MSGS_CAMPO = {
-  'risco-objeto-select': { valueMissing: 'Selecione o elemento do plano.' },
   'risco-descricao':     { valueMissing: 'Descreva o risco ou evento.', tooShort: 'Use pelo menos 10 caracteres.' },
   'risco-probabilidade': { valueMissing: 'Selecione a probabilidade.' },
   'risco-impacto':       { valueMissing: 'Selecione o impacto.' }
@@ -663,6 +605,7 @@ let _cacheNaturezasRisco = null;
 var cacheUnidadesRisco = [];
 var cacheUsuariosRisco = [];
 var seletorRespRisco = null;
+var seletorElemRisco = null;
 var _tratFormIdRisco = null;
 
 var cacheUnidadesTrat = [];
@@ -705,6 +648,7 @@ _riscosSDK.aoContexto(function(ctx) {
   _rscCtx = ctx;
   _rscCarregado = false;
   _rscCarregando = false;
+  _rscAoCarregar = [];
   _riscosCache = [];
   _elementosResumoCache = [];
   estadoRiscos.busca = '';
@@ -751,6 +695,7 @@ _riscosSDK.aoTecla(function(evt) {
 window.carregarRiscos = carregarRiscos;
 window.atualizarRiscos = atualizarRiscos;
 window.abrirModalRisco = abrirModalRisco;
+window.rscAbrirModalDoElemento = rscAbrirModalDoElemento;
 window.fecharModalRisco = fecharModalRisco;
 window.abrirModalTratamentoForm = abrirModalTratamentoForm;
 window.fecharModalTratamentoForm = fecharModalTratamentoForm;
@@ -790,10 +735,9 @@ function salvarRisco(event) {
     return;
   }
 
-  var selObjeto = document.getElementById('risco-objeto-select');
-  var optObjeto = selObjeto.options[selObjeto.selectedIndex];
-  var codigo    = optObjeto.getAttribute('data-codigo') || '';
-  var titulo    = optObjeto.getAttribute('data-titulo') || '';
+  var elObjeto = _elementosResumoCache.find(function(e) { return String(e.id) === String(document.getElementById('risco-id-elemento').value); }) || {};
+  var codigo    = elObjeto.codigo || '';
+  var titulo    = elObjeto.titulo || '';
 
   var dados = {
     idPlano:             idPlano,
@@ -938,9 +882,12 @@ function carregarUsuariosTrat() {
 // ================================================================
 // CARREGAMENTO E SINCRONIZAÇÃO DA LISTA DE RISCOS
 // ================================================================
-function carregarRiscos() {
+// aoFim (opcional): roda quando a carga termina (ex.: abrir o modal a partir de outra aba, que precisa dos dados do plano).
+function carregarRiscos(aoFim) {
   var idPlano = _rscObterIdPlano();
-  if (!idPlano) return;
+  if (!idPlano) { if (aoFim) showMessage('error', 'Riscos', 'Os dados do plano ainda não foram carregados. Tente de novo em instantes.'); return; }
+  if (aoFim) _rscAoCarregar.push(aoFim);
+  if (_rscCarregando) return;
   _rscCarregando = true;
 
   renderizarSecaoRiscos();
@@ -955,10 +902,13 @@ function carregarRiscos() {
     _rscCarregado = true;
     _riscosCache = (res && res.riscos) || [];
     _rscRespObrigatorio = !!(res && res.configRiscos && res.configRiscos.respObrigatorio);
+    _rscLimites = (res && res.configRiscos) || {};
     _elementosResumoCache = (res && res.elementosResumo) || [];
     estadoRiscos.expandidos = {};
     _rscAtualizarContador();
     renderizarSecaoRiscos();
+    var fila = _rscAoCarregar; _rscAoCarregar = [];
+    fila.forEach(function(f) { f(); });
     if (estadoRiscos.painelId) {
       var rp = _riscoPorId(estadoRiscos.painelId);
       if (rp) _riscosRenderPainel(rp); else _riscosSDK.fecharPainel();
@@ -966,6 +916,8 @@ function carregarRiscos() {
   }, function(err) {
     if (!_rscCtx || String(_rscCtx.idPlano) !== String(idPlano)) return;
     _rscCarregando = false;
+    if (_rscAoCarregar.length) showMessage('error', 'Riscos', (err && err.message) || 'Não foi possível carregar os riscos do plano.');
+    _rscAoCarregar = [];
     var el = document.getElementById('riscos-lista');
     if (el) {
       el.innerHTML = '<tr class="el-linha-msg"><td colspan="7"><div class="el-empty-state"><p style="color:var(--ds-color-danger)">' + escapeHtml(err.message || String(err)) + '</p></div></td></tr>';
@@ -1090,6 +1042,7 @@ function _riscosRecarregarLista() {
     if (!_rscCtx || String(_rscCtx.idPlano) !== String(idPlano)) return;
     _riscosCache = (res && res.riscos) || [];
     _rscRespObrigatorio = !!(res && res.configRiscos && res.configRiscos.respObrigatorio);
+    _rscLimites = (res && res.configRiscos) || {};
     _elementosResumoCache = (res && res.elementosResumo) || [];
     _rscAtualizarContador();
     renderizarSecaoRiscos();
@@ -1155,28 +1108,32 @@ function _rscObterIdPlano() {
 // WIZARD MODAL DE RISCO (_rwiz*)
 // ================================================================
 
-function _popularElementosRisco(idElementoSelecionado) {
-  var sel = document.getElementById('risco-objeto-select');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">— Selecione um elemento —</option>';
-  var baseElems = (_elementosResumoCache && _elementosResumoCache.length)
-    ? _elementosResumoCache
-    : [];
-  if (!baseElems || !baseElems.length) return;
-  var elems = baseElems.slice().sort(function(a, b) {
+// Seletor único do elemento analisado (busca + lista; o item escolhido aparece no próprio campo).
+function _opcoesElementosRisco() {
+  var cores = (typeof dadosDetalhados !== 'undefined' && dadosDetalhados && dadosDetalhados.coresTipo) || {};
+  return (_elementosResumoCache || []).slice().sort(function(a, b) {
     return typeof compararCodigos === 'function' ? compararCodigos(a.codigo, b.codigo) : 0;
-  });
-  elems.forEach(function(el) {
-    var opt = document.createElement('option');
-    opt.value = String(el.id);
-    opt.setAttribute('data-titulo', el.titulo || '');
-    opt.setAttribute('data-codigo', el.codigo || '');
-    var label = (el.codigo ? el.codigo + ' — ' : '') + el.titulo;
-    if (el.tipo) label += ' (' + el.tipo + ')';
-    opt.textContent = label;
-    if (idElementoSelecionado && String(el.id) === String(idElementoSelecionado)) opt.selected = true;
-    sel.appendChild(opt);
-  });
+  }).map(function(e) { return { id: e.id, titulo: e.titulo, codigo: e.codigo, tipo: e.tipo, cor: cores[e.tipo] || '' }; });
+}
+
+function _popularElementosRisco(idElementoSelecionado) {
+  if (!document.getElementById('risco-selelem')) return;
+  if (!seletorElemRisco) {
+    seletorElemRisco = SeletorLista.criar({
+      containerId: 'risco-selelem', semGrupos: true, filtrosTipo: true, unico: true,
+      getOpcoes: _opcoesElementosRisco,
+      getLimite: function() { return null; },
+      onChange: _rwizSelecionarObjeto,
+      textos: {
+        rotulo: 'Objeto analisado', icone: 'category', obrigatorio: true, ajuda: '',
+        placeholder: 'Selecione o elemento', vazio: 'Nenhum elemento neste plano.', vazioBusca: ' neste plano',
+        chipsAria: 'Elemento analisado', telaTitulo: 'Objeto analisado', telaBusca: 'Buscar elementos deste plano', remover: 'Remover '
+      }
+    });
+  }
+  seletorElemRisco.limpar();
+  var op = _opcoesElementosRisco().filter(function(o) { return String(o.id) === String(idElementoSelecionado); });
+  if (op.length) seletorElemRisco.setLista(op);
 }
 
 function _gerarIdCausaTemp() {
@@ -1188,14 +1145,20 @@ function adicionarCausaConsequenciaRisco() {
   var consequenciaInput = document.getElementById('risco-consequencia-input');
   var causa = causaInput.value.trim();
   var consequencia = consequenciaInput.value.trim();
-  if (!causa && !consequencia) {
-    if (typeof showMessage === 'function') showMessage('warning', 'Atenção', 'Informe ao menos a causa ou a consequência.');
+  if (!causa || !consequencia) {
+    showMessage('warning', 'Atenção', 'Informe a causa e a consequência.');
+    return;
+  }
+  var lim = _rscLimites.paresLimite;
+  if (lim && _riscoParesCC.length >= lim && _riscoParesCC.length >= (_rwizParesIniciais || 0)) {
+    showMessage('warning', 'Atenção', 'Este plano permite no máximo ' + lim + ' causa(s) e consequência(s) por risco.');
     return;
   }
   _riscoParesCC.push({ id: _gerarIdCausaTemp(), causa: causa, consequencia: consequencia });
   causaInput.value = '';
   consequenciaInput.value = '';
   causaInput.focus();
+  uiContadoresAtualizar(causaInput.closest('.wizard-step'));
   _renderizarCausasConsequenciasRisco();
 }
 
@@ -1309,7 +1272,8 @@ function _initSeletorRespRisco() {
   if (seletorRespRisco || typeof SeletorResponsaveis === 'undefined') return;
   seletorRespRisco = SeletorResponsaveis.criar({
     containerId: 'risco-selresp',
-    label: 'Responsáveis pelo Risco *',
+    label: 'Responsáveis pelo risco',
+    getObrigatorio: function() { return _rscRespObrigatorio; },
     getUnidades: function() { return cacheUnidadesRisco; },
     getUsuarios: function() { return cacheUsuariosRisco; },
     filtroUnidades: function(lista) { return _unidadesContextoPermitidoRisco(lista); },
@@ -1341,14 +1305,15 @@ function _popularCausasVinculoTrat(idCausaAtual) {
 
 function onMudarPeriodicidadeTrat() {
   var v = document.getElementById('trat-periodicidade').value;
-  document.getElementById('trat-intervalo-wrap').classList.toggle('hidden', v !== 'Contínuo');
+  document.getElementById('trat-intervalo-wrap').classList.toggle('hidden', v !== 'Personalizada');
 }
 
 function _initSeletorRespTrat() {
   if (seletorRespTrat || typeof SeletorResponsaveis === 'undefined') return;
   seletorRespTrat = SeletorResponsaveis.criar({
     containerId: 'trat-selresp',
-    label: 'Responsáveis *',
+    label: 'Responsáveis',
+    getObrigatorio: function() { return _rscRespObrigatorio; },
     getUnidades: function() { return cacheUnidadesTrat; },
     getUsuarios: function() { return cacheUsuariosTrat; },
     filtroUnidades: function(lista) { return _unidadesContextoPermitidoTrat(lista); },
@@ -1549,7 +1514,7 @@ function riscosToggleExpandirTodos() {
 }
 
 function _riscoPeriodicidade(t) {
-  return (t.periodicidade === 'Contínuo' && t.intervaloQtd)
+  return (t.periodicidade === 'Personalizada' && t.intervaloQtd)
     ? 'A cada ' + t.intervaloQtd + ' ' + String(t.intervaloUnidade || '').toLowerCase()
     : (t.periodicidade || '');
 }
@@ -1601,7 +1566,7 @@ function _renderizarCausasConsequenciasRisco() {
   var container = document.getElementById('risco-causas-lista');
   if (!container) return;
   var erroCausas = document.getElementById('risco-causas-erro');
-  if (erroCausas && !erroCausas.classList.contains('hidden')) _rwizValidarCausas();
+  if (erroCausas && !erroCausas.classList.contains('hidden') && _rwizTemParCompleto()) erroCausas.classList.add('hidden');
   if (!_riscoParesCC.length) {
     container.innerHTML = '<div class="risco-causa-vazio" style="font-size:0.78rem;padding:6px 2px">Nenhuma causa/consequência adicionada ainda.</div>';
     return;
@@ -2402,54 +2367,56 @@ function _riscosAtualizarPaginacao(total, start) {
 
 // app_riscos_modais — modais e wizards (abrir, validar, salvar)
 
+// Resumo do que já foi preenchido (aparece no lugar do subtítulo da etapa)
 function _rwizResumoPasso(n) {
   if (n === 1) {
-    var sel = document.getElementById('risco-objeto-select');
-    var opt = sel ? sel.options[sel.selectedIndex] : null;
-    return opt && opt.value ? opt.textContent : '';
+    var idEl = document.getElementById('risco-id-elemento').value;
+    var el = idEl ? _elementosResumoCache.find(function(e) { return String(e.id) === String(idEl); }) : null;
+    return el ? ((el.codigo ? el.codigo + ' — ' : '') + el.titulo) : '';
+  }
+  if (n === 2) {
+    var qtd = _riscoParesCC.filter(function(p) { return (p.causa || '').trim() && (p.consequencia || '').trim(); }).length;
+    return qtd ? qtd + (qtd === 1 ? ' par' : ' pares') : '';
+  }
+  if (n === 3) {
+    var nivel = document.getElementById('risco-nivel-preview');
+    var t = nivel ? nivel.textContent.trim() : '';
+    return t && t !== '—' ? t : '';
+  }
+  if (n === 4) {
+    var lista = (typeof seletorRespRisco !== 'undefined' && seletorRespRisco) ? seletorRespRisco.getLista() : [];
+    return lista.map(function(r) { return nomeRespExibicao(r.nome, r.tipo); }).join(', ');
   }
   return '';
 }
 
 function _rwizRenderRail() {
   var wrap = document.getElementById('rwiz-rail-lista');
-  var contador = document.getElementById('rwiz-rail-contador');
-  var mobTexto = document.getElementById('rwiz-mob-texto');
   if (!wrap) return;
   var passos = estadoWizardRisco.passos;
   var idxAtual = passos.indexOf(estadoWizardRisco.atual);
-
   wrap.innerHTML = passos.map(function(p, i) {
     var atual = p === estadoWizardRisco.atual;
-    var concluido = i < idxAtual;
-    var cls = 'wiz-rail-item';
-    if (atual) cls += ' wiz-rail-atual';
-    else if (concluido) cls += ' wiz-rail-concluido';
-    var info = RWIZ_TITULOS[i] || { titulo: 'Etapa ' + p, desc: '' };
-    var resumo = atual ? _rwizResumoPasso(p) : '';
+    var concluido = !atual && _rwizPassoValido(p) && (_rwizEdicao || estadoWizardRisco.visitadas[p] === true);
+    var cls = 'ds-wizard__etapa' + (atual ? ' is-ativa' : (concluido ? ' is-concluida' : ''));
+    var info = RWIZ_TITULOS[i];
+    var resumo = (atual || concluido) ? _rwizResumoPasso(p) : '';
     var numHTML = concluido ? '<span class="material-symbols-outlined">check</span>' : String(i + 1);
-    return '<button type="button" class="' + cls + '" data-on-click="risco.18" data-rclick0="' + p + '">'
-      + '<span class="wiz-rail-num">' + numHTML + '</span>'
-      + '<span>'
-      +   '<div class="wiz-rail-item-titulo">' + escapeHtml(info.titulo) + '</div>'
-      +   '<div class="wiz-rail-item-desc">' + escapeHtml(resumo || info.desc) + '</div>'
-      + '</span>'
+    return '<button type="button"' + (atual ? ' aria-current="step"' : '') + ' class="' + cls + '" data-on-click="risco.18" data-rclick0="' + p + '">'
+      + '<span class="ds-wizard__num">' + numHTML + '</span>'
+      + '<span class="ds-wizard__texto"><span class="ds-wizard__rotulo">' + escapeHtml(info.titulo) + '</span>'
+      + '<span class="ds-wizard__resumo">' + escapeHtml(resumo || info.desc) + '</span></span>'
       + '</button>';
   }).join('');
-
   var pct = Math.round(((idxAtual + 1) / passos.length) * 100);
-  var fill = document.getElementById('rwiz-rail-fill');
-  if (fill) fill.style.width = pct + '%';
-  var mobFill = document.getElementById('rwiz-mob-fill');
-  if (mobFill) mobFill.style.width = pct + '%';
-  var texto = 'Etapa ' + (idxAtual + 1) + ' de ' + passos.length;
-  if (contador) contador.textContent = texto;
-  if (mobTexto) mobTexto.textContent = texto;
+  var fill = document.getElementById('rwiz-rail-fill'); if (fill) fill.style.width = pct + '%';
+  var txt = document.getElementById('rwiz-rail-contador'); if (txt) txt.textContent = 'Etapa ' + (idxAtual + 1) + ' de ' + passos.length;
 }
 
 function _rwizIrPara(n, direcao) {
   var trocarAgora = function() {
     estadoWizardRisco.atual = n;
+    estadoWizardRisco.visitadas[n] = true;
     document.querySelectorAll('#modal-risco .wizard-step').forEach(function(el) {
       el.classList.toggle('hidden', Number(el.dataset.step) !== n);
     });
@@ -2462,24 +2429,19 @@ function _rwizIrPara(n, direcao) {
     if (viewport) viewport.scrollTop = 0;
     estadoWizardRisco.transicionando = false;
   };
-
+  // Uma troca por vez: o clique seguinte cancela a animação pendente (senão ela terminaria na etapa antiga).
+  clearTimeout(estadoWizardRisco.timer);
+  document.querySelectorAll('#modal-risco .wizard-step').forEach(function(el) { el.classList.remove('wizard-slide-out-left', 'wizard-slide-out-right'); });
   var atualEl = document.getElementById('wizard-risco-step-' + estadoWizardRisco.atual);
-  if (!direcao || !atualEl || Number(atualEl.dataset.step) === n || estadoWizardRisco.transicionando) {
-    trocarAgora();
-    return;
-  }
+  if (!direcao || !atualEl || Number(atualEl.dataset.step) === n) { trocarAgora(); return; }
   estadoWizardRisco.transicionando = true;
-  var saiClasse = direcao === 'frente' ? 'wizard-slide-out-left' : 'wizard-slide-out-right';
-  atualEl.classList.add(saiClasse);
-  setTimeout(function() {
-    atualEl.classList.remove(saiClasse);
-    trocarAgora();
-  }, 180);
+  atualEl.classList.add(direcao === 'frente' ? 'wizard-slide-out-left' : 'wizard-slide-out-right');
+  estadoWizardRisco.timer = setTimeout(trocarAgora, 180);
 }
 
 function _rwizIrParaRail(n) {
   if (n === estadoWizardRisco.atual) return;
-  if (n > estadoWizardRisco.atual && !_rwizValidarPassoAtual()) return;
+  if (n > estadoWizardRisco.atual && !_rwizValidarEtapas(_rwizEtapasAntesDe(n))) return;
   _rwizIrPara(n, n > estadoWizardRisco.atual ? 'frente' : 'tras');
 }
 function _rwizClasseErro(campo) {
@@ -2495,56 +2457,71 @@ function _rwizMsgCampo(campo) {
 }
 function _rwizExibirErro(campo) {
   campo.classList.add(_rwizClasseErro(campo));
+  if (campo._selop) campo._selop.sincronizar();
   var erro = document.getElementById(campo.id + '-erro');
   if (erro) { erro.textContent = _rwizMsgCampo(campo); erro.classList.remove('hidden'); }
 }
 function _rwizLimparErro(campo) {
   campo.classList.remove('ds-input--error', 'ds-select--error', 'ds-textarea--error');
+  if (campo._selop) campo._selop.sincronizar();
   var erro = document.getElementById(campo.id + '-erro');
   if (erro) { erro.classList.add('hidden'); erro.textContent = ''; }
 }
-function _rwizContador(campo) {
-  var span = document.getElementById(campo.id + '-contador');
-  if (span) span.textContent = campo.value.length + '/' + campo.maxLength;
+
+// ---- Validação por etapa ----
+function _rwizTemParCompleto() {
+  return _riscoParesCC.some(function(p) { return (p.causa || '').trim() && (p.consequencia || '').trim(); });
 }
 
-function _rwizValidarNatureza() {
-  var erro = document.getElementById('risco-nat-erro');
-  if (_naturezasSelecionadasRisco().length === 0) {
-    if (erro) { erro.textContent = 'Selecione ao menos uma natureza.'; erro.classList.remove('hidden'); }
-    return false;
-  }
-  if (erro) erro.classList.add('hidden');
-  return true;
-}
-
-// Todo risco tem ao menos um par de causa e consequência completo (o servidor confere o mesmo).
-function _rwizValidarCausas() {
-  var erro = document.getElementById('risco-causas-erro');
-  var ok = _riscoParesCC.some(function(p) { return (p.causa || '').trim() && (p.consequencia || '').trim(); });
-  if (erro) {
-    erro.textContent = ok ? '' : 'Insira ao menos um par de causa e consequência.';
-    erro.classList.toggle('hidden', ok);
-  }
-  return ok;
-}
-
-function _rwizValidarPassoAtual() {
-  var stepEl = document.getElementById('wizard-risco-step-' + estadoWizardRisco.atual);
-  if (!stepEl) return true;
+// Primeira pendência da etapa p — { campo } | { natureza: true } | { causas: true } | { resp: true } | null. Pura: não mexe na tela.
+function _rwizPendenciaPasso(p) {
+  var stepEl = document.getElementById('wizard-risco-step-' + p);
+  if (!stepEl) return null;
   var campos = stepEl.querySelectorAll('input, textarea, select');
   for (var i = 0; i < campos.length; i++) {
-    var campo = campos[i];
-    if (campo.closest('.hidden')) continue;
-    if (!campo.checkValidity()) { _rwizExibirErro(campo); campo.focus(); return false; }
+    if (campos[i].disabled || campos[i].closest('.hidden') || campos[i].type === 'hidden') continue;
+    // os campos de digitação do par (etapa 2) valem pelo que já foi inserido, não por si
+    if (campos[i].id === 'risco-causa-input' || campos[i].id === 'risco-consequencia-input') continue;
+    if (!campos[i].checkValidity()) return { campo: campos[i] };
   }
-  if (estadoWizardRisco.atual === 1 && !_rwizValidarNatureza()) return false;
-  if (estadoWizardRisco.atual === 2 && !_rwizValidarCausas()) return false;
-  return true;
+  if (p === 1 && !document.getElementById('risco-id-elemento').value && !document.getElementById('group-risco-objeto').classList.contains('hidden')) return { elemento: true };
+  if (p === 1 && _naturezasSelecionadasRisco().length === 0) return { natureza: true };
+  if (p === 2 && !_rwizTemParCompleto()) return { causas: true };
+  if (p === 4 && _rscRespObrigatorio && !(seletorRespRisco && seletorRespRisco.getLista().length)) return { resp: true };
+  return null;
+}
+function _rwizPassoValido(p) { return !_rwizPendenciaPasso(p); }
+
+// Valida a etapa p (visível) mostrando o erro e o foco quando houver pendência.
+function _rwizValidarPasso(p) {
+  var pend = _rwizPendenciaPasso(p);
+  var erroNat = document.getElementById('risco-nat-erro'), erroCausas = document.getElementById('risco-causas-erro'), erroResp = document.getElementById('risco-resp-erro');
+  if (p === 1 && erroNat) erroNat.classList.add('hidden');
+  if (p === 2 && erroCausas) erroCausas.classList.add('hidden');
+  if (p === 4 && erroResp) erroResp.classList.add('hidden');
+  if (!pend) return true;
+  if (pend.elemento) seletorElemRisco.setErro('Selecione o elemento do plano.');
+  else if (pend.campo) { _rwizExibirErro(pend.campo); pend.campo.focus(); }
+  else if (pend.natureza && erroNat) { erroNat.textContent = 'Selecione ao menos uma natureza.'; erroNat.classList.remove('hidden'); }
+  else if (pend.causas && erroCausas) { erroCausas.textContent = 'Insira ao menos um par de causa e consequência.'; erroCausas.classList.remove('hidden'); }
+  else if (pend.resp && erroResp) { erroResp.textContent = 'Adicione ao menos um responsável pelo risco.'; erroResp.classList.remove('hidden'); }
+  return false;
 }
 
+// Valida as etapas da lista, em ordem; na primeira com pendência leva o usuário até ela, mostra o erro e devolve false.
+function _rwizValidarEtapas(lista) {
+  for (var i = 0; i < lista.length; i++) {
+    if (_rwizPassoValido(lista[i])) continue;
+    if (lista[i] !== estadoWizardRisco.atual) _rwizIrPara(lista[i]);
+    _rwizValidarPasso(lista[i]);
+    return false;
+  }
+  return true;
+}
+function _rwizEtapasAntesDe(n) { return estadoWizardRisco.passos.filter(function(p) { return p >= estadoWizardRisco.atual && p < n; }); }
+
 function _rwizProximo() {
-  if (!_rwizValidarPassoAtual()) return;
+  if (!_rwizValidarPasso(estadoWizardRisco.atual)) return;
   var passos = estadoWizardRisco.passos;
   var idx = passos.indexOf(estadoWizardRisco.atual);
   if (idx < passos.length - 1) _rwizIrPara(passos[idx + 1], 'frente');
@@ -2556,46 +2533,63 @@ function _rwizVoltar() {
   if (idx > 0) _rwizIrPara(passos[idx - 1], 'tras');
 }
 
+// Antes de salvar: percorre todas as etapas e leva o usuário à primeira com pendência
 function _rwizValidarTudoAntesDeSalvar() {
-  var form = document.getElementById('form-risco');
-  var campos = form.querySelectorAll('input, textarea, select');
-  for (var i = 0; i < campos.length; i++) {
-    var campo = campos[i];
-    if (campo.checkValidity()) continue;
-    var stepEl = campo.closest('.wizard-step');
-    if (stepEl) _rwizIrPara(Number(stepEl.dataset.step));
-    _rwizExibirErro(campo);
-    campo.focus();
-    return false;
-  }
-  if (!_rwizValidarNatureza()) { _rwizIrPara(1); return false; }
-  if (!_rwizValidarCausas()) { _rwizIrPara(2); return false; }
-  return true;
+  return _rwizValidarEtapas(estadoWizardRisco.passos);
 }
 
-function _rwizIniciar() {
+var _rwizEdicao = false;
+function _rwizIniciar(edicao) {
+  _rwizEdicao = !!edicao;
+  estadoWizardRisco.visitadas = {};
+  var modal = document.getElementById('modal-risco');
+  modal.querySelectorAll('select.ds-select').forEach(SeletorOpcao.melhorar);
+  SeletorOpcao.sincronizar(modal);
+  if (seletorRespRisco) seletorRespRisco.atualizarObrigatorio();
+  uiContadoresAtualizar(modal);
   _rwizIrPara(1);
 }
 
 function _rwizSelecionarObjeto() {
-  var sel = document.getElementById('risco-objeto-select');
-  document.getElementById('risco-id-elemento').value = sel.value || '';
-  _rwizLimparErro(sel);
+  document.getElementById('risco-id-elemento').value = seletorElemRisco.getIds()[0] || '';
+  seletorElemRisco.setErro('');
   _rwizRenderRail();
 }
 
-function abrirModalRisco(risco) {
+// Abre o modal de novo risco já vinculado ao elemento (ação do item na aba Elementos): carrega os dados do plano se ainda não vieram.
+function rscAbrirModalDoElemento(idElemento) {
+  var noCache = _rscCarregado && _elementosResumoCache.some(function(e) { return String(e.id) === String(idElemento); });
+  if (noCache) abrirModalRisco(null, idElemento);
+  else carregarRiscos(function() { abrirModalRisco(null, idElemento); }); // elemento criado depois da última carga: relê o plano
+}
+
+// Vínculo definido pela origem do clique: mostra "Analisado em tipo cód — nome" no lugar do seletor de elemento.
+function _rwizContextoElemento(idElemento) {
+  var box = document.getElementById('msg-contexto-elem-risco');
+  var grupo = document.getElementById('group-risco-objeto');
+  var el = idElemento ? _elementosResumoCache.find(function(e) { return String(e.id) === String(idElemento); }) : null;
+  if (!el) { box.classList.add('hidden'); grupo.classList.remove('hidden'); return; }
+  var txt = (el.tipo ? el.tipo + ' ' : '') + (el.codigo ? el.codigo + ' — ' : '') + el.titulo;
+  document.getElementById('lbl-elem-risco').textContent = txt;
+  box.setAttribute('data-title', txt);
+  box.classList.remove('hidden');
+  grupo.classList.add('hidden');
+}
+
+function abrirModalRisco(risco, idElementoFixo) {
   document.getElementById('modal-risco-titulo').innerText = risco ? 'Editar risco' : 'Novo risco';
   var eyebrow = document.getElementById('rwiz-eyebrow');
   var planoNome = (_rscCtx && _rscCtx.plano && _rscCtx.plano.nome) || '';
   if (eyebrow) eyebrow.textContent = planoNome;
   document.getElementById('risco-id-edicao').value    = risco ? risco.id : '';
   document.getElementById('risco-ultima-alteracao').value = risco ? risco.ultimaAlteracao : '';
-  document.getElementById('risco-id-elemento').value  = risco ? (risco.idElemento || '') : '';
-  _popularElementosRisco(risco ? risco.idElemento : '');
+  var idElemento = risco ? (risco.idElemento || '') : (idElementoFixo || '');
+  document.getElementById('risco-id-elemento').value  = idElemento;
+  _popularElementosRisco(idElemento);
+  _rwizContextoElemento(risco ? null : idElementoFixo);
   document.getElementById('risco-descricao').value = risco ? risco.risco : '';
-  _rwizContador(document.getElementById('risco-descricao'));
   _riscoParesCC = (risco && Array.isArray(risco.causasConsequencias)) ? risco.causasConsequencias.slice() : [];
+  _rwizParesIniciais = _riscoParesCC.length; // dado já acima do limite pode ser mantido, não aumentado
   document.getElementById('risco-causa-input').value = '';
   document.getElementById('risco-consequencia-input').value = '';
   _renderizarCausasConsequenciasRisco();
@@ -2614,6 +2608,7 @@ function abrirModalRisco(risco) {
   _initSeletorRespRisco();
   prepararDadosRiscoResp(function() {
     if (!seletorRespRisco) return;
+    seletorRespRisco.atualizarObrigatorio();
     if (risco && risco.responsaveis && risco.responsaveis.length) {
       seletorRespRisco.setLista(risco.responsaveis.map(function(r) { return { id: r.id, tipo: r.tipo, nome: r.nome }; }));
     } else if (risco && risco.idResponsavel) {
@@ -2625,7 +2620,9 @@ function abrirModalRisco(risco) {
 
   document.getElementById('modal-risco').classList.remove('hidden');
   if (typeof bloquearFundo === 'function') bloquearFundo();
-  _rwizIniciar();
+  _rwizIniciar(!!risco);
+  var primeiro = document.querySelector('#modal-risco #risco-selelem input, #modal-risco #risco-descricao');
+  if (primeiro && !primeiro.closest('.hidden')) primeiro.focus();
 }
 
 function fecharModalRisco() {
@@ -2669,6 +2666,7 @@ function _prepararModalTratamento(idRisco, trat, idCausaPreSelecionada) {
 
   document.getElementById('modal-tratamento-form').classList.remove('hidden');
   if (typeof bloquearFundo === 'function') bloquearFundo();
+  uiContadoresAtualizar(document.getElementById('modal-tratamento-form'));
   document.getElementById('trat-acao').focus();
 }
 
@@ -2691,8 +2689,7 @@ uiRegistrarAcoes('risco', {
   '1': function (event) { if(event.target===this) window[this.dataset.fechar](); },
   '2': function (event) { fecharModalRisco(); },
   '3': function (event) { salvarRisco(event); },
-  '4': function (event) { _rwizSelecionarObjeto(); },
-  '5': function (event) { _rwizContador(this); _rwizLimparErro(this); },
+  '5': function (event) { _rwizLimparErro(this); },
   '6': function (event) { if(event.key==='Enter'){event.preventDefault();adicionarCausaConsequenciaRisco();}; },
   '7': function (event) { adicionarCausaConsequenciaRisco(); },
   '8': function (event) { atualizarNivelRisco(); _rwizLimparErro(this); },

@@ -123,73 +123,10 @@ body.high-contrast .ind-tabela tr.ind-linha[class*="ind-caso-"] td.ind-col-nome 
   .ind-tabela tr.ind-det td { display: block; padding: 0 12px 12px; border: none; }
 }
 body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-ano { border-color: #fff; }
-/* ============================================================================
-   Modal de Indicador (wizard com trilha lateral) e modal "Definir metas" — migração do Claude Design (2026-10-03,
-   "Modais Indicadores v2"). Mesmo padrão de Plano/Elemento/Risco; o CSS do wizard é escopado ao modal (o app é
-   independente: não depende de o app Elementos estar carregado). Tokens --ds-*; nenhum token novo.
-   ============================================================================ */
-.ind-info, .ind-trava { font-size: 16px; vertical-align: middle; cursor: help; color: var(--ds-color-text-muted); margin-left: 4px; }
-.indw-obrig { font-size: 10px; font-weight: var(--ds-weight-bold); letter-spacing: .3px; text-transform: uppercase; color: var(--ds-color-danger-fg); }
-.indw-titulo { font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); margin: 0 0 18px; }
-.indw-divisor { border-top: 1px solid var(--ds-glass-border); margin: 20px 0; }
-.indw-row-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.indw-select { position: relative; }
-.indw-select .ds-select { appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer; }
-.indw-select .indw-seta { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--ds-color-text-muted); pointer-events: none; }
+/* Modal de Indicador: usa o assistente canônico (.ds-wizard) e o formulário do design system; aqui só o que é próprio dele. */
 .indw-qtd-linha { display: flex; gap: 8px; }
 .indw-qtd-linha input[type=number] { width: 96px; flex-shrink: 0; }
-.indw-qtd-linha .indw-select { flex: 1; min-width: 0; }
-.ds-input:disabled, .ds-select:disabled { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); cursor: not-allowed; }
-.indw-aviso-trava { background: var(--ds-status-execucao-bg) !important; color: var(--ds-status-execucao-fg) !important; }
-.indw-ctx-mobile { display: none; }
-
-#modal-novo-indicador .wiz-rail-modal { max-width: 860px; max-height: 90vh; padding: 0; position: relative; overflow: hidden; width: 860px; max-width: calc(100vw - 32px); }
-#modal-novo-indicador .wiz-rail-close { position: absolute; top: 14px; right: 14px; z-index: 5; }
-#modal-novo-indicador .wiz-body { display: flex; min-height: 0; max-height: 90vh; height: 620px; max-height: calc(100vh - 104px); }
-#modal-novo-indicador .wiz-rail { flex: 0 0 250px; display: flex; flex-direction: column; gap: 14px; padding: 20px 16px; background: var(--ds-color-surface-2);
-  border-right: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl) 0 0 var(--ds-r-xl); overflow-y: auto; box-sizing: border-box; }
-#modal-novo-indicador .wiz-rail-header h3 { margin: 2px 0 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
-#modal-novo-indicador .wiz-rail-eyebrow { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); letter-spacing: .3px; color: var(--ds-color-action); }
-#modal-novo-indicador .wiz-rail-contexto { display: flex; align-items: flex-start; gap: 6px; padding: 8px 10px; border-radius: var(--ds-r-lg);
-  background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); font-size: var(--ds-text-xs); line-height: 1.35; }
-#modal-novo-indicador .wiz-rail-contexto.hidden { display: none; }
-#modal-novo-indicador .wiz-rail-contexto .material-symbols-outlined { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-#modal-novo-indicador .wiz-rail-lista { display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 0; }
-#modal-novo-indicador .wiz-rail-item { display: flex; align-items: flex-start; gap: 10px; text-align: left; width: 100%; padding: 10px; border: 1px solid transparent;
-  border-radius: var(--ds-r-lg); background: none; cursor: pointer; font-family: var(--ds-font-sans); color: var(--ds-color-text-muted); }
-#modal-novo-indicador .wiz-rail-item:hover { background: var(--ds-sidebar-item-hover); }
-#modal-novo-indicador .wiz-rail-item.wiz-rail-atual { background: var(--ds-color-surface); box-shadow: var(--ds-shadow-1); color: var(--ds-color-text); }
-#modal-novo-indicador .wiz-rail-num { flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); background: var(--ds-color-border); color: var(--ds-color-text-muted); margin-top: 1px; }
-#modal-novo-indicador .wiz-rail-item.wiz-rail-atual .wiz-rail-num { background: var(--ds-color-action); color: var(--ds-color-on-action); }
-#modal-novo-indicador .wiz-rail-item.wiz-rail-concluido .wiz-rail-num { background: var(--ds-color-success); color: #fff; }
-#modal-novo-indicador .wiz-rail-num .material-symbols-outlined { font-size: 14px; }
-#modal-novo-indicador .wiz-rail-item-titulo { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
-#modal-novo-indicador .wiz-rail-item-desc { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); margin-top: 2px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#modal-novo-indicador .wiz-rail-footer { flex-shrink: 0; }
-#modal-novo-indicador .wiz-rail-progress { height: 4px; border-radius: var(--ds-r-pill); background: var(--ds-color-border); overflow: hidden; margin-bottom: 6px; }
-#modal-novo-indicador .wiz-rail-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-r-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
-#modal-novo-indicador .wiz-rail-footer span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-#modal-novo-indicador .wiz-mobile-progress { display: none; padding: 14px 56px 0 16px; gap: 6px; flex-direction: column; }
-#modal-novo-indicador .wiz-mobile-progress-track { height: 4px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); overflow: hidden; }
-#modal-novo-indicador .wiz-mobile-progress-fill { display: block; height: 100%; background: var(--ds-color-action); border-radius: var(--ds-r-pill); transition: width var(--ds-duration-fast) var(--ds-ease-standard); }
-#modal-novo-indicador .wiz-mobile-progress span { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-#modal-novo-indicador .wiz-content { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
-#modal-novo-indicador .wizard-steps-viewport { padding-top: 20px; flex: 1; min-height: 0; overflow-y: auto; }
-#modal-novo-indicador .wizard-step { max-width: 480px; margin: 0 auto; }
-#modal-novo-indicador .wizard-step.hidden { display: none; }
-#modal-novo-indicador .indw-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--ds-glass-border); flex-shrink: 0; justify-content: space-between; }
-#modal-novo-indicador .indw-footer-dir { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-#modal-novo-indicador .indw-footer .hidden { display: none; }
-@media (max-width: 860px) {
-  #modal-novo-indicador .wiz-rail-modal { max-width: 100vw; width: 100vw; height: 100dvh; max-height: 100dvh; border-radius: 0; }
-  #modal-novo-indicador .wiz-body { height: calc(100dvh - 40px); max-height: none; }
-  #modal-novo-indicador .wiz-rail { display: none; }
-  #modal-novo-indicador .wiz-mobile-progress { display: flex; }
-  #modal-novo-indicador.modal-overlay { padding: 0; }
-  .indw-ctx-mobile { display: flex; }
-}
-@media (max-width: 480px) { .indw-row-2 { grid-template-columns: 1fr; gap: 0; } }
+.indw-qtd-linha .ds-select { flex: 1; min-width: 0; }
 
 /* modal "Definir metas" (grade de períodos) */
 #form-nova-meta { display: flex; flex-direction: column; flex: 1; min-height: 0; margin: 0; }
@@ -209,42 +146,32 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-ano { borde
      Migração do Claude Design (2026-10-03): ids, name e handlers preservados; etapas 1 Identificação · 2 Medição ·
      3 Responsáveis · 4 Referência (só campos não obrigatórios; "Adicionar referência" leva a ela). -->
 <div id="modal-novo-indicador" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalIndicador" data-on-click="ind.1">
-  <div class="modal-card modal-lg wiz-rail-modal" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-ind">
+  <div class="modal-card modal-card--lg" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-ind">
 
-    <button type="button" class="btn-icon-close wiz-rail-close" data-on-click="ind.2" data-title="Fechar" aria-label="Fechar">
+    <button type="button" class="btn-icon-close" data-on-click="ind.2" data-title="Fechar" aria-label="Fechar">
       <span class="material-symbols-outlined">close</span>
     </button>
 
-    <div class="wiz-mobile-progress">
-      <div class="wiz-mobile-progress-track"><div class="wiz-mobile-progress-fill" id="indwiz-mob-fill"></div></div>
-      <span id="indwiz-mob-texto">Etapa 1 de 4</span>
-    </div>
-
-    <div class="wiz-body">
-      <aside class="wiz-rail">
-        <div class="wiz-rail-header">
-          <span class="wiz-rail-eyebrow" id="indwiz-eyebrow">&nbsp;</span>
-          <h3 id="titulo-modal-ind">Novo indicador</h3>
+    <div class="ds-wizard">
+      <aside class="ds-wizard__trilha">
+        <div class="ds-wizard__cabecalho">
+          <span class="ds-wizard__contexto" id="indwiz-eyebrow">&nbsp;</span>
+          <h3 class="ds-wizard__titulo" id="titulo-modal-ind">Novo indicador</h3>
         </div>
 
-        <!-- contexto: elemento já definido pela árvore -->
-        <div id="msg-contexto-elem-ind" class="wiz-rail-contexto hidden">
-          <span class="material-symbols-outlined">subdirectory_arrow_right</span>
-          <span>Dentro de <strong id="lbl-elem-ind"></strong></span>
-        </div>
-        <div id="indwiz-aviso-trava" class="wiz-rail-contexto indw-aviso-trava hidden">
+        <div id="indwiz-aviso-trava" class="ds-wizard__aviso ds-wizard__aviso--alerta hidden">
           <span class="material-symbols-outlined">lock</span>
           <span>Periodicidade e regra de agregação travadas durante a execução do plano.</span>
         </div>
 
-        <div class="wiz-rail-lista" id="indwiz-rail-lista"><!-- injetado via JS: _indwizRenderRail() --></div>
-        <div class="wiz-rail-footer">
-          <div class="wiz-rail-progress"><div class="wiz-rail-progress-fill" id="indwiz-rail-fill"></div></div>
+        <div class="ds-wizard__etapas" id="indwiz-rail-lista"><!-- injetado via JS: _indwizRenderRail() --></div>
+        <div class="ds-wizard__andamento">
+          <div class="ds-wizard__barra"><span class="ds-wizard__barra-preenchimento" id="indwiz-rail-fill"></span></div>
           <span id="indwiz-rail-contador">Etapa 1 de 4</span>
         </div>
       </aside>
 
-      <div class="wiz-content">
+      <div class="ds-wizard__corpo">
         <div class="wizard-steps-viewport">
         <form id="form-novo-indicador" data-on-submit="ind.3" novalidate>
           <!-- IDs ocultos -->
@@ -253,11 +180,12 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-ano { borde
 
           <!-- ETAPA 1: IDENTIFICAÇÃO -->
           <div class="wizard-step" data-step="1" id="indwiz-step-1">
-            <h2 class="indw-titulo">Identificação</h2>
+            <h2 class="ds-wizard__titulo-etapa">Identificação</h2>
 
-            <div id="msg-contexto-elem-ind-mob" class="wiz-rail-contexto indw-ctx-mobile hidden" style="margin-bottom:16px">
+            <!-- vínculo já definido (modal aberto a partir de um elemento): no lugar do seletor de elemento -->
+            <div id="msg-contexto-elem-ind-form" class="ds-wizard__aviso ds-wizard__aviso--corpo hidden">
               <span class="material-symbols-outlined">subdirectory_arrow_right</span>
-              <span>Dentro de <strong id="lbl-elem-ind-mob"></strong></span>
+              <span>Aferido em <strong id="lbl-elem-ind-form"></strong></span>
             </div>
 
             <!-- elemento do plano (visível quando o modal é aberto pela aba Indicadores) -->
@@ -266,8 +194,9 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-ano { borde
             </div>
 
             <div class="ds-field">
-              <label class="ds-label" for="ind-nome">Nome do indicador <span class="indw-obrig">obrigatório</span></label>
-              <input type="text" name="nome" id="ind-nome" class="ds-input" required minlength="2" placeholder="Ex: Taxa de Conclusão de Cursos" data-on-input="ind.4">
+              <label class="ds-label" for="ind-nome">Nome do indicador <span class="ds-obrig">obrigatório</span></label>
+              <input type="text" name="nome" id="ind-nome" class="ds-input" required minlength="2" maxlength="150" placeholder="Ex: Taxa de Conclusão de Cursos" data-on-input="ind.4">
+              <small class="ds-contador"></small>
               <small class="ds-help ds-help--error hidden" id="ind-nome-erro"></small>
             </div>
 
@@ -278,7 +207,7 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-ano { borde
 
             <!-- vínculo superior (impacto): só aparece quando algum elemento do indicador tem elemento superior -->
             <div id="group-ind-superior" class="hidden">
-              <div class="indw-divisor"></div>
+              <div class="ds-divisor"></div>
               <div class="ds-field">
                 <div id="ind-selsup"></div>
               </div>
@@ -287,18 +216,19 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-ano { borde
 
           <!-- ETAPA 2: MEDIÇÃO -->
           <div class="wizard-step hidden" data-step="2" id="indwiz-step-2">
-            <h2 class="indw-titulo">Medição</h2>
+            <h2 class="ds-wizard__titulo-etapa">Medição</h2>
 
             <div class="ds-field">
-              <label class="ds-label" for="ind-formula">Fórmula de cálculo <span class="indw-obrig">obrigatório</span></label>
-              <input type="text" name="formula" id="ind-formula" class="ds-input" required placeholder="Ex: (Alunos Formados / Total Ingressantes) * 100" data-on-input="ind.5">
+              <label class="ds-label" for="ind-formula">Fórmula de cálculo <span class="ds-obrig">obrigatório</span></label>
+              <input type="text" name="formula" id="ind-formula" class="ds-input" required maxlength="500" placeholder="Ex: (Alunos Formados / Total Ingressantes) * 100" data-on-input="ind.5">
+              <small class="ds-contador"></small>
               <small class="ds-help ds-help--error hidden" id="ind-formula-erro"></small>
             </div>
 
-            <div class="indw-row-2">
+            <div class="ds-form-linha">
               <div class="ds-field">
-                <label class="ds-label" for="ind-unidade">Unidade de medida <span class="indw-obrig">obrigatório</span></label>
-                <div class="indw-select">
+                <label class="ds-label" for="ind-unidade">Unidade de medida <span class="ds-obrig">obrigatório</span></label>
+                
                   <select name="unidade" id="ind-unidade" class="ds-select" required data-on-change="ind.6">
                     <option value="%">% (Percentual)</option>
                     <option value="Qtd">Qtd (Absoluto)</option>
@@ -308,26 +238,24 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-ano { borde
                     <option value="Horas">Horas</option>
                     <option value="Nota">Nota (Escala)</option>
                     <option value="Índice">Índice</option>
-                  </select><span class="material-symbols-outlined indw-seta" aria-hidden="true">expand_more</span>
-                </div>
+                  </select>
               </div>
               <div class="ds-field">
-                <label class="ds-label" for="ind-interpretacao">Interpretação <span class="indw-obrig">obrigatório</span></label>
-                <div class="indw-select">
+                <label class="ds-label" for="ind-interpretacao">Interpretação <span class="ds-obrig">obrigatório</span></label>
+                
                   <select name="interpretacao" id="ind-interpretacao" class="ds-select" required>
                     <option value="Quanto maior o valor, melhor">Quanto maior, melhor</option>
                     <option value="Quanto menor o valor, melhor">Quanto menor, melhor</option>
                     <option value="Igual à meta">Igual à meta</option>
-                  </select><span class="material-symbols-outlined indw-seta" aria-hidden="true">expand_more</span>
-                </div>
+                  </select>
               </div>
             </div>
 
-            <div class="indw-divisor" style="margin-top:4px"></div>
+            <div class="ds-divisor"></div>
 
             <div class="ds-field">
-              <label class="ds-label" for="ind-frequencia">Frequência de aferição <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
-              <div class="indw-select">
+              <label class="ds-label" for="ind-frequencia">Frequência de aferição <span class="ds-obrig">obrigatório</span> <span class="material-symbols-outlined ds-info js-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
+              
                 <select name="frequencia" id="ind-frequencia" class="ds-select" required data-on-change="ind.7">
                   <option value="Anual">Anual</option>
                   <option value="Semestral">Semestral</option>
@@ -335,80 +263,79 @@ body.high-contrast .ind-tabela tr.ind-linha, body.high-contrast .ind-ano { borde
                   <option value="Trimestral">Trimestral</option>
                   <option value="Bimestral">Bimestral</option>
                   <option value="Mensal">Mensal</option>
-                  <option value="Contínuo">Contínuo</option>
-                </select><span class="material-symbols-outlined indw-seta" aria-hidden="true">expand_more</span>
-              </div>
+                  <option value="Personalizada">Personalizada</option>
+                </select>
             </div>
 
-            <!-- intervalo e início do fluxo Contínuo (aparece só quando frequencia === 'Contínuo') -->
-            <div id="ind-intervalo-wrap" class="indw-row-2 hidden">
+            <!-- intervalo e início do fluxo Personalizada (aparece só quando frequencia === 'Personalizada') -->
+            <div id="ind-intervalo-wrap" class="ds-form-linha hidden">
               <div class="ds-field">
-                <label class="ds-label" for="ind-intervalo-qtd">A cada <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Intervalo entre os períodos de aferição. Cada janela vira um período, com a sua própria meta.">info</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
+                <label class="ds-label" for="ind-intervalo-qtd">A cada <span class="ds-obrig">obrigatório</span> <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Intervalo entre os períodos de aferição. Cada janela vira um período, com a sua própria meta.">info</span> <span class="material-symbols-outlined ds-info js-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
                 <div class="indw-qtd-linha">
                   <input type="number" id="ind-intervalo-qtd" name="intervaloQtd" class="ds-input" min="1" max="999" placeholder="Ex: 15" data-on-input="ind.5">
-                  <div class="indw-select">
+                  
                     <select id="ind-intervalo-unidade" name="intervaloUnidade" class="ds-select">
                       <option value="Dias" selected>Dias</option>
                       <option value="Semanas">Semanas</option>
                       <option value="Meses">Meses</option>
-                    </select><span class="material-symbols-outlined indw-seta" aria-hidden="true">expand_more</span>
-                  </div>
+                    </select>
                 </div>
                 <small class="ds-help ds-help--error hidden" id="ind-intervalo-qtd-erro"></small>
               </div>
               <div class="ds-field">
-                <label class="ds-label" for="ind-inicio-continuo">A partir de <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Data em que começa a contagem. A primeira janela começa nesta data e as seguintes vêm em sequência, sem lacunas.">info</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
+                <label class="ds-label" for="ind-inicio-continuo">A partir de <span class="ds-obrig">obrigatório</span> <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Data em que começa a contagem. A primeira janela começa nesta data e as seguintes vêm em sequência, sem lacunas.">info</span> <span class="material-symbols-outlined ds-info js-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
                 <input type="date" id="ind-inicio-continuo" name="inicioContinuo" class="ds-input" data-on-input="ind.5">
                 <small class="ds-help ds-help--error hidden" id="ind-inicio-continuo-erro"></small>
               </div>
             </div>
 
             <div class="ds-field" style="margin-bottom:0">
-              <label class="ds-label" for="ind-regra-agregacao">Regra de agregação <span class="indw-obrig">obrigatório</span> <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Como os lançamentos de um mesmo período viram o valor realizado. Último valor: vale o mais recente (ex.: taxa de evasão). Soma: acumula os lançamentos (ex.: nº de publicações). Média: média dos lançamentos (ex.: nota de satisfação).">info</span> <span class="material-symbols-outlined ind-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
-              <div class="indw-select">
+              <label class="ds-label" for="ind-regra-agregacao">Regra de agregação <span class="ds-obrig">obrigatório</span> <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Como os lançamentos de um mesmo período viram o valor realizado. Último valor: vale o mais recente (ex.: taxa de evasão). Soma: acumula os lançamentos (ex.: nº de publicações). Média: média dos lançamentos (ex.: nota de satisfação).">info</span> <span class="material-symbols-outlined ds-info js-trava hidden" tabindex="0" data-title="Travado durante a execução do plano. Para alterar, abra uma revisão.">lock</span></label>
+              
                 <select name="regraAgregacao" id="ind-regra-agregacao" class="ds-select" required data-on-change="ind.6">
                   <option value="ULTIMO" selected>Último valor</option>
                   <option value="SOMA">Soma dos lançamentos</option>
                   <option value="MEDIA">Média dos lançamentos</option>
-                </select><span class="material-symbols-outlined indw-seta" aria-hidden="true">expand_more</span>
-              </div>
+                </select>
             </div>
           </div>
 
           <!-- ETAPA 3: RESPONSÁVEIS -->
           <div class="wizard-step hidden" data-step="3" id="indwiz-step-3">
-            <h2 class="indw-titulo">Responsáveis</h2>
+            <h2 class="ds-wizard__titulo-etapa">Responsáveis</h2>
             <div id="ind-selresp"></div>
             <small class="ds-help ds-help--error hidden" id="ind-selresp-erro"></small>
           </div>
 
           <!-- ETAPA 4: REFERÊNCIA (só campos não obrigatórios) -->
           <div class="wizard-step hidden" data-step="4" id="indwiz-step-4">
-            <h2 class="indw-titulo">Referência</h2>
-            <div class="indw-row-2">
+            <h2 class="ds-wizard__titulo-etapa">Referência</h2>
+            <div class="ds-form-linha">
               <div class="ds-field">
-                <label class="ds-label" for="ind-indice-base">Índice base <span class="material-symbols-outlined ind-info" tabindex="0" data-title="O valor mais recente antes do início deste plano.">info</span></label>
-                <input type="text" name="indiceBase" id="ind-indice-base" class="ds-input" placeholder="Ex: 45%">
+                <label class="ds-label" for="ind-indice-base">Índice base <span class="material-symbols-outlined ds-info" tabindex="0" data-title="O valor mais recente antes do início deste plano.">info</span></label>
+                <input type="text" name="indiceBase" id="ind-indice-base" class="ds-input" maxlength="100" placeholder="Ex: 45%">
+              <small class="ds-contador"></small>
               </div>
               <div class="ds-field">
-                <label class="ds-label" for="input-ind-data-referencia">Data de referência <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Marco zero: quando o índice base foi apurado.">info</span></label>
+                <label class="ds-label" for="input-ind-data-referencia">Data de referência <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Marco zero: quando o índice base foi apurado.">info</span></label>
                 <input type="date" name="dataReferencia" id="input-ind-data-referencia" class="ds-input">
               </div>
             </div>
             <div class="ds-field" style="margin-bottom:0">
-              <label class="ds-label" for="ind-fonte-dados">Fonte de dados <span class="material-symbols-outlined ind-info" tabindex="0" data-title="Endereço web oficial de onde os dados são extraídos. Deve ser um link válido.">info</span></label>
-              <input type="text" name="fonteDados" id="ind-fonte-dados" class="ds-input" placeholder="Ex: https://sigaa.ufpa.br/relatorios">
+              <label class="ds-label" for="ind-fonte-dados">Fonte de dados <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Endereço web oficial de onde os dados são extraídos. Deve ser um link válido.">info</span></label>
+              <input type="text" name="fonteDados" id="ind-fonte-dados" class="ds-input" maxlength="2000" placeholder="Ex: https://sigaa.ufpa.br/relatorios">
+              <small class="ds-contador"></small>
             </div>
           </div>
         </form>
         </div>
 
-        <div class="indw-footer">
-          <button type="button" class="ds-btn ds-btn--ghost" style="border-color:transparent" data-on-click="ind.2">Cancelar</button>
-          <div class="indw-footer-dir">
-            <button type="button" class="ds-btn ds-btn--ghost hidden" style="border-color:transparent" id="indw-btn-voltar" data-on-click="ind.8"><span class="material-symbols-outlined">arrow_back</span><span class="indw-txt-voltar">Voltar</span></button>
+        <div class="ds-wizard__rodape">
+          <button type="button" class="ds-btn ds-btn--ghost" data-on-click="ind.2">Cancelar</button>
+          <div class="ds-wizard__rodape-dir">
+            <button type="button" class="ds-btn ds-btn--ghost hidden" id="indw-btn-voltar" data-on-click="ind.8"><span class="material-symbols-outlined">arrow_back</span><span class="indw-txt-voltar">Voltar</span></button>
             <button type="button" class="ds-btn ds-btn--ghost hidden" id="indw-btn-salvar-sec" data-on-click="ind.9"><span class="material-symbols-outlined">save</span>Salvar</button>
-            <button type="button" class="ds-btn ds-btn--ghost hidden" style="border-color:transparent" id="indw-btn-referencia" data-on-click="ind.10">Adicionar referência</button>
+            <button type="button" class="ds-btn ds-btn--ghost hidden" id="indw-btn-referencia" data-on-click="ind.10">Adicionar referência</button>
             <button type="button" class="ds-btn ds-btn--primary" id="indw-btn-continuar" data-on-click="ind.11">Continuar<span class="material-symbols-outlined">arrow_forward</span></button>
             <button type="submit" form="form-novo-indicador" class="ds-btn ds-btn--primary hidden" id="btn-submit-ind"><span class="material-symbols-outlined">save</span>Salvar indicador</button>
           </div>
@@ -494,9 +421,9 @@ var _IND_GRUPO_MESMO_PLANO = '__mesmo_plano__';
 var _IND_ROTULO_LIGACAO = { PAI: 'Elemento pai', FILHO: 'Elemento filho', RELACIONADO: 'Relacionado' };
 var _indwizEdicao = false;
 var _indUltimaAlteracao = 0; // carimbo (ultimaAlteracao) do indicador aberto para edição: o servidor só grava se ninguém alterou depois
-var estadoWizardInd = { atual: 1, passos: [1, 2, 3, 4], transicionando: false };
+var estadoWizardInd = { atual: 1, passos: [1, 2, 3, 4], visitadas: {}, transicionando: false, timer: null };
 var INDWIZ_TITULOS = [
-  { titulo: 'Identificação', desc: 'Nome e onde se encaixa' },
+  { titulo: 'Identificação', desc: 'Nome e vínculos' },
   { titulo: 'Medição', desc: 'Como e quando medir' },
   { titulo: 'Responsáveis', desc: 'Quem acompanha' },
   { titulo: 'Referência', desc: 'Ponto de partida e fonte' }
@@ -699,17 +626,6 @@ function handleSalvarIndicador(e) {
     ? seletorRespInd.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; })
     : [];
 
-  var inputElem = document.getElementById('input-ind-id-elemento');
-  if (!inputElem || !inputElem.value) {
-    showMessage('warning', 'Atenção', 'Selecione o Elemento do Plano ao qual o indicador pertence.');
-    return;
-  }
-
-  if (_indConfig.respObrigatorio && responsaveis.length === 0) {
-    showMessage('warning', 'Atenção', 'Adicione ao menos um Responsável pela Coleta.');
-    return;
-  }
-
   var form = e.target;
   var fonteDados = form.fonteDados.value.trim();
   if (fonteDados) {
@@ -804,7 +720,7 @@ function _indGradeCarregar(id) {
     _indGrades[id] = { dados: res };
     _indGradeRedesenhar(id);
   }, function(err) {
-    // ex.: indicador Contínuo sem data de início — a mensagem do servidor explica o que falta
+    // ex.: indicador de frequência Personalizada sem data de início — a mensagem do servidor explica o que falta
     _indGrades[id] = { erro: (err && err.message) || String(err) };
     _indGradeRedesenhar(id);
   });
@@ -1112,8 +1028,8 @@ function _indValorUnidadeTxt(valor, unidade) {
   return numStr + (u ? ' ' + u : '');
 }
 function _indFreqTxt(p) {
-  return (p.frequencia === 'Contínuo' && p.intervaloQtd)
-    ? 'Contínuo (a cada ' + p.intervaloQtd + ' ' + String(p.intervaloUnidade || '').toLowerCase() + ')'
+  return (p.frequencia === 'Personalizada' && p.intervaloQtd)
+    ? 'Personalizada (a cada ' + p.intervaloQtd + ' ' + String(p.intervaloUnidade || '').toLowerCase() + ')'
     : (p.frequencia || '');
 }
 function _indMenorMelhor(p) { return /menor/i.test(String(p.interpretacao || '')); }
@@ -1212,6 +1128,7 @@ function _initSeletorRespInd() {
     getUnidades: function() { return unidadesContextoPermitidoInd; },
     getUsuarios: function() { return cacheUsuariosInd; },
     getLimite: function() { return _indConfig.respIndicadorLimite; },
+    getObrigatorio: function() { return !!_indConfig.respObrigatorio; },
     textoLimite: function(l) { return 'Este plano permite até ' + l + ' responsáve' + (l === 1 ? 'l' : 'is') + ' pela coleta por indicador. Remova um para incluir outro.'; },
     filtroUsuarios: function(lista) {
       var setUnidadeIds = new Set(unidadesContextoPermitidoInd.map(function(u) { return String(u.id); }));
@@ -1224,10 +1141,8 @@ function _initSeletorRespInd() {
 }
 
 function _setContextoElemInd(idElemento) {
-  var box = document.getElementById('msg-contexto-elem-ind');
-  var lbl = document.getElementById('lbl-elem-ind');
-  var boxMob = document.getElementById('msg-contexto-elem-ind-mob');
-  var lblMob = document.getElementById('lbl-elem-ind-mob');
+  var box = document.getElementById('msg-contexto-elem-ind-form');
+  var lbl = document.getElementById('lbl-elem-ind-form');
   if (!box || !lbl) return;
   var el = null;
   if (idElemento) {
@@ -1242,13 +1157,12 @@ function _setContextoElemInd(idElemento) {
     }
   }
   if (el) {
-    var txtEl = (el.codigo ? el.codigo + ' — ' : '') + (el.tipo ? el.tipo + ': ' : '') + el.titulo;
+    var txtEl = (el.tipo ? el.tipo + ' ' : '') + (el.codigo ? el.codigo + ' — ' : '') + el.titulo;
     lbl.textContent = txtEl;
+    box.setAttribute('data-title', txtEl);
     box.classList.remove('hidden');
-    if (boxMob && lblMob) { lblMob.textContent = txtEl; boxMob.classList.remove('hidden'); }
   } else {
     box.classList.add('hidden');
-    if (boxMob) boxMob.classList.add('hidden');
   }
 }
 
@@ -1527,10 +1441,10 @@ function onMudarFrequenciaInd() {
   var el = document.getElementById('ind-frequencia');
   var v = el ? el.value : '';
   var wrap = document.getElementById('ind-intervalo-wrap');
-  if (wrap) wrap.classList.toggle('hidden', v !== 'Contínuo');
+  if (wrap) wrap.classList.toggle('hidden', v !== 'Personalizada');
   ['ind-intervalo-qtd', 'ind-inicio-continuo'].forEach(function(id) {
     var campo = document.getElementById(id);
-    if (campo) campo.required = (v === 'Contínuo');
+    if (campo) campo.required = (v === 'Personalizada');
   });
 }
 
@@ -1542,7 +1456,7 @@ function _indAplicarTravaDefinicao(edicao) {
     var el = document.getElementById(id);
     if (el) el.disabled = travar;
   });
-  document.querySelectorAll('#modal-novo-indicador .ind-trava').forEach(function(ic) { ic.classList.toggle('hidden', !travar); });
+  document.querySelectorAll('#modal-novo-indicador .js-trava').forEach(function(ic) { ic.classList.toggle('hidden', !travar); });
   var avisoTrava = document.getElementById('indwiz-aviso-trava');
   if (avisoTrava) avisoTrava.classList.toggle('hidden', !travar);
   // Elemento principal, outros elementos e indicadores superiores seguem a mesma janela estrutural (o servidor também recusa)
@@ -1836,7 +1750,7 @@ function _indGradeHTML(p, podeEditar) {
   }).join('');
   var aviso = fora.length
     ? '<div class="meta-aviso"><div class="meta-aviso-titulo"><span class="material-symbols-outlined">warning</span>Metas fora da frequência atual'
-      + '<span class="material-symbols-outlined ind-info" tabindex="0" data-title="Estas metas não correspondem a nenhum período da frequência atual. Exclua as que não servem mais.">info</span></div>'
+      + '<span class="material-symbols-outlined ds-info" tabindex="0" data-title="Estas metas não correspondem a nenhum período da frequência atual. Exclua as que não servem mais.">info</span></div>'
       + fora.map(function(m) {
         var lab = escapeJsAttr((m.periodo || '') + ' — ' + m.valor);
         return '<div class="meta-aviso-item"><span>' + escapeHtml(m.periodo || 'Sem período') + '</span><strong>' + escapeHtml(String(m.valor)) + '</strong>'
@@ -2587,24 +2501,22 @@ function _indwizRenderRail() {
   var idxAtual = passos.indexOf(estadoWizardInd.atual);
   wrap.innerHTML = passos.map(function(p, i) {
     var atual = p === estadoWizardInd.atual;
-    var concluido = !atual && (i < idxAtual || (_indwizEdicao && p < 4));
-    var cls = 'wiz-rail-item' + (atual ? ' wiz-rail-atual' : (concluido ? ' wiz-rail-concluido' : ''));
+    var concluido = !atual && _indwizPassoValido(p) && (_indwizEdicao || estadoWizardInd.visitadas[p] === true);
+    var cls = 'ds-wizard__etapa' + (atual ? ' is-ativa' : (concluido ? ' is-concluida' : ''));
     var info = INDWIZ_TITULOS[i];
     var resumo = (atual || concluido) ? _indwizResumoPasso(p) : '';
     var numHTML = concluido ? '<span class="material-symbols-outlined">check</span>' : String(i + 1);
     return '<button type="button" class="' + cls + '" data-on-click="ind.52" data-rclick0="' + p + '">'
-      + '<span class="wiz-rail-num">' + numHTML + '</span>'
-      + '<span style="min-width:0"><div class="wiz-rail-item-titulo">' + escapeHtml(info.titulo) + '</div>'
-      + '<div class="wiz-rail-item-desc">' + escapeHtml(resumo || info.desc) + '</div></span>'
+      + '<span class="ds-wizard__num">' + numHTML + '</span>'
+      + '<span class="ds-wizard__texto"><span class="ds-wizard__rotulo">' + escapeHtml(info.titulo) + '</span>'
+      + '<span class="ds-wizard__resumo">' + escapeHtml(resumo || info.desc) + '</span></span>'
       + '</button>';
   }).join('');
 
   var pct = Math.round(((idxAtual + 1) / passos.length) * 100);
   var texto = 'Etapa ' + (idxAtual + 1) + ' de ' + passos.length;
-  [['indwiz-rail-fill', 'indwiz-rail-contador'], ['indwiz-mob-fill', 'indwiz-mob-texto']].forEach(function(ids) {
-    var fill = document.getElementById(ids[0]); if (fill) fill.style.width = pct + '%';
-    var txt = document.getElementById(ids[1]); if (txt) txt.textContent = texto;
-  });
+  var fill = document.getElementById('indwiz-rail-fill'); if (fill) fill.style.width = pct + '%';
+  var txt = document.getElementById('indwiz-rail-contador'); if (txt) txt.textContent = texto;
 }
 
 // Botões do rodapé por etapa: Continuar (1-2) · "Adicionar referência" + Salvar (3) · Salvar (4);
@@ -2625,6 +2537,7 @@ function _indwizAtualizarRodape() {
 function _indwizIrPara(n, direcao) {
   var trocarAgora = function() {
     estadoWizardInd.atual = n;
+    estadoWizardInd.visitadas[n] = true;
     document.querySelectorAll('#modal-novo-indicador .wizard-step').forEach(function(el) {
       el.classList.toggle('hidden', Number(el.dataset.step) !== n);
     });
@@ -2634,17 +2547,19 @@ function _indwizIrPara(n, direcao) {
     if (viewport) viewport.scrollTop = 0;
     estadoWizardInd.transicionando = false;
   };
+  // Uma troca por vez: o clique seguinte cancela a animação pendente (senão ela terminaria na etapa antiga).
+  clearTimeout(estadoWizardInd.timer);
+  document.querySelectorAll('#modal-novo-indicador .wizard-step').forEach(function(el) { el.classList.remove('wizard-slide-out-left', 'wizard-slide-out-right'); });
   var atualEl = document.getElementById('indwiz-step-' + estadoWizardInd.atual);
-  if (!direcao || !atualEl || Number(atualEl.dataset.step) === n || estadoWizardInd.transicionando) { trocarAgora(); return; }
+  if (!direcao || !atualEl || Number(atualEl.dataset.step) === n) { trocarAgora(); return; }
   estadoWizardInd.transicionando = true;
-  var saiClasse = direcao === 'frente' ? 'wizard-slide-out-left' : 'wizard-slide-out-right';
-  atualEl.classList.add(saiClasse);
-  setTimeout(function() { atualEl.classList.remove(saiClasse); trocarAgora(); }, 180);
+  atualEl.classList.add(direcao === 'frente' ? 'wizard-slide-out-left' : 'wizard-slide-out-right');
+  estadoWizardInd.timer = setTimeout(trocarAgora, 180);
 }
 
 function _indwizIrParaRail(n) {
   if (n === estadoWizardInd.atual) return;
-  if (n > estadoWizardInd.atual && !_indwizValidarPassoAtual()) return;
+  if (n > estadoWizardInd.atual && !_indwizValidarEtapas(_indwizEtapasAntesDe(n))) return;
   _indwizIrPara(n, n > estadoWizardInd.atual ? 'frente' : 'tras');
 }
 function _indwizMsgCampo(campo) {
@@ -2667,31 +2582,58 @@ function _indwizLimparErro(campo) {
   if (erro) { erro.classList.add('hidden'); erro.textContent = ''; }
 }
 
-// Elemento principal (seletor com busca): obrigatório quando o campo está visível (modal aberto pela aba Indicadores)
-function _indwizValidarElemento() {
-  var grupo = document.getElementById('group-ind-elemento');
-  var id = (document.getElementById('input-ind-id-elemento') || {}).value;
-  if (!grupo || grupo.classList.contains('hidden') || id || !seletorElemInd) return true;
-  seletorElemInd.setErro('Selecione o elemento do plano.');
+// ---- Validação por etapa ----
+// Campos que valem na etapa p: fora os desabilitados e os dentro de grupo oculto (ex.: intervalo da Personalizada, seletor de elemento).
+function _indwizCamposAtivos(p) {
+  var stepEl = document.getElementById('indwiz-step-' + p);
+  if (!stepEl) return [];
+  return Array.prototype.filter.call(stepEl.querySelectorAll('input, select'), function(c) {
+    if (c.disabled) return false;
+    for (var el = c.parentElement; el && el !== stepEl; el = el.parentElement) if (el.classList.contains('hidden')) return false;
+    return true;
+  });
+}
+
+// Primeira pendência da etapa p — { elemento: true } | { campo } | { resp: true } | null. Pura: não mexe na tela.
+function _indwizPendenciaPasso(p) {
+  if (p === 1) {
+    var grupo = document.getElementById('group-ind-elemento');
+    var idEl = (document.getElementById('input-ind-id-elemento') || {}).value;
+    if (grupo && !grupo.classList.contains('hidden') && !idEl && seletorElemInd) return { elemento: true };
+  }
+  var campos = _indwizCamposAtivos(p);
+  for (var i = 0; i < campos.length; i++) if (!campos[i].checkValidity()) return { campo: campos[i] };
+  if (p === 3 && _indConfig.respObrigatorio && !(seletorRespInd && seletorRespInd.getLista().length)) return { resp: true };
+  return null;
+}
+function _indwizPassoValido(p) { return !_indwizPendenciaPasso(p); }
+
+// Valida a etapa p (que precisa estar visível) mostrando o erro e o foco quando houver pendência.
+function _indwizValidarPasso(p) {
+  var pend = _indwizPendenciaPasso(p);
+  var erroResp = document.getElementById('ind-selresp-erro');
+  if (erroResp && p === 3) { erroResp.classList.add('hidden'); erroResp.textContent = ''; }
+  if (!pend) return true;
+  if (pend.elemento) seletorElemInd.setErro('Selecione o elemento do plano.');
+  else if (pend.campo) { _indwizExibirErro(pend.campo); pend.campo.focus(); }
+  else if (erroResp) { erroResp.textContent = 'Adicione ao menos um responsável pela coleta.'; erroResp.classList.remove('hidden'); }
   return false;
 }
 
-// Valida os campos visíveis da etapa atual (campo oculto/desabilitado não bloqueia)
-function _indwizValidarPassoAtual() {
-  var stepEl = document.getElementById('indwiz-step-' + estadoWizardInd.atual);
-  if (!stepEl) return true;
-  if (estadoWizardInd.atual === 1 && !_indwizValidarElemento()) return false;
-  var campos = stepEl.querySelectorAll('input, select');
-  for (var i = 0; i < campos.length; i++) {
-    var campo = campos[i];
-    if (campo.closest('.hidden') || campo.disabled) continue;
-    if (!campo.checkValidity()) { _indwizExibirErro(campo); campo.focus(); return false; }
+// Valida as etapas da lista, em ordem; na primeira com pendência leva o usuário até ela, mostra o erro e devolve false.
+function _indwizValidarEtapas(lista) {
+  for (var i = 0; i < lista.length; i++) {
+    if (_indwizPassoValido(lista[i])) continue;
+    if (lista[i] !== estadoWizardInd.atual) _indwizIrPara(lista[i]);
+    _indwizValidarPasso(lista[i]);
+    return false;
   }
   return true;
 }
+function _indwizEtapasAntesDe(n) { return estadoWizardInd.passos.filter(function(p) { return p >= estadoWizardInd.atual && p < n; }); }
 
 function _indwizProximo() {
-  if (!_indwizValidarPassoAtual()) return;
+  if (!_indwizValidarPasso(estadoWizardInd.atual)) return;
   var passos = estadoWizardInd.passos;
   var idx = passos.indexOf(estadoWizardInd.atual);
   if (idx < passos.length - 1) _indwizIrPara(passos[idx + 1], 'frente');
@@ -2703,38 +2645,9 @@ function _indwizVoltar() {
   if (idx > 0) _indwizIrPara(passos[idx - 1], 'tras');
 }
 
-// Antes de salvar: vai para a primeira etapa com campo inválido; responsável é validado na etapa 3
+// Antes de salvar: percorre todas as etapas e leva o usuário à primeira com pendência
 function _indwizValidarTudoAntesDeSalvar() {
-  var form = document.getElementById('form-novo-indicador');
-  if (!_indwizValidarElemento()) { _indwizIrPara(1); return false; }
-  var campos = form.querySelectorAll('input, select');
-  // campo dentro de GRUPO oculto (ex.: intervalo do Contínuo, elemento superior) não bloqueia; etapa inativa sim
-  var ocultoPorGrupo = function(campo) {
-    for (var el = campo.parentElement; el && el !== form; el = el.parentElement) {
-      if (el.classList.contains('wizard-step')) return false;
-      if (el.classList.contains('hidden')) return true;
-    }
-    return false;
-  };
-  for (var i = 0; i < campos.length; i++) {
-    var campo = campos[i];
-    if (campo.disabled || ocultoPorGrupo(campo) || campo.checkValidity()) continue;
-    var stepEl = campo.closest('.wizard-step');
-    if (stepEl) _indwizIrPara(Number(stepEl.dataset.step));
-    _indwizExibirErro(campo);
-    campo.focus();
-    return false;
-  }
-  var lista = (typeof seletorRespInd !== 'undefined' && seletorRespInd) ? seletorRespInd.getLista() : [];
-  if (_indConfig.respObrigatorio && lista.length === 0) {
-    _indwizIrPara(3);
-    var erro = document.getElementById('ind-selresp-erro');
-    if (erro) { erro.textContent = 'Adicione ao menos um responsável pela coleta.'; erro.classList.remove('hidden'); }
-    return false;
-  }
-  var erroResp = document.getElementById('ind-selresp-erro');
-  if (erroResp) erroResp.classList.add('hidden');
-  return true;
+  return _indwizValidarEtapas(estadoWizardInd.passos);
 }
 
 function _indwizSalvar() {
@@ -2753,6 +2666,9 @@ function _indwizIniciar(edicao) {
   SeletorOpcao.sincronizar(modalWiz);
   var erroResp = document.getElementById('ind-selresp-erro');
   if (erroResp) erroResp.classList.add('hidden');
+  if (seletorRespInd) seletorRespInd.atualizarObrigatorio();
+  estadoWizardInd.visitadas = {};
+  uiContadoresAtualizar(modalWiz);
   _indwizIrPara(1);
 }
 
