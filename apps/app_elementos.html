@@ -149,13 +149,6 @@ body.high-contrast .el-peso-bola.cheia { background: var(--ds-color-action); bor
 
 /* Toggle "Aberto para colaboração externa" */
 .elwiz-toggle-linha { display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
-.elwiz-switch { position: relative; display: inline-flex; cursor: pointer; }
-.elwiz-switch.elwiz-switch-off { cursor: not-allowed; opacity: .5; }
-.elwiz-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-.elwiz-switch-track { width: 38px; height: 20px; background: var(--ds-color-border-strong); border-radius: 12px; position: relative; transition: background 0.15s; flex-shrink: 0; }
-.elwiz-switch-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--ds-color-surface); box-shadow: 0 1px 2px rgba(0,0,0,0.3); transition: left 0.15s; }
-.elwiz-switch input:checked + .elwiz-switch-track { background: var(--ds-color-action); }
-.elwiz-switch input:checked + .elwiz-switch-track .elwiz-switch-thumb { left: 20px; }
 .elwiz-org-linha { margin: 0 0 18px; }
 .elwiz-toggle-titulo { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); }
 
@@ -1006,9 +999,9 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
             <!-- Elemento organizador: interruptor que SÓ encurta o formulário (sem prazo, esforço e responsáveis).
                  Nenhuma regra muda; o marcador fica salvo só para a edição abrir curta também. -->
             <div class="elwiz-toggle-linha elwiz-org-linha">
-              <label class="elwiz-switch">
-                <input type="checkbox" id="elwiz-org-switch" data-on-change="el.6">
-                <span class="elwiz-switch-track"><span class="elwiz-switch-thumb"></span></span>
+              <label class="ds-switch">
+                <input type="checkbox" role="switch" id="elwiz-org-switch" aria-labelledby="elwiz-org-rotulo" data-on-change="el.6">
+                <span class="ds-switch__trilho"></span>
               </label>
               <div class="elwiz-toggle-titulo" id="elwiz-org-rotulo">Elemento organizador <span class="material-symbols-outlined elwiz-info" aria-hidden="true" data-title="Serve para agrupar outros elementos, como um eixo, uma perspectiva ou uma diretriz. Pula prazo, esforço e responsáveis e deixa o formulário mais curto.">info</span></div>
             </div>
@@ -1197,9 +1190,9 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
 
           <div class="elwiz-secao-titulo">Colaboração externa <span class="material-symbols-outlined elwiz-info" aria-hidden="true" data-title="Permite que unidades e servidores fora do escopo deste plano participem deste elemento. As solicitações ficam sujeitas ao aceite de quem já é responsável.">info</span></div>
           <div class="elwiz-toggle-linha">
-            <label class="elwiz-switch">
-              <input type="checkbox" id="input-el-aberto-colaboracao" data-on-change="el.19">
-              <span class="elwiz-switch-track"><span class="elwiz-switch-thumb"></span></span>
+            <label class="ds-switch">
+              <input type="checkbox" role="switch" id="input-el-aberto-colaboracao" aria-labelledby="lbl-el-aberto-colaboracao" data-on-change="el.19">
+              <span class="ds-switch__trilho"></span>
             </label>
             <div>
               <div class="elwiz-toggle-titulo"><span id="lbl-el-aberto-colaboracao">Fechado para colaboração</span><span id="info-el-colab-publico" class="material-symbols-outlined elwiz-info hidden" aria-hidden="true">info</span></div>
@@ -5861,7 +5854,6 @@ function _wizardElAtualizarBloqueioIndicar() {
   const chk = document.getElementById('input-el-aberto-colaboracao');
   chk.disabled = !publico;
   if (!publico) chk.checked = false;
-  chk.closest('.elwiz-switch').classList.toggle('elwiz-switch-off', !publico);
   _wizardElAtualizarLabelColaboracao();
   const icoColab = document.getElementById('info-el-colab-publico');
   icoColab.classList.toggle('hidden', publico);

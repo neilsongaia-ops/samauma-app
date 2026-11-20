@@ -1026,6 +1026,17 @@ body.high-contrast {
 .ds-form-linha { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ds-space-4); }
 @media (max-width: 480px) { .ds-form-linha { grid-template-columns: minmax(0, 1fr); gap: 0; } }
 
+/* ---- Interruptor (liga/desliga): <label class="ds-switch"><input type="checkbox" role="switch"><span class="ds-switch__trilho"></span></label> ---- */
+.ds-switch { position: relative; display: inline-flex; flex-shrink: 0; cursor: pointer; }
+.ds-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.ds-switch__trilho { position: relative; width: 38px; height: 20px; border-radius: var(--ds-r-pill); background: var(--ds-color-border-strong); transition: background var(--ds-duration-base) var(--ds-ease-standard); }
+.ds-switch__trilho::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--ds-color-surface); box-shadow: var(--ds-shadow-1); transition: left var(--ds-duration-base) var(--ds-ease-standard); }
+.ds-switch input:checked + .ds-switch__trilho { background: var(--ds-color-action); }
+.ds-switch input:checked + .ds-switch__trilho::after { left: 20px; }
+.ds-switch input:focus-visible + .ds-switch__trilho { box-shadow: var(--ds-shadow-focus); }
+.ds-switch input:disabled + .ds-switch__trilho { opacity: .5; cursor: not-allowed; }
+.ds-switch-linha { display: flex; align-items: center; gap: var(--ds-space-3); margin-bottom: var(--ds-space-4); }
+
 /* ---- Lista selecionável (mestre-detalhe): um item ativo, o detalhe fica ao lado ---- */
 .ds-lista-sel { display: flex; flex-direction: column; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-xl); background: var(--ds-color-surface); overflow-y: auto; min-height: 0; }
 .ds-lista-sel__item { display: flex; flex-direction: column; gap: var(--ds-space-1); padding: var(--ds-space-2) var(--ds-space-3); border: 0; border-left: var(--ds-borda-destaque) solid transparent; border-bottom: var(--ds-borda) solid var(--ds-color-border); background: transparent; color: var(--ds-color-text); font: inherit; font-size: var(--ds-text-sm); text-align: left; cursor: pointer; }
@@ -3652,6 +3663,7 @@ var SeletorLista = (function () {
 // Mesmo visual da lista do seletor acima. Melhora um <select> existente SEM tirá-lo do formulário: o <select> continua
 // sendo a fonte do valor (.value, onchange, form.reset, required); este componente só troca a aparência e dispara 'change'.
 // Depois de alterar o <select> por código (.value / .disabled), chame SeletorOpcao.sincronizar(raiz).
+// Opção desabilitada (o "Selecione…" de <option value="" disabled>) é só texto do campo: não aparece na lista nem pode ser escolhida.
 var SeletorOpcao = (function () {
   var todos = [];
   function melhorar(sel) {
@@ -3669,6 +3681,7 @@ var SeletorOpcao = (function () {
     var aberto = false, ativo = -1;
     function render() {
       lista.innerHTML = Array.prototype.map.call(sel.options, function (o, i) {
+        if (o.disabled) return '';
         var escolhido = i === sel.selectedIndex;
         return '<div class="selsup-opcao' + (escolhido ? ' escolhida' : '') + (i === ativo ? ' ativa' : '') + '" role="option" data-i="' + i + '" aria-selected="' + escolhido + '">' +
           '<span class="selsup-opcao-corpo"><span class="selsup-opcao-titulo">' + esc(o.text) + '</span></span>' +
@@ -3685,20 +3698,24 @@ var SeletorOpcao = (function () {
     }
     function abrir() { if (sel.disabled) return; aberto = true; ativo = sel.selectedIndex; lista.classList.remove('hidden'); trig.setAttribute('aria-expanded', 'true'); render(); }
     function fechar() { aberto = false; lista.classList.add('hidden'); trig.setAttribute('aria-expanded', 'false'); }
+    function escolhivel(i) { return i >= 0 && i < sel.options.length && !sel.options[i].disabled; }
+    function vizinha(de, passo) { // próxima opção escolhível a partir de `de` (fica onde está se não houver)
+      for (var i = de + passo; i >= 0 && i < sel.options.length; i += passo) if (escolhivel(i)) return i;
+      return de;
+    }
     function escolher(i) {
       fechar();
-      if (i === sel.selectedIndex) return;
+      if (!escolhivel(i) || i === sel.selectedIndex) return;
       sel.selectedIndex = i;
       sincronizar();
       sel.dispatchEvent(new Event('change', { bubbles: true }));
     }
     trig.addEventListener('click', function () { if (aberto) fechar(); else abrir(); });
     trig.addEventListener('keydown', function (e) {
-      var n = sel.options.length;
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         if (!aberto) { abrir(); return; }
-        ativo = e.key === 'ArrowDown' ? Math.min(n - 1, ativo + 1) : Math.max(0, ativo - 1);
+        ativo = vizinha(ativo, e.key === 'ArrowDown' ? 1 : -1);
         render();
         var a = lista.querySelector('.ativa'); if (a && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' });
       } else if ((e.key === 'Enter' || e.key === ' ') && aberto) {
@@ -3784,23 +3801,23 @@ var SeletorOpcao = (function () {
               <small class="ds-help ds-help--error hidden" id="plano-nome-erro"></small>
             </div>
 
-            <div class="ds-field">
-              <label class="ds-label" for="input-plano-sigla">Sigla
-                <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Forma curta do nome, usada nas telas onde o nome inteiro não cabe. Sem sigla, o nome é abreviado automaticamente.">info</span></label>
-              <input type="text" name="sigla" id="input-plano-sigla" class="ds-input" maxlength="12" placeholder="Ex.: PDI 2026">
-              <small class="ds-contador"></small>
-            </div>
-
-            <div class="ds-field">
-              <label class="ds-label" for="input-tipo-plano">Nível de planejamento <span class="ds-obrig">obrigatório</span>
-                <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Estratégico: define a direção de longo prazo (missão, visão e objetivos da organização). Tático: desdobra um plano estratégico em objetivos e metas de médio prazo. Operacional: ações e entregas do dia a dia, ligadas a um plano tático.">info</span></label>
-              <select name="tipo" id="input-tipo-plano" class="ds-select" data-on-change="components_modal_plano.5">
-                <option value="" disabled selected>Selecione o nível</option>
-                <option value="Estratégico">Estratégico</option>
-                <option value="Tático">Tático</option>
-                <option value="Operacional">Operacional</option>
-              </select>
-              <small class="ds-help ds-help--error hidden" id="input-tipo-plano-erro"></small>
+            <div class="ds-form-linha">
+              <div class="ds-field">
+                <label class="ds-label" for="input-plano-sigla">Sigla</label>
+                <input type="text" name="sigla" id="input-plano-sigla" class="ds-input" maxlength="12" placeholder="Ex.: PDI 2026">
+                <small class="ds-contador"></small>
+              </div>
+              <div class="ds-field">
+                <label class="ds-label" for="input-tipo-plano">Nível de planejamento <span class="ds-obrig">obrigatório</span>
+                  <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Estratégico: define a direção de longo prazo (missão, visão e objetivos da organização). Tático: desdobra um plano estratégico em objetivos e metas de médio prazo. Operacional: ações e entregas do dia a dia, ligadas a um plano tático.">info</span></label>
+                <select name="tipo" id="input-tipo-plano" class="ds-select" data-on-change="components_modal_plano.5">
+                  <option value="" disabled selected>Selecione o nível</option>
+                  <option value="Estratégico">Estratégico</option>
+                  <option value="Tático">Tático</option>
+                  <option value="Operacional">Operacional</option>
+                </select>
+                <small class="ds-help ds-help--error hidden" id="input-tipo-plano-erro"></small>
+              </div>
             </div>
 
             <div class="ds-divisor"></div>
@@ -3839,15 +3856,15 @@ var SeletorOpcao = (function () {
 
             <div class="ds-divisor"></div>
 
-            <div class="ds-field">
-              <label class="ds-label" for="input-plano-visibilidade">Visibilidade
-                <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Público: todos os usuários do sistema veem o plano e seus elementos podem ser abertos à colaboração. Privado: só os envolvidos veem o plano e a colaboração aberta fica indisponível. Em plano Pessoal o padrão é Privado.">info</span></label>
-              <select name="visibilidade" id="input-plano-visibilidade" class="ds-select" data-on-change="components_modal_plano.11">
-                <option value="Público">Público</option>
-                <option value="Privado">Privado</option>
-              </select>
-              <small class="ds-help hidden" id="plano-vis-aviso"></small>
+            <div class="ds-switch-linha">
+              <label class="ds-switch">
+                <input type="checkbox" role="switch" id="input-plano-publico" aria-labelledby="plano-publico-rotulo" data-on-change="components_modal_plano.11">
+                <span class="ds-switch__trilho"></span>
+              </label>
+              <span id="plano-publico-rotulo">Plano público
+                <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Ligado, todos os usuários do sistema veem o plano e seus elementos podem ser abertos à colaboração. Desligado, só os envolvidos veem o plano e a colaboração aberta fica indisponível. Em plano Pessoal o padrão é desligado.">info</span></span>
             </div>
+            <small class="ds-help hidden" id="plano-vis-aviso"></small>
 
             <div class="ds-divisor"></div>
 
@@ -3970,21 +3987,7 @@ function _plwNomeCurto(n) {
 }
 function _plwIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function _plwHoje() { return _plwIso(new Date()); }
-function _plwBr(iso) { if (!iso) return ''; var p = iso.split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
 function _plwSomaAnos(ini, n) { var d = new Date(ini + 'T12:00:00'); d.setFullYear(d.getFullYear() + n); d.setDate(d.getDate() - 1); return _plwIso(d); }
-function _plwDuracao(ini, fim) {
-  var a1 = ini.split('-').map(Number);
-  var e = new Date(fim + 'T12:00:00'); e.setDate(e.getDate() + 1);
-  var y2 = e.getFullYear(), m2 = e.getMonth() + 1, d2 = e.getDate();
-  var meses = (y2 - a1[0]) * 12 + (m2 - a1[1]), dias = d2 - a1[2];
-  if (dias < 0) { meses--; dias += new Date(y2, m2 - 1, 0).getDate(); }
-  var anos = Math.floor(meses / 12), m = meses % 12, partes = [];
-  if (anos) partes.push(anos + (anos > 1 ? ' anos' : ' ano'));
-  if (m) partes.push(m + (m > 1 ? ' meses' : ' mês'));
-  if (dias) partes.push(dias + (dias > 1 ? ' dias' : ' dia'));
-  if (!partes.length) return '1 dia';
-  return partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes[partes.length - 1] : partes[0];
-}
 function _plwCompetencia() {
   return (typeof usuarioLogado !== 'undefined' && usuarioLogado && Array.isArray(usuarioLogado.unidadesComCompetencia))
     ? usuarioLogado.unidadesComCompetencia.map(String) : null; // null = ADMIN/DEV, sem filtro
@@ -4058,7 +4061,7 @@ function _plwAtualizarVig(forcarVazio) {
   ['input-plano-ano-inicio', 'input-plano-ano-fim'].forEach(function(id) { _plwEl(id).classList.toggle('ds-input--error', !!erro); });
   var msg = _plwEl('plano-vig-msg');
   msg.classList.toggle('ds-help--error', !!erro);
-  msg.textContent = erro || (ini && fim ? 'Duração de ' + _plwDuracao(ini, fim) + ' · ' + _plwBr(ini) + ' a ' + _plwBr(fim) : '');
+  msg.textContent = erro;
   _plwRenderPresets();
   _plwRenderRail();
 }
@@ -4157,13 +4160,14 @@ function _plwUsuariosPermitidos(lista, semPrincipal) {
 function _plwAplicarVisibilidadePadrao() {
   if (_plwEstado.edicao || _plwEstado.visManual) return;
   var p = _plwPrincipal();
-  _plwEl('input-plano-visibilidade').value = (p && p.tipo === 'USER' && _plwMeuId() === String(p.id)) ? 'Privado' : 'Público';
-  SeletorOpcao.sincronizar(_plwEl('modal-novo-plano'));
+  _plwDefinirVisibilidade((p && p.tipo === 'USER' && _plwMeuId() === String(p.id)) ? 'Privado' : 'Público');
 }
+function _plwVisibilidade() { return _plwEl('input-plano-publico').checked ? 'Público' : 'Privado'; }
+function _plwDefinirVisibilidade(v) { _plwEl('input-plano-publico').checked = v !== 'Privado'; }
 // Edição: tornar o plano privado encerra a colaboração aberta e avisa quem atua nele.
 function _plwVisibilidadeMudou() {
   _plwEstado.visManual = true;
-  var aviso = _plwEl('plano-vis-aviso'), v = _plwEl('input-plano-visibilidade').value;
+  var aviso = _plwEl('plano-vis-aviso'), v = _plwVisibilidade();
   var tornaPrivado = _plwEstado.edicao && _plwEstado.visOriginal === 'Público' && v === 'Privado';
   aviso.textContent = tornaPrivado ? 'Ao tornar o plano privado, a colaboração aberta é encerrada e quem atua nele é avisado do dever de sigilo.' : '';
   aviso.classList.toggle('hidden', !tornaPrivado);
@@ -4194,7 +4198,6 @@ function _plwRenderClassif() {
 function _plwIniciarSeletores() {
   if (_plwSelPrincipal) return;
   SeletorOpcao.melhorar(_plwEl('input-tipo-plano'));
-  SeletorOpcao.melhorar(_plwEl('input-plano-visibilidade'));
   _plwSelPrincipal = SeletorResponsaveis.criar({
     containerId: 'plano-selresp-principal', unico: true, obrigatorio: true,
     label: 'Responsável principal', helpText: 'Unidade ou servidor: é quem define a categoria do plano.',
@@ -4334,7 +4337,7 @@ function _plwResetar(edicao) {
   _plwIniciarSeletores();
   _plwEl('form-novo-plano').reset();
   _plwEl('input-plano-id-edicao').value = '';
-  _plwEl('input-plano-visibilidade').value = 'Público';
+  _plwDefinirVisibilidade('Público');
   _plwEl('plano-vis-aviso').classList.add('hidden');
   _plwSelPrincipal.limpar();
   _plwSelAdic.limpar();
@@ -4399,8 +4402,8 @@ function abrirModalEdicaoPlano(idPlano) {
       form.nome.value = plano.nome || '';
       form.observacao.value = plano.observacao || '';
       form.sigla.value = plano.sigla || '';
-      _plwEl('input-plano-visibilidade').value = plano.visibilidade === 'Privado' ? 'Privado' : 'Público';
-      _plwEstado.visOriginal = _plwEl('input-plano-visibilidade').value;
+      _plwDefinirVisibilidade(plano.visibilidade);
+      _plwEstado.visOriginal = _plwVisibilidade();
       _plwEl('input-plano-ano-inicio').value = plano.dataInicio || '';
       _plwEl('input-plano-ano-fim').value = plano.dataFim || '';
       _plwDefinirNivel(plano.tipo || '');            // calcula os candidatos a superior (exclui o próprio plano)
@@ -4436,7 +4439,7 @@ function fecharModalPlano() {
 // populados, e são reenviados sem alteração (o backend também valida).
 function _plwAplicarBloqueio(v) {
   _plwEstado.bloq = !!v;
-  ['input-tipo-plano', 'input-plano-ano-inicio', 'input-plano-ano-fim', 'input-plano-visibilidade'].forEach(function(id) { _plwEl(id).disabled = !!v; });
+  ['input-tipo-plano', 'input-plano-ano-inicio', 'input-plano-ano-fim', 'input-plano-publico'].forEach(function(id) { _plwEl(id).disabled = !!v; });
   SeletorOpcao.sincronizar(_plwEl('modal-novo-plano'));
   _plwSelPrincipal.setDisabled(!!v);
   _plwSelAdic.setDisabled(!!v);
@@ -4491,7 +4494,7 @@ function _plwSalvar(e) {
     responsaveisAdicionais: _plwSelAdic.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; }),
     idsPlanoSuperior: _plwSelSup.getIds(),
     observacao: form.observacao.value,
-    visibilidade: _plwEl('input-plano-visibilidade').value
+    visibilidade: _plwVisibilidade()
   };
 
   const idEdicao = _plwEl('input-plano-id-edicao').value;
@@ -7293,12 +7296,12 @@ uiRegistrarAcoes('components_modal_pares_avaliacao', {
           </div>
         </div>
 
-        <div class="form-group hidden" id="unidade-wrap-ativa">
-          <label class="el-switch-toggle" style="align-items:center;display:inline-flex;gap:8px">
-            <input type="checkbox" id="unidade-input-ativa" checked>
-            <span class="el-switch-track"><span class="el-switch-thumb"></span></span>
+        <div class="ds-switch-linha hidden" id="unidade-wrap-ativa">
+          <label class="ds-switch">
+            <input type="checkbox" role="switch" id="unidade-input-ativa" aria-labelledby="unidade-rotulo-ativa" checked>
+            <span class="ds-switch__trilho"></span>
           </label>
-          <span style="margin-left:8px;font-size:0.85rem;color:var(--ds-color-text)">Unidade ativa</span>
+          <span id="unidade-rotulo-ativa">Unidade ativa</span>
         </div>
       </form>
     </div>
@@ -7798,11 +7801,6 @@ uiRegistrarAcoes('components_modal_marketplace_apps', {
 .cfgp-linha--inativa .cfgp-controle { opacity: .45; }
 .cfgp-controle .cfgp-trava-ico { font-size: 18px; color: var(--ds-color-text-muted); }
 .cfgp-spin { font-size: 18px; color: var(--ds-color-text-muted); animation: selsupGirar 0.9s linear infinite; }
-.cfgp-switch { position: relative; width: 38px; height: 20px; padding: 0; border: none; border-radius: 12px; background: var(--ds-color-border-strong); cursor: pointer; transition: background 150ms; flex-shrink: 0; }
-.cfgp-switch[aria-checked="true"] { background: var(--ds-color-action); }
-.cfgp-switch:disabled { cursor: not-allowed; }
-.cfgp-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--ds-color-surface); box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: left 150ms; }
-.cfgp-switch[aria-checked="true"]::after { left: 20px; }
 .cfgp-num-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .cfgp-num { display: inline-flex; align-items: stretch; border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md); background: var(--ds-color-surface); overflow: hidden; height: 36px; }
 .cfgp-num--erro { border-color: var(--ds-color-danger); }
@@ -8167,7 +8165,8 @@ function _cfgMontarEstruturaBase() {
   var conteudo = _cfgEl('cfgp-conteudo');
   conteudo.addEventListener('click', function (e) {
     var t;
-    if ((t = e.target.closest('[data-cfg-toggle]'))) { _cfgAlternar(t.getAttribute('data-cfg-toggle')); return; }
+    // o estado do interruptor só muda quando o painel é redesenhado com o valor gravado
+    if ((t = e.target.closest('[data-cfg-toggle]'))) { e.preventDefault(); _cfgAlternar(t.getAttribute('data-cfg-toggle')); return; }
     if ((t = e.target.closest('[data-cfg-restaurar]'))) { _cfgRestaurar(t.getAttribute('data-cfg-restaurar')); return; }
     if ((t = e.target.closest('[data-cfg-menos]'))) { _cfgPasso(t.getAttribute('data-cfg-menos'), -1); return; }
     if ((t = e.target.closest('[data-cfg-mais]'))) { _cfgPasso(t.getAttribute('data-cfg-mais'), 1); return; }
@@ -8336,8 +8335,8 @@ function _cfgLinhaHTML(item, lista, viol) {
   if (ocupado) controle += '<span class="material-symbols-outlined cfgp-spin" aria-label="Salvando">progress_activity</span>';
   if (cod === 'TRAVADO_ADMIN' || cod === 'STATUS') controle += '<span class="material-symbols-outlined cfgp-trava-ico" aria-hidden="true">lock</span>';
   if (item.tipo === 'BOOLEANO') {
-    controle += '<button type="button" class="cfgp-switch" role="switch" aria-checked="' + (item.valor === true) + '" aria-labelledby="' + domId + '"' +
-      ' data-cfg-toggle="' + escapeHtml(item.chave) + '"' + (desab ? ' disabled' : '') + '></button>';
+    controle += '<label class="ds-switch"><input type="checkbox" role="switch"' + (item.valor === true ? ' checked' : '') + ' aria-labelledby="' + domId + '"' +
+      ' data-cfg-toggle="' + escapeHtml(item.chave) + '"' + (desab ? ' disabled' : '') + '><span class="ds-switch__trilho"></span></label>';
   } else {
     var valorExib = _cfgValorExibido(item);
     var vazio = valorExib === null || valorExib === undefined || isNaN(valorExib);
@@ -9378,11 +9377,6 @@ uiRegistrarAcoes('components_message', {
   @media (max-width: 768px) { .ntf-sino-painel { top: 60px; left: 8px; right: 8px; width: auto; } }
 
   /* ---- interruptor (preferências e configuração global) ---- */
-  .ntf-sw { width: 36px; height: 20px; border-radius: 999px; border: none; padding: 2px; cursor: pointer; background: var(--ds-color-border); display: flex; flex-shrink: 0; }
-  .ntf-sw > span { width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .12s; }
-  .ntf-sw.on { background: var(--ds-color-action); }
-  .ntf-sw.on > span { transform: translateX(16px); }
-  .ntf-sw:disabled { opacity: .45; cursor: not-allowed; }
   .ntf-info { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; }
 </style>
 
@@ -9425,8 +9419,8 @@ function ntfRotuloDia(iso) {
   return d.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
 }
 function ntfSwitchHtml(on, desabilitado, onclick, rotulo) {
-  return '<button type="button" class="ntf-sw' + (on ? ' on' : '') + '" role="switch" aria-checked="' + (on ? 'true' : 'false') + '" aria-label="' + escapeHtml(rotulo || '') + '"'
-    + (desabilitado ? ' disabled' : '') + ' ' + uiAtributosAcao('' + onclick + '', 'click') + '><span></span></button>';
+  return '<label class="ds-switch"><input type="checkbox" role="switch"' + (on ? ' checked' : '') + ' aria-label="' + escapeHtml(rotulo || '') + '"'
+    + (desabilitado ? ' disabled' : '') + ' ' + uiAtributosAcao('' + onclick + '', 'click') + '><span class="ds-switch__trilho"></span></label>';
 }
 function ntfInfoHtml(texto) { return '<span class="material-symbols-outlined ntf-info" data-title="' + escapeHtml(texto) + '">info</span>'; }
 function ntfErro(err) { showMessage('error', 'Não foi possível concluir', escapeHtml((err && err.message) || 'Erro inesperado.')); }
