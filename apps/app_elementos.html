@@ -5853,7 +5853,7 @@ function _wizardElIniciar(idPaiInternoFixo) {
 // toggle fica desabilitado e desmarcado, com (i) explicando. Indicar colaborador vale em qualquer plano (só a janela é exigida).
 function _elPlanoPublico() {
   const p = dadosDetalhados && dadosDetalhados.plano;
-  return !p || !p.visibilidade || p.visibilidade === 'Público';
+  return !p || p.visibilidade !== 'Privado';
 }
 function _wizardElAtualizarBloqueioIndicar() {
   const publico = _elPlanoPublico();

@@ -3841,10 +3841,9 @@ var SeletorOpcao = (function () {
 
             <div class="ds-field">
               <label class="ds-label" for="input-plano-visibilidade">Visibilidade
-                <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Público: todos os usuários do sistema veem o plano e seus elementos podem ser abertos à colaboração. Unidade: veem o plano os lotados na unidade do plano e em suas subunidades. Privado: só os envolvidos veem o plano. Em Unidade e Privado a colaboração aberta fica indisponível. Em plano Pessoal o padrão é Privado.">info</span></label>
+                <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Público: todos os usuários do sistema veem o plano e seus elementos podem ser abertos à colaboração. Privado: só os envolvidos veem o plano e a colaboração aberta fica indisponível. Em plano Pessoal o padrão é Privado.">info</span></label>
               <select name="visibilidade" id="input-plano-visibilidade" class="ds-select" data-on-change="components_modal_plano.11">
                 <option value="Público">Público</option>
-                <option value="Unidade">Unidade</option>
                 <option value="Privado">Privado</option>
               </select>
               <small class="ds-help hidden" id="plano-vis-aviso"></small>
@@ -4165,8 +4164,8 @@ function _plwAplicarVisibilidadePadrao() {
 function _plwVisibilidadeMudou() {
   _plwEstado.visManual = true;
   var aviso = _plwEl('plano-vis-aviso'), v = _plwEl('input-plano-visibilidade').value;
-  var tornaPrivado = _plwEstado.edicao && _plwEstado.visOriginal === 'Público' && v !== 'Público';
-  aviso.textContent = tornaPrivado ? 'Ao deixar de ser público, a colaboração aberta é encerrada e quem atua no plano é avisado do dever de sigilo.' : '';
+  var tornaPrivado = _plwEstado.edicao && _plwEstado.visOriginal === 'Público' && v === 'Privado';
+  aviso.textContent = tornaPrivado ? 'Ao tornar o plano privado, a colaboração aberta é encerrada e quem atua nele é avisado do dever de sigilo.' : '';
   aviso.classList.toggle('hidden', !tornaPrivado);
 }
 function _plwPrincipalMudou() {
@@ -4400,7 +4399,7 @@ function abrirModalEdicaoPlano(idPlano) {
       form.nome.value = plano.nome || '';
       form.observacao.value = plano.observacao || '';
       form.sigla.value = plano.sigla || '';
-      _plwEl('input-plano-visibilidade').value = (plano.visibilidade === 'Privado' || plano.visibilidade === 'Unidade') ? plano.visibilidade : 'Público';
+      _plwEl('input-plano-visibilidade').value = plano.visibilidade === 'Privado' ? 'Privado' : 'Público';
       _plwEstado.visOriginal = _plwEl('input-plano-visibilidade').value;
       _plwEl('input-plano-ano-inicio').value = plano.dataInicio || '';
       _plwEl('input-plano-ano-fim').value = plano.dataFim || '';
@@ -8045,9 +8044,7 @@ function _cfgNotificarAlteracao(chave) {
   if (chave === 'VISIBILIDADE_PUBLICA') {
     var it = _cfgItem(chave);
     if (it && dadosDetalhados && dadosDetalhados.plano) {
-      // o interruptor só liga/desliga "público"; desligado, um plano de Unidade continua de Unidade
-      if (it.valor) dadosDetalhados.plano.visibilidade = 'Público';
-      else if (dadosDetalhados.plano.visibilidade === 'Público') dadosDetalhados.plano.visibilidade = 'Privado';
+      dadosDetalhados.plano.visibilidade = it.valor ? 'Público' : 'Privado';
       if (typeof _detpRenderDetalhes === 'function') _detpRenderDetalhes();
       // Colaboração externa depende da visibilidade: atualiza o wizard de elemento se já montado
       if (typeof _wizardElAtualizarBloqueioIndicar === 'function' && typeof seletorIndicarColaboradorElemento !== 'undefined' && seletorIndicarColaboradorElemento) _wizardElAtualizarBloqueioIndicar();
