@@ -909,7 +909,7 @@ body.high-contrast {
 
 /* ---- Badges / chips ---- */
 /* Forma única da pílula (altura, arredondamento, fonte): badge de situação, tipo/nível e responsável compartilham as mesmas medidas; cada um só define cor e peso. */
-.ds-badge, .ds-badge-tipo, .ds-resp {
+.ds-badge, .ds-badge-tipo, .ds-resp, .ds-chip--atalho {
   display: inline-flex; align-items: center; gap: var(--ds-space-1);
   padding: 3px 12px; border-radius: var(--ds-r-pill);
   font-size: var(--ds-text-xs); line-height: 1.4; white-space: nowrap;
@@ -946,6 +946,11 @@ body.high-contrast {
   border: 1px solid var(--ds-color-border); background: var(--ds-color-surface);
   font-size: var(--ds-text-xs); color: var(--ds-color-text); white-space: nowrap;
 }
+/* Chip-atalho: botão de uma ação rápida (ex.: duração da vigência), com a forma da pílula (grupo acima); aria-pressed="true" marca o que está aplicado */
+.ds-chip--atalho { border: 0; box-shadow: inset 0 0 0 1px var(--ds-color-border); background: var(--ds-color-surface); color: var(--ds-color-text); font-family: var(--ds-font-sans); font-weight: var(--ds-weight-medium); cursor: pointer; }
+.ds-chip--atalho:hover { box-shadow: inset 0 0 0 1px var(--ds-color-action); color: var(--ds-color-info-fg); }
+.ds-chip--atalho:focus-visible { outline: none; box-shadow: var(--ds-shadow-focus); }
+.ds-chip--atalho[aria-pressed="true"] { background: var(--ds-color-info-bg); box-shadow: none; color: var(--ds-color-info-fg); }
 
 /* ---- Formulário ---- */
 .ds-field { display: flex; flex-direction: column; gap: var(--ds-space-1); margin-bottom: var(--ds-space-4); }
@@ -1240,6 +1245,13 @@ body .btn-outline:hover { background: var(--ds-glass-bg-strong); }
 body.high-contrast .btn-pag { border-color: var(--ds-color-border); color: var(--ds-color-text); }
 body.high-contrast .btn-pag:disabled { opacity: 0.3; }
 
+/* ---- Modais: geometria (janela centralizada, cabeçalho, corpo rolável, rodapé) ---- */
+.modal-overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+.modal-card { display: flex; flex-direction: column; width: 100%; max-width: 600px; max-height: 90vh; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; }
+.modal-body { padding: var(--ds-space-5); overflow-y: auto; }
+.modal-footer { display: flex; justify-content: flex-end; gap: var(--ds-space-2-5); }
+.btn-icon-close { background: none; border: none; cursor: pointer; }
 /* ---- Modais: vidro, raio xl, título neutro, rodapé translúcido ---- */
 body .modal-overlay,
 body .ext-mini-overlay {
@@ -2806,6 +2818,8 @@ uiRegistrarAcoes('components_header', {
     var sel = SeletorResponsaveis.criar({
       containerId: 'xxx-selresp',        // div vazia onde o widget é montado
       label: 'Responsáveis (Quem)',      // opcional; rótulo acima do campo
+      obrigatorio: true,                 // opcional; marcador "obrigatório" fixo (getObrigatorio liga/desliga por chave de configuração)
+      unico: true,                       // opcional; seleção única: o item escolhido aparece no próprio campo (✕ limpa), sem chip
       helpText: 'Explicação...',         // opcional; ícone (i) com tooltip ao lado do rótulo
       getUnidades: function(){ return cacheUnidadesX; },        // [{id, nome, sigla}]
       getUsuarios: function(){ return cacheUsuariosX; },// [{id, nome, siape, idsUnidades}]
@@ -2818,7 +2832,7 @@ uiRegistrarAcoes('components_header', {
       limiteAncoraId: 'id'               // opcional; onde pôr o (i) do limite quando o rótulo fica fora do widget
     });
     sel.getLista()  -> [{id, tipo, nome}]
-    sel.setLista(arr); sel.limpar(); sel.setDisabled(true/false)
+    sel.setLista(arr); sel.limpar(); sel.setDisabled(true/false); sel.setErro('mensagem' | '')
   Chip de Unidade mostra só a sigla (tooltip com o nome por extenso); chip de
   Servidor mostra "Primeiro Último" (tooltip com o nome completo).
 -->
@@ -2862,26 +2876,30 @@ var SeletorResponsaveis = (function() {
     var container = document.getElementById(cfg.containerId);
     if (!container) return null;
     var esc = escapeHtml;
-    var estado = { lista: [], disabled: false, aberto: false, filtro: 'todos', ativo: 0, visiveis: [] };
+    var estado = { lista: [], disabled: false, aberto: false, filtro: 'todos', ativo: 0, visiveis: [], digitou: false };
 
     container.innerHTML =
       (cfg.label
-        ? '<div class="selresp-label"><label class="ds-label" style="margin:0">' + esc(cfg.label) + '</label><span class="ds-obrig hidden">Obrigatório</span>' +
+        ? '<div class="selresp-label"><label class="ds-label" style="margin:0">' + esc(cfg.label) + '</label><span class="ds-obrig' + (cfg.obrigatorio ? '' : ' hidden') + '">obrigatório</span>' +
           (cfg.helpText ? '<span class="material-symbols-outlined selresp-info" data-title="' + esc(cfg.helpText) + '">info</span>' : '') +
           '<span class="material-symbols-outlined selresp-limite hidden" tabindex="0" role="img" aria-label="Limite de responsáveis atingido">info</span></div>'
         : '') +
       '<div class="selresp-wrap">' +
-        '<div class="plw-busca"><span class="material-symbols-outlined" aria-hidden="true">person_add</span>' +
+        '<div class="plw-busca' + (cfg.unico ? ' selsup-input-wrap' : '') + '"><span class="material-symbols-outlined" aria-hidden="true">' + (cfg.unico ? 'search' : 'person_add') + '</span>' +
           '<input type="text" class="ds-input selresp-input" role="combobox" aria-autocomplete="list" aria-expanded="false" ' +
-            'autocomplete="off" aria-label="Adicionar responsável" placeholder="Adicionar unidade ou servidor"></div>' +
-        '<div class="selresp-pop hidden" role="listbox" aria-multiselectable="true"></div>' +
+            'autocomplete="off" aria-label="' + (cfg.unico ? 'Escolher responsável' : 'Adicionar responsável') + '" placeholder="' + (cfg.unico ? 'Buscar unidade ou servidor (nome, sigla ou SIAPE)' : 'Adicionar unidade ou servidor') + '">' +
+          (cfg.unico ? '<button type="button" class="selsup-chip-x js-selresp-limpar hidden" data-title="Limpar" aria-label="Limpar seleção"><span class="material-symbols-outlined" aria-hidden="true">close</span></button>' : '') + '</div>' +
+        '<div class="selresp-pop hidden" role="listbox" aria-multiselectable="' + (!cfg.unico) + '"></div>' +
       '</div>' +
-      '<div class="plw-chips selresp-chips"></div>';
+      '<div class="plw-chips selresp-chips"></div>' +
+      '<small class="ds-help ds-help--error js-selresp-erro hidden" role="alert"></small>';
 
     var input = container.querySelector('.selresp-input');
     var pop = container.querySelector('.selresp-pop');
     var chipsDiv = container.querySelector('.selresp-chips');
     var wrap = container.querySelector('.selresp-wrap');
+    var limpar = container.querySelector('.js-selresp-limpar');
+    var erroEl = container.querySelector('.js-selresp-erro');
     var placeholderPadrao = input.getAttribute('placeholder');
     var limiteIco = container.querySelector('.selresp-limite');
     if (!limiteIco && cfg.limiteAncoraId && document.getElementById(cfg.limiteAncoraId)) {
@@ -2930,15 +2948,31 @@ var SeletorResponsaveis = (function() {
 
     function alternar(id, tipo, nome) {
       var i = indice(id, tipo);
-      if (i > -1) estado.lista.splice(i, 1);
+      if (cfg.unico) {
+        if (i < 0) estado.lista = [{ id: String(id), tipo: tipo, nome: nome }];
+        estado.aberto = false; estado.digitou = false; estado.ativo = 0;
+        setErro('');
+      } else if (i > -1) estado.lista.splice(i, 1);
       else if (cheio()) return;
       else { estado.lista.push({ id: String(id), tipo: tipo, nome: nome }); input.value = ''; estado.ativo = 0; }
       renderChips(); renderPop(); notificar();
     }
 
     // ---- chips ----
+    // Texto do item escolhido no campo (seleção única): "SIGLA — Nome da unidade" ou nome do servidor
+    function rotuloEscolhido(r) {
+      if (r.tipo === 'USER') return r.nome;
+      var u = infoUnidade(r.id);
+      return u ? u.sigla + ' — ' + u.nome : r.nome;
+    }
     function renderChips() {
       atualizarLimite();
+      if (cfg.unico) {
+        if (!estado.aberto) input.value = estado.lista[0] ? rotuloEscolhido(estado.lista[0]) : '';
+        if (limpar) limpar.classList.toggle('hidden', !estado.lista.length || estado.disabled);
+        chipsDiv.innerHTML = '';
+        return;
+      }
       chipsDiv.innerHTML = estado.lista.map(function(r, idx) {
         var curto, titulo, ico;
         if (r.tipo === 'USER') { curto = nomeCurto(r.nome); titulo = 'Servidor: ' + r.nome; ico = 'person'; }
@@ -2957,7 +2991,7 @@ var SeletorResponsaveis = (function() {
 
     // ---- lista suspensa ----
     function buscar() {
-      var termo = norm(input.value).trim();
+      var termo = norm(cfg.unico && !estado.digitou ? '' : input.value).trim(); // em seleção única, o texto do item escolhido não é busca
       var lim = termo ? 15 : 6;
       var compet = (cfg.filtroCompetencia && typeof usuarioLogado !== 'undefined' && usuarioLogado &&
                     Array.isArray(usuarioLogado.unidadesComCompetencia)) ? usuarioLogado.unidadesComCompetencia : null;
@@ -3024,13 +3058,22 @@ var SeletorResponsaveis = (function() {
       if (ativo && ativo.scrollIntoView) ativo.scrollIntoView({ block: 'nearest' });
     }
 
-    function abrir() { if (estado.disabled) return; if (!estado.aberto) { estado.aberto = true; estado.ativo = 0; } renderPop(); }
-    function fechar() { estado.aberto = false; renderPop(); }
+    function abrir() {
+      if (estado.disabled) return;
+      if (!estado.aberto) { estado.aberto = true; estado.ativo = 0; if (cfg.unico && estado.lista[0]) input.select(); } // o texto escolhido é substituído ao digitar
+      renderPop();
+    }
+    function fechar() { estado.aberto = false; estado.digitou = false; renderChips(); renderPop(); }
+    function setErro(msg) {
+      input.classList.toggle('ds-input--error', !!msg);
+      erroEl.textContent = msg || '';
+      erroEl.classList.toggle('hidden', !msg);
+    }
 
     // ---- eventos ----
     input.addEventListener('focus', abrir);
     input.addEventListener('click', abrir);
-    input.addEventListener('input', function() { estado.aberto = true; estado.ativo = 0; renderPop(); });
+    input.addEventListener('input', function() { estado.aberto = true; estado.digitou = true; estado.ativo = 0; renderPop(); });
     input.addEventListener('keydown', function(e) {
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault(); abrir();
@@ -3043,7 +3086,9 @@ var SeletorResponsaveis = (function() {
         if (it) alternar(it.id, it.tipo, it.nome);
       } else if (e.key === 'Escape') {
         if (estado.aberto) { e.preventDefault(); e.stopPropagation(); fechar(); }
-      } else if (e.key === 'Backspace' && !input.value && estado.lista.length && !estado.disabled) {
+      } else if (e.key === 'Tab') {
+        if (estado.aberto) fechar(); // o Tab segue pela tela, sem deixar a lista aberta
+      } else if (e.key === 'Backspace' && !cfg.unico && !input.value && estado.lista.length && !estado.disabled) {
         estado.lista.pop(); renderChips(); renderPop(); notificar();
       }
     });
@@ -3054,6 +3099,9 @@ var SeletorResponsaveis = (function() {
       var b = e.target.closest('.plw-pop-item'); if (!b) return;
       var it = estado.visiveis[Number(b.getAttribute('data-idx'))];
       if (it) alternar(it.id, it.tipo, it.nome);
+    });
+    if (limpar) limpar.addEventListener('click', function() {
+      estado.lista = []; estado.digitou = false; renderChips(); renderPop(); notificar(); input.focus();
     });
     chipsDiv.addEventListener('click', function(e) {
       var x = e.target.closest('[data-remover]');
@@ -3074,9 +3122,10 @@ var SeletorResponsaveis = (function() {
         renderChips();
       },
       limpar: function() {
-        estado.lista = []; estado.filtro = 'todos'; estado.aberto = false; input.value = '';
-        renderChips(); renderPop();
+        estado.lista = []; estado.filtro = 'todos'; estado.aberto = false; estado.digitou = false; input.value = '';
+        setErro(''); renderChips(); renderPop();
       },
+      setErro: setErro,
       setDisabled: function(v) {
         estado.disabled = !!v;
         input.disabled = !!v;
@@ -3678,211 +3727,132 @@ var SeletorOpcao = (function () {
 
     <!-- ARQUIVO: components_modal_plano.html -->
 <!-- ============================================================================
-     MODAL NOVO / EDITAR PLANO  wizard com trilha lateral (.wiz-rail), mesmo padrão
-     de components_modal_elemento.html e components_modal_risco.html. 3 etapas:
+     MODAL NOVO / EDITAR PLANO  wizard canônico (.ds-wizard, docs/design_system.md
+     "PADRÃO — Modal wizard"). 3 etapas:
        1 Identificação  (nome, nível, vigência)             obrigatória
        2 Responsáveis   (principal + adicionais)            obrigatória (principal)
        3 Complementos   (planos superiores, observações)    opcional
-     Listas suspensas no padrão "menu de seleção" do Drive (abrirMenuSelecao em
-     components_acoes_linha.html): um único popover (#plw-pop) anexado ao <body>,
-     position:fixed  não é cortado pelo scroll do modal.
-     Nomes globais novos com prefixo _plw / PLW_ (escopo JS único entre arquivos).
-     Mantidos por compatibilidade: abrirModalNovoPlano, abrirModalEdicaoPlano,
-     fecharModalPlano, handleSalvarPlano, bloquearFundo/desbloquearFundo,
-     prepararDadosPlanoResp(onReady), atualizarVinculos, aplicar/removerRestricaoEdicaoPlano,
-     limparSelecaoPlanoResp, validarVigenciaPlano, cacheUnidadesPlano, cacheUsuariosPlano,
-     cachePlanosSuperiorDisponiveis.
-     Dependência: CSS .wiz-rail-* / .wiz-body / .wiz-content vem de
-     components_modal_elemento.html (padrão documentado em docs/design_system.md).
+     Campos: SeletorOpcao (nível), SeletorResponsaveis (principal em seleção única e
+     adicionais), SeletorLista (planos superiores). Globais deste arquivo: _plw* / PLW_*.
+     Chamado de fora: abrirModalNovoPlano, abrirModalEdicaoPlano e fecharModalPlano.
+     cacheUnidadesPlano / cacheUsuariosPlano são os caches de Unidades e Servidores.
      ============================================================================ -->
 
 <div id="modal-novo-plano" class="modal-overlay hidden" data-fechar="fecharModalPlano" data-on-click="components_modal_plano.1">
-  <div class="modal-card modal-lg wiz-rail-modal" role="dialog" aria-modal="true" aria-labelledby="modal-plano-titulo">
+  <div class="modal-card modal-card--lg" role="dialog" aria-modal="true" aria-labelledby="modal-plano-titulo">
 
-    <button type="button" class="btn-icon-close wiz-rail-close" data-on-click="components_modal_plano.2" data-title="Fechar" aria-label="Fechar">
+    <button type="button" class="btn-icon-close" data-on-click="components_modal_plano.2" data-title="Fechar" aria-label="Fechar">
       <span class="material-symbols-outlined">close</span>
     </button>
 
-    <!-- Trilha compacta (<860px) -->
-    <div class="wiz-mobile-progress">
-      <div class="wiz-mobile-progress-track"><div class="wiz-mobile-progress-fill" id="plw-mob-fill"></div></div>
-      <span id="plw-mob-texto">Etapa 1 de 3</span>
-    </div>
-
-    <div class="wiz-body">
-      <aside class="wiz-rail">
-        <div class="wiz-rail-header">
-          <span class="wiz-rail-eyebrow">PLANOS DE GESTÃO</span>
-          <h3 id="modal-plano-titulo">Novo plano de gestão</h3>
+    <div class="ds-wizard">
+      <aside class="ds-wizard__trilha">
+        <div class="ds-wizard__cabecalho">
+          <span class="ds-wizard__contexto">&nbsp;</span>
+          <h3 class="ds-wizard__titulo" id="modal-plano-titulo">Novo plano de gestão</h3>
         </div>
 
-        <!-- Aviso de edição restrita (plano "Em Revisão") -->
-        <div id="aviso-edicao-revisao" class="wiz-rail-contexto plw-aviso-revisao hidden">
-          <span class="material-symbols-outlined">edit_note</span>
+        <!-- Edição restrita (plano "Em Revisão") -->
+        <div id="aviso-edicao-revisao" class="ds-wizard__aviso ds-wizard__aviso--alerta hidden">
+          <span class="material-symbols-outlined">lock</span>
           <span>Plano em revisão: só nome e observações podem mudar.</span>
         </div>
 
-        <div class="wiz-rail-lista" id="plw-rail-lista"><!-- _plwRenderRail() --></div>
+        <div class="ds-wizard__etapas" id="plw-rail-lista"><!-- injetado via JS: _plwRenderRail() --></div>
 
-        <div class="wiz-rail-footer">
-          <div class="wiz-rail-progress"><div class="wiz-rail-progress-fill" id="plw-rail-fill"></div></div>
+        <div class="ds-wizard__andamento">
+          <div class="ds-wizard__barra"><span class="ds-wizard__barra-preenchimento" id="plw-rail-fill"></span></div>
           <span id="plw-rail-contador">Etapa 1 de 3</span>
         </div>
       </aside>
 
-      <div class="wiz-content">
-        <div class="wizard-steps-viewport" id="plw-viewport">
+      <div class="ds-wizard__corpo">
+        <div class="wizard-steps-viewport">
         <form id="form-novo-plano" data-on-submit="components_modal_plano.3" novalidate autocomplete="off">
           <!-- ID do plano em edição (vazio = modo "novo plano") -->
           <input type="hidden" id="input-plano-id-edicao" value="">
 
-          <!-- ================= ETAPA 1: IDENTIFICAÇÃO ================= -->
+          <!-- ETAPA 1: IDENTIFICAÇÃO -->
           <div class="wizard-step" data-step="1" id="plw-step-1">
-            <h2 class="plw-titulo">Identificação</h2>
-            <p class="plw-sub">Como o plano se chama, em que nível atua e quando vale.</p>
+            <h2 class="ds-wizard__titulo-etapa">Identificação</h2>
 
             <div class="ds-field">
-              <label class="ds-label plw-label" for="input-plano-nome">Nome do plano <span class="plw-obrig">obrigatório</span></label>
-              <input type="text" name="nome" id="input-plano-nome" class="ds-input" required minlength="5" maxlength="60"
-                     placeholder="Ex.: Plano de Gestão 2026" aria-describedby="plw-erro-nome"
-                     data-on-input="components_modal_plano.4" data-on-blur="components_modal_plano.5">
-              <div class="plw-help-linha">
-                <small class="ds-help ds-help--error" id="plw-erro-nome"></small>
-                <span class="ds-help plw-contador" id="input-plano-nome-contador">0/60</span>
-              </div>
+              <label class="ds-label" for="input-plano-nome">Nome do plano <span class="ds-obrig">obrigatório</span></label>
+              <input type="text" name="nome" id="input-plano-nome" class="ds-input" maxlength="60"
+                     placeholder="Ex.: Plano de Gestão 2026" data-on-input="components_modal_plano.4">
+              <small class="ds-contador"></small>
+              <small class="ds-help ds-help--error hidden" id="plano-nome-erro"></small>
             </div>
 
             <div class="ds-field">
-              <span class="ds-label plw-label" id="plw-nivel-label">Nível de planejamento <span class="plw-obrig">obrigatório</span>
-                <span class="material-symbols-outlined plw-lock hidden" data-title="Bloqueado durante a revisão">lock</span></span>
-              <input type="hidden" name="tipo" id="input-tipo-plano" value="">
-              <div id="plw-nivel-anchor">
-                <button type="button" class="plw-select" id="plw-nivel-btn" aria-haspopup="listbox" aria-expanded="false"
-                        aria-labelledby="plw-nivel-label plw-nivel-txt" aria-describedby="plw-nivel-help"
-                        data-on-click="components_modal_plano.6" data-on-keydown="components_modal_plano.7" data-on-blur="components_modal_plano.8">
-                  <span class="material-symbols-outlined plw-select-ico hidden" id="plw-nivel-ico"></span>
-                  <span class="plw-select-txt" id="plw-nivel-txt">Selecione o nível</span>
-                  <span class="material-symbols-outlined plw-select-seta">expand_more</span>
-                </button>
-              </div>
-              <small class="ds-help" id="plw-nivel-help"></small>
+              <label class="ds-label" for="input-tipo-plano">Nível de planejamento <span class="ds-obrig">obrigatório</span>
+                <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Estratégico: define a direção de longo prazo (missão, visão e objetivos da organização). Tático: desdobra um plano estratégico em objetivos e metas de médio prazo. Operacional: ações e entregas do dia a dia, ligadas a um plano tático.">info</span></label>
+              <select name="tipo" id="input-tipo-plano" class="ds-select" data-on-change="components_modal_plano.5">
+                <option value="" disabled selected>Selecione o nível</option>
+                <option value="Estratégico">Estratégico</option>
+                <option value="Tático">Tático</option>
+                <option value="Operacional">Operacional</option>
+              </select>
+              <small class="ds-help ds-help--error hidden" id="input-tipo-plano-erro"></small>
             </div>
 
-            <div class="plw-divisor"></div>
+            <div class="ds-divisor"></div>
 
-            <div class="ds-field">
-              <span class="ds-label plw-label">Vigência <span class="plw-obrig">obrigatório</span>
-                <span class="material-symbols-outlined plw-lock hidden" data-title="Bloqueado durante a revisão">lock</span></span>
-              <div class="plw-vig">
-                <label class="plw-vig-campo"><span class="ds-help">Início</span>
-                  <input type="date" name="anoInicio" id="input-plano-ano-inicio" class="ds-input" required data-on-change="components_modal_plano.9" data-on-blur="components_modal_plano.10">
-                </label>
-                <span class="material-symbols-outlined plw-vig-seta" aria-hidden="true">arrow_forward</span>
-                <label class="plw-vig-campo"><span class="ds-help">Fim</span>
-                  <input type="date" name="anoFim" id="input-plano-ano-fim" class="ds-input" required data-on-change="components_modal_plano.9" data-on-blur="components_modal_plano.10">
-                </label>
+            <div class="ds-form-linha">
+              <div class="ds-field">
+                <label class="ds-label" for="input-plano-ano-inicio">Início da vigência <span class="ds-obrig">obrigatório</span></label>
+                <input type="date" name="anoInicio" id="input-plano-ano-inicio" class="ds-input" data-on-change="components_modal_plano.6">
               </div>
-              <div class="plw-presets" id="plw-presets"><!-- _plwRenderPresets() --></div>
-              <small class="plw-vig-msg" id="plw-vig-msg" aria-live="polite"></small>
+              <div class="ds-field">
+                <label class="ds-label" for="input-plano-ano-fim">Fim da vigência <span class="ds-obrig">obrigatório</span></label>
+                <input type="date" name="anoFim" id="input-plano-ano-fim" class="ds-input" data-on-change="components_modal_plano.6">
+              </div>
             </div>
+            <div class="ds-cluster" id="plw-atalhos"><!-- injetado via JS: _plwRenderPresets() --></div>
+            <small class="ds-help" id="plano-vig-msg" aria-live="polite"></small>
           </div>
 
-          <!-- ================= ETAPA 2: RESPONSÁVEIS ================= -->
+          <!-- ETAPA 2: RESPONSÁVEIS -->
           <div class="wizard-step hidden" data-step="2" id="plw-step-2">
-            <h2 class="plw-titulo">Responsáveis</h2>
-            <p class="plw-sub">Quem responde pelo plano e quem divide essa responsabilidade.</p>
+            <h2 class="ds-wizard__titulo-etapa">Responsáveis</h2>
 
-            <div class="ds-field">
-              <label class="ds-label plw-label" for="input-plano-resp-search">Responsável principal <span class="plw-obrig">obrigatório</span>
-                <span class="material-symbols-outlined plw-lock hidden" data-title="Bloqueado durante a revisão">lock</span></label>
-              <small class="ds-help">Unidade ou servidor  é quem define a categoria do plano.</small>
+            <div class="ds-field" id="plano-selresp-principal"></div>
+            <div id="plano-classif" class="ds-wizard__aviso ds-wizard__aviso--corpo hidden" aria-live="polite"></div>
 
-              <!-- Inputs ocultos para envio (mesmos ids do modal anterior) -->
-              <input type="hidden" name="idResponsavel" id="input-plano-resp-value">
-              <input type="hidden" name="tipoResponsavel" id="input-plano-resp-type" value="UNIDADE">
+            <div class="ds-divisor"></div>
 
-              <div id="plw-resp-anchor">
-                <div class="plw-token hidden" id="plw-resp-token">
-                  <span class="plw-av" id="plw-resp-av"></span>
-                  <span class="plw-token-txt">
-                    <span class="plw-token-prim" id="plw-resp-prim"></span>
-                    <span class="plw-token-sub" id="plw-resp-sub"></span>
-                  </span>
-                  <button type="button" class="plw-token-trocar" id="plano-resp-clear-btn" data-on-click="components_modal_plano.11">Trocar</button>
-                </div>
-                <div class="plw-busca" id="plw-resp-busca">
-                  <span class="material-symbols-outlined" aria-hidden="true">search</span>
-                  <input type="text" id="input-plano-resp-search" class="ds-input" role="combobox" aria-autocomplete="list" aria-expanded="false"
-                         aria-describedby="plw-erro-resp" placeholder="Buscar unidade ou servidor (nome, sigla ou SIAPE)"
-                         data-on-input="components_modal_plano.12" data-on-focus="components_modal_plano.13" data-on-click="components_modal_plano.14"
-                         data-on-keydown="components_modal_plano.15" data-on-blur="components_modal_plano.16">
-                </div>
-              </div>
-              <small class="ds-help ds-help--error" id="plw-erro-resp"></small>
-              <div class="plw-classif hidden" id="plw-classif"></div>
-            </div>
-
-            <div class="plw-divisor"></div>
-
-            <div class="ds-field">
-              <span class="ds-label plw-label plw-label--secao">Responsáveis adicionais
-                <span class="material-symbols-outlined plw-lock hidden" data-title="Bloqueado durante a revisão">lock</span></span>
-              <small class="ds-help">Corresponsáveis com as mesmas permissões operacionais do principal. A categoria do plano continua definida pelo principal.</small>
-              <div class="plw-busca" id="plw-adic-anchor">
-                <span class="material-symbols-outlined" aria-hidden="true">person_add</span>
-                <input type="text" id="plw-adic-input" class="ds-input" role="combobox" aria-autocomplete="list" aria-expanded="false"
-                       aria-label="Adicionar responsável" placeholder="Adicionar unidade ou servidor"
-                       data-on-input="components_modal_plano.17" data-on-focus="components_modal_plano.18" data-on-click="components_modal_plano.19" data-on-keydown="components_modal_plano.20">
-              </div>
-              <div class="plw-chips" id="plw-adic-chips"></div>
-            </div>
+            <div class="ds-field" id="plano-selresp-adic"></div>
           </div>
 
-          <!-- ================= ETAPA 3: COMPLEMENTOS ================= -->
+          <!-- ETAPA 3: COMPLEMENTOS -->
           <div class="wizard-step hidden" data-step="3" id="plw-step-3">
-            <h2 class="plw-titulo">Complementos</h2>
-            
-            <div class="ds-field">
-              <span class="ds-label plw-label plw-label--secao">Contribui para plano(s) superior(es)
-                <span class="material-symbols-outlined plw-lock hidden" data-title="Bloqueado durante a revisão">lock</span></span>
-              <small class="ds-help" id="plw-sup-desc"></small>
-              <div class="plw-busca" id="plw-sup-anchor">
-                <span class="material-symbols-outlined" aria-hidden="true">search</span>
-                <input type="text" id="plw-sup-input" class="ds-input" role="combobox" aria-autocomplete="list" aria-expanded="false"
-                       aria-label="Buscar plano superior" placeholder="Buscar plano em execução"
-                       data-on-input="components_modal_plano.21" data-on-focus="components_modal_plano.22" data-on-click="components_modal_plano.23" data-on-keydown="components_modal_plano.24">
-              </div>
-              <small class="plw-aviso hidden" id="plw-sup-aviso"></small>
-              <div class="plw-chips" id="plw-sup-chips"></div>
-            </div>
+            <h2 class="ds-wizard__titulo-etapa">Complementos</h2>
 
-            <div class="plw-divisor"></div>
+            <div class="ds-field" id="plano-selsup"></div>
+
+            <div class="ds-divisor"></div>
 
             <div class="ds-field">
-              <label class="ds-label plw-label plw-label--secao" for="input-plano-obs">Observações</label>
+              <label class="ds-label" for="input-plano-obs">Observações</label>
               <textarea name="observacao" id="input-plano-obs" class="ds-textarea" rows="3" maxlength="200"
-                        placeholder="Anotações complementares sobre o plano" data-on-input="components_modal_plano.25"></textarea>
-              <span class="ds-help plw-contador plw-contador--dir" id="input-plano-obs-contador">0/200</span>
+                        placeholder="Anotações complementares sobre o plano"></textarea>
+              <small class="ds-contador"></small>
             </div>
           </div>
         </form>
         </div><!-- /.wizard-steps-viewport -->
 
-        <div class="modal-footer plw-footer">
+        <div class="ds-wizard__rodape">
           <button type="button" class="ds-btn ds-btn--ghost" data-on-click="components_modal_plano.2">Cancelar</button>
-          <span class="plw-rodape-msg" id="plw-rodape-msg"></span>
-          <div class="plw-footer-acoes">
-            <button type="button" class="ds-btn ds-btn--ghost hidden" id="plw-btn-voltar" data-on-click="components_modal_plano.26">
+          <div class="ds-wizard__rodape-dir">
+            <button type="button" class="ds-btn ds-btn--ghost hidden" id="plano-btn-voltar" data-on-click="components_modal_plano.8">
               <span class="material-symbols-outlined">arrow_back</span> Voltar
             </button>
-            <button type="button" class="ds-btn ds-btn--glass-secondary hidden" id="plw-btn-salvar-sec" data-on-click="components_modal_plano.27">
-              <span class="material-symbols-outlined">save</span> Salvar
-            </button>
-            <button type="button" class="ds-btn ds-btn--primary" id="plw-btn-continuar" data-on-click="components_modal_plano.28">
+            <button type="button" class="ds-btn ds-btn--primary" id="plano-btn-proximo" data-on-click="components_modal_plano.9">
               Continuar <span class="material-symbols-outlined">arrow_forward</span>
             </button>
-            <button type="submit" form="form-novo-plano" class="ds-btn ds-btn--primary hidden" id="plw-btn-salvar">
-              <span class="material-symbols-outlined" id="plw-btn-salvar-ico">add</span> <span id="texto-btn-salvar-plano">Criar plano</span>
+            <button type="submit" form="form-novo-plano" class="ds-btn ds-btn--primary hidden" id="plano-btn-salvar">
+              <span class="material-symbols-outlined" id="plano-btn-salvar-ico">add</span> <span id="texto-btn-salvar-plano">Criar plano</span>
             </button>
           </div>
         </div>
@@ -3892,196 +3862,23 @@ var SeletorOpcao = (function () {
 </div>
 
 <!-- ============================================================================
-     ESTILOS LEGADOS COMPARTILHADOS  mantidos sem alteração.
-     .modal-*, .form-*, .autocomplete-*, .toggle-resp-*, .icon-help, .btn-outline são
-     usados por outros modais/componentes (ex.: SeletorResponsaveis). Não remover.
+     CAMPO DE BUSCA, AVATAR, CHIPS E LISTA (.plw-*)  usados por SeletorResponsaveis e
+     SeletorLista (filtros). Saem daqui quando a lista de seleção entrar no design system.
      ============================================================================ -->
 <style>
-.autocomplete-list {
-  position: absolute; top: 100%; left: 0; right: 0;
-  background: var(--ds-color-surface);
-  border: 1px solid var(--ds-color-border); border-top: none;
-  border-radius: 0 0 4px 4px; max-height: 200px; overflow-y: auto; z-index: 100;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-.autocomplete-item {
-  padding: 8px 10px; cursor: pointer;
-  border-bottom: 1px solid var(--ds-color-border);
-  font-size: 0.9rem; color: var(--ds-color-text);
-}
-.autocomplete-item:hover { background-color: var(--ds-color-surface-2); }
-.autocomplete-item strong { color: var(--ds-primary-700); }
-.autocomplete-sub { display: block; font-size: 0.75rem; color: var(--ds-color-text-muted); }
-
-.input-icon-right { position: absolute; right: 10px; top: 35px; font-size: 18px; color: var(--ds-color-text-muted); cursor: pointer; }
-
-.icon-help { font-size: 18px; color: var(--ds-color-text-muted); cursor: help; }
-.icon-help:hover { color: var(--ds-color-action); }
-
-.toggle-resp-container {
-  display: flex; background: var(--ds-color-surface-2);
-  border-radius: 4px; padding: 2px; border: 1px solid transparent;
-}
-.toggle-resp-btn {
-  border: none; background: none; padding: 2px 8px; font-size: 0.75rem;
-  cursor: pointer; border-radius: 3px; color: var(--ds-color-text-muted);
-  display: flex; align-items: center; gap: 4px;
-}
-.toggle-resp-btn.active {
-  background: var(--ds-color-surface);
-  color: var(--ds-primary-700); font-weight: bold;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.modal-overlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5); z-index: var(--ds-z-modal, 1100);
-  display: flex; align-items: center; justify-content: center;
-  backdrop-filter: blur(3px); animation: fadeIn 0.2s;
-}
-.modal-card {
-  background: var(--ds-color-surface); width: 100%; max-width: 600px;
-  border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-  display: flex; flex-direction: column; max-height: 90vh;
-  border: 1px solid transparent;
-}
-.modal-header { padding: 15px 20px; border-bottom: 1px solid var(--ds-color-border); display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { color: var(--ds-primary-700); font-size: 1.1rem; }
-.modal-body { padding: 20px; overflow-y: auto; }
-
-.modal-footer {
-  padding: 15px 20px; border-top: 1px solid var(--ds-color-border);
-  display: flex; justify-content: flex-end; gap: 10px;
-  background: var(--ds-color-surface-2);
-  border-radius: 0 0 8px 8px;
-}
-
-.form-row { display: flex; gap: 15px; margin-bottom: 15px; }
-.form-group { flex: 1; display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
-.form-group label { font-size: 0.85rem; font-weight: 500; color: var(--ds-color-text); }
-
-.form-control {
-  width: 100%; padding: 8px 10px; border: 1px solid var(--ds-color-border);
-  border-radius: 4px; font-size: 0.9rem; background-color: var(--ds-color-surface); color: var(--ds-color-text);
-}
-.form-control:focus { outline: none; border-color: var(--ds-color-action); }
-
-.btn-icon-close { background: none; border: none; cursor: pointer; color: var(--ds-color-text-muted); }
-.btn-icon-close:hover { color: var(--ds-color-danger); }
-
-
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-body.high-contrast .modal-card { border: 2px solid var(--ds-color-surface); box-shadow: none; }
-body.high-contrast .form-control { background-color: #000000 !important; color: #ffffff !important; border: 1px solid #ffffff !important; }
-body.high-contrast .form-control:focus { border-color: var(--ds-color-action) !important; box-shadow: 0 0 0 1px var(--ds-color-action); }
-body.high-contrast .autocomplete-list { background-color: #000000 !important; border: 1px solid #ffffff !important; }
-body.high-contrast .autocomplete-item { background-color: #000000 !important; color: #ffffff !important; border-bottom: 1px solid #333 !important; }
-body.high-contrast .autocomplete-item:hover { background-color: #333333 !important; }
-body.high-contrast .autocomplete-item strong { color: var(--ds-color-action) !important; }
-body.high-contrast .autocomplete-sub { color: #cccccc !important; }
-body.high-contrast .toggle-resp-container { border: 1px solid var(--ds-color-border); }
-body.high-contrast .toggle-resp-btn.active { background-color: #000; border: 1px solid var(--ds-primary-700); color: var(--ds-primary-700); }
-body.high-contrast .modal-footer { background-color: #000; border-top: 1px solid var(--ds-color-surface); }
-body.high-contrast .btn-outline { border-color: var(--ds-color-surface); color: var(--ds-color-surface); }
-body.high-contrast .btn-outline:hover { background-color: #333; }
-</style>
-
-<!-- ============================================================================
-     ESTILOS DO NOVO MODAL (prefixo .plw-)  só tokens --ds-*; tema escuro e alto
-     contraste vêm dos próprios tokens.
-     ============================================================================ -->
-<style>
-#modal-novo-plano .wiz-rail-modal { max-width: 860px; }
-#modal-novo-plano .wizard-steps-viewport { min-height: 440px; }
-
-.plw-titulo { font-size: var(--ds-text-lg); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); margin: 0 0 2px; }
-.plw-sub { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); margin: 0 0 20px; }
-.plw-label { display: flex; align-items: center; gap: 6px; }
-.plw-label--secao { font-weight: var(--ds-weight-semibold); }
-.plw-obrig { font-size: 10px; font-weight: var(--ds-weight-bold); letter-spacing: .3px; text-transform: uppercase; color: var(--ds-color-danger-fg); }
-.plw-lock { font-size: 16px; color: var(--ds-color-text-muted); }
-.plw-divisor { border-top: 1px solid var(--ds-glass-border); margin: 4px 0 20px; }
-.plw-help-linha { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; min-height: 16px; }
-.plw-contador { font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.plw-contador--dir { align-self: flex-end; }
-.plw-aviso { display: flex; gap: 6px; font-size: var(--ds-text-xs); color: var(--ds-color-warning-fg); margin-top: 4px; }
-
-/* Botão-campo de seleção (substitui o <select> nativo) */
-.plw-select {
-  width: 100%; min-height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px;
-  font-family: var(--ds-font-sans); font-size: var(--ds-text-base); text-align: left; color: var(--ds-color-text);
-  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md); cursor: pointer;
-  transition: border-color var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast) var(--ds-ease-standard);
-}
-.plw-select:hover:not(:disabled) { border-color: var(--ds-color-border-strong); }
-.plw-select:focus-visible, .plw-select[aria-expanded="true"] { outline: none; border-color: var(--ds-color-action); box-shadow: var(--ds-shadow-focus); }
-.plw-select.plw-vazio .plw-select-txt { color: var(--ds-color-text-muted); }
-.plw-select-ico { font-size: 20px; color: var(--ds-color-action); }
-.plw-select-txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.plw-select-seta { font-size: 20px; color: var(--ds-color-text-muted); transition: transform var(--ds-duration-fast) var(--ds-ease-standard); }
-.plw-select[aria-expanded="true"] .plw-select-seta { transform: rotate(180deg); }
-.plw-select.ds-select--error { border-color: var(--ds-color-danger); }
-.plw-select:disabled { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); cursor: not-allowed; }
-
-/* Vigência */
-.plw-vig { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: end; gap: 8px; }
-.plw-vig-campo { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.plw-vig-seta { font-size: 18px; color: var(--ds-color-text-muted); height: 40px; display: flex; align-items: center; }
-.plw-presets { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-.plw-presets-legenda { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); margin-right: 2px; }
-.plw-preset {
-  height: 28px; padding: 0 12px; border-radius: var(--ds-r-pill); border: 1px solid var(--ds-color-border);
-  background: var(--ds-color-surface); color: var(--ds-color-text); font-family: var(--ds-font-sans);
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); cursor: pointer; white-space: nowrap;
-}
-.plw-preset:hover { border-color: var(--ds-color-action); color: var(--ds-color-info-fg); }
-.plw-preset[aria-pressed="true"] { background: var(--ds-color-info-bg); border-color: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
-.plw-vig-msg { display: flex; align-items: center; gap: 6px; min-height: 18px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.plw-vig-msg .material-symbols-outlined { font-size: 16px; }
-.plw-vig-msg.plw-erro { color: var(--ds-color-danger-fg); }
-
-/* Busca (combobox) com ícone à esquerda */
 .plw-busca { position: relative; }
 .plw-busca > .material-symbols-outlined { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 20px; color: var(--ds-color-text-muted); pointer-events: none; }
 .plw-busca .ds-input { padding-left: 38px; }
 .plw-busca .ds-input:disabled { background: var(--ds-color-surface-2); color: var(--ds-color-text-muted); cursor: not-allowed; }
 
-/* Responsável selecionado (token) */
-.plw-token {
-  min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 8px;
-  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-md);
-}
-.plw-token-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.plw-token-prim { font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.plw-token-sub { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.plw-token-trocar {
-  flex-shrink: 0; height: 32px; padding: 0 10px; border: none; border-radius: var(--ds-r-sm); background: none;
-  color: var(--ds-color-action); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer;
-}
-.plw-token-trocar:hover { background: var(--ds-sidebar-item-active); }
-.plw-token.plw-bloq { background: var(--ds-color-surface-2); }
-.plw-token.plw-bloq .plw-token-trocar { display: none; }
-
-/* Avatar (unidade = ícone; servidor = iniciais) */
 .plw-av {
   width: 32px; height: 32px; flex: 0 0 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
   background: var(--ds-primary-50); color: var(--ds-primary-700);
 }
 .plw-av .material-symbols-outlined { font-size: 18px; }
 .plw-av--ini { background: var(--ds-action-100); color: var(--ds-action-700); font-size: 12px; font-weight: var(--ds-weight-bold); }
-.plw-av--acao { background: var(--ds-action-50); color: var(--ds-color-action); }
 [data-ds-theme="dark"] .plw-av { background: var(--ds-color-surface-2); color: var(--ds-color-info-fg); }
 
-/* Categoria do plano (informativo, só na criação) */
-.plw-classif { display: flex; align-items: flex-start; gap: 10px; margin-top: 6px; padding: 10px 12px; border-radius: var(--ds-r-lg); font-size: var(--ds-text-sm); line-height: 1.45; }
-.plw-classif .material-symbols-outlined { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
-.plw-classif strong { font-weight: var(--ds-weight-semibold); }
-.plw-classif--institucional { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
-.plw-classif--pessoal { background: var(--ds-color-success-bg); color: var(--ds-color-success-fg); }
-.plw-classif--negociado { background: var(--ds-status-avaliacao-bg); color: var(--ds-status-avaliacao-fg); }
-
-/* Chips (adicionais / planos superiores) */
 .plw-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .plw-chips:empty { display: none; }
 .plw-chip-x {
@@ -4091,29 +3888,6 @@ body.high-contrast .btn-outline:hover { background-color: #333; }
 .plw-chip-x .material-symbols-outlined { font-size: 14px; }
 .plw-chip-x:hover { background: var(--ds-color-danger-bg); color: var(--ds-color-danger-fg); }
 
-/* Rodapé */
-#modal-novo-plano .plw-footer { justify-content: flex-start; align-items: center; flex-wrap: wrap; gap: 8px; }
-.plw-footer .ds-btn { flex-shrink: 0; }
-.plw-rodape-msg { flex: 1 1 120px; min-width: 0; display: flex; align-items: center; gap: 6px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.plw-rodape-msg .material-symbols-outlined { font-size: 16px; }
-.plw-rodape-msg.plw-erro { color: var(--ds-color-danger-fg); }
-.plw-footer-acoes { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
-
-/* Trilha: etapa pendente (tentou avançar/salvar sem preencher) */
-#modal-novo-plano .wiz-rail-item.plw-rail-pendente .wiz-rail-num { background: var(--ds-color-danger-bg); color: var(--ds-color-danger-fg); }
-#modal-novo-plano .wiz-rail-item.plw-rail-pendente .wiz-rail-item-desc { color: var(--ds-color-danger-fg); }
-#modal-novo-plano .wiz-rail-item-desc { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-.plw-aviso-revisao { background: var(--ds-status-revisao-bg); color: var(--ds-status-revisao-fg); }
-
-/* ---- Popover de seleção (#plw-pop)  mesmo vocabulário visual de .acoes-menu ---- */
-.plw-pop {
-  position: fixed; z-index: calc(var(--ds-z-modal) + 10); display: flex; flex-direction: column; overflow: hidden;
-  background: var(--ds-glass-bg-strong); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl);
-  box-shadow: var(--ds-glass-shadow-strong); font-family: var(--ds-font-sans);
-  -webkit-backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate));
-  backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate));
-  animation: acoesMenuIn var(--ds-duration-fast) var(--ds-ease-standard);
-}
 .plw-pop-filtros { display: flex; gap: 6px; padding: 8px 8px 8px 10px; border-bottom: 1px solid var(--ds-glass-border); flex-shrink: 0; }
 .plw-pop-filtro {
   display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border-radius: var(--ds-r-pill);
@@ -4140,65 +3914,37 @@ body.high-contrast .btn-outline:hover { background-color: #333; }
 .plw-pop-prim { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); }
 .plw-pop-prim > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plw-pop-sub { font-size: var(--ds-text-xs); line-height: 1.35; color: var(--ds-color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.plw-pop-sub.plw-quebra { white-space: normal; }
-.plw-pop-tag {
-  flex-shrink: 0; padding: 1px 6px; border-radius: var(--ds-r-pill); border: 1px solid var(--ds-color-border);
-  background: var(--ds-color-surface-2); font-size: 10px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--ds-color-text-muted);
-}
 .plw-pop-chk { font-size: 18px; color: var(--ds-color-action); flex-shrink: 0; visibility: hidden; }
 .plw-pop-item[aria-selected="true"] .plw-pop-chk { visibility: visible; }
-.plw-hl { background: none; color: var(--ds-color-info-fg); font-weight: var(--ds-weight-bold); }
 .plw-pop-vazio { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 20px 12px; text-align: center; font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); }
 .plw-pop-vazio .material-symbols-outlined { font-size: 24px; color: var(--ds-color-border-strong); }
-.plw-pop-nota { display: flex; align-items: flex-start; gap: 6px; padding: 8px 12px; border-top: 1px solid var(--ds-glass-border); font-size: 11.5px; line-height: 1.4; color: var(--ds-color-text-muted); flex-shrink: 0; }
-.plw-pop-nota .material-symbols-outlined { font-size: 14px; margin-top: 1px; }
-
-@media (max-width: 768px) {
-  .plw-pop-item { min-height: 48px; }
-  .plw-preset { height: 36px; }
-  #modal-novo-plano .wizard-steps-viewport { min-height: 0; }
-}
-body.high-contrast .plw-pop { background: #000; border-color: #fff; }
-body.high-contrast .plw-pop-item.plw-ativo { background: #333; }
-body.high-contrast .plw-select, body.high-contrast .plw-token { background: #000; border-color: #fff; color: #fff; }
+@media (max-width: 768px) { .plw-pop-item { min-height: 48px; } }
 </style>
 
 <script>
-// --- Caches (nomes preservados: docs e roteiro de testes os citam) ---
+// --- Caches (Unidades e Servidores; carregados em segundo plano ao abrir) ---
 let cacheUnidadesPlano = [];
 let cacheUsuariosPlano = [];
-let cachePlanosSuperiorDisponiveis = [];
 
-const PLW_NIVEIS = [
-  { v: 'Estratégico', ico: 'flag', desc: 'Define a direção de longo prazo: missão, visão e objetivos da organização.' },
-  { v: 'Tático', ico: 'account_tree', desc: 'Desdobra um plano estratégico em objetivos e metas de médio prazo.' },
-  { v: 'Operacional', ico: 'checklist', desc: 'Ações e entregas do dia a dia, ligadas a um plano tático.' }
-];
 // Espelha TIPO_PLANO_SUPERIOR_ACEITO do backend (Estratégico também aceita Estratégico).
 const PLW_SUP_DE = { 'Estratégico': 'Estratégico', 'Tático': 'Estratégico', 'Operacional': 'Tático' };
 const PLW_PASSOS = [
-  { titulo: 'Identificação', desc: 'Nome, nível e vigência.', campos: ['nome', 'nivel', 'vig'] },
-  { titulo: 'Responsáveis', desc: 'Principal e corresponsáveis.', campos: ['resp'] },
-  { titulo: 'Complementos', desc: 'Planos superiores e observações.', campos: [], opcional: true }
+  { titulo: 'Identificação', desc: 'Nome, nível e vigência', campos: ['nome', 'nivel', 'vig'] },
+  { titulo: 'Responsáveis', desc: 'Principal e corresponsáveis', campos: ['resp'] },
+  { titulo: 'Complementos', desc: 'Planos superiores e observações', campos: [] }
 ];
 
 var _plwEstado = null;
+var _plwSelPrincipal = null, _plwSelAdic = null, _plwSelSup = null;
+var _plwSupDisponiveis = [];
 function _plwEstadoInicial() {
-  return { passo: 1, resp: null, adic: [], sup: [], bloq: false, edicao: false, tentou: false, tocados: {}, supAviso: '' };
+  return { atual: 1, visitadas: {}, transicionando: false, timer: null, edicao: false, bloq: false,
+           nivel: '', supAviso: '', mesmoNivelPermitido: true, ultimaAlteracao: null };
 }
 _plwEstado = _plwEstadoInicial();
 
 // ---------------- utilidades ----------------
 function _plwEl(id) { return document.getElementById(id); }
-function _plwNorm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
-function _plwHl(t, nq) {
-  t = String(t == null ? '' : t);
-  if (!nq) return escapeHtml(t);
-  var i = _plwNorm(t).indexOf(nq);
-  if (i < 0) return escapeHtml(t);
-  return escapeHtml(t.slice(0, i)) + '<mark class="plw-hl">' + escapeHtml(t.slice(i, i + nq.length)) + '</mark>' + escapeHtml(t.slice(i + nq.length));
-}
-function _plwIniciais(n) { var p = String(n || '?').trim().split(/\s+/); return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
 function _plwNomeCurto(n) {
   if (typeof nomeRespExibicao === 'function') return nomeRespExibicao(n, 'USER');
   var p = String(n || '').trim().split(/\s+/); return p.length <= 1 ? n : p[0] + ' ' + p[p.length - 1];
@@ -4224,7 +3970,7 @@ function _plwCompetencia() {
   return (typeof usuarioLogado !== 'undefined' && usuarioLogado && Array.isArray(usuarioLogado.unidadesComCompetencia))
     ? usuarioLogado.unidadesComCompetencia.map(String) : null; // null = ADMIN/DEV, sem filtro
 }
-// Id do próprio usuário na lista de servidores (para "Você" e plano Pessoal).
+// Id do próprio usuário na lista de servidores (para "Pessoal" e "Negociado").
 function _plwMeuId() {
   if (typeof usuarioLogado === 'undefined' || !usuarioLogado) return null;
   var email = String(usuarioLogado.email || '').toLowerCase().trim();
@@ -4233,24 +3979,15 @@ function _plwMeuId() {
         || cacheUsuariosPlano.find(function(u) { return nome && String(u.nome || '').trim() === nome; });
   return eu ? String(eu.id) : null;
 }
-function _plwUnidade(id) { return cacheUnidadesPlano.find(function(u) { return String(u.id) === String(id); }) || null; }
-function _plwUsuario(id) { return cacheUsuariosPlano.find(function(u) { return String(u.id) === String(id); }) || null; }
-function _plwInfoResp(r) {
-  if (r.tipo === 'UNIDADE') {
-    var u = _plwUnidade(r.id);
-    var sigla = u ? u.sigla : (r.nome || ''), nome = u ? u.nome : '';
-    return { avHtml: '<span class="material-symbols-outlined">apartment</span>', avIni: false, prim: sigla, sub: nome,
-             curto: sigla, chipIco: 'apartment', title: 'Unidade: ' + sigla + (nome ? ' - ' + nome : '') };
-  }
-  var p = _plwUsuario(r.id), nomeU = p ? p.nome : (r.nome || '');
-  var meu = _plwMeuId() === String(r.id);
-  var siglasLot = uiSiglasUnidadesUsuario(p, cacheUnidadesPlano);
-  return { avHtml: escapeHtml(_plwIniciais(nomeU)), avIni: true, prim: _plwNomeCurto(nomeU) + (meu ? ' (você)' : ''),
-           sub: 'Servidor' + (p && p.siape ? ' · SIAPE ' + p.siape : '') + (siglasLot ? ' · ' + siglasLot : ''),
-           curto: _plwNomeCurto(nomeU), chipIco: 'person', title: 'Servidor: ' + nomeU };
+function _plwPrincipal() { return (_plwSelPrincipal && _plwSelPrincipal.getLista()[0]) || null; }
+// Nome curto do responsável: sigla da unidade ou "Primeiro Último" do servidor.
+function _plwCurtoResp(r) {
+  if (r.tipo === 'USER') return _plwNomeCurto(r.nome);
+  var u = cacheUnidadesPlano.find(function(x) { return String(x.id) === String(r.id); });
+  return u ? u.sigla : r.nome;
 }
 
-// ---------------- validação (espelha required/minlength/maxlength) ----------------
+// ---------------- validação (espelha o que o servidor exige) ----------------
 function _plwErros() {
   var e = {};
   var nome = (_plwEl('input-plano-nome').value || '').trim();
@@ -4260,152 +3997,54 @@ function _plwErros() {
   var ini = _plwEl('input-plano-ano-inicio').value, fim = _plwEl('input-plano-ano-fim').value;
   if (!ini || !fim) e.vig = 'Informe o início e o fim da vigência.';
   else if (fim < ini) e.vig = 'O fim não pode ser anterior ao início.';
-  if (!_plwEl('input-plano-resp-value').value) e.resp = 'Escolha quem responde pelo plano.';
+  if (!_plwPrincipal()) e.resp = 'Escolha quem responde pelo plano.';
   return e;
 }
-function _plwPassoOk(n, e) { return PLW_PASSOS[n - 1].campos.every(function(c) { return !e[c]; }); }
-function _plwTocar(k) { _plwEstado.tocados[k] = true; _plwAtualizarErros(); }
-function _plwTocarSemPop(k) { if (!_plwPop || _plwPop.kind !== k) _plwTocar(k); }
-function _plwTocarVig() {
-  if (_plwEl('input-plano-ano-inicio').value && _plwEl('input-plano-ano-fim').value) _plwTocar('vig');
+function _plwPassoValido(n) { var e = _plwErros(); return PLW_PASSOS[n - 1].campos.every(function(c) { return !e[c]; }); }
+
+function _plwMarcarErro(campo, classe, erroId, msg) {
+  campo.classList.toggle(classe, !!msg);
+  if (campo._selop) campo._selop.sincronizar();
+  var s = _plwEl(erroId);
+  if (s) { s.textContent = msg || ''; s.classList.toggle('hidden', !msg); }
 }
-
-function _plwAtualizarErros() {
-  var e = _plwErros(), st = _plwEstado;
-  var mostra = function(k) { return (st.tentou || st.tocados[k]) && e[k] ? e[k] : ''; };
-
-  var eNome = mostra('nome');
-  _plwEl('input-plano-nome').classList.toggle('ds-input--error', !!eNome);
-  _plwEl('input-plano-nome').setAttribute('aria-invalid', eNome ? 'true' : 'false');
-  _plwEl('plw-erro-nome').textContent = eNome;
-
-  var eNivel = mostra('nivel');
-  _plwEl('plw-nivel-btn').classList.toggle('ds-select--error', !!eNivel);
-  var nv = PLW_NIVEIS.find(function(n) { return n.v === _plwEl('input-tipo-plano').value; });
-  var help = _plwEl('plw-nivel-help');
-  help.textContent = eNivel || (nv ? nv.desc : '');
-  help.classList.toggle('ds-help--error', !!eNivel);
-
-  // Vigência: fim < início aparece na hora; "vazio" só depois de tocar/tentar
-  var ini = _plwEl('input-plano-ano-inicio').value, fim = _plwEl('input-plano-ano-fim').value;
-  var eVig = (ini && fim && fim < ini) ? e.vig : mostra('vig');
-  ['input-plano-ano-inicio', 'input-plano-ano-fim'].forEach(function(id) { _plwEl(id).classList.toggle('ds-input--error', !!eVig); });
-  var msg = _plwEl('plw-vig-msg');
-  msg.classList.toggle('plw-erro', !!eVig);
-  if (eVig) msg.innerHTML = '<span class="material-symbols-outlined">error</span>' + escapeHtml(eVig);
-  else if (ini && fim) msg.innerHTML = '<span class="material-symbols-outlined">schedule</span>' + escapeHtml('Duração de ' + _plwDuracao(ini, fim) + ' · ' + _plwBr(ini) + ' a ' + _plwBr(fim));
-  else msg.innerHTML = '';
-
-  var eResp = mostra('resp');
-  _plwEl('input-plano-resp-search').classList.toggle('ds-input--error', !!eResp);
-  _plwEl('plw-erro-resp').textContent = eResp;
-
-  var rod = _plwEl('plw-rodape-msg'), n = Object.keys(e).length, ultimo = st.passo === PLW_PASSOS.length;
-  rod.classList.toggle('plw-erro', st.tentou && n > 0);
-  if (st.tentou && n) rod.innerHTML = '<span class="material-symbols-outlined">error</span>' + (n === 1 ? 'Falta 1 campo obrigatório.' : 'Faltam ' + n + ' campos obrigatórios.');
-  else if (ultimo && !st.edicao) rod.innerHTML = '<span class="material-symbols-outlined">lock</span>O plano começa privado.';
-  else rod.textContent = '';
-
-  _plwRenderRail();
-}
-
-// ---------------- trilha / navegação ----------------
-function _plwResumo(n) {
-  if (n === 1) {
-    var ini = _plwEl('input-plano-ano-inicio').value, fim = _plwEl('input-plano-ano-fim').value, v = '';
-    if (ini && fim && fim >= ini) v = ini.slice(0, 4) + (fim.slice(0, 4) !== ini.slice(0, 4) ? '–' + fim.slice(0, 4) : '');
-    return [_plwEl('input-tipo-plano').value, v, (_plwEl('input-plano-nome').value || '').trim()].filter(Boolean).join(' · ');
+// Mostra os erros dos campos da etapa n e põe o foco no primeiro com pendência.
+function _plwMostrarErros(n) {
+  var e = _plwErros(), campos = PLW_PASSOS[n - 1].campos, foco = null;
+  if (campos.indexOf('nome') > -1) {
+    _plwMarcarErro(_plwEl('input-plano-nome'), 'ds-input--error', 'plano-nome-erro', e.nome);
+    if (e.nome) foco = foco || _plwEl('input-plano-nome');
   }
-  if (n === 2) {
-    var r = _plwEstado.resp ? _plwInfoResp(_plwEstado.resp).curto : '';
-    return [r, _plwEstado.adic.length ? '+' + _plwEstado.adic.length : ''].filter(Boolean).join(' ');
+  if (campos.indexOf('nivel') > -1) {
+    _plwMarcarErro(_plwEl('input-tipo-plano'), 'ds-select--error', 'input-tipo-plano-erro', e.nivel);
+    if (e.nivel) foco = foco || _plwEl('input-tipo-plano-selop');
   }
-  var p = [];
-  if (_plwEstado.sup.length) p.push(_plwEstado.sup.length + (_plwEstado.sup.length > 1 ? ' vínculos' : ' vínculo'));
-  if ((_plwEl('input-plano-obs').value || '').trim()) p.push('observações');
-  return p.join(' · ');
-}
-
-function _plwRenderRail() {
-  var st = _plwEstado, e = _plwErros(), total = PLW_PASSOS.length;
-  _plwEl('plw-rail-lista').innerHTML = PLW_PASSOS.map(function(p, i) {
-    var n = i + 1, atual = n === st.passo, res = _plwResumo(n);
-    var concl = !atual && (p.opcional ? (n < st.passo || (st.edicao && !!res)) : ((n < st.passo || st.edicao) && _plwPassoOk(n, e)));
-    var pend = !atual && !p.opcional && (st.tentou || n < st.passo) && !_plwPassoOk(n, e);
-    var cls = 'wiz-rail-item' + (atual ? ' wiz-rail-atual' : concl ? ' wiz-rail-concluido' : '') + (pend ? ' plw-rail-pendente' : '');
-    return '<button type="button" class="' + cls + '" data-on-click="components_modal_plano.29" data-rclick0="' + n + '"' + (atual ? ' aria-current="step"' : '') + '>'
-      + '<span class="wiz-rail-num">' + (concl ? '<span class="material-symbols-outlined">check</span>' : n) + '</span>'
-      + '<span><div class="wiz-rail-item-titulo">' + escapeHtml(p.titulo) + '</div>'
-      + '<div class="wiz-rail-item-desc">' + escapeHtml(pend ? 'Falta preencher' : (res || p.desc)) + '</div></span></button>';
-  }).join('');
-  var pct = Math.round(st.passo / total * 100) + '%', txt = 'Etapa ' + st.passo + ' de ' + total;
-  _plwEl('plw-rail-fill').style.width = pct;
-  _plwEl('plw-mob-fill').style.width = pct;
-  _plwEl('plw-rail-contador').textContent = txt;
-  _plwEl('plw-mob-texto').textContent = txt + ' · ' + PLW_PASSOS[st.passo - 1].titulo;
-}
-
-function _plwMostrarPasso(n) {
-  _plwPopFechar();
-  _plwEstado.passo = n;
-  document.querySelectorAll('#modal-novo-plano .wizard-step').forEach(function(el) {
-    el.classList.toggle('hidden', Number(el.dataset.step) !== n);
-  });
-  var ultimo = n === PLW_PASSOS.length;
-  _plwEl('plw-btn-voltar').classList.toggle('hidden', n === 1);
-  _plwEl('plw-btn-continuar').classList.toggle('hidden', ultimo);
-  _plwEl('plw-btn-salvar').classList.toggle('hidden', !ultimo);
-  _plwEl('plw-btn-salvar-sec').classList.toggle('hidden', !_plwEstado.edicao || ultimo);
-  _plwEl('plw-viewport').scrollTop = 0;
-  _plwAtualizarErros();
-  setTimeout(function() {
-    var alvo = n === 1 ? _plwEl('input-plano-nome')
-             : n === 2 ? (_plwEstado.resp ? _plwEl('plano-resp-clear-btn') : _plwEl('input-plano-resp-search'))
-             : null;
-    if (alvo && !alvo.disabled) alvo.focus({ preventScroll: true });
-  }, 0);
-}
-
-// Avançar (Continuar ou trilha) valida cada etapa do caminho; voltar é sempre livre.
-function _plwIrPara(n) {
-  var st = _plwEstado;
-  if (n === st.passo) return;
-  if (n > st.passo) {
-    var e = _plwErros();
-    for (var k = st.passo; k < n; k++) {
-      if (!_plwPassoOk(k, e)) {
-        PLW_PASSOS[k - 1].campos.forEach(function(c) { st.tocados[c] = true; });
-        if (k !== st.passo) _plwMostrarPasso(k); else _plwAtualizarErros();
-        return;
-      }
-    }
+  if (campos.indexOf('vig') > -1) {
+    _plwAtualizarVig(true);
+    if (e.vig) foco = foco || _plwEl('input-plano-ano-inicio');
   }
-  _plwMostrarPasso(n);
+  if (campos.indexOf('resp') > -1) {
+    _plwSelPrincipal.setErro(e.resp || '');
+    if (e.resp) foco = foco || document.querySelector('#plano-selresp-principal .selresp-input');
+  }
+  if (foco) foco.focus({ preventScroll: true });
 }
-function _plwContinuar() { _plwIrPara(_plwEstado.passo + 1); }
-function _plwVoltar() { _plwIrPara(_plwEstado.passo - 1); }
-function _plwSubmeter() { _plwEl('form-novo-plano').requestSubmit(); }
-
-// Enter avança (exceto em textarea/botões e com popover aberto  o combobox trata o Enter)
-(function() {
-  var form = document.getElementById('form-novo-plano');
-  if (!form) return;
-  form.addEventListener('keydown', function(e) {
-    if (e.key !== 'Enter' || e.defaultPrevented || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON' || _plwPop) return;
-    e.preventDefault();
-    if (_plwEstado.passo === PLW_PASSOS.length) _plwSubmeter(); else _plwContinuar();
-  });
-})();
-
-function _plwContador(campo) {
-  var span = _plwEl(campo.id + '-contador');
-  if (span) span.textContent = campo.value.length + '/' + campo.maxLength;
-}
+function _plwLimparErro(campo, classe, erroId) { _plwMarcarErro(campo, classe, erroId, ''); }
 
 // ---------------- vigência ----------------
-function _plwVigMudou() { _plwRenderPresets(); _plwAtualizarErros(); }
+function _plwAtualizarVig(forcarVazio) {
+  var ini = _plwEl('input-plano-ano-inicio').value, fim = _plwEl('input-plano-ano-fim').value, erro = '';
+  if (ini && fim && fim < ini) erro = 'O fim não pode ser anterior ao início.';
+  else if (forcarVazio && (!ini || !fim)) erro = 'Informe o início e o fim da vigência.';
+  ['input-plano-ano-inicio', 'input-plano-ano-fim'].forEach(function(id) { _plwEl(id).classList.toggle('ds-input--error', !!erro); });
+  var msg = _plwEl('plano-vig-msg');
+  msg.classList.toggle('ds-help--error', !!erro);
+  msg.textContent = erro || (ini && fim ? 'Duração de ' + _plwDuracao(ini, fim) + ' · ' + _plwBr(ini) + ' a ' + _plwBr(fim) : '');
+  _plwRenderPresets();
+  _plwRenderRail();
+}
 function _plwRenderPresets() {
-  var wrap = _plwEl('plw-presets');
+  var wrap = _plwEl('plw-atalhos');
   if (_plwEstado.bloq) { wrap.innerHTML = ''; return; }
   var ini = _plwEl('input-plano-ano-inicio').value, fim = _plwEl('input-plano-ano-fim').value, base = ini || _plwHoje();
   var defs = [
@@ -4413,391 +4052,284 @@ function _plwRenderPresets() {
     ['1 ano', _plwSomaAnos(base, 1)], ['2 anos', _plwSomaAnos(base, 2)],
     ['4 anos', _plwSomaAnos(base, 4)], ['5 anos', _plwSomaAnos(base, 5)]
   ];
-  wrap.innerHTML = '<span class="plw-presets-legenda">' + 'Duração:' + '</span>'
+  wrap.innerHTML = '<span class="ds-help">Duração:</span>'
     + defs.map(function(d) {
         var ativo = !!ini && fim === d[1];
-        return '<button type="button" class="plw-preset" aria-pressed="' + ativo + '" data-on-click="components_modal_plano.30" data-aclick0="' + d[1] + '">' + d[0] + '</button>';
+        return '<button type="button" class="ds-chip--atalho" aria-pressed="' + ativo + '" data-on-click="components_modal_plano.7" data-aclick0="' + d[1] + '">' + d[0] + '</button>';
       }).join('');
 }
 function _plwAplicarPreset(fim) {
   var ini = _plwEl('input-plano-ano-inicio');
   if (!ini.value) ini.value = _plwHoje();
   _plwEl('input-plano-ano-fim').value = fim;
-  _plwEstado.tocados.vig = true;
-  _plwVigMudou();
+  _plwAtualizarVig(false);
 }
 
-// Compatibilidade: chamado por handleSalvarPlano e por código antigo
-function validarVigenciaPlano() {
-  var ini = _plwEl('input-plano-ano-inicio').value, fim = _plwEl('input-plano-ano-fim').value;
-  return !(ini && fim && fim < ini);
+// ---------------- nível e planos superiores ----------------
+// Planos que podem ser superiores do que está sendo criado: do nível acima, em execução, nunca o próprio plano.
+function _plwRecalcularCandidatosSup() {
+  var tipo = _plwEstado.nivel, tipoPai = PLW_SUP_DE[tipo], idEdicao = _plwEl('input-plano-id-edicao').value;
+  _plwSupDisponiveis = [];
+  if (tipoPai && typeof estadoPlanos !== 'undefined' && estadoPlanos.dadosBrutos) {
+    _plwSupDisponiveis = estadoPlanos.dadosBrutos.filter(function(p) {
+      return p.tipo === tipoPai && p.status === 'Em Execução' && String(p.id) !== String(idEdicao)
+        && (_plwEstado.mesmoNivelPermitido || p.tipo !== tipo);
+    });
+  }
+  _plwAtualizarSup();
 }
-
-// ---------------- nível ----------------
-function _plwNivelClick() {
-  if (_plwEstado.bloq) return;
-  if (_plwPop && _plwPop.kind === 'nivel') _plwPopFechar(); else _plwPopAbrir('nivel');
+function _plwOpcaoSup(p) {
+  var vig = String(p.anoInicio || '') + (p.anoFim && String(p.anoFim) !== String(p.anoInicio) ? '–' + p.anoFim : '');
+  return { id: String(p.id), titulo: p.nome || '', codigo: '', tipo: '', meta: [vig, p.status].filter(Boolean).join(' · ') };
 }
-function _plwSetNivel(v, silencioso) {
-  var anterior = _plwEl('input-tipo-plano').value;
+function _plwAtualizarSup() {
+  if (!_plwSelSup) return;
+  var motivo = _plwEstado.bloq ? 'Bloqueado durante a revisão.' : 'Escolha o nível de planejamento primeiro.';
+  _plwSelSup.setDesabilitado(_plwEstado.bloq || !_plwEstado.nivel, motivo);
+  _plwSelSup.atualizar();
+}
+// Campo de nível mudou (escolha do usuário): os planos superiores escolhidos podem não valer mais.
+function _plwNivelMudou() {
+  var v = _plwEl('input-tipo-plano').value, anterior = _plwEstado.nivel;
+  _plwLimparErro(_plwEl('input-tipo-plano'), 'ds-select--error', 'input-tipo-plano-erro');
+  if (v === anterior) return;
+  var tinha = _plwSelSup.getQuantidade();
+  _plwEstado.nivel = v;
+  _plwSelSup.limpar();
+  _plwEstado.supAviso = (anterior && tinha) ? 'Os vínculos anteriores foram removidos: não valem para o nível ' + v + '.' : '';
+  _plwRecalcularCandidatosSup();
+  _plwRenderRail();
+}
+// Define o nível por código (abrir edição): sem aviso de vínculos removidos.
+function _plwDefinirNivel(v) {
   _plwEl('input-tipo-plano').value = v;
-  var nv = PLW_NIVEIS.find(function(n) { return n.v === v; });
-  var btn = _plwEl('plw-nivel-btn');
-  btn.classList.toggle('plw-vazio', !nv);
-  _plwEl('plw-nivel-txt').textContent = nv ? nv.v : 'Selecione o nível';
-  var ico = _plwEl('plw-nivel-ico');
-  ico.textContent = nv ? nv.ico : '';
-  ico.classList.toggle('hidden', !nv);
-  if (anterior !== v) {
-    var tinha = _plwEstado.sup.length;
-    atualizarVinculos();
-    _plwEstado.supAviso = (!silencioso && anterior && tinha) ? 'Os vínculos anteriores foram removidos: não valem para o nível ' + v + '.' : '';
-    _plwRenderSup();
-  }
-  if (!silencioso) { _plwEstado.tocados.nivel = true; _plwAtualizarErros(); }
+  _plwEstado.nivel = _plwEl('input-tipo-plano').value;
+  SeletorOpcao.sincronizar(_plwEl('modal-novo-plano'));
+  _plwRecalcularCandidatosSup();
+}
+// "Vínculo com planos do mesmo nível" (padrão global ou do plano): espelha o que o servidor valida em apiSalvarPlano/apiAtualizarPlano.
+function _plwCarregarConfigVinculo(idPlano) {
+  google.script.run.withSuccessHandler(function(r) {
+    _plwEstado.mesmoNivelPermitido = !r || r.mesmoNivelPermitido !== false;
+    _plwRecalcularCandidatosSup();
+  }).apiGetConfigNovoVinculoPlano(idPlano || null);
 }
 
-// ---------------- responsável principal ----------------
-function _plwSetResp(r) {
-  _plwEstado.resp = r;
-  _plwEl('input-plano-resp-value').value = r ? r.id : '';
-  _plwEl('input-plano-resp-type').value = r ? r.tipo : 'UNIDADE';
-  var token = _plwEl('plw-resp-token'), busca = _plwEl('plw-resp-busca');
-  token.classList.toggle('hidden', !r);
-  busca.classList.toggle('hidden', !!r);
-  if (r) {
-    var i = _plwInfoResp(r);
-    var av = _plwEl('plw-resp-av');
-    av.className = 'plw-av' + (i.avIni ? ' plw-av--ini' : '');
-    av.innerHTML = i.avHtml;
-    _plwEl('plw-resp-prim').textContent = i.prim;
-    _plwEl('plw-resp-sub').textContent = i.sub;
-    token.setAttribute('data-title', i.title);
-    // O principal não pode repetir como adicional
-    _plwEstado.adic = _plwEstado.adic.filter(function(a) { return !(a.tipo === r.tipo && String(a.id) === String(r.id)); });
-    _plwRenderAdic();
-  }
-  _plwRenderClassif();
-  _plwAtualizarErros();
-}
-// Compatibilidade (nome antigo). trocar=true foca a busca em seguida.
-function limparSelecaoPlanoResp(trocar) {
-  _plwSetResp(null);
-  _plwEl('input-plano-resp-search').value = '';
-  if (trocar) setTimeout(function() { _plwEl('input-plano-resp-search').focus(); }, 0);
-}
-
-// Categoria do plano  só informativo, só na criação (na edição o criador pode
-// não ser o usuário atual). A regra real continua em _calcularPermissoesPlano.
-function _plwRenderClassif() {
-  var box = _plwEl('plw-classif'), r = _plwEstado.resp;
-  if (!r || _plwEstado.edicao) { box.classList.add('hidden'); return; }
-  var i = _plwInfoResp(r), c;
-  if (r.tipo === 'UNIDADE') c = ['institucional', 'apartment', 'Institucional', 'Conduzido pela ' + i.curto + '; passa por análise e segue a hierarquia da unidade.'];
-  else if (_plwMeuId() === String(r.id)) c = ['pessoal', 'person', 'Pessoal', 'Plano seu: você elabora e executa, sem etapa de análise.'];
-  else c = ['negociado', 'handshake', 'Negociado', 'Pactuado entre você e ' + i.curto + '. Cancelar, concluir ou prorrogar vai exigir a concordância dos dois.'];
-  box.className = 'plw-classif plw-classif--' + c[0];
-  box.innerHTML = '<span class="material-symbols-outlined">' + c[1] + '</span><span><strong>Plano ' + c[2] + '.</strong> ' + escapeHtml(c[3]) + '</span>';
-}
-
-// ---------------- adicionais / superiores (chips) ----------------
-function _plwChipHTML(ico, label, title, onRemove) {
-  return '<span class="ds-resp" data-title="' + escapeHtml(title) + '">'
-    + '<span class="material-symbols-outlined">' + ico + '</span><span>' + escapeHtml(label) + '</span>'
-    + (_plwEstado.bloq ? '' : '<button type="button" class="plw-chip-x" aria-label="' + escapeHtml('Remover ' + label) + '" ' + uiAtributosAcao('' + onRemove + '', 'click') + '><span class="material-symbols-outlined">close</span></button>')
-    + '</span>';
-}
-function _plwRenderAdic() {
-  _plwEl('plw-adic-chips').innerHTML = _plwEstado.adic.map(function(r, idx) {
-    var i = _plwInfoResp(r);
-    return _plwChipHTML(i.chipIco, i.curto, i.title, '_plwRemoverAdic(' + idx + ')');
-  }).join('');
-}
-function _plwRemoverAdic(idx) { _plwEstado.adic.splice(idx, 1); _plwRenderAdic(); _plwRenderRail(); }
-function _plwRenderSup() {
-  var tipo = _plwEl('input-tipo-plano').value, pai = PLW_SUP_DE[tipo];
-  var input = _plwEl('plw-sup-input');
-  input.disabled = _plwEstado.bloq || !tipo;
-  input.placeholder = tipo ? 'Buscar plano ' + pai.toLowerCase() + ' em execução' : 'Escolha o nível de planejamento primeiro';
-  _plwEl('plw-sup-desc').textContent = !tipo ? 'O nível do plano define a quais planos ele pode se ligar.'
-    : tipo === 'Estratégico' ? 'Um plano estratégico pode contribuir com o estratégico de uma unidade superior, já em execução.'
-    : 'Planos ' + (pai === 'Estratégico' ? 'estratégicos' : 'táticos') + ' em execução aos quais este plano contribui.';
-  var aviso = _plwEl('plw-sup-aviso');
-  aviso.classList.toggle('hidden', !_plwEstado.supAviso);
-  aviso.innerHTML = _plwEstado.supAviso ? '<span class="material-symbols-outlined" style="font-size:16px">info</span>' + escapeHtml(_plwEstado.supAviso) : '';
-  _plwEl('plw-sup-chips').innerHTML = _plwEstado.sup.map(function(p, idx) {
-    return _plwChipHTML('north', p.nome, 'Plano superior: ' + p.nome, '_plwRemoverSup(' + idx + ')');
-  }).join('');
-}
-function _plwRemoverSup(idx) { _plwEstado.sup.splice(idx, 1); _plwRenderSup(); _plwRenderRail(); }
-
-// ---------------- popover de seleção (#plw-pop) ----------------
-var _plwPop = null; // { kind, act, filtro, itens }
-var PLW_ANCORA = { nivel: 'plw-nivel-anchor', resp: 'plw-resp-anchor', adic: 'plw-adic-anchor', sup: 'plw-sup-anchor' };
-var PLW_CONTROLE = { nivel: 'plw-nivel-btn', resp: 'input-plano-resp-search', adic: 'plw-adic-input', sup: 'plw-sup-input' };
-
-function _plwAbrirBusca(kind) {
-  var ctl = _plwEl(PLW_CONTROLE[kind]);
-  if (_plwEstado.bloq || !ctl || ctl.disabled) return;
-  if (!_plwPop || _plwPop.kind !== kind) _plwPopAbrir(kind);
-}
-function _plwBuscar(kind) {
-  if (!_plwPop || _plwPop.kind !== kind) _plwPopAbrir(kind);
-  else { _plwPop.act = 0; _plwPopRender(); }
-}
-
-function _plwConteudo(kind, filtro) {
-  if (kind === 'nivel') {
-    var atual = _plwEl('input-tipo-plano').value;
-    return { filtros: false, nota: '', vazio: '', grupos: [{ label: '', itens: PLW_NIVEIS.map(function(n) {
-      return { avHtml: '<span class="material-symbols-outlined">' + n.ico + '</span>', avCls: 'plw-av--acao', prim: escapeHtml(n.v), sub: escapeHtml(n.desc),
-               quebra: true, tag: '', sel: atual === n.v, pick: function() { _plwPopFechar(); _plwSetNivel(n.v); _plwEl('plw-nivel-btn').focus(); } };
-    }) }] };
-  }
-  if (kind === 'sup') {
-    var tipo = _plwEl('input-tipo-plano').value, pai = PLW_SUP_DE[tipo] || '';
-    var q = _plwEl('plw-sup-input').value.trim(), nq = _plwNorm(q);
-    var itens = cachePlanosSuperiorDisponiveis.filter(function(p) { return !nq || _plwNorm(p.nome).indexOf(nq) > -1; }).slice(0, 30).map(function(p) {
-      var ja = _plwEstado.sup.some(function(s) { return String(s.id) === String(p.id); });
-      var vig = String(p.anoInicio || '') + (p.anoFim && String(p.anoFim) !== String(p.anoInicio) ? '–' + p.anoFim : '');
-      return { avHtml: '<span class="material-symbols-outlined">' + (pai === 'Tático' ? 'account_tree' : 'flag') + '</span>', avCls: '',
-               prim: _plwHl(p.nome, nq), sub: escapeHtml([vig, 'Em Execução'].filter(Boolean).join(' · ')), quebra: false, tag: '', sel: ja,
-               pick: function() {
-                 if (ja) _plwEstado.sup = _plwEstado.sup.filter(function(s) { return String(s.id) !== String(p.id); });
-                 else _plwEstado.sup.push({ id: String(p.id), nome: p.nome || '', anoInicio: p.anoInicio, anoFim: p.anoFim });
-                 _plwEstado.supAviso = '';
-                 _plwEl('plw-sup-input').value = '';
-                 _plwRenderSup(); _plwRenderRail(); _plwPop.act = 0; _plwPopRender();
-               } };
-    });
-    return {
-      filtros: false,
-      grupos: itens.length ? [{ label: (pai === 'Tático' ? 'Planos táticos' : 'Planos estratégicos') + ' em execução', itens: itens }] : [],
-      vazio: nq ? 'Nenhum plano ' + pai.toLowerCase() + ' em execução com "' + q + '".' : 'Nenhum plano ' + pai.toLowerCase() + ' em execução no momento.',
-      nota: tipo === 'Estratégico' ? 'Um plano estratégico pode contribuir com o estratégico de uma unidade superior.' : 'Só aparecem planos ' + (pai === 'Tático' ? 'táticos' : 'estratégicos') + ' em execução.'
-    };
-  }
-  // resp / adic  Unidades + Servidores numa busca só
-  var campo = _plwEl(PLW_CONTROLE[kind]), q2 = campo.value.trim(), nq2 = _plwNorm(q2);
-  var comp = _plwCompetencia(), meuId = _plwMeuId();
-  var uLog = (typeof usuarioLogado !== 'undefined' && usuarioLogado) ? usuarioLogado : null;
-  var lotacoesSet = new Set(((uLog && uLog.idsUnidades) || []).map(String));
-  var principal = _plwEstado.resp ? _plwEstado.resp.tipo + ':' + _plwEstado.resp.id : '';
-  var selKeys = kind === 'resp' ? [principal] : _plwEstado.adic.map(function(r) { return r.tipo + ':' + r.id; });
-  var lim = filtro === 'todos' ? 6 : 30;
-
-  var uns = cacheUnidadesPlano.filter(function(u) {
+// ---------------- responsáveis ----------------
+function _plwUnidadesPermitidas(lista, semPrincipal) {
+  var comp = _plwCompetencia(), p = semPrincipal ? _plwPrincipal() : null;
+  return lista.filter(function(u) {
     if (comp && comp.indexOf(String(u.id)) < 0) return false;
-    if (kind === 'adic' && principal === 'UNIDADE:' + u.id) return false;
-    return !nq2 || _plwNorm(u.sigla).indexOf(nq2) > -1 || _plwNorm(u.nome).indexOf(nq2) > -1;
+    return !(p && p.tipo === 'UNIDADE' && String(p.id) === String(u.id));
   });
-  if (lotacoesSet.size) uns.sort(function(a, b) { return lotacoesSet.has(String(b.id)) - lotacoesSet.has(String(a.id)); });
-  // Servidor responsável: lotação de quem indica + subunidades, salvo com RESPONSAVEL_PLANO_QUALQUER_SERVIDOR ligada
-  var escopoSrv = uiEscopoRespIdsUnidades(cacheUnidadesPlano, 'RESPONSAVEL_PLANO_QUALQUER_SERVIDOR');
-  var compSet = comp ? new Set(comp.map(String)) : null;
-  var srv = cacheUsuariosPlano.filter(function(u) {
-    if (escopoSrv) { if (!uiUsuarioEmUnidades(u, escopoSrv)) return false; }
+}
+// Servidor responsável: lotação de quem indica + subunidades, salvo com RESPONSAVEL_PLANO_QUALQUER_SERVIDOR ligada.
+function _plwUsuariosPermitidos(lista, semPrincipal) {
+  var comp = _plwCompetencia(), compSet = comp ? new Set(comp) : null, p = semPrincipal ? _plwPrincipal() : null;
+  var escopo = uiEscopoRespIdsUnidades(cacheUnidadesPlano, 'RESPONSAVEL_PLANO_QUALQUER_SERVIDOR');
+  return lista.filter(function(u) {
+    if (escopo) { if (!uiUsuarioEmUnidades(u, escopo)) return false; }
     else if (compSet && !uiUsuarioEmUnidades(u, compSet)) return false;
-    if (kind === 'adic' && principal === 'USER:' + u.id) return false;
-    return !nq2 || _plwNorm(u.nome).indexOf(nq2) > -1 || String(u.siape || '').indexOf(nq2) > -1;
+    return !(p && p.tipo === 'USER' && String(p.id) === String(u.id));
   });
-  if (meuId) srv.sort(function(a, b) { return (String(b.id) === meuId) - (String(a.id) === meuId); });
-
-  var escolher = function(r) {
-    return function() {
-      if (kind === 'resp') { _plwPopFechar(); campo.value = ''; _plwSetResp(r); setTimeout(function() { _plwEl('plano-resp-clear-btn').focus({ preventScroll: true }); }, 0); return; }
-      var i = _plwEstado.adic.findIndex(function(a) { return a.tipo === r.tipo && String(a.id) === String(r.id); });
-      if (i > -1) _plwEstado.adic.splice(i, 1); else _plwEstado.adic.push(r);
-      campo.value = '';
-      _plwRenderAdic(); _plwRenderRail(); _plwPop.act = 0; _plwPopRender();
-    };
-  };
-  var grupos = [];
-  if (filtro !== 'USER' && uns.length) grupos.push({ label: 'Unidades', itens: uns.slice(0, lim).map(function(u) {
-    return { avHtml: '<span class="material-symbols-outlined">apartment</span>', avCls: '', prim: _plwHl(u.sigla, nq2), sub: _plwHl(u.nome, nq2),
-             quebra: false, tag: lotacoesSet.has(String(u.id)) ? 'Sua lotação' : '', sel: selKeys.indexOf('UNIDADE:' + u.id) > -1,
-             pick: escolher({ id: String(u.id), tipo: 'UNIDADE', nome: u.sigla + ' - ' + u.nome }) };
-  }) });
-  if (filtro !== 'UNIDADE' && srv.length) grupos.push({ label: 'Servidores', itens: srv.slice(0, lim).map(function(u) {
-    var siglasLot = uiSiglasUnidadesUsuario(u, cacheUnidadesPlano);
-    return { avHtml: escapeHtml(_plwIniciais(u.nome)), avCls: 'plw-av--ini', prim: _plwHl(u.nome, nq2),
-             sub: _plwHl('SIAPE ' + (u.siape || '') + (siglasLot ? ' · ' + siglasLot : ''), nq2),
-             quebra: false, tag: meuId === String(u.id) ? 'Você' : '', sel: selKeys.indexOf('USER:' + u.id) > -1,
-             pick: escolher({ id: String(u.id), tipo: 'USER', nome: u.nome }) };
-  }) });
-  var carregando = !cacheUnidadesPlano.length || !cacheUsuariosPlano.length;
-  return {
-    filtros: true, grupos: grupos,
-    vazio: carregando ? 'Carregando unidades e servidores...' : (nq2 ? 'Nada encontrado para "' + q2 + '"' + (comp ? ' na sua competência.' : '.') : 'Nenhuma opção disponível.'),
-    nota: comp ? 'Só aparecem unidades e servidores dentro da sua competência.' : ''
-  };
+}
+function _plwPrincipalMudou() {
+  _plwSelPrincipal.setErro('');
+  var p = _plwPrincipal();
+  // O principal não pode repetir como adicional
+  if (p) _plwSelAdic.setLista(_plwSelAdic.getLista().filter(function(a) { return !(a.tipo === p.tipo && String(a.id) === String(p.id)); }));
+  _plwRenderClassif();
+  _plwRenderRail();
+}
+// Categoria do plano: só informativa e só na criação (na edição quem criou pode não ser o usuário atual).
+// A regra real continua em permissoesDoPlano, no servidor.
+function _plwRenderClassif() {
+  var box = _plwEl('plano-classif'), r = _plwPrincipal();
+  if (!r || _plwEstado.edicao) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  var curto = _plwCurtoResp(r), c;
+  if (r.tipo === 'UNIDADE') c = ['apartment', 'Institucional', 'Conduzido pela ' + curto + '; passa por análise e segue a hierarquia da unidade.'];
+  else if (_plwMeuId() === String(r.id)) c = ['person', 'Pessoal', 'Plano seu: você elabora e executa, sem etapa de análise.'];
+  else c = ['handshake', 'Negociado', 'Pactuado entre você e ' + curto + '. Cancelar, concluir ou prorrogar vai exigir a concordância dos dois.'];
+  box.innerHTML = '<span class="material-symbols-outlined">' + c[0] + '</span><span><strong>Plano ' + c[1] + '.</strong> ' + escapeHtml(c[2]) + '</span>';
+  box.classList.remove('hidden');
 }
 
-function _plwPopAbrir(kind) {
-  _plwPopFechar();
-  if (typeof fecharMenuSelecao === 'function') fecharMenuSelecao();
-  if (typeof acoesLinhaFechar === 'function') acoesLinhaFechar();
-  _plwPop = { kind: kind, act: 0, filtro: 'todos', itens: [] };
-  var pop = document.createElement('div');
-  pop.id = 'plw-pop';
-  pop.className = 'plw-pop';
-  pop.setAttribute('role', 'listbox');
-  pop.addEventListener('mousedown', function(e) { e.preventDefault(); }); // mantém o foco no campo
-  pop.addEventListener('click', function(e) {
-    var f = e.target.closest('[data-plw-filtro]');
-    if (f) { _plwPop.filtro = f.getAttribute('data-plw-filtro'); _plwPop.act = 0; _plwPopRender(); return; }
-    var it = e.target.closest('[data-plw-idx]');
-    if (it && _plwPop && _plwPop.itens[+it.getAttribute('data-plw-idx')]) _plwPop.itens[+it.getAttribute('data-plw-idx')].pick();
+// Cria os campos de seleção na primeira abertura (os containers já estão no DOM; os componentes são carregados antes).
+function _plwIniciarSeletores() {
+  if (_plwSelPrincipal) return;
+  SeletorOpcao.melhorar(_plwEl('input-tipo-plano'));
+  _plwSelPrincipal = SeletorResponsaveis.criar({
+    containerId: 'plano-selresp-principal', unico: true, obrigatorio: true,
+    label: 'Responsável principal', helpText: 'Unidade ou servidor: é quem define a categoria do plano.',
+    getUnidades: function() { return cacheUnidadesPlano; }, getUsuarios: function() { return cacheUsuariosPlano; },
+    filtroUnidades: function(l) { return _plwUnidadesPermitidas(l, false); },
+    filtroUsuarios: function(l) { return _plwUsuariosPermitidos(l, false); },
+    onChange: _plwPrincipalMudou
   });
-  pop.addEventListener('mousemove', function(e) {
-    var it = e.target.closest('[data-plw-idx]');
-    if (it && _plwPop && _plwPop.act !== +it.getAttribute('data-plw-idx')) { _plwPop.act = +it.getAttribute('data-plw-idx'); _plwPopMarcarAtivo(); }
+  _plwSelAdic = SeletorResponsaveis.criar({
+    containerId: 'plano-selresp-adic',
+    label: 'Responsáveis adicionais', helpText: 'Corresponsáveis com as mesmas permissões operacionais do principal. A categoria do plano continua definida pelo principal.',
+    getUnidades: function() { return cacheUnidadesPlano; }, getUsuarios: function() { return cacheUsuariosPlano; },
+    filtroUnidades: function(l) { return _plwUnidadesPermitidas(l, true); },
+    filtroUsuarios: function(l) { return _plwUsuariosPermitidos(l, true); },
+    onChange: _plwRenderRail
   });
-  document.body.appendChild(pop);
-  _plwEl(PLW_CONTROLE[kind]).setAttribute('aria-expanded', 'true');
-  _plwPopRender();
-}
-
-function _plwPopRender() {
-  var pop = _plwEl('plw-pop');
-  if (!_plwPop || !pop) return;
-  var c = _plwConteudo(_plwPop.kind, _plwPop.filtro), idx = 0, itens = [];
-  var html = '';
-  if (c.filtros) html += '<div class="plw-pop-filtros">' + [['todos', 'Todos'], ['UNIDADE', 'Unidades'], ['USER', 'Servidores']].map(function(f) {
-    return '<button type="button" class="plw-pop-filtro" data-plw-filtro="' + f[0] + '" aria-pressed="' + (_plwPop.filtro === f[0]) + '"><span class="material-symbols-outlined">check</span>' + f[1] + '</button>';
-  }).join('') + '</div>';
-  html += '<div class="plw-pop-lista">';
-  c.grupos.forEach(function(g) {
-    if (g.label) html += '<div class="plw-pop-grupo">' + escapeHtml(g.label) + '</div>';
-    g.itens.forEach(function(it) {
-      itens.push(it);
-      html += '<button type="button" role="option" class="plw-pop-item" data-plw-idx="' + idx + '" aria-selected="' + !!it.sel + '" tabindex="-1">'
-        + '<span class="plw-av ' + (it.avCls || '') + '">' + it.avHtml + '</span>'
-        + '<span class="plw-pop-txt"><span class="plw-pop-prim"><span>' + it.prim + '</span>' + (it.tag ? '<span class="plw-pop-tag">' + escapeHtml(it.tag) + '</span>' : '') + '</span>'
-        + '<span class="plw-pop-sub' + (it.quebra ? ' plw-quebra' : '') + '">' + it.sub + '</span></span>'
-        + '<span class="material-symbols-outlined plw-pop-chk" aria-hidden="true">check</span></button>';
-      idx++;
-    });
-  });
-  if (!itens.length) html += '<div class="plw-pop-vazio"><span class="material-symbols-outlined">search_off</span><span>' + escapeHtml(c.vazio) + '</span></div>';
-  html += '</div>';
-  if (c.nota) html += '<div class="plw-pop-nota"><span class="material-symbols-outlined">info</span><span>' + escapeHtml(c.nota) + '</span></div>';
-  pop.innerHTML = html;
-  _plwPop.itens = itens;
-  if (_plwPop.act >= itens.length) _plwPop.act = 0;
-  _plwPopMarcarAtivo();
-  _plwPopPosicionar();
-}
-
-function _plwPopMarcarAtivo() {
-  var pop = _plwEl('plw-pop'); if (!pop || !_plwPop) return;
-  pop.querySelectorAll('.plw-pop-item').forEach(function(b) {
-    var ativo = +b.getAttribute('data-plw-idx') === _plwPop.act;
-    b.classList.toggle('plw-ativo', ativo);
-    if (ativo) {
-      var lista = b.parentElement, t = b.offsetTop, h = b.offsetHeight;
-      if (t < lista.scrollTop) lista.scrollTop = t - 6;
-      else if (t + h > lista.scrollTop + lista.clientHeight) lista.scrollTop = t + h - lista.clientHeight + 6;
+  _plwSelSup = SeletorLista.criar({
+    containerId: 'plano-selsup', semGrupos: true,
+    getOpcoes: function() { return _plwSupDisponiveis.map(_plwOpcaoSup); },
+    // vínculos já gravados continuam válidos mesmo que o plano superior tenha saído de "Em Execução"
+    getTodasOpcoes: function() { return ((typeof estadoPlanos !== 'undefined' && estadoPlanos.dadosBrutos) || []).map(_plwOpcaoSup); },
+    getLimite: function() { return null; },
+    getAviso: function() { return _plwEstado.supAviso; },
+    getVazio: function() { var pai = PLW_SUP_DE[_plwEstado.nivel]; return 'Nenhum plano ' + (pai ? pai.toLowerCase() + ' ' : '') + 'em execução no momento.'; },
+    onChange: function() { _plwEstado.supAviso = ''; _plwSelSup.atualizar(); _plwRenderRail(); },
+    textos: {
+      rotulo: 'Contribui para plano(s) superior(es)', icone: 'north',
+      ajuda: 'Planos em execução aos quais este plano contribui. O nível do plano define quais aparecem: estratégico e tático contribuem para um estratégico; operacional, para um tático.',
+      placeholder: '', vazio: 'Nenhum plano em execução no momento.', vazioBusca: ' em execução',
+      chipsAria: 'Planos superiores escolhidos', telaTitulo: 'Planos superiores', telaBusca: 'Buscar plano em execução', remover: 'Remover vínculo com '
     }
   });
 }
 
-// Abaixo do campo; inverte para cima se faltar espaço (igual abrirMenuSelecao)
-function _plwPopPosicionar() {
-  var pop = _plwEl('plw-pop'), anc = _plwPop && _plwEl(PLW_ANCORA[_plwPop.kind]);
-  if (!pop || !anc || !anc.offsetParent) { _plwPopFechar(); return; }
-  var r = anc.getBoundingClientRect(), vw = window.innerWidth, vh = window.innerHeight;
-  var w = Math.min(vw - 16, Math.max(r.width, 300));
-  var abaixo = vh - r.bottom - 12, acima = r.top - 12;
-  pop.style.width = w + 'px';
-  pop.style.left = Math.max(8, Math.min(r.left, vw - w - 8)) + 'px';
-  if (abaixo >= 260 || abaixo >= acima) {
-    pop.style.top = (r.bottom + 4) + 'px'; pop.style.bottom = 'auto';
-    pop.style.maxHeight = Math.max(160, Math.min(380, abaixo)) + 'px';
-  } else {
-    pop.style.top = 'auto'; pop.style.bottom = (vh - r.top + 4) + 'px';
-    pop.style.maxHeight = Math.max(160, Math.min(380, acima)) + 'px';
+// ---------------- trilha / navegação ----------------
+function _plwResumoPasso(n) {
+  if (n === 1) {
+    var ini = _plwEl('input-plano-ano-inicio').value, fim = _plwEl('input-plano-ano-fim').value, v = '';
+    if (ini && fim && fim >= ini) v = ini.slice(0, 4) + (fim.slice(0, 4) !== ini.slice(0, 4) ? '–' + fim.slice(0, 4) : '');
+    return [_plwEl('input-tipo-plano').value, v, (_plwEl('input-plano-nome').value || '').trim()].filter(Boolean).join(' · ');
   }
+  if (n === 2) {
+    var p = _plwPrincipal(), qtd = _plwSelAdic ? _plwSelAdic.getLista().length : 0;
+    return [p ? _plwCurtoResp(p) : '', qtd ? '+' + qtd : ''].filter(Boolean).join(' ');
+  }
+  var t = [], sup = _plwSelSup ? _plwSelSup.getQuantidade() : 0;
+  if (sup) t.push(sup + (sup > 1 ? ' vínculos' : ' vínculo'));
+  if ((_plwEl('input-plano-obs').value || '').trim()) t.push('observações');
+  return t.join(' · ');
 }
 
-function _plwPopFechar() {
-  var pop = _plwEl('plw-pop');
-  if (pop) pop.remove();
-  if (_plwPop) { var ctl = _plwEl(PLW_CONTROLE[_plwPop.kind]); if (ctl) ctl.setAttribute('aria-expanded', 'false'); }
-  _plwPop = null;
+function _plwRenderRail() {
+  var wrap = _plwEl('plw-rail-lista');
+  if (!wrap || !_plwSelPrincipal) return;
+  var st = _plwEstado, total = PLW_PASSOS.length;
+  wrap.innerHTML = PLW_PASSOS.map(function(p, i) {
+    var n = i + 1, atual = n === st.atual;
+    var concluida = !atual && _plwPassoValido(n) && (st.edicao || st.visitadas[n] === true);
+    var cls = 'ds-wizard__etapa' + (atual ? ' is-ativa' : (concluida ? ' is-concluida' : ''));
+    var resumo = (atual || concluida) ? _plwResumoPasso(n) : '';
+    return '<button type="button"' + (atual ? ' aria-current="step"' : '') + ' class="' + cls + '" data-on-click="components_modal_plano.10" data-rclick0="' + n + '">'
+      + '<span class="ds-wizard__num">' + (concluida ? '<span class="material-symbols-outlined">check</span>' : n) + '</span>'
+      + '<span class="ds-wizard__texto"><span class="ds-wizard__rotulo">' + escapeHtml(p.titulo) + '</span>'
+      + '<span class="ds-wizard__resumo">' + escapeHtml(resumo || p.desc) + '</span></span></button>';
+  }).join('');
+  _plwEl('plw-rail-fill').style.width = Math.round(st.atual / total * 100) + '%';
+  _plwEl('plw-rail-contador').textContent = 'Etapa ' + st.atual + ' de ' + total;
 }
 
-function _plwTecla(kind, e) {
-  var aberto = !!(_plwPop && _plwPop.kind === kind);
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-    e.preventDefault();
-    if (!aberto) { _plwAbrirBusca(kind); return; }
-    var n = _plwPop.itens.length; if (!n) return;
-    _plwPop.act = (_plwPop.act + (e.key === 'ArrowDown' ? 1 : -1) + n) % n;
-    _plwPopMarcarAtivo();
-    return;
-  }
-  if (e.key === 'Enter') {
-    if (!aberto) { if (kind === 'nivel') { e.preventDefault(); _plwAbrirBusca(kind); } return; }
-    e.preventDefault();
-    var it = _plwPop.itens[_plwPop.act]; if (it) it.pick();
-    return;
-  }
-  if (e.key === ' ' && kind === 'nivel') { e.preventDefault(); _plwNivelClick(); return; }
-  if (e.key === 'Escape' && aberto) { e.preventDefault(); e.stopPropagation(); _plwPopFechar(); return; }
-  if (e.key === 'Tab' && aberto) { _plwPopFechar(); return; }
-  if (e.key === 'Backspace') {
-    if (kind === 'adic' && !e.target.value && _plwEstado.adic.length) { _plwEstado.adic.pop(); _plwRenderAdic(); _plwRenderRail(); if (aberto) _plwPopRender(); }
-    if (kind === 'sup' && !e.target.value && _plwEstado.sup.length) { _plwEstado.sup.pop(); _plwRenderSup(); _plwRenderRail(); if (aberto) _plwPopRender(); }
-  }
+function _plwIrPara(n, direcao) {
+  var st = _plwEstado;
+  var trocarAgora = function() {
+    st.atual = n;
+    st.visitadas[n] = true;
+    document.querySelectorAll('#modal-novo-plano .wizard-step').forEach(function(el) {
+      el.classList.toggle('hidden', Number(el.dataset.step) !== n);
+    });
+    var ultimo = n === PLW_PASSOS.length;
+    _plwEl('plano-btn-voltar').classList.toggle('hidden', n === 1);
+    _plwEl('plano-btn-proximo').classList.toggle('hidden', ultimo);
+    _plwEl('plano-btn-salvar').classList.toggle('hidden', !ultimo);
+    var viewport = document.querySelector('#modal-novo-plano .wizard-steps-viewport');
+    if (viewport) viewport.scrollTop = 0;
+    _plwRenderRail();
+    st.transicionando = false;
+  };
+  // Uma troca por vez: o clique seguinte cancela a animação pendente (senão ela terminaria na etapa antiga).
+  clearTimeout(st.timer);
+  document.querySelectorAll('#modal-novo-plano .wizard-step').forEach(function(el) { el.classList.remove('wizard-slide-out-left', 'wizard-slide-out-right'); });
+  var atualEl = _plwEl('plw-step-' + st.atual);
+  if (!direcao || !atualEl || st.atual === n) { trocarAgora(); return; }
+  st.transicionando = true;
+  atualEl.classList.add(direcao === 'frente' ? 'wizard-slide-out-left' : 'wizard-slide-out-right');
+  st.timer = setTimeout(trocarAgora, 180);
 }
 
-// Clique fora fecha (captura: vence stopPropagation das linhas); rolagem do modal reposiciona
-document.addEventListener('mousedown', function(e) {
-  if (!_plwPop) return;
-  if (e.target.closest('#plw-pop') || e.target.closest('#' + PLW_ANCORA[_plwPop.kind])) return;
-  _plwPopFechar();
-}, true);
-window.addEventListener('resize', function() { _plwPopFechar(); });
+// Valida as etapas da lista; para na primeira com pendência, levando o usuário até ela.
+function _plwValidarEtapas(lista) {
+  for (var i = 0; i < lista.length; i++) {
+    if (_plwPassoValido(lista[i])) continue;
+    if (lista[i] !== _plwEstado.atual) _plwIrPara(lista[i]);
+    _plwMostrarErros(lista[i]);
+    return false;
+  }
+  return true;
+}
+function _plwEtapasAntesDe(n) {
+  var r = [];
+  for (var k = _plwEstado.atual; k < n; k++) r.push(k);
+  return r;
+}
+// Avançar (Continuar ou trilha) valida cada etapa do caminho; voltar é sempre livre.
+function _plwIrParaRail(n) {
+  if (n === _plwEstado.atual) return;
+  if (n > _plwEstado.atual && !_plwValidarEtapas(_plwEtapasAntesDe(n))) return;
+  _plwIrPara(n, n > _plwEstado.atual ? 'frente' : 'tras');
+}
+function _plwProximo() { _plwIrParaRail(_plwEstado.atual + 1); }
+function _plwVoltar() { if (_plwEstado.atual > 1) _plwIrPara(_plwEstado.atual - 1, 'tras'); }
+
+// Enter avança (exceto em textarea e botões); os seletores tratam o Enter por conta própria
 (function() {
-  var vp = document.getElementById('plw-viewport');
-  if (vp) vp.addEventListener('scroll', function() { if (_plwPop) _plwPopPosicionar(); });
+  var form = document.getElementById('form-novo-plano');
+  if (!form) return;
+  form.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' || e.defaultPrevented || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
+    e.preventDefault();
+    if (_plwEstado.atual === PLW_PASSOS.length) _plwEl('plano-btn-salvar').click(); else _plwProximo();
+  });
 })();
 
 // ---------------- abrir / fechar ----------------
 function _plwResetar(edicao) {
-  _plwPopFechar();
+  clearTimeout(_plwEstado.timer);
   _plwEstado = _plwEstadoInicial();
   _plwEstado.edicao = !!edicao;
-  document.getElementById('form-novo-plano').reset();
+  _plwIniciarSeletores();
+  _plwEl('form-novo-plano').reset();
   _plwEl('input-plano-id-edicao').value = '';
-  _plwEl('input-plano-resp-search').value = '';
-  _plwEl('plw-adic-input').value = '';
-  _plwEl('plw-sup-input').value = '';
-  _plwSetNivel('', true);
-  _plwSetResp(null);
-  _plwRenderAdic();
-  _plwRenderSup();
-  _plwRenderPresets();
-  ['input-plano-nome', 'input-plano-obs'].forEach(function(id) { _plwContador(_plwEl(id)); });
-  removerRestricaoEdicaoPlano();
+  _plwSelPrincipal.limpar();
+  _plwSelAdic.limpar();
+  _plwSelSup.limpar();
+  _plwLimparErro(_plwEl('input-plano-nome'), 'ds-input--error', 'plano-nome-erro');
+  _plwLimparErro(_plwEl('input-tipo-plano'), 'ds-select--error', 'input-tipo-plano-erro');
+  _plwAplicarBloqueio(false);
+  _plwAtualizarVig(false);
+  _plwRenderClassif();
+}
+
+function _plwAbrirModal() {
+  var modal = _plwEl('modal-novo-plano');
+  SeletorOpcao.sincronizar(modal);
+  uiContadoresAtualizar(modal);
+  _plwIrPara(1);
+  modal.classList.remove('hidden');
+  bloquearFundo();
+  setTimeout(function() { var c = _plwEl('input-plano-nome'); if (!c.disabled) c.focus({ preventScroll: true }); }, 0);
 }
 
 function abrirModalNovoPlano() {
   _plwResetar(false);
   _plwEl('modal-plano-titulo').textContent = 'Novo plano de gestão';
   _plwEl('texto-btn-salvar-plano').textContent = 'Criar plano';
-  _plwEl('plw-btn-salvar-ico').textContent = 'add';
-  atualizarVinculos();
+  _plwEl('plano-btn-salvar-ico').textContent = 'add';
+  _plwRecalcularCandidatosSup();
   _plwCarregarConfigVinculo(null);
-  prepararDadosPlanoResp();   // carrega Unidades/Servidores em segundo plano (§4: estrutura antes dos dados)
-  _plwMostrarPasso(1);
-  _plwEl('modal-novo-plano').classList.remove('hidden');
-  bloquearFundo();
+  _plwPrepararDados();   // carrega Unidades/Servidores em segundo plano (§4: estrutura antes dos dados)
+  _plwAbrirModal();
 }
 
 // Edição completa: "Em Elaboração"/"Em Análise". Edição restrita (só Nome e
-// Observações): "Em Revisão"  ver aplicarRestricaoEdicaoPlano.
+// Observações): "Em Revisão"  ver _plwAplicarBloqueio.
 function abrirModalEdicaoPlano(idPlano) {
   if (!idPlano) return;
   mostrarLoader();
@@ -4806,17 +4338,14 @@ function abrirModalEdicaoPlano(idPlano) {
       esconderLoader();
       const plano = res && res.plano;
       if (!plano) {
-        if (typeof showMessage === 'function') showMessage('error', 'Erro', 'Plano não encontrado.');
-        else alert('Plano não encontrado.');
+        showMessage('error', 'Erro', 'Plano não encontrado.');
         return;
       }
       const podeEditarCompleto = plano.status === 'Em Elaboração' || plano.status === 'Em Análise';
       const podeEditarRestrito = plano.status === 'Em Revisão';
       if (!podeEditarCompleto && !podeEditarRestrito) {
-        const msg = 'Este plano não pode mais ser editado, pois seu status atual é "' + plano.status + '". ' +
-                    'Apenas planos "Em Elaboração", "Em Análise" ou "Em Revisão" podem ser alterados.';
-        if (typeof showMessage === 'function') showMessage('warning', 'Edição não permitida', msg);
-        else alert(msg);
+        showMessage('warning', 'Edição não permitida', 'Este plano não pode mais ser editado, pois seu status atual é "' + plano.status + '". ' +
+                    'Apenas planos "Em Elaboração", "Em Análise" ou "Em Revisão" podem ser alterados.');
         return;
       }
 
@@ -4825,162 +4354,98 @@ function abrirModalEdicaoPlano(idPlano) {
       _plwEstado.ultimaAlteracao = plano.ultimaAlteracao; // o servidor só grava se ninguém alterou o plano depois
       _plwEl('modal-plano-titulo').textContent = 'Editar plano de gestão';
       _plwEl('texto-btn-salvar-plano').textContent = 'Salvar alterações';
-      _plwEl('plw-btn-salvar-ico').textContent = 'save';
+      _plwEl('plano-btn-salvar-ico').textContent = 'save';
 
       const form = _plwEl('form-novo-plano');
       form.nome.value = plano.nome || '';
       form.observacao.value = plano.observacao || '';
       _plwEl('input-plano-ano-inicio').value = plano.dataInicio || '';
       _plwEl('input-plano-ano-fim').value = plano.dataFim || '';
-      ['input-plano-nome', 'input-plano-obs'].forEach(function(id) { _plwContador(_plwEl(id)); });
-      _plwSetNivel(plano.tipo || '', true);          // chama atualizarVinculos() (exclui o próprio plano)
-      _plwEstado.sup = (plano.planosSuperiores || []).map(function(r) {
-        return { id: String(r.id), nome: r.nome || '', anoInicio: r.anoInicio, anoFim: r.anoFim };
-      });
-      _plwEstado.adic = (plano.responsaveisAdicionais || []).map(function(r) {
+      _plwDefinirNivel(plano.tipo || '');            // calcula os candidatos a superior (exclui o próprio plano)
+      _plwSelSup.setLista((plano.planosSuperiores || []).map(function(r) {
+        return { id: String(r.id), titulo: r.nome || '', codigo: '', tipo: '', meta: '' };
+      }));
+      _plwSelAdic.setLista((plano.responsaveisAdicionais || []).map(function(r) {
         return { id: String(r.id), tipo: r.tipo === 'USER' ? 'USER' : 'UNIDADE', nome: r.nome || '' };
-      });
-      _plwRenderSup();
-      _plwRenderPresets();
+      }));
       _plwCarregarConfigVinculo(String(idPlano)); // interruptor "mesmo nível" deste plano (segundo plano)
 
-      // Otimista: mostra o nome que já veio do servidor; quando os caches chegam,
-      // o token/chips se reidratam com sigla/nome completos.
-      const respInicial = plano.idUnidade ? { id: String(plano.idUnidade), tipo: plano.tipoResponsavel === 'USER' ? 'USER' : 'UNIDADE', nome: plano.nomeUnidade || '' } : null;
-      _plwSetResp(respInicial);
-      prepararDadosPlanoResp(function() {
-        if (respInicial) _plwSetResp(respInicial);
-        _plwRenderAdic();
-        if (podeEditarRestrito) aplicarRestricaoEdicaoPlano();
-      });
-
-      if (podeEditarRestrito) aplicarRestricaoEdicaoPlano();
-      _plwMostrarPasso(1);
-      _plwEl('modal-novo-plano').classList.remove('hidden');
-      bloquearFundo();
+      // Otimista: mostra o nome que já veio do servidor; quando os caches chegam, o campo se reidrata com sigla/nome completos.
+      if (plano.idUnidade) _plwSelPrincipal.setLista([{ id: String(plano.idUnidade), tipo: plano.tipoResponsavel === 'USER' ? 'USER' : 'UNIDADE', nome: plano.nomeUnidade || '' }]);
+      _plwPrepararDados();
+      if (podeEditarRestrito) _plwAplicarBloqueio(true);
+      _plwAtualizarVig(false);
+      _plwAbrirModal();
     })
     .withFailureHandler(function(err) {
       esconderLoader();
-      if (typeof showMessage === 'function') showMessage('error', 'Erro ao carregar plano', escapeHtml(err.message));
-      else alert('Erro: ' + err.message);
+      showMessage('error', 'Erro ao carregar plano', escapeHtml(err.message));
     })
     .apiGetPlanoCompleto(idPlano, 'base');
 }
 
 function fecharModalPlano() {
-  _plwPopFechar();
   _plwEl('modal-novo-plano').classList.add('hidden');
   desbloquearFundo();
 }
 
-// --- BLOQUEIO DE INTERAÇÃO COM O FUNDO (usado por vários modais  não renomear) ---
 // --- EDIÇÃO RESTRITA (plano "Em Revisão") ---
 // Só Nome e Observações mudam. Os demais campos ficam desabilitados mas
 // populados, e são reenviados sem alteração (o backend também valida).
 function _plwAplicarBloqueio(v) {
   _plwEstado.bloq = !!v;
-  ['plw-nivel-btn', 'input-plano-ano-inicio', 'input-plano-ano-fim', 'input-plano-resp-search', 'plw-adic-input'].forEach(function(id) {
-    const el = _plwEl(id); if (el) el.disabled = !!v;
-  });
-  _plwEl('plw-resp-token').classList.toggle('plw-bloq', !!v);
-  document.querySelectorAll('#modal-novo-plano .plw-lock').forEach(function(el) { el.classList.toggle('hidden', !v); });
+  ['input-tipo-plano', 'input-plano-ano-inicio', 'input-plano-ano-fim'].forEach(function(id) { _plwEl(id).disabled = !!v; });
+  SeletorOpcao.sincronizar(_plwEl('modal-novo-plano'));
+  _plwSelPrincipal.setDisabled(!!v);
+  _plwSelAdic.setDisabled(!!v);
   _plwEl('aviso-edicao-revisao').classList.toggle('hidden', !v);
   _plwRenderPresets();
-  _plwRenderAdic();
-  _plwRenderSup();
+  _plwAtualizarSup();
 }
-function aplicarRestricaoEdicaoPlano() { _plwAplicarBloqueio(true); }
-function removerRestricaoEdicaoPlano() { _plwAplicarBloqueio(false); }
 
 // --- DADOS DE RESPONSÁVEL (Unidades + Servidores) ---
-// "onReady": executado quando as Unidades estiverem disponíveis (padrão de
-// callback opcional; sem ele, nada além de carregar).
-// Carrega Unidades e Servidores em paralelo; o popover se atualiza sozinho
-// quando cada lista chega.
-function prepararDadosPlanoResp(onReady) {
-  const busca = _plwEl('input-plano-resp-search');
-  const finalizar = function() {
-    busca.placeholder = 'Buscar unidade ou servidor (nome, sigla ou SIAPE)';
-    if (typeof onReady === 'function') onReady();
-    if (_plwPop) _plwPopRender();
-  };
-  if (!cacheUsuariosPlano.length) carregarUsuariosPlano();
-  if (cacheUnidadesPlano.length) { finalizar(); return; }
-  busca.placeholder = 'Carregando unidades e servidores...';
+// Carrega Unidades e Servidores em paralelo; os campos se reidratam quando cada lista chega.
+function _plwPrepararDados() {
+  if (!cacheUsuariosPlano.length) {
+    google.script.run.withSuccessHandler(function(lista) {
+      cacheUsuariosPlano = lista || [];
+      _plwReidratar();
+    }).apiGetListaUsuarios();
+  }
+  if (cacheUnidadesPlano.length) { _plwReidratar(); return; }
   google.script.run
     .withSuccessHandler(function(lista) {
       cacheUnidadesPlano = (lista || []).map(function(u) { return { id: String(u.id).trim(), nome: u.nome, sigla: u.sigla, idPai: u.idPai ? String(u.idPai).trim() : null }; });
-      finalizar();
+      _plwReidratar();
     })
     .withFailureHandler(function(err) {
-      busca.placeholder = 'Não foi possível carregar as unidades';
-      if (typeof showMessage === 'function') showMessage('error', 'Erro ao carregar unidades', escapeHtml(err.message));
+      showMessage('error', 'Erro ao carregar unidades', escapeHtml(err.message));
     })
     .apiGetListaUnidades();
 }
-function carregarUsuariosPlano() {
-  if (cacheUsuariosPlano.length) return;
-  google.script.run.withSuccessHandler(function(lista) {
-    cacheUsuariosPlano = lista || [];
-    if (_plwEstado.resp) _plwSetResp(_plwEstado.resp); // reidrata token (SIAPE, "você", categoria)
-    _plwRenderAdic();
-    if (_plwPop) _plwPopRender();
-  }).apiGetListaUsuarios();
-}
-
-// --- VÍNCULO COM PLANO(S) SUPERIOR(ES) (modelo N:N) ---
-// Recalcula os candidatos sempre que o Nível muda e zera a seleção (planos já
-// escolhidos podem não valer mais para o novo nível). Estratégico também aceita
-// Estratégico (subunidade  unidade superior).
-// Configuração "vínculo com planos do mesmo nível" (padrão global / do plano): espelha no cliente o que o
-// servidor valida em apiSalvarPlano/apiAtualizarPlano (§2). Atualizada em segundo plano ao abrir o modal.
-var _plwMesmoNivelPermitido = true;
-function _plwRecalcularCandidatosSup() {
-  const tipo = _plwEl('input-tipo-plano').value;
-  cachePlanosSuperiorDisponiveis = [];
-  const tipoPai = PLW_SUP_DE[tipo];
-  const idEdicao = _plwEl('input-plano-id-edicao').value;
-  if (tipoPai && typeof estadoPlanos !== 'undefined' && estadoPlanos.dadosBrutos) {
-    cachePlanosSuperiorDisponiveis = estadoPlanos.dadosBrutos.filter(function(p) {
-      return p.tipo === tipoPai && p.status === 'Em Execução' && String(p.id) !== String(idEdicao)
-        && (_plwMesmoNivelPermitido || p.tipo !== tipo);
-    });
-  }
-}
-function _plwCarregarConfigVinculo(idPlano) {
-  google.script.run.withSuccessHandler(function(r) {
-    _plwMesmoNivelPermitido = !r || r.mesmoNivelPermitido !== false;
-    _plwRecalcularCandidatosSup();
-    if (_plwPop) _plwPopRender();
-  }).apiGetConfigNovoVinculoPlano(idPlano || null);
-}
-function atualizarVinculos() {
-  _plwEstado.sup = [];
-  _plwRecalcularCandidatosSup();
-  _plwRenderSup();
+// Sigla, nome completo, "você" e categoria dependem dos caches: refaz o que já está escolhido.
+function _plwReidratar() {
+  if (!_plwSelPrincipal) return;
+  _plwSelPrincipal.setLista(_plwSelPrincipal.getLista());
+  _plwSelAdic.setLista(_plwSelAdic.getLista());
+  _plwRenderClassif();
+  _plwRenderRail();
 }
 
 // --- SUBMIT ---
-function handleSalvarPlano(e) {
+function _plwSalvar(e) {
   e.preventDefault();
-  _plwPopFechar();
-  const erros = _plwErros();
-  if (Object.keys(erros).length) {
-    _plwEstado.tentou = true;
-    const k = [1, 2].find(function(n) { return !_plwPassoOk(n, erros); });
-    if (k && k !== _plwEstado.passo) _plwMostrarPasso(k); else _plwAtualizarErros();
-    return;
-  }
-  const form = e.target;
+  if (!_plwValidarEtapas([1, 2, 3])) return;
+  const form = e.target, principal = _plwPrincipal();
   const dadosPlano = {
     nome: form.nome.value.trim(),
     tipo: _plwEl('input-tipo-plano').value,
     anoInicio: _plwEl('input-plano-ano-inicio').value, // "AAAA-MM-DD"
     anoFim: _plwEl('input-plano-ano-fim').value,       // "AAAA-MM-DD"
-    idResponsavel: _plwEl('input-plano-resp-value').value,
-    tipoResponsavel: _plwEl('input-plano-resp-type').value,
-    responsaveisAdicionais: _plwEstado.adic.map(function(r) { return { id: r.id, tipo: r.tipo }; }),
-    idsPlanoSuperior: _plwEstado.sup.map(function(r) { return r.id; }),
+    idResponsavel: principal.id,
+    tipoResponsavel: principal.tipo,
+    responsaveisAdicionais: _plwSelAdic.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; }),
+    idsPlanoSuperior: _plwSelSup.getIds(),
     observacao: form.observacao.value
     // Visibilidade não é definida aqui: novo plano nasce Privado (apiSalvarPlano).
   };
@@ -5001,13 +4466,11 @@ function handleSalvarPlano(e) {
             carregarDetalhesPlano(idEdicao);
           }
         };
-        if (typeof showMessage === 'function') showMessage('success', 'Plano atualizado', 'As alterações foram salvas.', atualizarTelas);
-        else { alert('As alterações foram salvas.'); atualizarTelas(); }
+        showMessage('success', 'Plano atualizado', 'As alterações foram salvas.', atualizarTelas);
       })
       .withFailureHandler(function(err) {
         esconderLoader();
-        if (typeof showMessage === 'function') showMessage('error', 'Erro ao salvar', escapeHtml(err.message));
-        else alert('Erro: ' + err.message);
+        showMessage('error', 'Erro ao salvar', escapeHtml(err.message));
       })
       .apiAtualizarPlano(dadosPlano);
   } else {
@@ -5017,13 +4480,11 @@ function handleSalvarPlano(e) {
         fecharModalPlano();
         // A lista guarda cache local: sem invalidar, o plano novo só aparecia depois do botão de atualizar.
         const depois = function() { if (typeof atualizarListaPlanos === 'function') atualizarListaPlanos(); else if (typeof initPlanos === 'function') initPlanos(); };
-        if (typeof showMessage === 'function') showMessage('success', 'Plano criado', 'O plano foi criado como privado. A visibilidade se ajusta na página do plano.', depois);
-        else { alert('Plano criado.'); depois(); }
+        showMessage('success', 'Plano criado', 'O plano foi criado como privado. A visibilidade se ajusta na página do plano.', depois);
       })
       .withFailureHandler(function(err) {
         esconderLoader();
-        if (typeof showMessage === 'function') showMessage('error', 'Erro ao criar plano', escapeHtml(err.message));
-        else alert('Erro: ' + err.message);
+        showMessage('error', 'Erro ao criar plano', escapeHtml(err.message));
       })
       .apiSalvarPlano(dadosPlano);
   }
@@ -5033,34 +4494,14 @@ function handleSalvarPlano(e) {
 uiRegistrarAcoes('components_modal_plano', {
   '1': function (event) { if(event.target===this) window[this.dataset.fechar](); },
   '2': function (event) { fecharModalPlano(); },
-  '3': function (event) { handleSalvarPlano(event); },
-  '4': function (event) { _plwContador(this); _plwAtualizarErros(); },
-  '5': function (event) { _plwTocar('nome'); },
-  '6': function (event) { _plwNivelClick(); },
-  '7': function (event) { _plwTecla('nivel', event); },
-  '8': function (event) { _plwTocarSemPop('nivel'); },
-  '9': function (event) { _plwVigMudou(); },
-  '10': function (event) { _plwTocarVig(); },
-  '11': function (event) { limparSelecaoPlanoResp(true); },
-  '12': function (event) { _plwBuscar('resp'); },
-  '13': function (event) { _plwAbrirBusca('resp'); },
-  '14': function (event) { _plwAbrirBusca('resp'); },
-  '15': function (event) { _plwTecla('resp', event); },
-  '16': function (event) { _plwTocarSemPop('resp'); },
-  '17': function (event) { _plwBuscar('adic'); },
-  '18': function (event) { _plwAbrirBusca('adic'); },
-  '19': function (event) { _plwAbrirBusca('adic'); },
-  '20': function (event) { _plwTecla('adic', event); },
-  '21': function (event) { _plwBuscar('sup'); },
-  '22': function (event) { _plwAbrirBusca('sup'); },
-  '23': function (event) { _plwAbrirBusca('sup'); },
-  '24': function (event) { _plwTecla('sup', event); },
-  '25': function (event) { _plwContador(this); },
-  '26': function (event) { _plwVoltar(); },
-  '27': function (event) { _plwSubmeter(); },
-  '28': function (event) { _plwContinuar(); },
-  '29': function (event) { _plwIrPara(uiArgLit(this.dataset.rclick0)); },
-  '30': function (event) { _plwAplicarPreset(uiArgJs(this.dataset.aclick0)); }
+  '3': function (event) { _plwSalvar(event); },
+  '4': function (event) { _plwLimparErro(this, 'ds-input--error', 'plano-nome-erro'); _plwRenderRail(); },
+  '5': function (event) { _plwNivelMudou(); },
+  '6': function (event) { _plwAtualizarVig(false); },
+  '7': function (event) { _plwAplicarPreset(uiArgJs(this.dataset.aclick0)); },
+  '8': function (event) { _plwVoltar(); },
+  '9': function (event) { _plwProximo(); },
+  '10': function (event) { _plwIrParaRail(uiArgLit(this.dataset.rclick0)); }
 });
 </script>
 
