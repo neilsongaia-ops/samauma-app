@@ -60,7 +60,7 @@ body {
   color: var(--ds-color-text);
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
   overflow-y: hidden;
   overflow-x: clip;
   transition: padding-left var(--ds-duration-slow) var(--ds-ease-standard);
@@ -660,6 +660,7 @@ body.high-contrast {
 .ds-tabela td.ds-tabela__nowrap { white-space: nowrap; }
 .ds-tabela__card { display: none; }
 .ds-tabela__vig { display: none; }
+.ds-tabela__ordenar { display: none; }
 .ds-tabela__id { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ds-tabela__nome-wrap { flex: 1 1 auto; min-width: 0; }
 .ds-tabela__nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -667,11 +668,20 @@ body.high-contrast {
 @media (max-width: 768px) {
   .ds-tabela-wrap { margin: 0; width: 100%; display: block; background: none; }
   .ds-tabela { display: block; width: 100%; }
-  /* o cabeçalho não existe no celular: ordenar está na barra de filtros e "Selecionar tudo" na linha base dela (.ds-filtros__base) */
-  .ds-tabela thead { display: none; }
+  /* cabeçalho (padrão Drive): um só item, a ordenação atual com a seta da direção; tocar abre o menu de ordenar. À direita ficarão os modos de visualização, nas telas que os tiverem. */
+  .ds-tabela thead { display: block; }
+  .ds-tabela thead tr { display: flex; align-items: center; min-height: 36px; padding: 0; border-bottom: var(--ds-borda) solid var(--ds-color-border); }   /* a linha que separa o cabeçalho dos itens */
+  .ds-tabela thead th { display: none; }
+  .ds-tabela thead th.ds-tabela__ordenar { display: block; padding: 2px 0 6px; border: none; }
+  /* com a seleção ligada, o item de ordenação dá lugar a "Selecionar tudo / Desmarcar tudo" (mesma altura: a lista não se move) */
+  .ds-tabela--selecionando thead th.ds-tabela__ordenar { display: none; }
+  .ds-tabela--selecionando thead th.ds-tabela__check { display: flex; align-items: center; gap: var(--ds-space-2); width: auto; padding: 2px 0 6px 4px; border: none; }
+  .ds-tabela thead .ds-tabela__card { display: inline; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
+  .ds-tabela__ordenar-btn { display: inline-flex; align-items: center; gap: var(--ds-space-2); padding: 0; border: 0; background: none; cursor: pointer; font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); }
+  .ds-tabela__ordenar-btn .material-symbols-outlined { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); font-size: var(--ds-icon-md); }
   /* corpo: lista de linhas compactas (padrão Gmail), uma coluna: 1ª linha = badge do tipo à esquerda + vigência à direita (leve); 2ª = título; 3ª = badges, responsável e progresso; ⋮ centrado na altura.
      A caixa de seleção só aparece no modo de seleção (.ds-tabela--selecionando, ligado pelo toque longo), no lugar do ⋮: toque abre o item; com a seleção ligada, toque marca/desmarca. */
-  .ds-tabela tbody { display: block; width: 100%; margin-top: 4px; }
+  .ds-tabela tbody { display: block; width: 100%; margin-top: 0; }
   .ds-tabela tbody tr {
     display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas: "tipo vig acoes" "nome nome acoes" "card card acoes";
@@ -754,19 +764,10 @@ body.high-contrast {
 .ds-sheet__grupo { display: flex; flex-direction: column; gap: var(--ds-space-2); }
 .ds-sheet__rotulo { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ds-color-text-muted); }
 
-/* Barra de navegação (mobile): fixa na base do app, só ≤768px. .ds-navbar > button.ds-navbar__item(.is-ativo) > ícone + .ds-navbar__rotulo.
-   Primeiro, "Abas" (--destaque: cor de ação e separador), que só existe quando a página tem abas e surge com animação; depois o ciclo do plano
-   (Início, Planos, Execução, Avaliação). Montada e mantida por uiNavbarAtualizar() (app_ui_utils.html), chamada pelo navigate(). */
+/* Barra de navegação (mobile): fixa na base do app, só ≤768px, só ícones. .ds-navbar > button.ds-navbar__item(.is-ativo) > ícone.
+   Um item por módulo do ciclo do plano (Início, Planejamento, Execução, Avaliação); o item do módulo da página atual fica marcado.
+   Montada e mantida por uiNavbarAtualizar() (app_ui_utils.html), chamada ao fim do navigate(). */
 .ds-navbar { display: none; }
-@keyframes ds-navbar-surgir {
-  0% { opacity: 0; transform: translateY(16px) scale(.5); }
-  60% { opacity: 1; transform: translateY(-3px) scale(1.12); }
-  100% { opacity: 1; transform: none; }
-}
-@keyframes ds-navbar-pulso {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ds-color-action) 55%, transparent); }
-  100% { box-shadow: 0 0 0 14px transparent; }
-}
 @media (max-width: 768px) {
   .ds-navbar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--ds-z-header); display: flex; align-items: stretch;
@@ -774,20 +775,17 @@ body.high-contrast {
     background: var(--ds-color-surface); border-top: var(--ds-borda) solid var(--ds-color-border);
   }
   .ds-navbar__item {
-    flex: 1 1 0; min-width: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
-    padding: var(--ds-space-1); border: 0; background: none; cursor: pointer; color: var(--ds-color-text-muted); font-family: var(--ds-font-sans);
+    flex: 1 1 0; min-width: 0; min-height: 56px; display: flex; align-items: center; justify-content: center;
+    padding: var(--ds-space-1); border: 0; background: none; cursor: pointer; color: var(--ds-color-text-muted);
   }
-  .ds-navbar__item .material-symbols-outlined { font-size: var(--ds-icon-lg); padding: 2px var(--ds-space-4); border-radius: var(--ds-r-pill); }
+  .ds-navbar__item .material-symbols-outlined { font-size: var(--ds-icon-xl); padding: var(--ds-space-1) var(--ds-space-5); border-radius: var(--ds-r-pill); }
   .ds-navbar__item.is-ativo { color: var(--ds-color-text); }
   .ds-navbar__item.is-ativo .material-symbols-outlined { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
-  .ds-navbar__item.hidden { display: none; }
-  .ds-navbar__item--destaque { flex: none; padding: var(--ds-space-1) var(--ds-space-3) var(--ds-space-1) var(--ds-space-1); margin-right: var(--ds-space-1); border-right: var(--ds-borda) solid var(--ds-color-border); color: var(--ds-color-action); font-weight: var(--ds-weight-semibold); animation: ds-navbar-surgir var(--ds-duration-slow) var(--ds-ease-emphasized) both; }
-  .ds-navbar__item--destaque .material-symbols-outlined { background: var(--ds-color-action); color: var(--ds-color-on-action); animation: ds-navbar-pulso 1.2s var(--ds-ease-standard) .35s 2; }
-  .ds-navbar__rotulo { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
   body:has(.ds-navbar) #main-content { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
   body:has(.ds-navbar) .ds-fab { bottom: calc(72px + var(--ds-space-4)); }
+  /* o fim da lista rola até ficar acima do botão flutuante (56px + folga), senão ele cobre o ⋮ do último item */
+  .ds-pagina:has(> .ds-fab) { padding-bottom: calc(56px + var(--ds-space-8)); }
 }
-@media (prefers-reduced-motion: reduce) { .ds-navbar__item--destaque, .ds-navbar__item--destaque .material-symbols-outlined { animation: none; } }
 
 /* ---- Badges / chips ---- */
 /* Forma única da pílula (altura, arredondamento, fonte): badge de situação, tipo/nível e responsável compartilham as mesmas medidas; cada um só define cor e peso. */
@@ -1050,8 +1048,12 @@ body.high-contrast .ds-tabs-nav__item.active { border-bottom-color: var(--ds-col
 .ds-tabs-nav__item.active .ds-tab-count--notificacao { background: var(--ds-color-notificacao); color: var(--ds-color-on-notificacao); }
 
 @media (max-width: 768px) {
-  /* Abas no mobile: saem da tela; trocam-se pelo item "Abas" da barra de navegação (.ds-navbar), que as lista num bottom sheet */
-  .ds-tabs-nav { display: none; }
+  /* Abas no mobile: chips em pílula (a mesma das abas segmentadas, .ds-tabs--segmented) no lugar do sublinhado; rolam de lado */
+  .ds-tabs-nav { background: none; border-bottom: 0; }
+  .ds-tabs-nav__scroll { gap: var(--ds-space-1); padding: var(--ds-space-1); border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); }
+  .ds-tabs-nav__item { margin-bottom: 0; padding: var(--ds-space-2) var(--ds-space-4); border-bottom: 0; border-radius: var(--ds-r-pill); }
+  .ds-tabs-nav__item.active { background: var(--ds-color-surface); color: var(--ds-primary-700); box-shadow: var(--ds-shadow-1); }
+  [data-ds-theme="dark"] .ds-tabs-nav__item.active { color: var(--ds-color-action); }
 }
 }
 
@@ -1222,7 +1224,6 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-filtros__normal.hidden, .ds-filtros__selecao.hidden { display: none; }
 .ds-filtros__selecao-texto { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
 .ds-filtros__divisor { width: var(--ds-borda); align-self: stretch; margin: 2px 4px; background: var(--ds-color-border); }
-.ds-filtros__base { display: none; }
 .ds-filtros__pag { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
 
 /* Busca expansível: .ds-busca > [botão .ds-icon-action] + .ds-busca__caixa(.hidden) > __icone + input.ds-input.ds-busca__input + __limpar */
@@ -1328,9 +1329,6 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   .ds-busca__input { width: 100%; max-width: none; }
   .ds-filtro { flex: none; }
   .ds-filtros__normal > .ds-link { display: none; }  /* sem "Limpar filtros" geral: cada filtro limpa no próprio × */
-  /* linha base: "Selecionar tudo" sob a busca/faixa de seleção; reserva a altura o tempo todo para a lista não se mover */
-  .ds-filtros__base { display: flex; flex: 1 1 100%; align-items: center; gap: var(--ds-space-2); min-height: 32px; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); cursor: pointer; }
-  .ds-filtros__base[aria-hidden="true"] { visibility: hidden; }
 }
 
 /* ===================== MENUS SUSPENSOS E AÇÕES DE LINHA (canônicos; script em components_acoes_linha.html) =====================
@@ -10225,7 +10223,7 @@ function uiSheetAbrir(op) {
   el.innerHTML = '<div class="ds-sheet__fundo"' + uiAtributosAcao('uiSheetFechar()', 'click') + '></div>'
     + '<div class="ds-sheet__painel"><div class="ds-sheet__alca" aria-hidden="true"></div>'
     + '<div class="ds-sheet__cab"><h2 class="ds-sheet__titulo">' + escapeHtml(op.titulo || '') + '</h2>' + (op.acaoCab || '')
-    + '<button type="button" class="ds-icon-action" aria-label="Fechar"' + uiAtributosAcao('uiSheetFechar()', 'click') + '><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div>'
+    + '<button type="button" class="btn-icon-close" aria-label="Fechar"' + uiAtributosAcao('uiSheetFechar()', 'click') + '><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div>'
     + '<div class="ds-sheet__corpo">' + (op.corpo || '') + '</div>'
     + (op.rodape ? '<div class="ds-sheet__rodape">' + op.rodape + '</div>' : '') + '</div>';
   document.body.appendChild(el);
@@ -10328,20 +10326,9 @@ function uiRolagemInfinita(depoisDe, aoChegar) {
   return ctl;
 }
 
-// Barra de navegação do mobile (.ds-navbar, index.html): itens fixos + "Abas", que aparece só quando a página visível tem abas
-// (.ds-tabs-nav, escondidas no mobile). uiNavbarAtualizar marca o item ativo; roda no navigate() e quando o conteúdo muda
-// (as abas costumam chegar depois, com os dados).
-var UI_NAVBAR_PAGINAS = { inicio: ['home'], planos: ['planos', 'plano-detalhe'], execucao: ['execucao-planos', 'execucao-tarefas'], avaliacao: ['avaliacao-planos', 'avaliacao-executar'] };
-function _uiNavbarAbasDaPagina() {
-  var pag = document.querySelector('#main-content > .page-content:not(.hidden)');
-  var barra = pag && pag.querySelector('.ds-tabs-nav');
-  return barra ? Array.prototype.slice.call(barra.querySelectorAll('.ds-tabs-nav__item')).filter(function (b) { return !b.classList.contains('hidden'); }) : [];
-}
-function _uiNavbarRotulo(el) {
-  var c = el.cloneNode(true);
-  Array.prototype.forEach.call(c.querySelectorAll('.material-symbols-outlined, .ds-tab-count'), function (x) { x.remove(); });
-  return (c.textContent || '').replace(/\s+/g, ' ').trim();
-}
+// Barra de navegação do mobile (.ds-navbar, index.html): só ícones, um por módulo do ciclo (Início, Planejamento, Execução, Avaliação).
+// uiNavbarAtualizar marca o item do módulo da página visível; roda ao fim do navigate().
+var UI_NAVBAR_PAGINAS = { inicio: ['home'], planejamento: ['planos', 'plano-detalhe', 'calendario', 'colaboracao'], execucao: ['execucao-planos', 'execucao-tarefas'], avaliacao: ['avaliacao-planos', 'avaliacao-executar'] };
 function uiNavbarAtualizar() {
   var nav = document.getElementById('ui-navbar');
   if (!nav) return;
@@ -10352,29 +10339,7 @@ function uiNavbarAtualizar() {
     b.classList.toggle('is-ativo', ativo);
     if (ativo) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
-  var abas = nav.querySelector('[data-navbar-abas]');
-  if (abas) abas.classList.toggle('hidden', _uiNavbarAbasDaPagina().length < 2);
 }
-function uiNavbarAbas(gatilho) {
-  var abas = _uiNavbarAbasDaPagina();
-  abrirMenuSelecao(gatilho, [{ itens: abas.map(function (b, i) {
-    return { label: _uiNavbarRotulo(b) + (b.querySelector('.ds-tab-count') && b.querySelector('.ds-tab-count').textContent ? ' (' + b.querySelector('.ds-tab-count').textContent + ')' : ''),
-      ativo: b.classList.contains('active'), onclick: 'uiNavbarIrAba(' + i + ')' };
-  }) }], { titulo: 'Abas' });
-}
-function uiNavbarIrAba(i) {
-  var b = _uiNavbarAbasDaPagina()[i];
-  if (b) b.click();
-}
-(function () {
-  var t = null;
-  document.addEventListener('DOMContentLoaded', function () {
-    var main = document.getElementById('main-content');
-    if (!main || !window.MutationObserver) return;
-    new MutationObserver(function () { clearTimeout(t); t = setTimeout(uiNavbarAtualizar, 150); })
-      .observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-  });
-})();
 
 // Abas de navegação (.ds-tabs-nav, styles_design_system.html). A tela escreve só .ds-tabs-nav > .ds-tabs-nav__scroll > abas; esta
 // função monta, na primeira chamada, o invólucro e as setas ‹ › do carrossel, e mostra cada seta só quando as abas não cabem e
@@ -13868,11 +13833,6 @@ uiRegistrarAcoes('pages_execucao_validacao', {
         </button>
       </div>
 
-      <!-- Ordenar no mobile: só com a busca em foco, na linha das pílulas (no desktop a ordenação é no cabeçalho da tabela) -->
-      <button type="button" class="ds-icon-action hidden" id="pll-ordenar-mob" data-on-click="ui.chamar" data-chamada-click="pllAbrirMenuOrdenar(null, this)" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu">
-        <span class="material-symbols-outlined" aria-hidden="true">sort</span>
-      </button>
-
       <button type="button" id="btn-limpar-filtros-planos" class="ds-link hidden" data-on-click="pages_planos_lista.13">
         Limpar filtros
       </button>
@@ -13894,12 +13854,6 @@ uiRegistrarAcoes('pages_execucao_validacao', {
            só se todos permitirem) — pedido explícito do usuário. -->
       <div id="pll-selecao-acoes"></div>
     </div>
-
-    <!-- Linha base (celular): "Selecionar tudo / Desmarcar tudo", logo abaixo da busca e da faixa de seleção. Ocupa o espaço o tempo todo (invisível sem seleção) para a lista não se mover ao selecionar. -->
-    <label class="ds-filtros__base" id="pll-selall-linha" aria-hidden="true">
-      <input type="checkbox" id="chk-select-all-planos-mob" data-on-change="pages_planos_lista.17" aria-label="Selecionar todos" tabindex="-1">
-      <span id="pll-selall-rotulo">Selecionar tudo</span>
-    </label>
 
     <!-- Contador + paginação: sempre visível (nem os filtros nem a seleção em lote a
        escondem — ver comentário acima). Sem "Exibir": tamanho de página fixo, sem
@@ -13925,10 +13879,16 @@ uiRegistrarAcoes('pages_execucao_validacao', {
     <table class="ds-tabela ds-tabela--selecao" id="tabela-planos">
         <thead>
           <tr>
+            <th class="ds-tabela__ordenar">
+              <button type="button" class="ds-tabela__ordenar-btn" id="pll-ordenar-btn" data-on-click="ui.chamar" data-chamada-click="pllAbrirMenuOrdenar(null)" aria-haspopup="menu" aria-label="Ordenar">
+                <span id="pll-ord-rotulo">Nome</span><span class="material-symbols-outlined" id="pll-ord-seta" aria-hidden="true">arrow_upward</span>
+              </button>
+            </th>
             <th class="ds-tabela__check">
               <input type="checkbox" id="chk-select-all-planos"
                 data-on-change="pages_planos_lista.17"
                 aria-label="Selecionar todos">
+              <label for="chk-select-all-planos" class="ds-tabela__card" id="pll-selall-rotulo">Selecionar tudo</label>
             </th>
             <th class="ds-th-ord ds-tabela__principal" data-on-click="pages_planos_lista.18">Nome<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-nome"></span></th>
             <th class="ds-th-ord" data-on-click="pages_planos_lista.20">Responsável<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-responsavel"></span></th>
@@ -13953,7 +13913,6 @@ uiRegistrarAcoes('pages_execucao_validacao', {
                 </button>
               </div>
             </th>
-            <th class="ds-tabela__card" aria-hidden="true"></th>
           </tr>
         </thead>
         <tbody id="tbody-planos">
@@ -14339,8 +14298,6 @@ function _pllMobileSincronizar() {
   var mob = _pllMobile(), f = estadoPlanos.filtros;
   var mostrar = !mob || estadoPlanos._buscaEmFoco || _menuSelecaoNoSheet || !!(f.tipo || f.ano || f.status);
   Array.prototype.forEach.call(document.querySelectorAll('#pll-filtros-normal > .ds-filtro'), function(el) { el.classList.toggle('hidden', !mostrar); });
-  var foco = estadoPlanos._buscaEmFoco || _menuSelecaoNoSheet;
-  document.getElementById('pll-ordenar-mob').classList.toggle('hidden', !(mob && foco));
   var pag = document.querySelector('#pll-filtros-card > .ds-filtros__pag');
   if (pag) pag.classList.toggle('hidden', mob);
 }
@@ -14485,7 +14442,7 @@ function ordenarPorColuna(col) {
 // das linhas): alternativa ao clique direto no cabeçalho de cada coluna.
 function pllAbrirMenuOrdenar(ev, gatilho) {
   if (ev && ev.stopPropagation) ev.stopPropagation();
-  gatilho = gatilho || (this instanceof Element ? this : null) || (ev && ev.currentTarget && ev.currentTarget !== document.documentElement && ev.currentTarget !== document.body ? ev.currentTarget : null) || (ev && ev.target && ev.target.closest && ev.target.closest('.pll-sort-btn')) || document.querySelector('.pll-sort-btn');
+  gatilho = gatilho || (this instanceof Element ? this : null) || (ev && ev.currentTarget && ev.currentTarget !== document.documentElement && ev.currentTarget !== document.body ? ev.currentTarget : null) || (ev && ev.target && ev.target.closest && ev.target.closest('.pll-sort-btn')) || document.getElementById('pll-ordenar-btn');
   var colunas = [
     { valor: 'nome',        label: 'Nome' },
     { valor: 'vigencia',    label: 'Vigência' },
@@ -14543,6 +14500,11 @@ function _atualizarIconesOrdenacao() {
     if (!el) return;
     el.textContent = c === col ? (dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : '';
   });
+  // cabeçalho do celular: nome da coluna ordenada + seta da direção
+  var rot = { nome: 'Nome', vigencia: 'Vigência', responsavel: 'Responsável', status: 'Status', progresso: 'Progresso' };
+  var r = document.getElementById('pll-ord-rotulo'), seta = document.getElementById('pll-ord-seta');
+  if (r) r.textContent = rot[col] || 'Nome';
+  if (seta) seta.textContent = dir === 'desc' ? 'arrow_downward' : 'arrow_upward';
 }
 
 // ---- Paginação -----------------------------------------------------------
@@ -14846,12 +14808,9 @@ function _atualizarCheckAll() {
   atualizarBarraSelecaoPlanos();
 }
 
-// "Selecionar todos": a caixa do cabeçalho (desktop) e a da linha base (celular) mostram sempre o mesmo estado.
 function _pllMarcarTodasCaixas(marcada, indeterminada) {
-  ['chk-select-all-planos', 'chk-select-all-planos-mob'].forEach(function(id) {
-    var c = document.getElementById(id);
-    if (c) { c.checked = marcada; c.indeterminate = indeterminada; }
-  });
+  var c = document.getElementById('chk-select-all-planos');
+  if (c) { c.checked = marcada; c.indeterminate = indeterminada; }
 }
 
 // Ao marcar/desmarcar qualquer checkbox, a barra de filtros vira barra de seleção em lote
@@ -14869,8 +14828,6 @@ function atualizarBarraSelecaoPlanos() {
   var caixasLista = document.querySelectorAll('#tbody-planos .plano-select-checkbox');
   var todasMarcadas = caixasLista.length > 0 && estadoPlanos.selecionados.size >= caixasLista.length;
   document.getElementById('pll-selall-rotulo').textContent = todasMarcadas ? 'Desmarcar tudo' : 'Selecionar tudo';
-  document.getElementById('pll-selall-linha').setAttribute('aria-hidden', String(qtd === 0));
-  document.getElementById('chk-select-all-planos-mob').tabIndex = qtd === 0 ? -1 : 0;
   _pllMobileSincronizar();
   uiPaginaMedir(document.getElementById('page-planos'));
   pllAtualizarAlturaMinTabela();
@@ -28854,22 +28811,19 @@ uiRegistrarAcoes('pages_logs', {
 </script>
     </main>
 
-    <!-- Barra de navegação do mobile (.ds-navbar): "Abas" em destaque (só quando a página tem abas) + o ciclo do plano. uiNavbarAtualizar() em app_ui_utils.html -->
+    <!-- Barra de navegação do mobile (.ds-navbar): só ícones, um por módulo do ciclo do plano. uiNavbarAtualizar() em app_ui_utils.html -->
     <nav class="ds-navbar" id="ui-navbar" aria-label="Navegação principal">
-      <button type="button" class="ds-navbar__item ds-navbar__item--destaque hidden" data-navbar-abas data-on-click="ui.chamar" data-chamada-click="uiNavbarAbas(this)" aria-haspopup="dialog">
-        <span class="material-symbols-outlined" aria-hidden="true">view_column</span><span class="ds-navbar__rotulo">Abas</span>
+      <button type="button" class="ds-navbar__item" data-navbar="inicio" data-on-click="ui.chamar" data-chamada-click="navigate('home')" aria-label="Início" data-title="Início">
+        <span class="material-symbols-outlined" aria-hidden="true">home</span>
       </button>
-      <button type="button" class="ds-navbar__item" data-navbar="inicio" data-on-click="ui.chamar" data-chamada-click="navigate('home')">
-        <span class="material-symbols-outlined" aria-hidden="true">home</span><span class="ds-navbar__rotulo">Início</span>
+      <button type="button" class="ds-navbar__item" data-navbar="planejamento" data-on-click="ui.chamar" data-chamada-click="navigate('planos')" aria-label="Planejamento" data-title="Planejamento">
+        <span class="material-symbols-outlined" aria-hidden="true">corporate_fare</span>
       </button>
-      <button type="button" class="ds-navbar__item" data-navbar="planos" data-on-click="ui.chamar" data-chamada-click="navigate('planos')">
-        <span class="material-symbols-outlined" aria-hidden="true">list_alt</span><span class="ds-navbar__rotulo">Planos</span>
+      <button type="button" class="ds-navbar__item" data-navbar="execucao" data-on-click="ui.chamar" data-chamada-click="navigate('execucao-planos')" aria-label="Execução" data-title="Execução">
+        <span class="material-symbols-outlined" aria-hidden="true">checklist</span>
       </button>
-      <button type="button" class="ds-navbar__item" data-navbar="execucao" data-on-click="ui.chamar" data-chamada-click="navigate('execucao-planos')">
-        <span class="material-symbols-outlined" aria-hidden="true">checklist</span><span class="ds-navbar__rotulo">Execução</span>
-      </button>
-      <button type="button" class="ds-navbar__item" data-navbar="avaliacao" data-on-click="ui.chamar" data-chamada-click="navigate('avaliacao-planos')">
-        <span class="material-symbols-outlined" aria-hidden="true">star_half</span><span class="ds-navbar__rotulo">Avaliação</span>
+      <button type="button" class="ds-navbar__item" data-navbar="avaliacao" data-on-click="ui.chamar" data-chamada-click="navigate('avaliacao-planos')" aria-label="Avaliação" data-title="Avaliação">
+        <span class="material-symbols-outlined" aria-hidden="true">star_half</span>
       </button>
     </nav>
 
@@ -28892,7 +28846,6 @@ function _salvarUltimaTela(pageName, extra) {
 function navigate(pageName, extra) {
   _salvarUltimaTela(pageName, extra);
   uiNavRegistrar(pageName, extra);
-  uiNavbarAtualizar();
   hdrNavSincronizarAtivo(hdrNavChaveDe(pageName, extra)); // item ativo do menu lateral
   // #main-content é quem rola agora (não mais a janela) — sem isso, trocar de
   // página manteria o scroll da página anterior, abrindo a nova já rolada.
@@ -29073,6 +29026,7 @@ function navigate(pageName, extra) {
       if (typeof initHome === 'function') initHome();
   }
   _appAtualizarVisibilidade();
+  uiNavbarAtualizar();
 }
 
 // ================================================================
