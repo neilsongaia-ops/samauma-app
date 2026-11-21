@@ -10563,8 +10563,8 @@ function uiBadgeTipoHTML(tipo, cor) {
 }
 
 function uiProgressoHTML(pct, dica) {
-  if (pct == null || isNaN(Number(pct))) return '<span class="ds-progresso__valor">—</span>';
-  var p = Math.max(0, Math.min(100, Number(pct))).toFixed(0);
+  // sem progresso medido (plano sem elementos contáveis) mostra a barra zerada, nunca um traço
+  var p = Math.max(0, Math.min(100, pct == null || isNaN(Number(pct)) ? 0 : Number(pct))).toFixed(0);
   return '<div class="ds-progresso"' + (dica ? ' data-title="' + escapeHtml(dica) + '"' : '') + '>'
     + '<div class="ds-kpi-track"><div class="ds-kpi-fill ds-tone-info" style="width:' + p + '%"></div></div>'
     + '<span class="ds-progresso__valor">' + p + '%</span></div>';
