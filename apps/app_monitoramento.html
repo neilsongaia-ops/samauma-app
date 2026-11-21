@@ -1450,7 +1450,7 @@ function _monitRecorteTipoHTML() {
   if (!r) return '<div class="el-table-wrap">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner-wrap"><div class="lista-spinner"></div></div>') + '</div>';
   var corpo = (r.linhas || []).map(function(l) {
     return '<tr><td>' + escapeHtml((l.codigo ? l.codigo + ' ' : '') + l.titulo) + '</td>'
-      + '<td>' + (l.qtdFolhas ? uiProgressoHTML(l.progresso) : '—') + '</td>'
+      + '<td>' + uiProgressoHTML(l.qtdFolhas ? l.progresso : 0) + '</td>'
       + '<td>' + (l.ieg === null || l.ieg === undefined ? '—' : 'IEG ' + Math.round(l.ieg) + '%') + '</td>'
       + '<td>' + l.qtdElementos + (l.qtdElementos === 1 ? ' elemento' : ' elementos') + '</td></tr>';
   }).join('');
