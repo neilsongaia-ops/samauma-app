@@ -659,6 +659,7 @@ body.high-contrast {
 @media (min-width: 769px) { .ds-tabela td.ds-tabela__principal { max-width: 0; } }
 .ds-tabela td.ds-tabela__nowrap { white-space: nowrap; }
 .ds-tabela__card { display: none; }
+.ds-tabela__vig { display: none; }
 .ds-tabela__id { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ds-tabela__nome-wrap { flex: 1 1 auto; min-width: 0; }
 .ds-tabela__nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -677,26 +678,29 @@ body.high-contrast {
   /* no mobile o cabeçalho é a linha "Selecionar tudo" (a tela o mostra só no modo de seleção): caixa + rótulo .ds-tabela__card; sem ordenação nem ferramentas (ordenar fica na barra de filtros) */
   .ds-tabela thead .ds-tabela__card { display: inline; margin-left: var(--ds-space-2); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
   .ds-tabela thead th.ds-tabela__card, .ds-tabela thead .ds-col-sobreposta, .ds-tabela thead .ds-col-acoes { display: none; }
-  /* corpo: grade de cartões (1 coluna no celular; 2 ou mais em telas maiores) */
-  .ds-tabela tbody { display: grid; width: 100%; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 12px; }
+  /* corpo: lista de linhas compactas (padrão Gmail), uma coluna: 1ª linha = badge do tipo à esquerda + vigência à direita (leve); 2ª = título; 3ª = badges, responsável e progresso; ⋮ centrado na altura.
+     A caixa de seleção só aparece no modo de seleção (.ds-tabela--selecionando, ligado pelo toque longo), no lugar do ⋮: toque abre o item; com a seleção ligada, toque marca/desmarca. */
+  .ds-tabela tbody { display: block; width: 100%; margin-top: 4px; }
   .ds-tabela tbody tr {
-    display: grid; grid-template-columns: 28px auto minmax(0, 1fr) auto;
-    grid-template-areas: "chk tipo . acoes" "nome nome nome nome" "card card card card";
-    gap: 6px 8px; align-items: center; padding: 12px;
-    background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-shadow-1);
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "tipo vig acoes" "nome nome acoes" "card card acoes";
+    gap: 4px 8px; align-items: center; padding: 10px 0 10px 4px; border-bottom: var(--ds-borda) solid var(--ds-color-border);
   }
-  .ds-tabela tbody tr:hover { background: var(--ds-sidebar-item-hover); }
-  .ds-tabela tbody tr.is-selecionada { background: var(--ds-sidebar-item-active); border-color: var(--ds-color-action); }
+  .ds-tabela tbody tr:hover { background: none; }
+  .ds-tabela tbody tr.is-selecionada { background: var(--ds-sidebar-item-active); }
   .ds-tabela tbody td { display: block; padding: 0; border: none; }
-  /* o realce é do cartão: as células ficam sem fundo também no hover e na seleção */
   .ds-tabela tbody tr:hover td, .ds-tabela tbody tr.is-selecionada td { background: none; }
-  .ds-tabela tbody .ds-tabela__check { grid-area: chk; width: auto; padding: 4px 0 0; }
-  /* a célula principal e seus invólucros "dissolvem": tipo e nome viram itens diretos da grade do cartão */
+  .ds-tabela tbody .ds-tabela__check { display: none; }
+  /* com a seleção ligada a caixa ocupa o lugar do ⋮ */
+  .ds-tabela--selecionando tbody .ds-tabela__check { display: block; grid-area: acoes; width: auto; padding: 0 12px 0 8px; align-self: center; }
+  .ds-tabela--selecionando tbody .ds-col-sobreposta, .ds-tabela--selecionando tbody .ds-col-acoes { display: none; }
+  /* a célula principal e seus invólucros "dissolvem": tipo e nome viram itens diretos da grade */
   .ds-tabela tbody .ds-tabela__principal, .ds-tabela tbody .ds-tabela__id, .ds-tabela tbody .ds-tabela__nome-wrap { display: contents; }
   .ds-tabela tbody .ds-tabela__tipo { grid-area: tipo; justify-self: start; }
+  .ds-tabela tbody .ds-tabela__vig { display: block; grid-area: vig; justify-self: end; font-size: var(--ds-text-xs); font-weight: var(--ds-weight-regular); color: var(--ds-color-text-muted); white-space: nowrap; }
   .ds-tabela tbody .ds-tabela__nome { grid-area: nome; min-width: 0; font-size: var(--ds-text-md); }
-  .ds-tabela tbody .ds-col-sobreposta, .ds-tabela tbody .ds-col-acoes { grid-area: acoes; width: auto; }
-  .ds-tabela tbody .ds-tabela__card { grid-area: card; display: block; }
+  .ds-tabela tbody .ds-col-sobreposta, .ds-tabela tbody .ds-col-acoes { grid-area: acoes; width: auto; align-self: center; }
+  .ds-tabela tbody .ds-tabela__card { grid-area: card; display: block; min-width: 0; }
   .ds-tabela tbody .ds-tabela__so-desktop { display: none; }
   /* linha de aviso ocupa a largura toda, sem virar cartão */
   .ds-tabela tbody tr.ds-tabela__msg { display: block; grid-column: 1 / -1; background: none; border: none; box-shadow: none; padding: 0; }
@@ -2945,15 +2949,17 @@ function _fecharNavSubmenusClickFora(e) { if (!e.target.closest('.nav-item-group
 
 // Marca o item da página atual (aria-current) e garante o grupo dele aberto.
 // chave = data-nav-rota: 'planos', 'mensagens:enviadas'... Chamado por navigate() (index.html).
+var HDR_NAV_PAI = { 'detalhe': 'planos', 'execucao-tarefas': 'execucao-planos', 'avaliacao-executar': 'avaliacao-planos' };
 function hdrNavSincronizarAtivo(chave) {
   var nav = document.getElementById('nav-menu');
   if (!nav || !chave) return;
   var base = String(chave).split(':')[0];
+  base = HDR_NAV_PAI[base] || base;   // tela interna (detalhe, registro, avaliar) marca o item da lista de onde se entra nela
   var alvo = nav.querySelector('[data-nav-rota="' + chave + '"]') || nav.querySelector('[data-nav-rota="' + base + '"]')
           || nav.querySelector('[data-nav-rota^="' + base + ':"]');
-  if (!alvo) return; // rota sem item no menu (ex.: detalhe de plano): mantém o último ativo
   nav.querySelectorAll('[aria-current="page"]').forEach(function(el) { el.removeAttribute('aria-current'); });
   nav.querySelectorAll('.hdr-tem-ativo').forEach(function(el) { el.classList.remove('hdr-tem-ativo'); });
+  if (!alvo) return; // rota sem item no menu (ex.: notificações): nenhum item fica marcado
   alvo.setAttribute('aria-current', 'page');
   var g = alvo.closest('.nav-item-group');
   if (g) {
@@ -9376,7 +9382,7 @@ function acoesLinhaHTML(id, itens, opts) {
 
   var html = '<div class="acoes-linha" data-on-click="components_acoes_linha.1">' + direto.map(_acoesLinhaBotao).join('');
   // O ⋮ sempre existe (no mobile é o único controle); sem overflow ele fica oculto no desktop
-  _acoesLinhaReg[id] = { menu: menu, todos: lista };
+  _acoesLinhaReg[id] = { menu: menu, todos: lista, titulo: opts.titulo || '' };
   {
     html += '<button type="button" class="acoes-btn acoes-mais' + (menu.length ? '' : ' acoes-so-mobile') + '" data-acoes-id="' + escapeHtml(id) + '"'
       + ' data-on-click="components_acoes_linha.2" data-aclick0="' + escapeJsAttr(id) + '"'
@@ -9384,6 +9390,20 @@ function acoesLinhaHTML(id, itens, opts) {
       + '<span class="material-symbols-outlined" aria-hidden="true">more_vert</span></button>';
   }
   return html + '</div>';
+}
+
+// Itens do menu de uma linha (popover no desktop, gaveta no celular); `fechar` = codigo que fecha o conteiner antes de executar a acao.
+function _acoesLinhaItensHTML(itens, fechar) {
+  var anteriorPerigo = false;
+  return itens.map(function(a, i) {
+    var sep = (a.perigo && i > 0 && !anteriorPerigo) ? '<div class="acoes-menu-sep" role="separator"></div>' : '';
+    anteriorPerigo = a.perigo;
+    return sep + '<button type="button" role="menuitem" class="acoes-menu-item' + (a.perigo ? ' perigo' : '') + '"'
+      + (a.desabilitado ? ' aria-disabled="true" data-title="Em breve">' : ' ' + uiAtributosAcao(fechar + a.onclick, 'click') + '>')
+      + '<span class="material-symbols-outlined" aria-hidden="true"' + (a.cor ? ' style="color:' + a.cor + '"' : '') + '>' + a.icone + '</span>'
+      + '<span class="acoes-menu-txt"><span>' + escapeHtml(a.rotulo) + '</span>'
+      + (a.descricao ? '<span class="acoes-menu-desc">' + escapeHtml(a.descricao) + '</span>' : '') + '</span></button>';
+  }).join('');
 }
 
 function acoesLinhaMenu(id, ev) {
@@ -9396,20 +9416,17 @@ function acoesLinhaMenu(id, ev) {
   var itens = reg ? (_acoesLinhaMobile() || semHover ? reg.todos : reg.menu) : null;
   if (!itens || !itens.length || !gatilho) return;
 
+  // Celular: as opções abrem na gaveta (bottom sheet), não num popover
+  if (_acoesLinhaMobile()) {
+    uiSheetAbrir({ titulo: (reg && reg.titulo) || 'Opções', corpo: '<div role="menu">' + _acoesLinhaItensHTML(itens, 'uiSheetFechar(); ') + '</div>' });
+    return;
+  }
+
   var menu = document.createElement('div');
   menu.className = 'acoes-menu';
   menu.id = 'acoes-menu-aberto';
   menu.setAttribute('role', 'menu');
-  var anteriorPerigo = false;
-  menu.innerHTML = itens.map(function(a, i) {
-    var sep = (a.perigo && i > 0 && !anteriorPerigo) ? '<div class="acoes-menu-sep" role="separator"></div>' : '';
-    anteriorPerigo = a.perigo;
-    return sep + '<button type="button" role="menuitem" class="acoes-menu-item' + (a.perigo ? ' perigo' : '') + '"'
-      + (a.desabilitado ? ' aria-disabled="true" data-title="Em breve">' : ' ' + uiAtributosAcao('acoesLinhaFechar(); ' + a.onclick + '', 'click') + '>')
-      + '<span class="material-symbols-outlined" aria-hidden="true"' + (a.cor ? ' style="color:' + a.cor + '"' : '') + '>' + a.icone + '</span>'
-      + '<span class="acoes-menu-txt"><span>' + escapeHtml(a.rotulo) + '</span>'
-      + (a.descricao ? '<span class="acoes-menu-desc">' + escapeHtml(a.descricao) + '</span>' : '') + '</span></button>';
-  }).join('');
+  menu.innerHTML = _acoesLinhaItensHTML(itens, 'acoesLinhaFechar(); ');
   document.body.appendChild(menu);
 
   // Posição: abaixo do gatilho, alinhado à direita; inverte para cima se faltar espaço
@@ -10158,7 +10175,7 @@ function uiVoltar() {
   _uiNavPilha.pop();
   var destino = _uiNavPilha[_uiNavPilha.length - 1];
   _uiNavVoltando = true;
-  navigate(destino.pagina, destino.extra);
+  abrirRota(destino.pagina, destino.extra);   // as telas de um plano recarregam os dados (index.html)
 }
 function uiVoltarGarantir(pagina) {
   var paginas = pagina ? [pagina] : Array.prototype.slice.call(document.querySelectorAll('.ds-pagina'));
@@ -10237,6 +10254,32 @@ function uiSheetFechar(imediato) {
 }
 document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && _uiSheet) uiSheetFechar(); });
 
+// Toque longo (pressionar e segurar, celular): uiToqueLongo(conteiner, seletor, aoPressionar(elemento)) liga uma vez a um conteiner; o toque que dispara
+// o gesto nao deve virar clique (uiToqueLongoRecente(conteiner) e para o ouvinte de clique ignorar o que vem logo depois). Mexer o dedo ou soltar cedo cancela.
+function uiToqueLongo(cont, seletor, aoPressionar) {
+  if (!cont || cont._uiToqueLongo) return;
+  cont._uiToqueLongo = true;
+  var timer = null, x0 = 0, y0 = 0;
+  function cancelar() { clearTimeout(timer); timer = null; }
+  cont.addEventListener('touchstart', function (e) {
+    var el = e.target.closest(seletor);
+    if (!el || e.touches.length !== 1 || e.target.closest('input, button, a')) return;
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    timer = setTimeout(function () {
+      timer = null; cont._uiToqueLongoEm = Date.now();
+      if (navigator.vibrate) navigator.vibrate(15);
+      aoPressionar(el);
+    }, 450);
+  }, { passive: true });
+  cont.addEventListener('touchmove', function (e) {
+    if (timer && (Math.abs(e.touches[0].clientX - x0) > 10 || Math.abs(e.touches[0].clientY - y0) > 10)) cancelar();
+  }, { passive: true });
+  cont.addEventListener('touchend', cancelar, { passive: true });
+  cont.addEventListener('touchcancel', cancelar, { passive: true });
+  cont.addEventListener('contextmenu', function (e) { if (e.target.closest(seletor) && window.matchMedia('(pointer: coarse)').matches) e.preventDefault(); });
+}
+function uiToqueLongoRecente(cont) { return !!cont && Date.now() - (cont._uiToqueLongoEm || 0) < 700; }
+
 // Busca expansível (.ds-busca): no desktop é o ícone que expande ao clicar; no celular (padrão Gmail/Drive) fica sempre aberta.
 // Telas abrem e recolhem só por aqui; uiPaginaMedir sincroniza as buscas da página (a largura pode ter cruzado os 768px).
 function _uiBuscaMobile() { return window.matchMedia('(max-width: 768px)').matches; }
@@ -10283,7 +10326,7 @@ function uiRolagemInfinita(depoisDe, aoChegar) {
 // Barra de navegação do mobile (.ds-navbar, index.html): itens fixos + "Abas", que aparece só quando a página visível tem abas
 // (.ds-tabs-nav, escondidas no mobile). uiNavbarAtualizar marca o item ativo; roda no navigate() e quando o conteúdo muda
 // (as abas costumam chegar depois, com os dados).
-var UI_NAVBAR_PAGINAS = { inicio: ['home'], planos: ['planos', 'plano-detalhe'], execucao: ['execucao-planos', 'execucao-tarefas', 'validacao-resultados'], avaliacao: ['avaliacao-planos', 'avaliacao-executar'] };
+var UI_NAVBAR_PAGINAS = { inicio: ['home'], planos: ['planos', 'plano-detalhe'], execucao: ['execucao-planos', 'execucao-tarefas'], avaliacao: ['avaliacao-planos', 'avaliacao-executar'] };
 function _uiNavbarAbasDaPagina() {
   var pag = document.querySelector('#main-content > .page-content:not(.hidden)');
   var barra = pag && pag.querySelector('.ds-tabs-nav');
@@ -13999,11 +14042,12 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 @media (max-width: 768px) {
 
 
-  #page-planos .pll-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
-  #page-planos .pll-card-meta .pll-vig { font-size: var(--ds-text-xs); }
-  #page-planos .pll-card-prog { margin-top: 8px; }
-  #page-planos .pll-card-prog .pll-prog { width: 100%; }
+  #page-planos .pll-card-meta { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; }
+  #page-planos .pll-card-meta .ds-resp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #page-planos .pll-card-prog { flex: 1 1 56px; min-width: 48px; }
+  #page-planos .pll-card-prog .pll-prog { gap: 6px; }
   #page-planos .pll-card-prog .ds-kpi-track { flex: 1; width: auto; }
+  #page-planos .pll-prog-txt { min-width: 0; }
 }
 </style>
 
@@ -14312,6 +14356,12 @@ function _pllMobilePreparar() {
     // espera o toque numa pílula chegar antes de escondê-las
     inp.addEventListener('blur', function() { setTimeout(function() { estadoPlanos._buscaEmFoco = false; _pllMobileSincronizar(); }, 250); });
   }
+  uiToqueLongo(document.getElementById('tbody-planos'), 'tr.ds-linha-clicavel', function(tr) {
+    var chk = tr.querySelector('.plano-select-checkbox');
+    if (!chk || estadoPlanos.selecionados.has(chk.dataset.id)) return;
+    estadoPlanos.selecionados.add(chk.dataset.id);
+    _pllRedesenharSelecao();
+  });
   estadoPlanos._rolagem = uiRolagemInfinita(document.getElementById('pll-tabela-card'), function() {
     if (!_pllMobile() || estadoPlanos._qtdMobile >= (estadoPlanos._planosVisiveis || []).length) return;
     estadoPlanos._qtdMobile += PLL_LOTE_MOBILE;
@@ -14588,7 +14638,7 @@ function _renderizarTabela(planos) {
       { icone: 'delete', rotulo: 'Excluir', onclick: "solicitarExclusao(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", perigo: true, oculto: !perm.excluir || p.status === 'Excluído' },
       { icone: 'restore', rotulo: 'Restaurar', onclick: "pllRestaurarPlano(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", oculto: !(p.status === 'Excluído' && perm.restaurar) },
       { icone: 'delete_forever', rotulo: 'Excluir definitivamente', onclick: "pllExcluirDefinitivo(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", perigo: true, oculto: !(p.status === 'Excluído' && perm.excluirDefinitivo) }
-    ], p.status === 'Excluído' ? { maxDireto: 0 } : undefined);
+    ], p.status === 'Excluído' ? { maxDireto: 0, titulo: p.nome } : { titulo: p.nome });
     var lixHtml = pllLixeiraPrazoHTML(p);
 
     var nomeResp = p.nomeResponsavel || 'Não definido';
@@ -14629,16 +14679,16 @@ function _renderizarTabela(planos) {
         '<div class="ds-tabela__nome-wrap">' +
           '<div class="ds-tabela__nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</div>' +
         '</div></div></td>' +
+      '<td class="ds-tabela__vig">' + vigencia + '</td>' +
       '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + respHtml + '</td>' +
       '<td class="ds-tabela__nowrap ds-tabela__so-desktop"><span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' + lixHtml + '</td>' +
       '<td class="ds-tabela__so-larga ds-tabela__so-desktop">' + progHtml + '</td>' +
       '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="pll-vig ds-tabela__so-desktop">' + vigencia + '</span></div>' +
         '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>' +
-      // Card (só mobile): status + vigência + responsável + progresso, tudo à vista, sem rolar de lado
+      // Linha do celular: status + responsável + progresso, tudo numa linha só
       '<td class="ds-tabela__card"><div class="pll-card-meta">' +
         '<span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' +
-        '<span class="pll-vig ds-tabela__so-desktop">' + vigencia + '</span>' + respHtml + lixHtml + '</div>' +
-        '<div class="pll-card-prog">' + progHtml + '</div></td>';
+        respHtml + lixHtml + '<div class="pll-card-prog">' + progHtml + '</div></div></td>';
     tbody.appendChild(tr);
   });
 
@@ -14658,6 +14708,15 @@ function _renderizarTabela(planos) {
 // protegem sozinhos com event.stopPropagation() (ver .acoes-linha).
 function pllCliqueLinha(evt, id) {
   if (evt.target.closest('input')) return;
+  // Celular: toque abre o plano; com a seleção ligada (toque longo) o toque marca/desmarca a linha
+  if (_pllMobile()) {
+    if (uiToqueLongoRecente(document.getElementById('tbody-planos'))) return;
+    var sid = String(id);
+    if (!estadoPlanos.selecionados.size) { abrirDetalhesDaLista(id); return; }
+    if (estadoPlanos.selecionados.has(sid)) estadoPlanos.selecionados.delete(sid); else estadoPlanos.selecionados.add(sid);
+    _pllRedesenharSelecao();
+    return;
+  }
   // Shift+clique nativamente também seleciona TEXTO da página (arrastar seleção) — sem
   // isso apareceria um "grifado" de texto junto com a seleção de linhas.
   if (evt.shiftKey) {
@@ -14714,7 +14773,7 @@ document.addEventListener('keydown', function(evt) {
 });
 
 function pllDuploCliqueLinha(evt, id) {
-  if (evt.target.closest('input')) return;
+  if (evt.target.closest('input') || _pllMobile()) return;
   abrirDetalhesDaLista(id);
 }
 
@@ -14805,6 +14864,7 @@ function atualizarBarraSelecaoPlanos() {
       qtd + ' plano' + (qtd > 1 ? 's' : '') + ' selecionado' + (qtd > 1 ? 's' : '');
     _pllRenderizarAcoesSelecao(qtd);
   }
+  document.getElementById('tabela-planos').classList.toggle('ds-tabela--selecionando', qtd > 0);
   var chkAll = document.getElementById('chk-select-all-planos');
   document.getElementById('pll-selall-rotulo').textContent = chkAll && chkAll.checked ? 'Desmarcar tudo' : 'Selecionar tudo';
   _pllMobileSincronizar();
@@ -29200,12 +29260,18 @@ function _appNotificarTecla(evt) {
         let salvo;
         try { salvo = JSON.parse(sessionStorage.getItem(CHAVE_ULTIMA_TELA) || 'null'); } catch (e) { salvo = null; }
         if (!salvo || !salvo.page) return false;
-        const extra = salvo.extra || {};
-        if (salvo.page === 'detalhe' && extra.idPlano) { carregarDetalhesPlano(extra.idPlano); return true; }
-        if (salvo.page === 'execucao-tarefas' && extra.idPlano) { abrirExecucaoPlano(extra.idPlano); return true; }
-        if (salvo.page === 'avaliacao-executar' && extra.idPlano) { abrirPaginaAvaliacao(extra.idPlano, extra.contexto); return true; }
-        navigate(salvo.page);
+        abrirRota(salvo.page, salvo.extra || {});
         return true;
+      }
+
+      // Abre uma rota do jeito certo: as telas de um plano (detalhe, execução, avaliação) carregam seus dados por funções próprias,
+      // que chamam navigate() por dentro; navigate() sozinho mostraria a página vazia. Usada ao restaurar a tela (F5) e no voltar.
+      function abrirRota(pagina, extra) {
+        extra = extra || {};
+        if (pagina === 'detalhe' && extra.idPlano) carregarDetalhesPlano(extra.idPlano);
+        else if (pagina === 'execucao-tarefas' && extra.idPlano) abrirExecucaoPlano(extra.idPlano);
+        else if (pagina === 'avaliacao-executar' && extra.idPlano) abrirPaginaAvaliacao(extra.idPlano, extra.contexto);
+        else navigate(pagina, extra);
       }
 
       // Atalho "Alt+R": atualiza só os dados da tela atual (sem recarregar a
