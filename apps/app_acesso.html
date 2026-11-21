@@ -65,7 +65,7 @@
   function telaCarregando() {
     estado = 'carregando';
     var texto = el('span', { texto: 'Carregando o sistema…' });
-    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-stack ds-stack--3', role: 'status', 'aria-live': 'polite' }, [
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-glass ds-glass--cartao ds-stack ds-stack--3', role: 'status', 'aria-live': 'polite' }, [
       logo(),
       el('div', { 'class': 'lista-spinner-wrap' }, [el('div', { 'class': 'lista-spinner' }), texto])
     ]));
@@ -76,7 +76,7 @@
     estado = 'erro'; clearTimeout(avisoLentidao);
     var tentar = botao('ds-btn ds-btn--primary ds-btn--block', 'refresh', 'Tentar novamente');
     tentar.addEventListener('click', iniciar);
-    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-stack ds-stack--3' }, [
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-glass ds-glass--cartao ds-stack ds-stack--3' }, [
       logo(),
       el('h1', { 'class': 'ds-tela-cheia__titulo', texto: 'Não foi possível carregar' }),
       el('p', { 'class': 'ds-help ds-help--error', role: 'alert', texto: mensagem }),
@@ -186,7 +186,7 @@
       obterCaptcha(function (token) { Api.enviar(nome, args, ok, falha, token); }, falha);
     }
 
-    mostrar(el('div', { 'class': 'ds-tela-cheia__card' }, [
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-glass ds-glass--cartao' }, [
       el('div', { 'class': 'ds-stack ds-stack--3' }, [logo(), titulo]), sub, msg, passo1, passoPa, passo2, passoFim, capLocal,
       el('hr', { 'class': 'ds-divisor' }), el('div', { 'class': 'ds-stack ds-stack--3' }, [el('div', { 'class': 'ds-cluster' }, [SeletorTema.criar()]), creditoFoto()])]));
     inEmail.value = Api.lerEmail();

@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <base target="_top">
     <!-- Google Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -600,17 +602,130 @@ body.high-contrast {
 .ds-tela-cheia__titulo { margin-bottom: var(--ds-space-1); font-size: var(--ds-text-xl); font-weight: var(--ds-weight-bold); color: var(--ds-color-heading); }
 .ds-tela-cheia__sub { margin-bottom: var(--ds-space-4); font-size: var(--ds-text-base); color: var(--ds-color-text-muted); }
 .ds-tela-cheia__aviso:not(:empty) { margin-bottom: var(--ds-space-3); }
-/* Tela cheia com imagem de fundo (--ds-tela-fundo): degradê da cor de fundo com um toque da cor de ação por cima da imagem e cartão de vidro (blur + saturação dos tokens ds-glass; no alto contraste o blur some). */
+/* Tela cheia com imagem de fundo (--ds-tela-fundo): degradê da cor de fundo com um toque da cor de ação por cima da imagem; o cartão usa .ds-glass .ds-glass--cartao. */
 .ds-tela-cheia--imagem {
   background:
     linear-gradient(155deg, color-mix(in srgb, var(--ds-color-bg) 82%, transparent) 0%, color-mix(in srgb, var(--ds-color-action) 24%, transparent) 52%, color-mix(in srgb, var(--ds-color-bg) 74%, transparent) 100%),
     var(--ds-tela-fundo) center / cover no-repeat,
     var(--ds-color-bg);
 }
-.ds-tela-cheia--imagem .ds-tela-cheia__card {
+
+/* Cartão flutuante de vidro (tela de acesso, diálogos de confirmação): fundo translúcido, desfoque 1,5x e sombra forte; vem DEPOIS dos cartões que ele cobre, e os tokens --ds-glass-* o neutralizam no alto contraste. Uso: class="ds-glass ds-glass--cartao". */
+.ds-glass--cartao {
   background: var(--ds-glass-bg); border-color: var(--ds-glass-border); box-shadow: var(--ds-glass-shadow-strong);
   -webkit-backdrop-filter: blur(calc(var(--ds-glass-blur) * 1.5)) saturate(var(--ds-glass-saturate));
   backdrop-filter: blur(calc(var(--ds-glass-blur) * 1.5)) saturate(var(--ds-glass-saturate));
+}
+
+/* Estado vazio (lista, painel, cartão ou modal sem itens): ícone esmaecido, título opcional, mensagem e ação opcional, centralizados. --compacto dentro de cartão, painel ou modal. */
+.ds-vazio { display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-2); padding: var(--ds-space-10) var(--ds-space-4); text-align: center; color: var(--ds-color-text-muted); }
+.ds-vazio--compacto { padding: var(--ds-space-5) var(--ds-space-3); }
+.ds-vazio__icone { font-size: var(--ds-text-3xl); opacity: 0.35; }
+.ds-vazio__titulo { margin: 0; font-size: var(--ds-text-md); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ds-vazio__texto { margin: 0; max-width: 360px; font-size: var(--ds-text-base); }
+.ds-vazio__acao { margin-top: var(--ds-space-2); }
+
+/* ---- Tabela de lista (desktop: tabela com cabeçalho fixo sob as abas e filtros; ≤768 px: galeria de cartões) ----
+   Estrutura: <div class="ds-tabela-wrap"><table class="ds-tabela"> com thead/tbody; tr principal .ds-linha-lista (+ .ds-linha-clicavel quando abre ao clicar; .is-selecionada quando marcada).
+   Papéis de coluna (th e td): __check (caixa de seleção), __principal (a que cresce; dentro dela __id > __tipo + __nome-wrap > __nome), __nowrap (não quebra linha),
+   .ds-col-sobreposta/.ds-col-acoes (ações, à direita), __card (coluna SÓ do mobile: o que o cartão mostra além do título), __so-desktop (some nas linhas do mobile e fica
+   no cabeçalho como ordenação), __so-larga (some até 1024 px). Linha de aviso (carregando, vazio): tr.ds-tabela__msg com um só td colspan. Seleção com Ctrl/Shift: --selecao.
+   Cartão no mobile, em 3 linhas: caixa + tipo + ⋮ / título sozinho com reticências / detalhes (__card). */
+.ds-tabela-wrap { overflow: visible; margin-bottom: calc(-1 * var(--ds-main-pad-y)); background: var(--ds-color-surface); }
+/* border-collapse: separate: com bordas coladas o th sticky deixaria a borda de baixo para trás ao rolar */
+.ds-tabela { width: 100%; margin: 0; border-collapse: separate; border-spacing: 0; }
+.ds-tabela thead th {
+  position: sticky; top: var(--ds-pagina-topo-tabela); z-index: 40;
+  padding: 12px 16px; text-align: left; white-space: nowrap;
+  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--ds-color-text-muted); background: var(--ds-color-surface); border-bottom: var(--ds-borda-forte) solid var(--ds-color-border);
+}
+.ds-tabela tbody td { padding: 14px 16px; vertical-align: middle; border-bottom: var(--ds-borda) solid var(--ds-glass-border); font-size: var(--ds-text-base); color: var(--ds-color-text); }
+.ds-tabela tbody tr { transition: background var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast), border-color var(--ds-duration-fast); }
+.ds-tabela tbody tr:last-child td { border-bottom: none; }
+.ds-tabela tbody tr:hover td { background: var(--ds-sidebar-item-hover); }
+.ds-tabela tbody tr.is-selecionada td { background: var(--ds-sidebar-item-active); }
+.ds-tabela--selecao tbody tr { user-select: none; }
+.ds-tabela tbody tr.ds-tabela__msg:hover td { background: transparent; }
+.ds-tabela .ds-tabela__check { width: 48px; text-align: left; padding: 14px 0 14px 16px; }
+.ds-tabela thead .ds-tabela__check { padding-top: 12px; padding-bottom: 12px; }
+.ds-tabela input[type="checkbox"] { display: block; margin: 0; width: 16px; height: 16px; }
+.ds-tabela__principal { width: 46%; min-width: 260px; }
+@media (min-width: 769px) { .ds-tabela td.ds-tabela__principal { max-width: 0; } }
+.ds-tabela td.ds-tabela__nowrap { white-space: nowrap; }
+.ds-tabela__card { display: none; }
+.ds-tabela__id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ds-tabela__nome-wrap { flex: 1 1 auto; min-width: 0; }
+.ds-tabela__nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1024px) { .ds-tabela .ds-tabela__so-larga { display: none; } }
+@media (max-width: 768px) {
+  .ds-tabela-wrap { margin: 0; width: 100%; display: block; background: none; }
+  .ds-tabela, .ds-tabela thead { display: block; width: 100%; }
+  /* cabeçalho vira uma barra de "selecionar todos" + ordenação */
+  .ds-tabela thead tr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 8px 12px;
+    background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-glass-border); border-radius: var(--ds-r-xl);
+  }
+  .ds-tabela thead th { position: static; padding: 6px 0; border: none; display: inline-flex; align-items: center; }
+  .ds-tabela thead .ds-tabela__check { width: auto; padding: 6px 4px 6px 0; }
+  .ds-tabela thead .ds-tabela__so-larga { display: inline-flex; }
+  .ds-tabela thead .ds-col-sobreposta, .ds-tabela thead .ds-col-acoes { margin-left: auto; }
+  .ds-tabela thead .ds-tabela__card { display: none; }
+  /* corpo: grade de cartões (1 coluna no celular; 2 ou mais em telas maiores) */
+  .ds-tabela tbody { display: grid; width: 100%; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 12px; }
+  .ds-tabela tbody tr {
+    display: grid; grid-template-columns: 28px auto minmax(0, 1fr) auto;
+    grid-template-areas: "chk tipo . acoes" "nome nome nome nome" "card card card card";
+    gap: 6px 8px; align-items: center; padding: 12px;
+    background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-shadow-1);
+  }
+  .ds-tabela tbody tr:hover { background: var(--ds-sidebar-item-hover); }
+  .ds-tabela tbody tr.is-selecionada { background: var(--ds-sidebar-item-active); border-color: var(--ds-color-action); }
+  .ds-tabela tbody td { display: block; padding: 0; border: none; }
+  /* o realce é do cartão: as células ficam sem fundo também no hover e na seleção */
+  .ds-tabela tbody tr:hover td, .ds-tabela tbody tr.is-selecionada td { background: none; }
+  .ds-tabela tbody .ds-tabela__check { grid-area: chk; width: auto; padding: 4px 0 0; }
+  /* a célula principal e seus invólucros "dissolvem": tipo e nome viram itens diretos da grade do cartão */
+  .ds-tabela tbody .ds-tabela__principal, .ds-tabela tbody .ds-tabela__id, .ds-tabela tbody .ds-tabela__nome-wrap { display: contents; }
+  .ds-tabela tbody .ds-tabela__tipo { grid-area: tipo; justify-self: start; }
+  .ds-tabela tbody .ds-tabela__nome { grid-area: nome; min-width: 0; font-size: var(--ds-text-md); }
+  .ds-tabela tbody .ds-col-sobreposta, .ds-tabela tbody .ds-col-acoes { grid-area: acoes; width: auto; }
+  .ds-tabela tbody .ds-tabela__card { grid-area: card; display: block; }
+  .ds-tabela tbody .ds-tabela__so-desktop { display: none; }
+  /* linha de aviso ocupa a largura toda, sem virar cartão */
+  .ds-tabela tbody tr.ds-tabela__msg { display: block; grid-column: 1 / -1; background: none; border: none; box-shadow: none; padding: 0; }
+}
+
+@media print { .ds-tabela__check { display: none; } }
+
+/* Botão flutuante (FAB, só ≤768 px): o botão principal da página e as ações acessórias (as da seta do botão dividido) no celular. Montado por uiAcoesPaginaMontar
+   (app_ui_utils.html), nunca à mão: <div class="ds-fab"> com .ds-fab__fundo, .ds-fab__opcoes (> .ds-fab__item > .ds-fab__rotulo + .ds-fab__mini) e .ds-fab__principal.
+   Aberto = .is-aberto (o + gira para ×, o fundo escurece). Com FAB na página, as ações da barra do topo somem no mobile (o FAB as substitui). */
+.ds-fab { display: none; position: fixed; right: var(--ds-space-5); bottom: var(--ds-space-5); z-index: var(--ds-z-fab); flex-direction: column-reverse; align-items: flex-end; gap: var(--ds-space-4); }
+.ds-fab__principal {
+  position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border: 0; border-radius: var(--ds-r-pill); cursor: pointer;
+  color: var(--ds-color-on-action); background: var(--ds-color-action); box-shadow: var(--ds-shadow-3);
+  transition: transform var(--ds-duration-fast) var(--ds-ease-standard), background var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.ds-fab__principal:active { transform: scale(0.95); }
+.ds-fab__principal .material-symbols-outlined { font-size: var(--ds-icon-xl); transition: transform var(--ds-duration-slow) var(--ds-ease-standard); }
+.ds-fab.is-aberto .ds-fab__principal { background: var(--ds-color-text); }
+.ds-fab.is-aberto .ds-fab__principal .material-symbols-outlined { transform: rotate(45deg); }
+.ds-fab__opcoes {
+  position: relative; z-index: 2; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: var(--ds-space-3); padding-bottom: var(--ds-space-1);
+  opacity: 0; pointer-events: none; transform: translateY(20px);
+  transition: opacity var(--ds-duration-slow) var(--ds-ease-emphasized), transform var(--ds-duration-slow) var(--ds-ease-emphasized);
+}
+.ds-fab.is-aberto .ds-fab__opcoes { opacity: 1; pointer-events: auto; transform: none; }
+.ds-fab__item { display: flex; align-items: center; gap: var(--ds-space-3); border: 0; padding: 0; background: none; cursor: pointer; font-family: inherit; }
+.ds-fab__rotulo { padding: 6px 12px; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-md); background: var(--ds-color-surface); color: var(--ds-color-text); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); box-shadow: var(--ds-shadow-2); }
+.ds-fab__mini { display: flex; align-items: center; justify-content: center; width: 42px; height: 42px; border-radius: var(--ds-r-pill); color: var(--ds-color-on-action); background: var(--ds-color-text-muted); box-shadow: var(--ds-shadow-3); }
+.ds-fab__item--principal .ds-fab__mini { background: var(--ds-color-action); }
+.ds-fab__fundo { display: none; position: fixed; inset: 0; z-index: 1; background: var(--ds-color-scrim); backdrop-filter: blur(2px); }
+.ds-fab.is-aberto .ds-fab__fundo { display: block; }
+@media (max-width: 768px) {
+  .ds-fab { display: flex; }
+  .ds-pagina:has(> .ds-fab) > .ds-pagina__acoes, .ds-pagina:has(> .ds-fab) .ds-pagina__hero > .ds-pagina__acoes { display: none; }
 }
 
 /* ---- Badges / chips ---- */
@@ -1546,7 +1661,7 @@ var SeletorTema = (function () {
   function telaCarregando() {
     estado = 'carregando';
     var texto = el('span', { texto: 'Carregando o sistema…' });
-    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-stack ds-stack--3', role: 'status', 'aria-live': 'polite' }, [
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-glass ds-glass--cartao ds-stack ds-stack--3', role: 'status', 'aria-live': 'polite' }, [
       logo(),
       el('div', { 'class': 'lista-spinner-wrap' }, [el('div', { 'class': 'lista-spinner' }), texto])
     ]));
@@ -1557,7 +1672,7 @@ var SeletorTema = (function () {
     estado = 'erro'; clearTimeout(avisoLentidao);
     var tentar = botao('ds-btn ds-btn--primary ds-btn--block', 'refresh', 'Tentar novamente');
     tentar.addEventListener('click', iniciar);
-    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-stack ds-stack--3' }, [
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-glass ds-glass--cartao ds-stack ds-stack--3' }, [
       logo(),
       el('h1', { 'class': 'ds-tela-cheia__titulo', texto: 'Não foi possível carregar' }),
       el('p', { 'class': 'ds-help ds-help--error', role: 'alert', texto: mensagem }),
@@ -1667,7 +1782,7 @@ var SeletorTema = (function () {
       obterCaptcha(function (token) { Api.enviar(nome, args, ok, falha, token); }, falha);
     }
 
-    mostrar(el('div', { 'class': 'ds-tela-cheia__card' }, [
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-glass ds-glass--cartao' }, [
       el('div', { 'class': 'ds-stack ds-stack--3' }, [logo(), titulo]), sub, msg, passo1, passoPa, passo2, passoFim, capLocal,
       el('hr', { 'class': 'ds-divisor' }), el('div', { 'class': 'ds-stack ds-stack--3' }, [el('div', { 'class': 'ds-cluster' }, [SeletorTema.criar()]), creditoFoto()])]));
     inEmail.value = Api.lerEmail();
@@ -9319,7 +9434,7 @@ uiRegistrarAcoes('components_acoes_linha', {
     <!-- COMPONENTE: MODAL DE MENSAGENS E CONFIRMAÇÃO DO SISTEMA -->
 
 <div id="sys-modal-overlay" class="sys-overlay hidden" data-fechar="fecharMensagemSistema" data-on-click="components_message.1">
-  <div class="sys-card">
+  <div class="sys-card ds-glass ds-glass--cartao">
     
     <!-- Cabeçalho (Opcional, usado mais para fechar) -->
     <div class="sys-header">
@@ -9351,7 +9466,7 @@ uiRegistrarAcoes('components_acoes_linha', {
 /* Z-Index 3000 garante que fique acima de outros modais e do Loader */
 .sys-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--ds-color-scrim);
   backdrop-filter: blur(5px);
   z-index: 3000;
   display: flex; align-items: center; justify-content: center;
@@ -9359,14 +9474,11 @@ uiRegistrarAcoes('components_acoes_linha', {
 }
 
 .sys-card {
-  background: var(--ds-color-surface); /* Variável global */
   width: 90%; max-width: 400px;
   border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   display: flex; flex-direction: column;
   overflow: hidden;
   animation: sysSlideUp 0.3s ease-out;
-  border: 1px solid var(--ds-color-border); /* Adicionado borda sutil para HC */
 }
 
 .sys-header {
@@ -9404,8 +9516,8 @@ uiRegistrarAcoes('components_acoes_linha', {
 
 .sys-footer {
   padding: 15px 20px;
-  background: var(--ds-color-surface-2); /* Usa a variável para ficar preto no HC */
-  border-top: 1px solid var(--ds-color-border);
+  background: transparent; /* deixa o vidro do cartão aparecer */
+  border-top: 1px solid var(--ds-glass-border);
   display: flex; justify-content: flex-end; gap: 10px;
 }
 
@@ -9837,6 +9949,64 @@ function _uiPaginaMedirTodas() {
 }
 window.addEventListener('resize', _uiPaginaMedirTodas);
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(_uiPaginaMedirTodas);
+
+// Ações da página (botão principal + acessórias). UMA lista de itens (mesmo formato de acoesLinhaHTML: { icone, rotulo, onclick, principal, perigo, oculto, desabilitado })
+// alimenta os dois jeitos de ver a mesma coisa: no desktop, o botão dividido (.ds-split) dentro do espaço [data-ui-acoes-principal] das ações da página (a ação principal à
+// esquerda; a seta abre as acessórias); no celular (≤768 px), o botão flutuante (.ds-fab). O principal é o item marcado `principal` (ou o primeiro). Lista vazia remove os dois.
+// Com um item só: no desktop é o botão simples, no celular o FAB executa a ação direto (sem abrir). `pagina` = o .ds-pagina; `id` = chave única do menu da seta.
+function uiAcoesPaginaMontar(pagina, id, itens) {
+  if (!pagina) return;
+  var lista = (itens || []).map(_acoesLinhaNormalizar).filter(function (a) { return !a.oculto && a.rotulo; });
+  var antigo = pagina.querySelector(':scope > .ds-fab');
+  if (antigo) antigo.remove();
+  var espaco = pagina.querySelector('[data-ui-acoes-principal]');
+  if (espaco) espaco.innerHTML = '';
+  if (!lista.length) return;
+  var principal = lista.filter(function (a) { return a.principal; })[0] || lista[0];
+  var demais = lista.filter(function (a) { return a !== principal; });
+  var acao = function (a) { return a.desabilitado ? ' aria-disabled="true" data-title="Em breve"' : uiAtributosAcao(a.onclick, 'click'); };
+  var icone = function (a) { return '<span class="material-symbols-outlined" aria-hidden="true">' + a.icone + '</span>'; };
+
+  if (espaco) {
+    var botao = '<button type="button" class="ds-btn ds-btn--primary ds-split__principal"' + acao(principal) + '>' + icone(principal) + escapeHtml(principal.rotulo) + '</button>';
+    if (demais.length) {
+      _acoesLinhaReg[id] = { menu: demais, todos: demais };
+      espaco.innerHTML = '<div class="ds-split">' + botao
+        + '<button type="button" class="ds-btn ds-btn--primary ds-split__seta" data-acoes-id="' + escapeHtml(id) + '" data-on-click="components_acoes_linha.2" data-aclick0="' + escapeJsAttr(id) + '"'
+        + ' data-title="Mais ações" aria-label="Mais ações" aria-haspopup="menu" aria-expanded="false"><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></button></div>';
+    } else {
+      espaco.innerHTML = botao.replace(' ds-split__principal', '');
+    }
+  }
+
+  var fab = document.createElement('div');
+  fab.className = 'ds-fab';
+  if (!demais.length) {
+    fab.innerHTML = '<button type="button" class="ds-fab__principal"' + acao(principal) + ' aria-label="' + escapeHtml(principal.rotulo) + '">' + icone(principal) + '</button>';
+  } else {
+    var item = function (a, extra) {
+      return '<button type="button" class="ds-fab__item' + extra + '"' + (a.desabilitado ? ' aria-disabled="true" data-title="Em breve">' : uiAtributosAcao('uiFabFechar(this); ' + a.onclick, 'click') + '>')
+        + '<span class="ds-fab__rotulo">' + escapeHtml(a.rotulo) + '</span><span class="ds-fab__mini">' + icone(a) + '</span></button>';
+    };
+    fab.innerHTML = '<div class="ds-fab__fundo"' + uiAtributosAcao('uiFabFechar(this)', 'click') + '></div>'
+      + '<div class="ds-fab__opcoes">' + demais.map(function (a) { return item(a, ''); }).join('') + item(principal, ' ds-fab__item--principal') + '</div>'
+      + '<button type="button" class="ds-fab__principal"' + uiAtributosAcao('uiFabAlternar(this)', 'click') + ' aria-label="Ações" aria-haspopup="true" aria-expanded="false"><span class="material-symbols-outlined" aria-hidden="true">add</span></button>';
+  }
+  pagina.appendChild(fab);
+  uiPaginaMedir(pagina);
+}
+function uiFabAlternar(el) {
+  var fab = el.closest('.ds-fab');
+  var aberto = fab.classList.toggle('is-aberto');
+  var gatilho = fab.querySelector('.ds-fab__principal');
+  if (gatilho) gatilho.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+}
+function uiFabFechar(el) {
+  var fab = el.closest('.ds-fab');
+  fab.classList.remove('is-aberto');
+  var gatilho = fab.querySelector('.ds-fab__principal');
+  if (gatilho) gatilho.setAttribute('aria-expanded', 'false');
+}
 
 // Abas de navegação (.ds-tabs-nav, styles_design_system.html). A tela escreve só .ds-tabs-nav > .ds-tabs-nav__scroll > abas; esta
 // função monta, na primeira chamada, o invólucro e as setas ‹ › do carrossel, e mostra cada seta só quando as abas não cabem e
@@ -13266,9 +13436,7 @@ uiRegistrarAcoes('pages_execucao_validacao', {
     <h1 class="ds-pagina__titulo">Planos</h1>
   </section>
   <div class="ds-pagina__acoes" id="pll-hero-acoes">
-    <button type="button" class="ds-btn ds-btn--primary pll-btn-novo" data-on-click="pages_planos_lista.1">
-      <span class="material-symbols-outlined">add</span> Novo plano
-    </button>
+    <span data-ui-acoes-principal></span>
   </div>
 
   <!-- Abas (.ds-tabs-nav do design system); tabela e filtros são filhos diretos de #page-planos. -->
@@ -13372,23 +13540,21 @@ uiRegistrarAcoes('pages_execucao_validacao', {
   </div>
 
   <!-- Cartão da tabela -->
-  <div class="pll-tabela-card" id="pll-tabela-card">
+  <div class="ds-tabela-wrap" id="pll-tabela-card">
 
-    <!-- Tabela -->
-    <div class="table-container pll-table-wrap">
-      <table class="pll-tabela" id="tabela-planos">
+    <table class="ds-tabela ds-tabela--selecao" id="tabela-planos">
         <thead>
           <tr>
-            <th class="pll-col-check">
+            <th class="ds-tabela__check">
               <input type="checkbox" id="chk-select-all-planos"
                 data-on-change="pages_planos_lista.17"
                 aria-label="Selecionar todos">
             </th>
-            <th class="ds-th-ord pll-col-plano" data-on-click="pages_planos_lista.18">Nome<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-nome"></span></th>
-            <th class="ds-th-ord pll-col-resp" data-on-click="pages_planos_lista.20">Responsável<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-responsavel"></span></th>
-            <th class="ds-th-ord pll-col-status" data-on-click="pages_planos_lista.21">Status<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-status"></span></th>
-            <th class="ds-th-ord pll-col-prog" data-on-click="pages_planos_lista.22">Progresso<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-progresso"></span></th>
-            <th class="ds-col-sobreposta pll-col-acoes">
+            <th class="ds-th-ord ds-tabela__principal" data-on-click="pages_planos_lista.18">Nome<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-nome"></span></th>
+            <th class="ds-th-ord" data-on-click="pages_planos_lista.20">Responsável<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-responsavel"></span></th>
+            <th class="ds-th-ord" data-on-click="pages_planos_lista.21">Status<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-status"></span></th>
+            <th class="ds-th-ord ds-tabela__so-larga" data-on-click="pages_planos_lista.22">Progresso<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-progresso"></span></th>
+            <th class="ds-col-sobreposta">
               <div class="ds-th-ferramentas" id="pll-ferramentas">
                 <span class="ds-th-ferramentas__rotulo ds-th-ord" data-on-click="pages_planos_lista.19">Vigência<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-vigencia"></span></span>
                 <span class="ds-th-ferramentas__extras">
@@ -13407,17 +13573,15 @@ uiRegistrarAcoes('pages_execucao_validacao', {
                 </button>
               </div>
             </th>
-            <th class="pll-col-card" aria-hidden="true"></th>
+            <th class="ds-tabela__card" aria-hidden="true"></th>
           </tr>
         </thead>
         <tbody id="tbody-planos">
-          <tr class="pll-linha-msg"><td colspan="7">
+          <tr class="ds-tabela__msg"><td colspan="7">
             <div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando planos…</span></div>
           </td></tr>
         </tbody>
-      </table>
-    </div>
-
+    </table>
   </div><!-- fim tabela -->
 
 </div>
@@ -13482,7 +13646,6 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 /* ============================================================================
    Planos: o layout (hero, ações, abas e filtros fixos) é o .ds-pagina do design system; aqui fica só o que é desta tela.
    ============================================================================ */
-#page-planos .pll-btn-novo { flex-shrink: 0; white-space: nowrap; min-height: 40px; padding: 0 20px; }
 
 /* Barra de filtros — SEM sangria lateral (mesmo motivo da linha de abas: o padding de
    40px do <main> precisa criar um respiro real entre a lista e o sidebar). Sem "cara de
@@ -13558,85 +13721,6 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 }
 #page-planos .pll-limpar-link:hover { text-decoration: underline; }
 
-/* Cartão da tabela: fluxo normal (quem rola agora é o <main> inteiro, não mais um
-   contêiner interno próprio). SEM sangria lateral (removida a pedido do usuário: a
-   tabela não deve ficar grudada no sidebar, o padding de 40px do <main> precisa
-   aparecer também aqui) — só embaixo continua sangrando (-20px, o padding vertical do
-   <main>), pra não sobrar aquele respiro vazio no fim da rolagem. Fundo
-   --ds-color-surface (não "none"): sem um painel por trás (removemos o
-   .detalhe-content-area compartilhado que antes dava esse fundo branco), as linhas
-   ficariam mostrando o fundo da página por baixo. */
-#page-planos .pll-tabela-card {
-  margin-bottom: -20px !important;
-  padding: 0; background: var(--ds-color-surface); border: none; box-shadow: none;
-}
-
-/* SEM overflow-x/overflow-y aqui: qualquer "overflow" diferente de visible neste
-   elemento (mesmo só no eixo X) vira sem querer o "ancestral com scroll" mais próximo
-   do cabeçalho sticky da tabela logo abaixo — e ele passaria a colar dentro desta caixa
-   (que anda junto com a página) em vez de colar no topo real de <main>. */
-#page-planos .pll-table-wrap { overflow: visible; }
-/* border-collapse:separate (não "collapse", herdado de .table-full): com bordas
-   "coladas" entre células, um <th> sticky não consegue levar a própria borda-de-baixo
-   junto ao rolar — o navegador pinta a borda como parte da malha de bordas compartilhada
-   da tabela (calculada uma vez, não por célula), então ela fica "presa" na posição
-   original enquanto o cabeçalho sobe, dando a impressão de que a linha forte passa por
-   trás dele. Com bordas separadas, cada <th>/<td> pinta a própria borda sozinho, e ela
-   acompanha o sticky normalmente. Nenhuma célula desta tabela usa borda de cima nem
-   lateral, só de baixo — border-spacing:0 então não deixa nenhum vão visível. */
-#page-planos .pll-tabela { width: 100%; margin: 0; border-collapse: separate; border-spacing: 0; }
-#page-planos .pll-tabela thead th {
-  /* Terceiro nível do empilhamento sticky: cola logo abaixo das abas + filtros
-     (.ds-pagina, styles_design_system.html) */
-  position: sticky; top: var(--ds-pagina-topo-tabela); z-index: 40;
-  padding: 12px 16px; text-align: left; white-space: nowrap;
-  font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold);
-  text-transform: uppercase; letter-spacing: 0.04em;
-  /* Fundo opaco branco (--ds-color-surface, igual a main-content/tabela/abas agora) — as
-     linhas passam "por baixo" dele ao rolar, por isso não pode ser transparente. */
-  color: var(--ds-color-text-muted); background: var(--ds-color-surface);
-  /* Mais forte que a linha entre linhas da tabela (--ds-glass-border, quase invisível):
-     aqui precisa separar bem o cabeçalho fixo dos itens que rolam por baixo dele —
-     pedido explícito do usuário. */
-  border-bottom: 2px solid var(--ds-color-border);
-}
-#page-planos .pll-tabela tbody td {
-  padding: 14px 16px; vertical-align: middle;
-  border-bottom: 1px solid var(--ds-glass-border);
-  font-size: var(--ds-text-base); color: var(--ds-color-text);
-}
-/* Clique = seleciona (Ctrl/Shift para incremental/intervalo, estilo Explorer/Drive),
-   duplo clique = abre detalhes (ver pllCliqueLinha/pllDuploCliqueLinha no script) —
-   cursor de "clicável" na linha inteira, não mais só no nome. user-select:none evita
-   grifar texto sem querer ao segurar Shift e clicar. */
-#page-planos .pll-tabela tbody tr {
-  cursor: pointer; user-select: none;
-  transition: background var(--ds-duration-fast) var(--ds-ease-standard);
-}
-#page-planos .pll-tabela tbody tr:last-child td { border-bottom: none; }
-#page-planos .pll-tabela tbody tr:hover td { background: var(--ds-sidebar-item-hover); }
-#page-planos .pll-tabela tbody tr.selecionada td { background: var(--ds-sidebar-item-active); }
-#page-planos .pll-tabela tbody tr.pll-linha-msg { cursor: default; }
-#page-planos .pll-tabela tbody tr.pll-linha-msg:hover td { background: transparent !important; }
-/* Checkbox: MESMO padding/alinhamento no cabeçalho e nas linhas (o th tem regra própria de
-   text-align/padding, por isso a especificidade explícita aqui) */
-#page-planos .pll-tabela .pll-col-check { width: 48px; text-align: left; padding: 14px 0 14px 16px; }
-#page-planos .pll-tabela thead .pll-col-check { padding-top: 12px; padding-bottom: 12px; }
-#page-planos .pll-tabela input[type="checkbox"] { display: block; margin: 0; width: 16px; height: 16px; }
-/* Plano ocupa a folga da tabela (as demais colunas ficam do tamanho do conteúdo) */
-#page-planos .pll-tabela .pll-col-plano { width: 46%; min-width: 260px; }
-@media (min-width: 769px) { #page-planos .pll-tabela td.pll-col-plano { max-width: 0; } }
-#page-planos .pll-tabela td.pll-col-resp, #page-planos .pll-tabela td.pll-col-status { white-space: nowrap; }
-/* coluna do card (só mobile) */
-#page-planos .pll-tabela .pll-col-card { display: none; }
-
-/* Célula "Plano": tag de tipo + nome (+ linha secundária no mobile) */
-#page-planos .pll-plano { display: flex; align-items: center; gap: 10px; min-width: 0; }
-#page-planos .pll-nome-wrap { flex: 1 1 auto; min-width: 0; }
-/* Sem cara de link (sem cursor:pointer nem cor de hover): agora a linha inteira decide o
-   clique — 1 clique seleciona, duplo clique abre os detalhes (ver .pll-tabela tbody tr) —
-   não é mais só o nome que navega sozinho. */
-#page-planos .pll-nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #page-planos .pll-vig { white-space: nowrap; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
 #page-planos .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); }
 
@@ -13657,74 +13741,16 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 
 /* Impressão: só a tabela (sem menu, filtros nem seleção) */
 @media print {
-  #main-header, #sidebar, #page-planos #pll-filtros-card, #page-planos .pll-col-check { display: none !important; }
-  #page-planos #pll-tabela-card, #page-planos .pll-table-wrap { overflow: visible !important; margin: 0 !important; }
+  #main-header, #sidebar, #page-planos #pll-filtros-card { display: none !important; }
+  #page-planos #pll-tabela-card { overflow: visible !important; margin: 0 !important; }
 }
 
-/* Responsivo: <=1024 some Progresso; <=768 Vigência/Responsável descem p/ linha secundária */
-@media (max-width: 1024px) {
-  #page-planos .pll-col-prog { display: none; }
-}
+/* Responsivo: <=768 Vigência/Responsável descem p/ linha secundária */
 @media (max-width: 768px) {
-  /* Sem sticky empilhado no mobile: a galeria de cards flui normalmente e quem rola é
-     o <main> (mesmo padrão de sempre) — o empilhamento abas/filtros/cabeçalho e a
-     sangria lateral (-40px) são só desktop. */
-  #page-planos .pll-tabela thead th { position: static; }
-
-  #page-planos .pll-btn-novo { flex: 1; }
   #page-planos .pll-filtros { margin: 0; width: 100%; }
   #page-planos .pll-filtro { flex: 1 1 108px; }
   #page-planos .pll-filtro-btn { width: 100%; justify-content: space-between; }
 
-  /* ---- Galeria de cards (estilo "gallery" do Power Apps): sem rolagem lateral, tudo à vista ---- */
-  #page-planos .pll-tabela-card { margin: 0 !important; width: 100%; display: block; overflow: visible; background: none; border: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
-  #page-planos .pll-table-wrap { overflow: visible; }
-  #page-planos .pll-tabela, #page-planos .pll-tabela thead, #page-planos .pll-tabela tbody { display: block; width: 100%; }
-
-  /* cabeçalho vira uma barra de "selecionar todos" + ordenação */
-  #page-planos .pll-tabela thead tr {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 8px 12px;
-    background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl);
-  }
-  #page-planos .pll-tabela thead th { padding: 6px 0; border: none; display: inline-flex; align-items: center; }
-  #page-planos .pll-tabela thead .pll-col-check { width: auto; padding: 6px 4px 6px 0; }
-  #page-planos .pll-tabela thead .pll-col-prog { display: inline-flex; }
-  #page-planos .pll-tabela thead .pll-col-acoes { margin-left: auto; }
-  #page-planos .pll-tabela thead .pll-col-card { display: none; }
-
-  /* corpo: grade de cards (1 coluna no celular; 2+ em telas maiores) */
-  #page-planos .pll-tabela tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 12px; }
-  #page-planos .pll-tabela tbody tr {
-    /* linha 1: checkbox + tag de tipo + ⋮ · linha 2: NOME sozinho (1 linha, reticências) · linha 3: detalhes */
-    display: grid; grid-template-columns: 28px auto minmax(0, 1fr) auto;
-    grid-template-areas: "chk tipo . acoes" "nome nome nome nome" "card card card card";
-    gap: 6px 8px; align-items: center; padding: 12px;
-    background: var(--ds-color-surface); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-xl); box-shadow: var(--ds-shadow-1);
-    transition: background var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast), border-color var(--ds-duration-fast);
-  }
-  #page-planos .pll-tabela tbody tr:hover { background: var(--ds-sidebar-item-hover); }
-  #page-planos .pll-tabela tbody tr.selecionada { background: var(--ds-sidebar-item-active); border-color: var(--ds-color-action); }
-  #page-planos .pll-tabela tbody td { display: block; padding: 0; border: none; }
-  /* fundo transparente também no hover/selecionada (o realce é do card); SEM display aqui, senão
-     estas regras (mais específicas) reexibiriam as colunas de desktop escondidas abaixo */
-  #page-planos .pll-tabela tbody tr:hover td, #page-planos .pll-tabela tbody tr.selecionada td { background: none; }
-  #page-planos .pll-tabela tbody .pll-col-check { grid-area: chk; width: auto; padding: 4px 0 0; }
-  /* a célula "Plano" e seus wrappers "dissolvem": tag e nome viram itens diretos da grade do card */
-  #page-planos .pll-tabela tbody .pll-col-plano, #page-planos .pll-tabela tbody .pll-plano,
-  #page-planos .pll-tabela tbody .pll-nome-wrap { display: contents; }
-  #page-planos .pll-tabela tbody .pll-tipo { grid-area: tipo; justify-self: start; }
-  #page-planos .pll-tabela tbody .pll-nome {
-    grid-area: nome; min-width: 0; font-size: var(--ds-text-md);
-  }
-  #page-planos .pll-tabela tbody .pll-col-acoes { grid-area: acoes; width: auto; }
-  #page-planos .pll-tabela tbody .pll-col-acoes .pll-vig { display: none; }
-  #page-planos .pll-tabela tbody .pll-col-card { grid-area: card; display: block; }
-  /* colunas de desktop somem nas linhas (o card mostra tudo) */
-  #page-planos .pll-tabela tbody .pll-col-resp,
-  #page-planos .pll-tabela tbody .pll-col-status, #page-planos .pll-tabela tbody .pll-col-prog { display: none; }
-  /* linhas de mensagem (carregando/vazio) ocupam a largura toda, sem virar card */
-  #page-planos .pll-tabela tbody tr.pll-linha-msg { display: block; grid-column: 1 / -1; background: none; border: none; box-shadow: none; padding: 0; }
-  #page-planos .pll-tabela tbody tr.pll-linha-msg td { display: block; }
 
   #page-planos .pll-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
   #page-planos .pll-card-meta .pll-vig { font-size: var(--ds-text-xs); }
@@ -13797,6 +13823,7 @@ let estadoPlanos = {
 // (usuarioLogado, carregado por initHeader). Com a lista vinda do cache ela pode chegar ANTES do
 // usuário — então espera (até ~5s) antes de montar/classificar, senão tudo cai em "Outras unidades".
 function initPlanos() {
+  uiAcoesPaginaMontar(document.getElementById('page-planos'), 'pagina-planos', [{ icone: 'add', rotulo: 'Novo plano', onclick: 'abrirModalNovoPlano()', principal: true }]);
   var tentativas = 0;
   // O spinner é desenhado UMA vez: recriá-lo a cada volta da espera (100 ms) reiniciava a animação
   // e ele parecia travado/tremendo.
@@ -13842,7 +13869,7 @@ function invalidarCacheListaPlanos() {
 
 function _pllMostrarCarregando() {
   var tbody = document.getElementById('tbody-planos');
-  if (tbody) tbody.innerHTML = '<tr class="pll-linha-msg"><td colspan="7"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando planos…</span></div></td></tr>';
+  if (tbody) tbody.innerHTML = '<tr class="ds-tabela__msg"><td colspan="7"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando planos…</span></div></td></tr>';
 }
 
 function atualizarListaPlanos() {
@@ -14240,7 +14267,7 @@ function _renderizarTabela(planos) {
   var tbody = document.getElementById('tbody-planos');
 
   if (planos.length === 0) {
-    // Mesmo padrão das abas do detalhe do plano (.el-empty-state): ícone + título + detalhe,
+    // Mesmo padrão das abas do detalhe do plano (.ds-vazio): ícone + título + detalhe,
     // só informativo — sem botão de ação (o "Limpar filtros" já cobre o caso de filtro).
     var vz = _pllTemFiltroAtivo()
       ? { icon: 'filter_alt_off', titulo: 'Nenhum resultado para os filtros',
@@ -14249,10 +14276,10 @@ function _renderizarTabela(planos) {
         ? { icon: 'delete_sweep', titulo: 'A lixeira está vazia', detalhe: 'Planos excluídos aparecem aqui até serem restaurados ou apagados.' }
         : { icon: 'inbox', titulo: 'Nenhum plano encontrado',
           detalhe: 'Não há planos nesta aba no momento.' };
-    tbody.innerHTML = '<tr class="pll-linha-msg"><td colspan="7"><div class="el-empty-state">' +
-      '<span class="material-symbols-outlined el-esi">' + vz.icon + '</span>' +
-      '<p class="el-esti">' + vz.titulo + '</p>' +
-      '<p>' + vz.detalhe + '</p>' +
+    tbody.innerHTML = '<tr class="ds-tabela__msg"><td colspan="7"><div class="ds-vazio">' +
+      '<span class="material-symbols-outlined ds-vazio__icone">' + vz.icon + '</span>' +
+      '<p class="ds-vazio__titulo">' + vz.titulo + '</p>' +
+      '<p class="ds-vazio__texto">' + vz.detalhe + '</p>' +
     '</div></td></tr>';
     _atualizarIconesOrdenacao();
     _atualizarCheckAll();
@@ -14297,8 +14324,8 @@ function _renderizarTabela(planos) {
           '<span class="pll-prog-txt">' + pct.toFixed(0) + '%</span></div>';
 
     var tr = document.createElement('tr');
-    tr.classList.add('ds-linha-lista');
-    if (sel) tr.classList.add('selecionada');
+    tr.classList.add('ds-linha-lista', 'ds-linha-clicavel');
+    if (sel) tr.classList.add('is-selecionada');
     // 1 clique seleciona a linha (mesmo efeito do checkbox), duplo clique abre os
     // detalhes — pedido explícito do usuário. Guard em ambas ignora cliques no próprio
     // checkbox (que já cuida de si via onchange); os botões de ação/⋮ já bloqueiam a
@@ -14306,25 +14333,25 @@ function _renderizarTabela(planos) {
     tr.setAttribute('data-on-click', 'ui.chamar'); tr.setAttribute('data-chamada-click', "pllCliqueLinha(event, '" + p.id + "')");
     tr.setAttribute('data-on-dblclick', 'ui.chamar'); tr.setAttribute('data-chamada-dblclick', "pllDuploCliqueLinha(event, '" + p.id + "')");
     tr.innerHTML =
-      '<td class="pll-col-check">' +
+      '<td class="ds-tabela__check">' +
         '<input type="checkbox" class="plano-select-checkbox" data-id="' + p.id + '"' +
           ' data-on-change="pages_planos_lista.27" data-achange0="' + p.id + '" aria-label="Selecionar plano"' +
           (sel ? ' checked' : '') + '>' +
       '</td>' +
-      '<td class="pll-col-plano"><div class="pll-plano">' +
-        '<span class="ds-badge-tipo pll-tipo">' + escapeHtml(p.tipo || '—') + '</span>' +
-        '<div class="pll-nome-wrap">' +
-          '<div class="pll-nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</div>' +
+      '<td class="ds-tabela__principal"><div class="ds-tabela__id">' +
+        '<span class="ds-badge-tipo ds-tabela__tipo">' + escapeHtml(p.tipo || '—') + '</span>' +
+        '<div class="ds-tabela__nome-wrap">' +
+          '<div class="ds-tabela__nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</div>' +
         '</div></div></td>' +
-      '<td class="pll-col-resp">' + respHtml + '</td>' +
-      '<td class="pll-col-status"><span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' + lixHtml + '</td>' +
-      '<td class="pll-col-prog">' + progHtml + '</td>' +
-      '<td class="ds-col-sobreposta pll-col-acoes"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="pll-vig">' + vigencia + '</span></div>' +
+      '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + respHtml + '</td>' +
+      '<td class="ds-tabela__nowrap ds-tabela__so-desktop"><span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' + lixHtml + '</td>' +
+      '<td class="ds-tabela__so-larga ds-tabela__so-desktop">' + progHtml + '</td>' +
+      '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="pll-vig ds-tabela__so-desktop">' + vigencia + '</span></div>' +
         '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>' +
       // Card (só mobile): status + vigência + responsável + progresso, tudo à vista, sem rolar de lado
-      '<td class="pll-col-card"><div class="pll-card-meta">' +
+      '<td class="ds-tabela__card"><div class="pll-card-meta">' +
         '<span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' +
-        '<span class="pll-vig">' + vigencia + '</span>' + respHtml + lixHtml + '</div>' +
+        '<span class="pll-vig ds-tabela__so-desktop">' + vigencia + '</span>' + respHtml + lixHtml + '</div>' +
         '<div class="pll-card-prog">' + progHtml + '</div></td>';
     tbody.appendChild(tr);
   });
@@ -14426,7 +14453,7 @@ function _pllRedesenharSelecao() {
   document.querySelectorAll('#tbody-planos .plano-select-checkbox').forEach(function(chk) {
     var marcado = estadoPlanos.selecionados.has(chk.dataset.id);
     chk.checked = marcado;
-    chk.closest('tr').classList.toggle('selecionada', marcado);
+    chk.closest('tr').classList.toggle('is-selecionada', marcado);
   });
   _atualizarCheckAll();
   atualizarBarraSelecaoPlanos();
@@ -14442,14 +14469,14 @@ function toggleSelecaoPlano(id, checked) {
   else         estadoPlanos.selecionados.delete(idStr);
   estadoPlanos._ultimoClicado = idStr;
   var chk = document.querySelector('.plano-select-checkbox[data-id="' + idStr + '"]');
-  if (chk) chk.closest('tr').classList.toggle('selecionada', checked);
+  if (chk) chk.closest('tr').classList.toggle('is-selecionada', checked);
   atualizarBarraSelecaoPlanos();
 }
 
 function toggleSelecaoTodosPlanos(checked) {
   document.querySelectorAll('#tbody-planos .plano-select-checkbox').forEach(function(chk) {
     chk.checked = checked;
-    chk.closest('tr').classList.toggle('selecionada', checked);
+    chk.closest('tr').classList.toggle('is-selecionada', checked);
     if (checked) estadoPlanos.selecionados.add(chk.dataset.id);
     else         estadoPlanos.selecionados.delete(chk.dataset.id);
   });
@@ -14460,7 +14487,7 @@ function limparSelecaoPlanos() {
   estadoPlanos.selecionados.clear();
   document.querySelectorAll('#tbody-planos .plano-select-checkbox').forEach(function(chk) {
     chk.checked = false;
-    chk.closest('tr').classList.remove('selecionada');
+    chk.closest('tr').classList.remove('is-selecionada');
   });
   var chkAll = document.getElementById('chk-select-all-planos');
   if (chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
@@ -14739,7 +14766,6 @@ function solicitarExclusao(id, nomePlano) {
 
 // Ações dos antigos handlers inline (fase c — docs/refatoracao_frontend.md). `this` = elemento; delegação em app_ui_utils.
 uiRegistrarAcoes('pages_planos_lista', {
-  '1': function (event) { abrirModalNovoPlano(); },
   '4': function (event) { pllAbrirBusca(); },
   '5': function (event) { aplicarFiltros(); },
   '6': function (event) { pllLimparBusca(); },
