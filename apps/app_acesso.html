@@ -1,0 +1,265 @@
+<!-- ARQUIVO: app_acesso.html -->
+<!-- Tela de acesso: o que cobre o sistema até a sessão estar confirmada.
+     Com token guardado: tela "Carregando" até o servidor confirmar a sessão (apiAuthSessao) E a página terminar de carregar; só então
+     a interface do sistema fica à vista (token vencido nunca deixa o sistema aparecer: a tela vira o login). Sem token ou com sessão vencida:
+     login por código enviado ao e-mail (e primeiro acesso). Só classes do design system (.ds-tela-cheia, .ds-field, .ds-input, .ds-btn…).
+     Chamadas e token: window.SamaumaApi (app_api_shim.html); o shim pede o login por window.SamaumaAcesso.pedirLogin. -->
+<script>
+(function () {
+  var Api = window.SamaumaApi;
+  if (!Api) return; // implantação clássica do Apps Script: sem sessão por token
+
+  var CAMINHO_DADOS_ABERTOS = 'dados-abertos/';
+  var FUNDO = 'assets/fundo-login.jpg'; // foto da Reitoria (Luiz Pantoja, CC BY 2.0; crédito no login)
+  var tela = null;
+  var estado = ''; // 'carregando' | 'erro' | 'login' | 'liberado'
+
+  function el(tag, atributos, filhos) {
+    var n = document.createElement(tag);
+    Object.keys(atributos || {}).forEach(function (k) {
+      if (k === 'texto') n.textContent = atributos[k]; else n.setAttribute(k, atributos[k]);
+    });
+    (filhos || []).forEach(function (f) { n.appendChild(f); });
+    return n;
+  }
+  function icone(nome) { return el('span', { 'class': 'material-symbols-outlined', 'aria-hidden': 'true', texto: nome }); }
+  function botao(classe, nomeIcone, texto) { return el('button', { type: 'button', 'class': classe }, [icone(nomeIcone), el('span', { texto: texto })]); }
+  function ocupado(b, sim, textoOcupado, textoNormal) { b.disabled = sim; b.lastChild.textContent = sim ? textoOcupado : textoNormal; }
+
+  /** Logo clonado de components_marca.html (única fonte da marca). */
+  function logo() {
+    var modelo = document.getElementById('samauma-marca');
+    var svg = modelo && modelo.content.firstElementChild ? modelo.content.firstElementChild.cloneNode(true) : null;
+    if (!svg) return el('span', { texto: 'Samaúma' });
+    svg.setAttribute('height', '34'); svg.setAttribute('width', '171');
+    return svg;
+  }
+
+  // A tela vive no <html> (não no <body>): cobre o sistema desde o primeiro quadro e o <body> pode ficar inerte por baixo.
+  function garantirTela() {
+    if (!tela) {
+      tela = el('div', { id: 'samauma-tela', 'class': 'ds-tela-cheia ds-tela-cheia--imagem', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Samaúma' });
+      tela.style.setProperty('--ds-tela-fundo', 'url("' + FUNDO + '")');
+      document.documentElement.appendChild(tela);
+    }
+    if (document.body && tela.parentNode !== document.body) document.body.appendChild(tela); // dentro do <body>: herda o tema (o alto contraste mora em body.high-contrast)
+    bloquearSistema(true);
+    return tela;
+  }
+  /** Tudo que não é a tela de acesso fica inerte (sem foco nem clique) enquanto ela estiver aberta. */
+  function bloquearSistema(sim) {
+    if (!document.body) return;
+    Array.prototype.forEach.call(document.body.children, function (c) { if (c !== tela) c.inert = sim; });
+  }
+  function mostrar(conteudo) { garantirTela().replaceChildren(conteudo); }
+  document.addEventListener('DOMContentLoaded', function () { if (tela && estado !== 'liberado') { document.body.appendChild(tela); bloquearSistema(true); } });
+
+  /** Crédito exigido pela licença da foto de fundo (CC BY 2.0). */
+  function creditoFoto() {
+    var autor = el('a', { 'class': 'ds-link', href: 'https://commons.wikimedia.org/wiki/File:Reitoria_ufpa.jpg', target: '_blank', rel: 'noopener noreferrer', texto: 'Luiz Pantoja' });
+    return el('small', { 'class': 'ds-help' }, [document.createTextNode('Foto: Reitoria da UFPA, '), autor, document.createTextNode(' (CC BY 2.0)')]);
+  }
+
+  // ---- Carregando ----
+  var avisoLentidao = 0;
+  function telaCarregando() {
+    estado = 'carregando';
+    var texto = el('span', { texto: 'Carregando o sistema…' });
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-stack ds-stack--3', role: 'status', 'aria-live': 'polite' }, [
+      logo(),
+      el('div', { 'class': 'lista-spinner-wrap' }, [el('div', { 'class': 'lista-spinner' }), texto])
+    ]));
+    clearTimeout(avisoLentidao);
+    avisoLentidao = setTimeout(function () { texto.textContent = 'Isso está demorando mais que o normal…'; }, 8000);
+  }
+  function telaErro(mensagem) {
+    estado = 'erro'; clearTimeout(avisoLentidao);
+    var tentar = botao('ds-btn ds-btn--primary ds-btn--block', 'refresh', 'Tentar novamente');
+    tentar.addEventListener('click', iniciar);
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-stack ds-stack--3' }, [
+      logo(),
+      el('h1', { 'class': 'ds-tela-cheia__titulo', texto: 'Não foi possível carregar' }),
+      el('p', { 'class': 'ds-help ds-help--error', role: 'alert', texto: mensagem }),
+      tentar
+    ]));
+    tentar.focus();
+  }
+  function liberar() {
+    if (estado !== 'carregando') return;
+    estado = 'liberado'; clearTimeout(avisoLentidao);
+    tela.remove(); bloquearSistema(false); tela = null;
+  }
+
+  // Confirma a sessão no servidor e espera a página terminar de carregar; só então o sistema aparece.
+  function iniciar() {
+    telaCarregando();
+    var carregou = new Promise(function (ok) {
+      if (document.readyState === 'complete') ok(); else window.addEventListener('load', function () { ok(); });
+    });
+    var confirmada = new Promise(function (ok, falha) {
+      Api.enviar('apiAuthSessao', [], function (res) {
+        if (res && res.ok) { ok(); return; }
+        if (res && res.codigo === 'SESSAO_INVALIDA') { Api.gravarToken(''); pedirLogin('Sua sessão expirou. Entre novamente.'); return; }
+        falha(new Error((res && res.erro) || 'Erro desconhecido.'));
+      }, falha);
+    });
+    Promise.all([confirmada, carregou]).then(function () {
+      requestAnimationFrame(function () { requestAnimationFrame(liberar); }); // deixa a primeira pintura do sistema acontecer por baixo
+    }, function (err) { if (estado === 'carregando') telaErro(err.message); });
+  }
+
+  // ---- Login ----
+  function pedirLogin(aviso) {
+    if (estado === 'login') { var m = tela.querySelector('[data-msg]'); if (m && aviso) { m.textContent = aviso; m.classList.add('ds-help--error'); } return; }
+    montarLogin(aviso);
+  }
+
+  function montarLogin(aviso) {
+    estado = 'login'; clearTimeout(avisoLentidao);
+    var BTN = 'ds-btn ds-btn--primary ds-btn--block', LINK = 'ds-btn ds-btn--ghost ds-btn--block';
+    function campo(id, rotulo, input) { return el('div', { 'class': 'ds-field' }, [el('label', { 'class': 'ds-label', 'for': id, texto: rotulo }), input]); }
+    function acoes(botoes) { return el('div', { 'class': 'ds-stack ds-stack--2' }, botoes); }
+
+    var titulo = el('h1', { 'class': 'ds-tela-cheia__titulo', texto: 'Entrar' });
+    var sub = el('p', { 'class': 'ds-tela-cheia__sub' });
+    var msg = el('p', { 'data-msg': '', 'class': 'ds-help ds-help--error ds-tela-cheia__aviso', role: 'alert', texto: aviso || '' });
+    var inEmail = el('input', { type: 'email', autocomplete: 'username', placeholder: 'seu.nome@ufpa.br', id: 'samauma-login-email', 'class': 'ds-input' });
+    var inCodigo = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '6', placeholder: '000000', 'class': 'ds-input ds-input--codigo', id: 'samauma-login-codigo' });
+    var btnEnviar = botao(BTN, 'send', 'Enviar código');
+    var btnEntrar = botao(BTN, 'arrow_forward', 'Entrar');
+    var btnOutro = botao(LINK, 'arrow_back', 'Usar outro e-mail');
+    var btnJaTenho = el('button', { type: 'button', 'class': LINK, texto: 'Já tenho um código' });
+    var btnReenviar = el('button', { type: 'button', 'class': LINK, texto: 'Reenviar código' });
+    var btnPrimeiro = el('button', { type: 'button', 'class': LINK + ' hidden', texto: 'Primeiro acesso' });
+
+    // Primeiro acesso por identificação (e-mail + matrícula + CPF). O 2º passo é o mesmo campo de código do login.
+    var paEmail = el('input', { type: 'email', autocomplete: 'email', maxlength: '254', placeholder: 'seu.nome@ufpa.br', id: 'samauma-pa-email', 'class': 'ds-input' });
+    var paMatricula = el('input', { type: 'text', autocomplete: 'off', maxlength: '20', id: 'samauma-pa-matricula', 'class': 'ds-input' });
+    var paCpf = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', maxlength: '14', placeholder: '000.000.000-00', id: 'samauma-pa-cpf', 'class': 'ds-input' });
+    var btnPaEnviar = botao(BTN, 'send', 'Enviar código');
+    var btnPaVoltar = botao(LINK, 'arrow_back', 'Voltar ao login');
+    var btnFimVoltar = botao(LINK, 'arrow_back', 'Voltar ao login');
+    var modoPa = false; // true: o passo do código confirma o primeiro acesso em vez do login
+
+    // Acesso público, sem entrar: só no primeiro passo.
+    var linkAbertos = botao(LINK, 'analytics', 'Dados abertos');
+    linkAbertos.addEventListener('click', function () { window.location.assign(CAMINHO_DADOS_ABERTOS); });
+    var passo1 = el('div', { 'class': 'ds-stack' }, [campo('samauma-login-email', 'E-mail cadastrado', inEmail), acoes([btnEnviar, btnJaTenho, btnPrimeiro, linkAbertos])]);
+    var passoPa = el('div', { 'class': 'hidden ds-stack' }, [
+      campo('samauma-pa-email', 'E-mail', paEmail),
+      campo('samauma-pa-matricula', 'Matrícula', paMatricula),
+      campo('samauma-pa-cpf', 'CPF', paCpf),
+      acoes([btnPaEnviar, btnPaVoltar])]);
+    var passoFim = el('div', { 'class': 'hidden' }, [acoes([btnFimVoltar])]);
+    var passo2 = el('div', { 'class': 'hidden ds-stack' }, [campo('samauma-login-codigo', 'Código de 6 dígitos', inCodigo), acoes([btnEntrar, btnReenviar, btnOutro])]);
+
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card' }, [
+      el('div', { 'class': 'ds-stack ds-stack--3' }, [logo(), titulo]), sub, msg, passo1, passoPa, passo2, passoFim,
+      el('hr', { 'class': 'ds-divisor' }), el('div', { 'class': 'ds-stack ds-stack--3' }, [el('div', { 'class': 'ds-cluster' }, [SeletorTema.criar()]), creditoFoto()])]));
+    inEmail.value = Api.lerEmail();
+    inEmail.focus();
+
+    function aviso_(texto, ok) { msg.textContent = texto || ''; msg.classList.toggle('ds-help--error', !ok); }
+    function mostrarPasso(p, tituloTexto, subTexto) {
+      [passo1, passoPa, passo2, passoFim].forEach(function (x) { x.classList.toggle('hidden', x !== p); });
+      titulo.textContent = tituloTexto; sub.textContent = subTexto;
+    }
+    function passoEmail() { mostrarPasso(passo1, 'Entrar', 'Use seu e-mail institucional para receber o código de acesso.'); }
+    function passoCodigo() { mostrarPasso(passo2, 'Digite o código', 'Enviamos um código de 6 dígitos para ' + (modoPa ? paEmail.value.trim() : inEmail.value.trim()) + '.'); }
+    function passoPrimeiroAcesso() { mostrarPasso(passoPa, 'Primeiro acesso', 'Confirme seus dados para receber o código de acesso.'); }
+    function passoPendente() { mostrarPasso(passoFim, 'Primeiro acesso', ''); }
+    passoEmail();
+
+    function irParaCodigo(texto) { passoCodigo(); aviso_(texto || '', !!texto); inCodigo.focus(); }
+
+    function pedirCodigo() {
+      var email = inEmail.value.trim();
+      if (!email) { aviso_('Informe o e-mail.'); return; }
+      ocupado(btnEnviar, true, 'Enviando…', 'Enviar código');
+      btnReenviar.disabled = true;
+      aviso_('');
+      Api.enviar('apiAuthSolicitarCodigo', [email], function (res) {
+        ocupado(btnEnviar, false, '', 'Enviar código'); btnReenviar.disabled = false;
+        if (res && res.ok) { passoCodigo(); aviso_(res.dados && res.dados.mensagem, true); inCodigo.focus(); }
+        else if (res && res.erro && /^Aguarde|Muitos pedidos/.test(res.erro)) irParaCodigo(res.erro + ' Se você já recebeu um código, digite-o abaixo.');
+        else aviso_((res && res.erro) || 'Não foi possível enviar o código.');
+      }, function (err) { ocupado(btnEnviar, false, '', 'Enviar código'); btnReenviar.disabled = false; aviso_(err.message); });
+    }
+
+    // O link só aparece quando o modo de cadastro usa a base (BASE / BASE_OU_AVULSO): rota pública informa.
+    Api.enviar('apiAuthInfoPrimeiroAcesso', [], function (res) {
+      if (res && res.ok && res.dados && res.dados.disponivel === true) btnPrimeiro.classList.remove('hidden');
+    }, function () { /* sem a informação, o link fica oculto */ });
+
+    function abrirPrimeiroAcesso() {
+      modoPa = true; aviso_('');
+      if (!paEmail.value) paEmail.value = inEmail.value.trim();
+      passoPrimeiroAcesso(); paEmail.focus();
+    }
+    function voltarLogin() { modoPa = false; inCodigo.value = ''; aviso_(''); passoEmail(); inEmail.focus(); }
+    function pedirPrimeiroAcesso() {
+      var email = paEmail.value.trim(), matricula = paMatricula.value.trim(), cpf = paCpf.value.trim();
+      if (!email || !matricula || !cpf) { aviso_('Informe e-mail, matrícula e CPF.'); return; }
+      ocupado(btnPaEnviar, true, 'Enviando…', 'Enviar código');
+      btnReenviar.disabled = true;
+      aviso_('');
+      Api.enviar('apiAuthPrimeiroAcesso', [email, matricula, cpf], function (res) {
+        ocupado(btnPaEnviar, false, '', 'Enviar código'); btnReenviar.disabled = false;
+        if (res && res.ok) { inEmail.value = email; passoCodigo(); aviso_(res.dados && res.dados.mensagem, true); inCodigo.focus(); }
+        else aviso_((res && res.erro) || 'Não foi possível enviar o código.');
+      }, function (err) { ocupado(btnPaEnviar, false, '', 'Enviar código'); btnReenviar.disabled = false; aviso_(err.message); });
+    }
+    function confirmarPrimeiroAcesso() {
+      var email = paEmail.value.trim(), codigo = inCodigo.value.trim();
+      if (codigo.replace(/\D/g, '').length !== 6) { aviso_('Digite o código de 6 dígitos.'); return; }
+      ocupado(btnEntrar, true, 'Entrando…', 'Entrar');
+      aviso_('');
+      Api.enviar('apiAuthConfirmarPrimeiroAcesso', [email, codigo], function (res) {
+        ocupado(btnEntrar, false, '', 'Entrar');
+        var d = res && res.ok ? res.dados || {} : null;
+        if (d && d.token) { Api.gravarToken(d.token); Api.gravarEmail(d.email || email); window.location.reload(); return; }
+        if (d && d.pendente === true) { inCodigo.value = ''; passoPendente(); aviso_(d.mensagem, true); return; }
+        aviso_((res && res.erro) || 'Código inválido ou expirado.');
+      }, function (err) { ocupado(btnEntrar, false, '', 'Entrar'); aviso_(err.message); });
+    }
+
+    function entrar() {
+      if (modoPa) { confirmarPrimeiroAcesso(); return; }
+      var email = inEmail.value.trim(), codigo = inCodigo.value.trim();
+      if (codigo.replace(/\D/g, '').length !== 6) { aviso_('Digite o código de 6 dígitos.'); return; }
+      ocupado(btnEntrar, true, 'Entrando…', 'Entrar');
+      aviso_('');
+      Api.enviar('apiAuthVerificarCodigo', [email, codigo], function (res) {
+        if (res && res.ok && res.dados && res.dados.token) {
+          Api.gravarToken(res.dados.token); Api.gravarEmail(res.dados.email);
+          window.location.reload();
+        } else {
+          ocupado(btnEntrar, false, '', 'Entrar');
+          aviso_((res && res.erro) || 'Código inválido ou expirado.');
+        }
+      }, function (err) { ocupado(btnEntrar, false, '', 'Entrar'); aviso_(err.message); });
+    }
+
+    btnEnviar.addEventListener('click', pedirCodigo);
+    btnReenviar.addEventListener('click', function () { if (modoPa) pedirPrimeiroAcesso(); else pedirCodigo(); });
+    btnPrimeiro.addEventListener('click', abrirPrimeiroAcesso);
+    btnPaEnviar.addEventListener('click', pedirPrimeiroAcesso);
+    btnPaVoltar.addEventListener('click', voltarLogin);
+    btnFimVoltar.addEventListener('click', voltarLogin);
+    [paEmail, paMatricula, paCpf].forEach(function (x) { x.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') pedirPrimeiroAcesso(); }); });
+    btnJaTenho.addEventListener('click', function () { if (!inEmail.value.trim()) { aviso_('Informe o e-mail.'); inEmail.focus(); return; } irParaCodigo(''); });
+    btnEntrar.addEventListener('click', entrar);
+    btnOutro.addEventListener('click', function () {
+      inCodigo.value = ''; aviso_('');
+      if (modoPa) { passoPrimeiroAcesso(); paEmail.focus(); return; }
+      passoEmail(); inEmail.focus();
+    });
+    inEmail.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') pedirCodigo(); });
+    inCodigo.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') entrar(); });
+  }
+
+  window.SamaumaAcesso = { pedirLogin: pedirLogin };
+
+  if (Api.lerToken()) iniciar(); else montarLogin();
+})();
+</script>

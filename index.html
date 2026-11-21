@@ -17,313 +17,6 @@
     
     <!-- Acesso por token: URL do servidor (a versão estática troca esta linha por config.js — scripts/build_frontend.js) -->
     <script src="config.js"></script>
-    <!-- ARQUIVO: app_api_shim.html -->
-<!-- Adaptador de google.script.run + tela de login por código.
-     Quando window.SAMAUMA_API_URL está definido (frontend servido fora do
-     Apps Script, ou o próprio /exec anônimo), google.script.run passa a
-     mandar cada chamada por fetch ao doPost (auth_token.js), levando o token
-     de sessão. Sem token (ou com token vencido) mostra a tela de login e, ao
-     entrar, recarrega a página. As telas não mudam: continuam chamando
-     google.script.run.withSuccessHandler(...).apiX(...). -->
-<script>
-(function () {
-  var URL_API = window.SAMAUMA_API_URL || '';
-  if (!URL_API) return; // implantação clássica do Apps Script: usa o google.script.run nativo
-
-  var CHAVE_TOKEN = 'samauma_token';
-  var CHAVE_EMAIL = 'samauma_email';
-  var tokenMemoria = '';
-  var ROTAS_PUBLICAS = { apiAuthSolicitarCodigo: 1, apiAuthVerificarCodigo: 1, apiAuthPrimeiroAcesso: 1, apiAuthConfirmarPrimeiroAcesso: 1, apiAuthInfoPrimeiroAcesso: 1 };
-
-  function lerToken() {
-    try { return localStorage.getItem(CHAVE_TOKEN) || tokenMemoria; } catch (e) { return tokenMemoria; }
-  }
-  function gravarToken(t) {
-    tokenMemoria = t || '';
-    try { if (t) localStorage.setItem(CHAVE_TOKEN, t); else localStorage.removeItem(CHAVE_TOKEN); } catch (e) { /* sem localStorage: só memória */ }
-  }
-  function gravarEmail(e) {
-    try { if (e) localStorage.setItem(CHAVE_EMAIL, e); } catch (err) { /* opcional */ }
-  }
-  function lerEmail() {
-    try { return localStorage.getItem(CHAVE_EMAIL) || ''; } catch (e) { return ''; }
-  }
-
-  // ---- Chamada ao servidor ----
-  // Cada chamada leva uma chave de idempotência nova (rota autenticada) e a repete se a rede falhar: o servidor devolve a resposta da primeira
-  // execução em vez de executar duas vezes (docs/arquitetura_servidor.md, "Idempotência"). Rota pública não usa chave.
-  var TENTATIVAS = 3;
-  function novaChave() {
-    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
-    var b = new Uint8Array(16); window.crypto.getRandomValues(b);
-    return Array.prototype.map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
-  }
-  function enviar(nome, args, aoResponder, aoFalhar) {
-    var chave = ROTAS_PUBLICAS[nome] ? '' : novaChave();
-    (function tentar(n) {
-      fetch(URL_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // "simples": sem preflight de CORS
-        body: JSON.stringify({ fn: nome, args: args, token: lerToken(), chaveIdempotencia: chave }),
-        redirect: 'follow'
-      }).then(function (r) { return r.json(); }).then(aoResponder, function () {
-        if (n < TENTATIVAS) { setTimeout(function () { tentar(n + 1); }, 800 * n); return; }
-        aoFalhar(new Error('Sem conexão com o servidor. Verifique a internet e tente novamente.'));
-      });
-    })(1);
-  }
-
-  // ---- Envio de arquivos ----
-  // O JSON da API tem teto de 1 MB: arquivo nunca vai nele. Pede-se um bilhete por arquivo (o servidor autoriza e confere limites) e os bytes
-  // crus vão para `?up=<bilhete>`. A repetição de um bilhete devolve o mesmo resultado, então a nova tentativa depois de uma queda é segura.
-  function pedirBilhetes(tipo, arquivos, alvo) {
-    return new Promise(function (resolve, reject) {
-      var lista = arquivos.map(function (f) { return { nome: f.name, mimeType: f.type, tamanho: f.size }; });
-      chamar('apiPrepararUploadArquivo', [Object.assign({ tipo: tipo, arquivos: lista }, alvo || {})], resolve, reject);
-    });
-  }
-  function enviarBytes(bilhete, arquivo) {
-    return new Promise(function (resolve, reject) {
-      (function tentar(n) {
-        fetch(URL_API + '?up=' + encodeURIComponent(bilhete), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: arquivo })
-          .then(function (r) { return r.json(); }).then(function (j) {
-            if (j && j.ok) resolve(j.dados); else reject(new Error((j && j.erro) || 'Falha no envio do arquivo.'));
-          }, function () {
-            if (n < TENTATIVAS) { setTimeout(function () { tentar(n + 1); }, 800 * n); return; }
-            reject(new Error('Sem conexão com o servidor. Verifique a internet e tente novamente.'));
-          });
-      })(1);
-    });
-  }
-  /** tipo: 'EVIDENCIA' | 'ANEXO_MENSAGEM' | 'IMAGEM_MENSAGEM'; arquivos: File[]; alvo: campos extras do pedido. Promise da lista de respostas, na ordem dos arquivos. */
-  window.SamaumaArquivos = {
-    enviar: function (tipo, arquivos, alvo) {
-      return pedirBilhetes(tipo, arquivos, alvo).then(function (r) {
-        var respostas = [];
-        return arquivos.reduce(function (cadeia, arquivo, i) {
-          return cadeia.then(function () { return enviarBytes(r.bilhetes[i].bilhete, arquivo); }).then(function (d) { respostas.push(d); });
-        }, Promise.resolve()).then(function () { return respostas; });
-      });
-    }
-  };
-
-  // Os apps instaláveis são arquivos estáticos (apps/<nome>.html, gerados por scripts/build_frontend.js), não chamadas ao servidor.
-  var ARQUIVO_APP = { metas: 'app_indicadores', desempenho: 'app_monitoramento' };
-  function obterHtmlApp(nomeApp, ok, falha, objeto) {
-    var arquivo = ARQUIVO_APP[nomeApp] || ('app_' + nomeApp);
-    if (!/^[a-z_]+$/.test(arquivo)) { if (falha) falha(new Error('App não encontrado: ' + nomeApp), objeto); return; }
-    fetch('apps/' + arquivo + '.html', { cache: 'no-cache' }).then(function (r) {
-      if (!r.ok) throw new Error('App não encontrado: ' + nomeApp);
-      return r.text();
-    }).then(function (t) { if (ok) ok(t, objeto); }, function (e) { if (falha) falha(e, objeto); });
-  }
-
-  function chamar(nome, args, ok, falha, objeto) {
-    if (nome === 'apiObterHtmlApp') { obterHtmlApp(args[0], ok, falha, objeto); return; }
-    if (!ROTAS_PUBLICAS[nome] && !lerToken()) { mostrarLogin(); return; }
-    enviar(nome, args, function (res) {
-      if (res && res.ok) {
-        // gravação concluída: a faixa "o que mudou na revisão" do detalhe do plano se atualiza sozinha
-        if (/^api(Salvar|Atualizar|Excluir|Restaurar|Reanexar|Mover|Duplicar|Importar|Vincular|Desvincular)/.test(nome) && typeof mrvAposGravacao === 'function') mrvAposGravacao();
-        if (ok) ok(res.dados === undefined ? null : res.dados, objeto); return;
-      }
-      if (res && res.codigo === 'SESSAO_INVALIDA') { gravarToken(''); mostrarLogin('Sua sessão expirou. Entre novamente.'); return; }
-      if (falha) falha(new Error((res && res.erro) || 'Erro desconhecido.'), objeto);
-    }, function (err) { if (falha) falha(err, objeto); });
-  }
-
-  function criarRunner(ok, falha, objeto) {
-    return new Proxy({}, {
-      get: function (_, nome) {
-        if (nome === 'withSuccessHandler') return function (fn) { return criarRunner(fn, falha, objeto); };
-        if (nome === 'withFailureHandler') return function (fn) { return criarRunner(ok, fn, objeto); };
-        if (nome === 'withUserObject') return function (o) { return criarRunner(ok, falha, o); };
-        if (typeof nome !== 'string') return undefined;
-        return function () { chamar(nome, Array.prototype.slice.call(arguments), ok, falha, objeto); };
-      }
-    });
-  }
-
-  window.google = window.google || {};
-  var script = { run: criarRunner(null, null, undefined) };
-  try { Object.defineProperty(window.google, 'script', { value: script, configurable: true, writable: true }); }
-  catch (e) { window.google.script = script; }
-
-  // ---- Tela de login ----
-  var overlay = null;
-
-  function el(tag, atributos, filhos) {
-    var n = document.createElement(tag);
-    Object.keys(atributos || {}).forEach(function (k) {
-      if (k === 'texto') n.textContent = atributos[k]; else n.setAttribute(k, atributos[k]);
-    });
-    (filhos || []).forEach(function (f) { n.appendChild(f); });
-    return n;
-  }
-
-  function mostrarLogin(aviso) {
-    if (overlay) { if (aviso) overlay.querySelector('[data-msg]').textContent = aviso; return; }
-    if (!document.body) { document.addEventListener('DOMContentLoaded', function () { mostrarLogin(aviso); }); return; }
-
-    // Só classes do design system (styles_design_system.html: .ds-tela-cheia, .ds-field, .ds-input, .ds-btn…).
-    var BTN = 'ds-btn ds-btn--primary ds-btn--block', LINK = 'ds-btn ds-btn--ghost ds-btn--block';
-    function campo(id, rotulo, input) { return el('div', { 'class': 'ds-field' }, [el('label', { 'class': 'ds-label', 'for': id, texto: rotulo }), input]); }
-    function acoes(botoes) { return el('div', { 'class': 'ds-stack ds-stack--2' }, botoes); }
-
-    var msg = el('p', { 'data-msg': '', 'class': 'ds-help ds-help--error ds-tela-cheia__aviso', role: 'alert', texto: aviso || '' });
-    var inEmail = el('input', { type: 'email', autocomplete: 'email', placeholder: 'seu.nome@ufpa.br', id: 'samauma-login-email', 'class': 'ds-input' });
-    var inCodigo = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '6', placeholder: '000000', 'class': 'ds-input ds-input--codigo', id: 'samauma-login-codigo' });
-    var btnEnviar = el('button', { type: 'button', 'class': BTN, texto: 'Enviar código' });
-    var btnEntrar = el('button', { type: 'button', 'class': BTN, texto: 'Entrar' });
-    var btnOutro = el('button', { type: 'button', 'class': LINK, texto: 'Usar outro e-mail' });
-    var btnJaTenho = el('button', { type: 'button', 'class': LINK, texto: 'Já tenho um código' });
-    var btnReenviar = el('button', { type: 'button', 'class': LINK, texto: 'Reenviar código' });
-    var btnPrimeiro = el('button', { type: 'button', 'class': LINK + ' hidden', texto: 'Primeiro acesso' });
-
-    // Primeiro acesso por identificação (e-mail + matrícula + CPF). O 2º passo é o mesmo campo de código do login.
-    var paEmail = el('input', { type: 'email', autocomplete: 'email', maxlength: '254', placeholder: 'seu.nome@ufpa.br', id: 'samauma-pa-email', 'class': 'ds-input' });
-    var paMatricula = el('input', { type: 'text', autocomplete: 'off', maxlength: '20', id: 'samauma-pa-matricula', 'class': 'ds-input' });
-    var paCpf = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', maxlength: '14', placeholder: '000.000.000-00', id: 'samauma-pa-cpf', 'class': 'ds-input' });
-    var btnPaEnviar = el('button', { type: 'button', 'class': BTN, texto: 'Enviar código' });
-    var btnPaVoltar = el('button', { type: 'button', 'class': LINK, texto: 'Voltar ao login' });
-    var btnFimVoltar = el('button', { type: 'button', 'class': LINK, texto: 'Voltar ao login' });
-    var modoPa = false; // true: o passo do código confirma o primeiro acesso em vez do login
-
-    var passo1 = el('div', {}, [campo('samauma-login-email', 'E-mail cadastrado', inEmail), acoes([btnEnviar, btnJaTenho, btnPrimeiro])]);
-    var passoPa = el('div', { 'class': 'hidden' }, [
-      campo('samauma-pa-email', 'E-mail *', paEmail),
-      campo('samauma-pa-matricula', 'Matrícula *', paMatricula),
-      campo('samauma-pa-cpf', 'CPF *', paCpf),
-      acoes([btnPaEnviar, btnPaVoltar])]);
-    var passoFim = el('div', { 'class': 'hidden' }, [acoes([btnFimVoltar])]);
-    var passo2 = el('div', { 'class': 'hidden' }, [campo('samauma-login-codigo', 'Código enviado ao seu e-mail', inCodigo), acoes([btnEntrar, btnReenviar, btnOutro])]);
-    var card = el('div', { 'class': 'ds-tela-cheia__card' }, [
-      el('h1', { 'class': 'ds-tela-cheia__titulo', texto: 'Samaúma' }),
-      el('p', { 'class': 'ds-tela-cheia__sub', texto: 'Entre com o código enviado ao seu e-mail.' }),
-      msg, passo1, passoPa, passo2, passoFim]);
-    overlay = el('div', { id: 'samauma-login', 'class': 'ds-tela-cheia' }, [card]);
-    document.body.appendChild(overlay);
-    inEmail.value = lerEmail();
-    inEmail.focus();
-
-    function aviso_(texto, ok) { msg.textContent = texto || ''; msg.classList.toggle('ds-help--error', !ok); }
-    function ocupado(botao, sim, textoOcupado, textoNormal) { botao.disabled = sim; botao.textContent = sim ? textoOcupado : textoNormal; }
-
-    function irParaCodigo(texto) { mostrarPasso(passo2); aviso_(texto || '', !!texto); inCodigo.focus(); }
-
-    function pedirCodigo() {
-      var email = inEmail.value.trim();
-      if (!email) { aviso_('Informe o e-mail.'); return; }
-      ocupado(btnEnviar, true, 'Enviando...', 'Enviar código');
-      ocupado(btnReenviar, true, 'Enviando...', 'Reenviar código');
-      aviso_('');
-      enviar('apiAuthSolicitarCodigo', [email], function (res) {
-        ocupado(btnEnviar, false, '', 'Enviar código');
-        ocupado(btnReenviar, false, '', 'Reenviar código');
-        if (res && res.ok) {
-          mostrarPasso(passo2);
-          aviso_(res.dados && res.dados.mensagem, true); inCodigo.focus();
-        } else if (res && res.erro && /^Aguarde|Muitos pedidos/.test(res.erro)) irParaCodigo(res.erro + ' Se você já recebeu um código, digite-o abaixo.');
-        else aviso_((res && res.erro) || 'Não foi possível enviar o código.');
-      }, function (err) {
-        ocupado(btnEnviar, false, '', 'Enviar código');
-        ocupado(btnReenviar, false, '', 'Reenviar código');
-        aviso_(err.message);
-      });
-    }
-
-    function mostrarPasso(p) { [passo1, passoPa, passo2, passoFim].forEach(function (x) { x.classList.toggle('hidden', x !== p); }); }
-
-    // O link só aparece quando o modo de cadastro usa a base (BASE / BASE_OU_AVULSO): rota pública informa.
-    enviar('apiAuthInfoPrimeiroAcesso', [], function (res) {
-      if (res && res.ok && res.dados && res.dados.disponivel === true) btnPrimeiro.classList.remove('hidden');
-    }, function () { /* sem a informação, o link fica oculto */ });
-
-    function abrirPrimeiroAcesso() {
-      modoPa = true; aviso_('');
-      if (!paEmail.value) paEmail.value = inEmail.value.trim();
-      mostrarPasso(passoPa); paEmail.focus();
-    }
-    function voltarLogin() {
-      modoPa = false; inCodigo.value = ''; aviso_('');
-      mostrarPasso(passo1); inEmail.focus();
-    }
-    function pedirPrimeiroAcesso() {
-      var email = paEmail.value.trim(), matricula = paMatricula.value.trim(), cpf = paCpf.value.trim();
-      if (!email || !matricula || !cpf) { aviso_('Informe e-mail, matrícula e CPF.'); return; }
-      ocupado(btnPaEnviar, true, 'Enviando...', 'Enviar código');
-      ocupado(btnReenviar, true, 'Enviando...', 'Reenviar código');
-      aviso_('');
-      enviar('apiAuthPrimeiroAcesso', [email, matricula, cpf], function (res) {
-        ocupado(btnPaEnviar, false, '', 'Enviar código');
-        ocupado(btnReenviar, false, '', 'Reenviar código');
-        if (res && res.ok) { inEmail.value = email; mostrarPasso(passo2); aviso_(res.dados && res.dados.mensagem, true); inCodigo.focus(); }
-        else aviso_((res && res.erro) || 'Não foi possível enviar o código.');
-      }, function (err) {
-        ocupado(btnPaEnviar, false, '', 'Enviar código');
-        ocupado(btnReenviar, false, '', 'Reenviar código');
-        aviso_(err.message);
-      });
-    }
-    function confirmarPrimeiroAcesso() {
-      var email = paEmail.value.trim(), codigo = inCodigo.value.trim();
-      if (codigo.replace(/\D/g, '').length !== 6) { aviso_('Digite o código de 6 dígitos.'); return; }
-      ocupado(btnEntrar, true, 'Entrando...', 'Entrar');
-      aviso_('');
-      enviar('apiAuthConfirmarPrimeiroAcesso', [email, codigo], function (res) {
-        ocupado(btnEntrar, false, '', 'Entrar');
-        var d = res && res.ok ? res.dados || {} : null;
-        if (d && d.token) { gravarToken(d.token); gravarEmail(d.email || email); window.location.reload(); return; }
-        if (d && d.pendente === true) { inCodigo.value = ''; mostrarPasso(passoFim); aviso_(d.mensagem, true); return; }
-        aviso_((res && res.erro) || 'Código inválido ou expirado.');
-      }, function (err) { ocupado(btnEntrar, false, '', 'Entrar'); aviso_(err.message); });
-    }
-
-    function entrar() {
-      if (modoPa) { confirmarPrimeiroAcesso(); return; }
-      var email = inEmail.value.trim(), codigo = inCodigo.value.trim();
-      if (codigo.replace(/\D/g, '').length !== 6) { aviso_('Digite o código de 6 dígitos.'); return; }
-      ocupado(btnEntrar, true, 'Entrando...', 'Entrar');
-      aviso_('');
-      enviar('apiAuthVerificarCodigo', [email, codigo], function (res) {
-        if (res && res.ok && res.dados && res.dados.token) {
-          gravarToken(res.dados.token); gravarEmail(res.dados.email);
-          window.location.reload();
-        } else {
-          ocupado(btnEntrar, false, '', 'Entrar');
-          aviso_((res && res.erro) || 'Código inválido ou expirado.');
-        }
-      }, function (err) { ocupado(btnEntrar, false, '', 'Entrar'); aviso_(err.message); });
-    }
-
-    btnEnviar.addEventListener('click', pedirCodigo);
-    btnReenviar.addEventListener('click', function () { if (modoPa) pedirPrimeiroAcesso(); else pedirCodigo(); });
-    btnPrimeiro.addEventListener('click', abrirPrimeiroAcesso);
-    btnPaEnviar.addEventListener('click', pedirPrimeiroAcesso);
-    btnPaVoltar.addEventListener('click', voltarLogin);
-    btnFimVoltar.addEventListener('click', voltarLogin);
-    [paEmail, paMatricula, paCpf].forEach(function (x) { x.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') pedirPrimeiroAcesso(); }); });
-    btnJaTenho.addEventListener('click', function () { if (!inEmail.value.trim()) { aviso_('Informe o e-mail.'); inEmail.focus(); return; } irParaCodigo(''); });
-    btnEntrar.addEventListener('click', entrar);
-    btnOutro.addEventListener('click', function () { if (modoPa) { modoPa = true; inCodigo.value = ''; aviso_(''); mostrarPasso(passoPa); paEmail.focus(); return; } mostrarPasso(passo1); inCodigo.value = ''; aviso_(''); inEmail.focus(); });
-    inEmail.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') pedirCodigo(); });
-    inCodigo.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') entrar(); });
-  }
-
-  // ---- Encerrar sessão (usado pelo menu do usuário) ----
-  window.SamaumaAuth = {
-    sair: function () {
-      function terminar() { gravarToken(''); window.location.reload(); }
-      if (!lerToken()) { terminar(); return; }
-      enviar('apiAuthSair', [], terminar, terminar);
-    }
-  };
-
-  if (!lerToken()) mostrarLogin();
-})();
-</script>
-
-
     <!-- ARQUIVO: styles_design_system.html -->
 <!-- ============================================================================
      DESIGN SYSTEM SAMAÚMA — Fundação de tokens + utilitários (camada ADITIVA)
@@ -628,6 +321,7 @@ tr:hover td { background-color: var(--ds-sidebar-item-hover); }
   --ds-z-toast:    1200;
   --ds-z-tooltip:  1300;
   --ds-z-tela-cheia: 2147482000; /* passo obrigatório antes do app (login, escolha de vínculo): cobre tudo */
+  --ds-tela-fundo: none; /* imagem de fundo da tela cheia com imagem: url("…"), definida por script (hoje a foto da Reitoria; no futuro, a do admin) */
 
   /* -- Foco -- */
   --ds-focus-ring: rgba(38, 112, 232, .45);
@@ -906,6 +600,18 @@ body.high-contrast {
 .ds-tela-cheia__titulo { margin-bottom: var(--ds-space-1); font-size: var(--ds-text-xl); font-weight: var(--ds-weight-bold); color: var(--ds-color-heading); }
 .ds-tela-cheia__sub { margin-bottom: var(--ds-space-4); font-size: var(--ds-text-base); color: var(--ds-color-text-muted); }
 .ds-tela-cheia__aviso:not(:empty) { margin-bottom: var(--ds-space-3); }
+/* Tela cheia com imagem de fundo (--ds-tela-fundo): degradê da cor de fundo com um toque da cor de ação por cima da imagem e cartão de vidro (blur + saturação dos tokens ds-glass; no alto contraste o blur some). */
+.ds-tela-cheia--imagem {
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--ds-color-bg) 82%, transparent) 0%, color-mix(in srgb, var(--ds-color-action) 24%, transparent) 52%, color-mix(in srgb, var(--ds-color-bg) 74%, transparent) 100%),
+    var(--ds-tela-fundo) center / cover no-repeat,
+    var(--ds-color-bg);
+}
+.ds-tela-cheia--imagem .ds-tela-cheia__card {
+  background: var(--ds-glass-bg); border-color: var(--ds-glass-border); box-shadow: var(--ds-glass-shadow-strong);
+  -webkit-backdrop-filter: blur(calc(var(--ds-glass-blur) * 1.5)) saturate(var(--ds-glass-saturate));
+  backdrop-filter: blur(calc(var(--ds-glass-blur) * 1.5)) saturate(var(--ds-glass-saturate));
+}
 
 /* ---- Badges / chips ---- */
 /* Forma única da pílula (altura, arredondamento, fonte): badge de situação, tipo/nível e responsável compartilham as mesmas medidas; cada um só define cor e peso. */
@@ -1563,6 +1269,482 @@ body.high-contrast .acoes-menu { background: var(--ds-color-bg); border-color: v
 body.high-contrast .acoes-btn { color: var(--ds-color-text); }
 </style>
 
+    <!-- ARQUIVO: components_marca.html -->
+<!-- Marca do Samaúma (logo completo e só o símbolo): única fonte. O cabeçalho, a tela de acesso e a página de dados abertos
+     clonam este <template> (id "samauma-marca"); a cor vem de currentColor. -->
+<template id="samauma-marca">
+  <!-- Logo completo (sidebar expandida, telas de acesso) -->
+  <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 40801.62 8090.51" role="img" aria-label="Samaúma">
+     <g id="Layer_x0020_1" fill="currentColor">
+            <polygon points="28949.84,2288.47 28949.84,3015.46 27495.86,3015.46 "/>
+            <path d="M9333.05 4544.72c514.47,53.55 898.57,165.28 1152.32,336.39 253.74,169.94 380.61,469.06 380.61,895.08 0,426.01 -155.96,729.79 -465.58,911.37 -310.77,182.75 -758.89,273.53 -1345.53,273.53 -1006.81,0 -1607.42,-173.43 -1800.63,-517.96l0 -583.14c543.57,226.97 1087.12,339.88 1630.69,339.88 451.62,0 740.28,-36.08 865.98,-108.25 124.55,-73.32 187.4,-178.08 187.4,-315.42 0,-137.35 -68.67,-225.81 -206.02,-264.23 -138.52,-39.57 -452.78,-84.97 -945.13,-138.51 -492.36,-53.55 -876.46,-159.46 -1152.32,-318.92 -275.85,-159.46 -414.37,-445.79 -414.37,-861.33 0,-414.36 154.81,-718.15 465.59,-911.37 309.61,-193.22 758.89,-289.83 1345.53,-289.83 892.75,0 1447.95,115.23 1663.28,346.85l0 583.15c-429.49,-112.9 -927.67,-169.94 -1493.35,-169.94 -452.77,0 -741.43,36.08 -865.98,109.41 -124.54,72.16 -187.39,166.44 -187.39,280.51 0,115.23 68.67,197.87 206.02,247.92 137.35,50.05 463.26,101.27 978.88,154.8zm4904.9 2071.83c-181.59,229.3 -476.06,344.54 -882.28,344.54l-416.69 0c-549.39,0 -959.09,-114.07 -1227.97,-341.04 -267.71,-226.97 -401.56,-528.44 -401.56,-904.4 0,-365.48 109.4,-656.46 328.23,-872.96 219.99,-215.34 594.78,-323.58 1124.37,-323.58 334.06,0 656.47,23.27 968.41,68.67l0 657.63 -968.41 0c-168.77,0 -297.97,36.08 -388.75,109.41 -90.79,72.16 -136.19,193.21 -136.19,360.82 0,168.78 55.88,290.99 166.45,368.98 111.73,76.82 294.48,115.23 549.39,115.23l402.72 0c270.04,0 485.37,-75.66 643.67,-228.13 159.46,-152.48 238.61,-387.59 238.61,-705.36l0 -736.78c0,-261.9 -79.15,-462.09 -238.61,-604.09 -158.3,-140.84 -452.78,-210.68 -882.27,-210.68 -521.45,0 -1018.46,57.04 -1494.51,169.94l0 -548.22c171.1,-254.91 669.27,-382.95 1494.51,-382.95 699.53,0 1216.32,131.53 1549.21,392.25 332.9,261.89 499.34,652.98 499.34,1173.26l0 2373.3 -927.66 0 0 -275.86zm3926 -2159.13c0,-236.28 -45.39,-413.2 -136.18,-531.92 -91.96,-117.56 -288.67,-176.93 -593.62,-176.93 -304.96,0 -502.83,59.37 -593.61,176.93 -90.79,118.72 -136.18,295.64 -136.18,531.92l0 2434.99 -927.67 0 0 -2434.99c0,-547.06 148.98,-934.65 448.12,-1162.78 299.14,-226.96 701.87,-341.04 1209.34,-341.04 565.68,0 963.75,122.22 1193.06,365.48 229.29,-243.26 627.37,-365.48 1194.21,-365.48 506.33,0 909.05,114.07 1208.18,341.04 299.14,228.13 448.12,615.73 448.12,1162.78l0 2434.99 -926.5 0 0 -2434.99c0,-236.28 -46.56,-413.2 -137.35,-531.92 -90.79,-117.56 -288.66,-176.93 -592.45,-176.93 -304.96,0 -502.83,59.37 -593.61,176.93 -90.79,118.72 -136.18,295.64 -136.18,531.92l0 2434.99 -927.67 0 0 -2434.99zm6685.74 2159.13c-181.59,229.3 -476.06,344.54 -882.28,344.54l-416.69 0c-549.39,0 -959.09,-114.07 -1227.97,-341.04 -267.71,-226.97 -401.56,-528.44 -401.56,-904.4 0,-365.48 109.4,-656.46 328.23,-872.96 219.99,-215.34 594.78,-323.58 1124.37,-323.58 334.06,0 656.47,23.27 968.41,68.67l0 657.63 -968.41 0c-168.77,0 -297.97,36.08 -388.75,109.41 -90.79,72.16 -136.19,193.21 -136.19,360.82 0,168.78 55.88,290.99 166.45,368.98 111.73,76.82 294.48,115.23 549.39,115.23l402.72 0c270.04,0 485.37,-75.66 643.67,-228.13 159.46,-152.48 238.61,-387.59 238.61,-705.36l0 -736.78c0,-261.9 -79.15,-462.09 -238.61,-604.09 -158.3,-140.84 -452.78,-210.68 -882.27,-210.68 -521.45,0 -1018.46,57.04 -1494.51,169.94l0 -548.22c171.1,-254.91 669.27,-382.95 1494.51,-382.95 699.53,0 1216.32,131.53 1549.21,392.25 332.9,261.89 499.34,652.98 499.34,1173.26l0 2373.3 -927.66 0 0 -275.86zm2466.41 -1155.8c0,236.28 57.04,413.2 169.94,531.92 114.06,117.56 368.97,176.93 764.71,176.93 394.58,0 649.48,-59.37 763.55,-176.93 112.9,-118.72 169.94,-295.64 169.94,-531.92l0 -2434.99 927.66 0 0 2434.99c0,547.06 -160.62,934.65 -481.87,1162.78 -322.41,226.97 -782.18,341.04 -1379.28,341.04 -598.27,0 -1058.03,-114.06 -1379.28,-341.04 -322.41,-228.13 -483.04,-615.73 -483.04,-1162.78l0 -2434.99 927.67 0 0 2434.99zm5872.13 -1003.33c0,-236.28 -45.39,-413.2 -136.18,-531.92 -91.96,-117.56 -288.67,-176.93 -593.62,-176.93 -304.96,0 -502.83,59.37 -593.61,176.93 -90.79,118.72 -136.18,295.64 -136.18,531.92l0 2434.99 -927.67 0 0 -2434.99c0,-547.06 148.98,-934.65 448.12,-1162.78 299.14,-226.96 701.87,-341.04 1209.34,-341.04 565.68,0 963.75,122.22 1193.06,365.48 229.29,-243.26 627.37,-365.48 1194.21,-365.48 506.33,0 909.05,114.07 1208.18,341.04 299.14,228.13 448.12,615.73 448.12,1162.78l0 2434.99 -926.5 0 0 -2434.99c0,-236.28 -46.56,-413.2 -137.35,-531.92 -90.79,-117.56 -288.66,-176.93 -592.45,-176.93 -304.96,0 -502.83,59.37 -593.61,176.93 -90.79,118.72 -136.18,295.64 -136.18,531.92l0 2434.99 -927.67 0 0 -2434.99zm6685.74 2159.13c-181.59,229.3 -476.06,344.54 -882.28,344.54l-416.69 0c-549.39,0 -959.09,-114.07 -1227.97,-341.04 -267.71,-226.97 -401.56,-528.44 -401.56,-904.4 0,-365.48 109.4,-656.46 328.23,-872.96 219.99,-215.34 594.78,-323.58 1124.37,-323.58 334.06,0 656.47,23.27 968.41,68.67l0 657.63 -968.41 0c-168.77,0 -297.97,36.08 -388.75,109.41 -90.79,72.16 -136.19,193.21 -136.19,360.82 0,168.78 55.88,290.99 166.45,368.98 111.73,76.82 294.48,115.23 549.39,115.23l402.72 0c270.04,0 485.37,-75.66 643.67,-228.13 159.46,-152.48 238.61,-387.59 238.61,-705.36l0 -736.78c0,-261.9 -79.15,-462.09 -238.61,-604.09 -158.3,-140.84 -452.78,-210.68 -882.27,-210.68 -521.45,0 -1018.46,57.04 -1494.51,169.94l0 -548.22c171.1,-254.91 669.27,-382.95 1494.51,-382.95 699.53,0 1216.32,131.53 1549.21,392.25 332.9,261.89 499.34,652.98 499.34,1173.26l0 2373.3 -927.66 0 0 -275.86z"/>
+            <path d="M4407.79 943.28c55.09,101.14 17.76,227.79 -83.39,282.87 -101.14,55.09 -227.78,17.76 -282.87,-83.39 -136.86,-251.16 -324.8,-424.14 -532.18,-537.5 -257.27,-140.64 -546.59,-192.11 -808.4,-188.03 -640.14,9.99 -1090.85,341.48 -1288.28,716.8 -82.36,156.57 -119.01,318.05 -104.54,461.99 12.99,129.12 69.59,245.08 174.32,328.13 224.93,178.39 663.18,224.11 1361.98,-5.24 1447.04,-474.92 2396.27,-396.24 2910.23,-56.18 262.65,173.79 417.35,413.4 472.44,686.17 52.96,262.14 10.52,550.23 -119.3,833.69 -303.24,662.13 -1100.53,1319.05 -2272.42,1529.31 -81.07,14.56 -162.79,28.21 -244.99,40.79 -1.5,18.83 -2.8,37.95 -3.89,57.42 -2.21,39.76 -4.01,66.07 -6.05,96.24 -36.38,535.85 -148.1,2181.42 927.53,2578.89 108.36,39.73 164,159.8 124.27,268.16 -39.73,108.36 -159.79,164 -268.16,124.27 -1369.85,-506.19 -1242.18,-2386.73 -1200.59,-2999.11 1.94,-28.64 3.71,-54.71 4.87,-72.4 -144.44,14.21 -289.66,24.01 -434.91,28.26 1.27,24.85 3.02,56.39 4.95,91.1 36.47,656.99 136.46,2457.82 -1201.35,2952.16 -108.36,39.73 -228.42,-15.91 -268.15,-124.27 -39.73,-108.36 15.91,-228.43 124.27,-268.16 1047.63,-387.12 960.18,-1962.2 928.27,-2536.84 -2.34,-42.16 -4.38,-78.95 -5.89,-118.12 -509.23,-26.27 -1010.12,-134.32 -1471.97,-372.69 -604.34,-311.91 -841.99,-734.72 -843.56,-1122.94 -0.89,-222.8 76.38,-431.07 208.03,-600.67 129.67,-167.05 311.97,-297.01 523.53,-366.01 400.8,-130.75 905.44,-47.01 1346.64,416.34 187.39,196.8 354.44,471.25 473.15,843.71 71.68,224.94 125.86,486.58 156.1,789.64 172.43,-4.52 345.25,-17.53 516.95,-36.82 49.31,-218.69 126.09,-396.12 218.53,-535.92 196.94,-297.85 468.05,-431.58 713.07,-436.25 115.13,-1.8 209.94,90.07 211.74,205.2 1.8,115.14 -90.07,209.95 -205.2,211.75 -118.94,2.27 -258.21,78.78 -371.33,249.86 -44.11,66.7 -83.5,146.72 -115.88,241.14 28.89,-4.92 57.71,-9.95 86.45,-15.11 1024.9,-183.89 1712.69,-737.68 1966.65,-1292.21 93.3,-203.7 125.2,-403.74 89.87,-578.63 -33.18,-164.27 -129.43,-310.61 -294.21,-419.65 -418.42,-276.84 -1241.45,-324.4 -2550.5,105.23 -852.25,279.7 -1425.37,193.29 -1751.14,-65.07 -198.52,-157.43 -305.52,-374.35 -329.65,-614.27 -22.62,-225.08 30.07,-468.84 150.33,-697.45 258.84,-492.07 838.79,-926.47 1652.91,-939.17 324.75,-5.07 686.43,60.32 1012.79,238.72 273.14,149.31 520.12,376.1 698.95,704.28zm-3372.91 3343.14c389.74,201.15 815.95,296.57 1252.59,324.17 -27.83,-252.13 -73.85,-469.69 -133.45,-656.67 -97.4,-305.6 -230.59,-526.72 -378.3,-681.84 -312.09,-327.76 -652.26,-392.49 -914.99,-306.78 -131.41,42.87 -243.65,122.3 -322.41,223.76 -76.79,98.93 -121.87,218.33 -121.36,343.97 0.99,245.32 175.04,524.82 617.91,753.41z"/>
+     </g>
+      </svg>
+  <!-- Só a marca (sidebar recolhida) -->
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 6250 8090" role="img" aria-label="Samaúma">
+        <g fill="currentColor"><path d="M4407.79 943.28c55.09,101.14 17.76,227.79 -83.39,282.87 -101.14,55.09 -227.78,17.76 -282.87,-83.39 -136.86,-251.16 -324.8,-424.14 -532.18,-537.5 -257.27,-140.64 -546.59,-192.11 -808.4,-188.03 -640.14,9.99 -1090.85,341.48 -1288.28,716.8 -82.36,156.57 -119.01,318.05 -104.54,461.99 12.99,129.12 69.59,245.08 174.32,328.13 224.93,178.39 663.18,224.11 1361.98,-5.24 1447.04,-474.92 2396.27,-396.24 2910.23,-56.18 262.65,173.79 417.35,413.4 472.44,686.17 52.96,262.14 10.52,550.23 -119.3,833.69 -303.24,662.13 -1100.53,1319.05 -2272.42,1529.31 -81.07,14.56 -162.79,28.21 -244.99,40.79 -1.5,18.83 -2.8,37.95 -3.89,57.42 -2.21,39.76 -4.01,66.07 -6.05,96.24 -36.38,535.85 -148.1,2181.42 927.53,2578.89 108.36,39.73 164,159.8 124.27,268.16 -39.73,108.36 -159.79,164 -268.16,124.27 -1369.85,-506.19 -1242.18,-2386.73 -1200.59,-2999.11 1.94,-28.64 3.71,-54.71 4.87,-72.4 -144.44,14.21 -289.66,24.01 -434.91,28.26 1.27,24.85 3.02,56.39 4.95,91.1 36.47,656.99 136.46,2457.82 -1201.35,2952.16 -108.36,39.73 -228.42,-15.91 -268.15,-124.27 -39.73,-108.36 15.91,-228.43 124.27,-268.16 1047.63,-387.12 960.18,-1962.2 928.27,-2536.84 -2.34,-42.16 -4.38,-78.95 -5.89,-118.12 -509.23,-26.27 -1010.12,-134.32 -1471.97,-372.69 -604.34,-311.91 -841.99,-734.72 -843.56,-1122.94 -0.89,-222.8 76.38,-431.07 208.03,-600.67 129.67,-167.05 311.97,-297.01 523.53,-366.01 400.8,-130.75 905.44,-47.01 1346.64,416.34 187.39,196.8 354.44,471.25 473.15,843.71 71.68,224.94 125.86,486.58 156.1,789.64 172.43,-4.52 345.25,-17.53 516.95,-36.82 49.31,-218.69 126.09,-396.12 218.53,-535.92 196.94,-297.85 468.05,-431.58 713.07,-436.25 115.13,-1.8 209.94,90.07 211.74,205.2 1.8,115.14 -90.07,209.95 -205.2,211.75 -118.94,2.27 -258.21,78.78 -371.33,249.86 -44.11,66.7 -83.5,146.72 -115.88,241.14 28.89,-4.92 57.71,-9.95 86.45,-15.11 1024.9,-183.89 1712.69,-737.68 1966.65,-1292.21 93.3,-203.7 125.2,-403.74 89.87,-578.63 -33.18,-164.27 -129.43,-310.61 -294.21,-419.65 -418.42,-276.84 -1241.45,-324.4 -2550.5,105.23 -852.25,279.7 -1425.37,193.29 -1751.14,-65.07 -198.52,-157.43 -305.52,-374.35 -329.65,-614.27 -22.62,-225.08 30.07,-468.84 150.33,-697.45 258.84,-492.07 838.79,-926.47 1652.91,-939.17 324.75,-5.07 686.43,60.32 1012.79,238.72 273.14,149.31 520.12,376.1 698.95,704.28zm-3372.91 3343.14c389.74,201.15 815.95,296.57 1252.59,324.17 -27.83,-252.13 -73.85,-469.69 -133.45,-656.67 -97.4,-305.6 -230.59,-526.72 -378.3,-681.84 -312.09,-327.76 -652.26,-392.49 -914.99,-306.78 -131.41,42.87 -243.65,122.3 -322.41,223.76 -76.79,98.93 -121.87,218.33 -121.36,343.97 0.99,245.32 175.04,524.82 617.91,753.41z"/></g>
+      </svg>
+</template>
+
+    <!-- ARQUIVO: components_tema.html -->
+<!-- Seletor de tema (claro, escuro, alto contraste) das telas de acesso e da página pública de dados abertos: abas em pílula do design
+     system. Aplica o tema como o cabeçalho (data-ds-theme no <html> + body.high-contrast) e guarda em localStorage['sgp_tema'],
+     a mesma chave que o sistema lê. Se o cabeçalho já existe, avisa-o (aplicarTema) para o ícone dele acompanhar. -->
+<script>
+var SeletorTema = (function () {
+  var TEMAS = [['light', 'Claro'], ['dark', 'Escuro'], ['contrast', 'Alto contraste']];
+  function salvo() {
+    var t = 'light';
+    try { t = localStorage.getItem('sgp_tema'); } catch (e) { /* sem localStorage: claro */ }
+    return TEMAS.some(function (x) { return x[0] === t; }) ? t : 'light';
+  }
+  function atual() {
+    if (document.body && document.body.classList.contains('high-contrast')) return 'contrast';
+    return document.documentElement.getAttribute('data-ds-theme') === 'dark' ? 'dark' : 'light';
+  }
+  function aplicar(tema) {
+    if (tema === 'light') document.documentElement.removeAttribute('data-ds-theme'); else document.documentElement.setAttribute('data-ds-theme', 'dark');
+    if (document.body) document.body.classList.toggle('high-contrast', tema === 'contrast');
+    try { localStorage.setItem('sgp_tema', tema); } catch (e) { /* só vale nesta página */ }
+    if (typeof window.aplicarTema === 'function') window.aplicarTema(tema);
+  }
+  /** Só a página pública (sem cabeçalho): o alto contraste vive no <body>, que não existia quando o <head> aplicou o tema. */
+  function iniciar() {
+    document.addEventListener('DOMContentLoaded', function () { if (salvo() === 'contrast') document.body.classList.add('high-contrast'); });
+  }
+  function criar() {
+    var grupo = document.createElement('div');
+    grupo.className = 'ds-tabs ds-tabs--segmented'; grupo.setAttribute('role', 'group'); grupo.setAttribute('aria-label', 'Tema da tela');
+    var botoes = TEMAS.map(function (x) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'ds-tab-btn'; b.textContent = x[1];
+      b.addEventListener('click', function () { aplicar(x[0]); marcar(); });
+      grupo.appendChild(b);
+      return b;
+    });
+    function marcar() {
+      var t = atual();
+      botoes.forEach(function (b, i) { var ativo = TEMAS[i][0] === t; b.classList.toggle('active', ativo); b.setAttribute('aria-pressed', ativo); });
+    }
+    marcar();
+    document.addEventListener('DOMContentLoaded', marcar); // o corpo pode ter ganhado o alto contraste depois
+    return grupo;
+  }
+  return { criar: criar, iniciar: iniciar };
+})();
+</script>
+
+    <!-- ARQUIVO: app_api_shim.html -->
+<!-- Adaptador de google.script.run: cada chamada vai por fetch à função da API, levando o token de sessão.
+     Sem token (ou com token vencido) pede a tela de acesso (app_acesso.html: window.SamaumaAcesso.pedirLogin).
+     As telas não mudam: continuam chamando google.script.run.withSuccessHandler(...).apiX(...). -->
+<script>
+(function () {
+  var URL_API = window.SAMAUMA_API_URL || '';
+  if (!URL_API) return; // implantação clássica do Apps Script: usa o google.script.run nativo
+
+  var CHAVE_TOKEN = 'samauma_token';
+  var CHAVE_EMAIL = 'samauma_email';
+  var tokenMemoria = '';
+  var ROTAS_PUBLICAS = { apiAuthSolicitarCodigo: 1, apiAuthVerificarCodigo: 1, apiAuthPrimeiroAcesso: 1, apiAuthConfirmarPrimeiroAcesso: 1, apiAuthInfoPrimeiroAcesso: 1 };
+
+  function lerToken() {
+    try { return localStorage.getItem(CHAVE_TOKEN) || tokenMemoria; } catch (e) { return tokenMemoria; }
+  }
+  function gravarToken(t) {
+    tokenMemoria = t || '';
+    try { if (t) localStorage.setItem(CHAVE_TOKEN, t); else localStorage.removeItem(CHAVE_TOKEN); } catch (e) { /* sem localStorage: só memória */ }
+  }
+  function gravarEmail(e) {
+    try { if (e) localStorage.setItem(CHAVE_EMAIL, e); } catch (err) { /* opcional */ }
+  }
+  function lerEmail() {
+    try { return localStorage.getItem(CHAVE_EMAIL) || ''; } catch (e) { return ''; }
+  }
+
+  // ---- Chamada ao servidor ----
+  // Cada chamada leva uma chave de idempotência nova (rota autenticada) e a repete se a rede falhar: o servidor devolve a resposta da primeira
+  // execução em vez de executar duas vezes (docs/arquitetura_servidor.md, "Idempotência"). Rota pública não usa chave.
+  var TENTATIVAS = 3;
+  function novaChave() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+    var b = new Uint8Array(16); window.crypto.getRandomValues(b);
+    return Array.prototype.map.call(b, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+  }
+  function enviar(nome, args, aoResponder, aoFalhar) {
+    var chave = ROTAS_PUBLICAS[nome] ? '' : novaChave();
+    (function tentar(n) {
+      fetch(URL_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // "simples": sem preflight de CORS
+        body: JSON.stringify({ fn: nome, args: args, token: lerToken(), chaveIdempotencia: chave }),
+        redirect: 'follow'
+      }).then(function (r) { return r.json(); }).then(aoResponder, function () {
+        if (n < TENTATIVAS) { setTimeout(function () { tentar(n + 1); }, 800 * n); return; }
+        aoFalhar(new Error('Sem conexão com o servidor. Verifique a internet e tente novamente.'));
+      });
+    })(1);
+  }
+
+  // ---- Envio de arquivos ----
+  // O JSON da API tem teto de 1 MB: arquivo nunca vai nele. Pede-se um bilhete por arquivo (o servidor autoriza e confere limites) e os bytes
+  // crus vão para `?up=<bilhete>`. A repetição de um bilhete devolve o mesmo resultado, então a nova tentativa depois de uma queda é segura.
+  function pedirBilhetes(tipo, arquivos, alvo) {
+    return new Promise(function (resolve, reject) {
+      var lista = arquivos.map(function (f) { return { nome: f.name, mimeType: f.type, tamanho: f.size }; });
+      chamar('apiPrepararUploadArquivo', [Object.assign({ tipo: tipo, arquivos: lista }, alvo || {})], resolve, reject);
+    });
+  }
+  function enviarBytes(bilhete, arquivo) {
+    return new Promise(function (resolve, reject) {
+      (function tentar(n) {
+        fetch(URL_API + '?up=' + encodeURIComponent(bilhete), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: arquivo })
+          .then(function (r) { return r.json(); }).then(function (j) {
+            if (j && j.ok) resolve(j.dados); else reject(new Error((j && j.erro) || 'Falha no envio do arquivo.'));
+          }, function () {
+            if (n < TENTATIVAS) { setTimeout(function () { tentar(n + 1); }, 800 * n); return; }
+            reject(new Error('Sem conexão com o servidor. Verifique a internet e tente novamente.'));
+          });
+      })(1);
+    });
+  }
+  /** tipo: 'EVIDENCIA' | 'ANEXO_MENSAGEM' | 'IMAGEM_MENSAGEM'; arquivos: File[]; alvo: campos extras do pedido. Promise da lista de respostas, na ordem dos arquivos. */
+  window.SamaumaArquivos = {
+    enviar: function (tipo, arquivos, alvo) {
+      return pedirBilhetes(tipo, arquivos, alvo).then(function (r) {
+        var respostas = [];
+        return arquivos.reduce(function (cadeia, arquivo, i) {
+          return cadeia.then(function () { return enviarBytes(r.bilhetes[i].bilhete, arquivo); }).then(function (d) { respostas.push(d); });
+        }, Promise.resolve()).then(function () { return respostas; });
+      });
+    }
+  };
+
+  // Os apps instaláveis são arquivos estáticos (apps/<nome>.html, gerados por scripts/build_frontend.js), não chamadas ao servidor.
+  var ARQUIVO_APP = { metas: 'app_indicadores', desempenho: 'app_monitoramento' };
+  function obterHtmlApp(nomeApp, ok, falha, objeto) {
+    var arquivo = ARQUIVO_APP[nomeApp] || ('app_' + nomeApp);
+    if (!/^[a-z_]+$/.test(arquivo)) { if (falha) falha(new Error('App não encontrado: ' + nomeApp), objeto); return; }
+    fetch('apps/' + arquivo + '.html', { cache: 'no-cache' }).then(function (r) {
+      if (!r.ok) throw new Error('App não encontrado: ' + nomeApp);
+      return r.text();
+    }).then(function (t) { if (ok) ok(t, objeto); }, function (e) { if (falha) falha(e, objeto); });
+  }
+
+  function pedirLogin(aviso) { if (window.SamaumaAcesso) window.SamaumaAcesso.pedirLogin(aviso); }
+
+  function chamar(nome, args, ok, falha, objeto) {
+    if (nome === 'apiObterHtmlApp') { obterHtmlApp(args[0], ok, falha, objeto); return; }
+    if (!ROTAS_PUBLICAS[nome] && !lerToken()) { pedirLogin(); return; }
+    enviar(nome, args, function (res) {
+      if (res && res.ok) {
+        // gravação concluída: a faixa "o que mudou na revisão" do detalhe do plano se atualiza sozinha
+        if (/^api(Salvar|Atualizar|Excluir|Restaurar|Reanexar|Mover|Duplicar|Importar|Vincular|Desvincular)/.test(nome) && typeof mrvAposGravacao === 'function') mrvAposGravacao();
+        if (ok) ok(res.dados === undefined ? null : res.dados, objeto); return;
+      }
+      if (res && res.codigo === 'SESSAO_INVALIDA') { gravarToken(''); pedirLogin('Sua sessão expirou. Entre novamente.'); return; }
+      if (falha) falha(new Error((res && res.erro) || 'Erro desconhecido.'), objeto);
+    }, function (err) { if (falha) falha(err, objeto); });
+  }
+
+  function criarRunner(ok, falha, objeto) {
+    return new Proxy({}, {
+      get: function (_, nome) {
+        if (nome === 'withSuccessHandler') return function (fn) { return criarRunner(fn, falha, objeto); };
+        if (nome === 'withFailureHandler') return function (fn) { return criarRunner(ok, fn, objeto); };
+        if (nome === 'withUserObject') return function (o) { return criarRunner(ok, falha, o); };
+        if (typeof nome !== 'string') return undefined;
+        return function () { chamar(nome, Array.prototype.slice.call(arguments), ok, falha, objeto); };
+      }
+    });
+  }
+
+  window.google = window.google || {};
+  var script = { run: criarRunner(null, null, undefined) };
+  try { Object.defineProperty(window.google, 'script', { value: script, configurable: true, writable: true }); }
+  catch (e) { window.google.script = script; }
+
+  // ---- Encerrar sessão (usado pelo menu do usuário) ----
+  window.SamaumaAuth = {
+    sair: function () {
+      function terminar() { gravarToken(''); window.location.reload(); }
+      if (!lerToken()) { terminar(); return; }
+      enviar('apiAuthSair', [], terminar, terminar);
+    }
+  };
+
+  // O que a tela de acesso (app_acesso.html) usa: a mesma chamada ao servidor e o mesmo guarda do token.
+  window.SamaumaApi = { enviar: enviar, lerToken: lerToken, gravarToken: gravarToken, lerEmail: lerEmail, gravarEmail: gravarEmail };
+})();
+</script>
+
+    <!-- ARQUIVO: app_acesso.html -->
+<!-- Tela de acesso: o que cobre o sistema até a sessão estar confirmada.
+     Com token guardado: tela "Carregando" até o servidor confirmar a sessão (apiAuthSessao) E a página terminar de carregar; só então
+     a interface do sistema fica à vista (token vencido nunca deixa o sistema aparecer: a tela vira o login). Sem token ou com sessão vencida:
+     login por código enviado ao e-mail (e primeiro acesso). Só classes do design system (.ds-tela-cheia, .ds-field, .ds-input, .ds-btn…).
+     Chamadas e token: window.SamaumaApi (app_api_shim.html); o shim pede o login por window.SamaumaAcesso.pedirLogin. -->
+<script>
+(function () {
+  var Api = window.SamaumaApi;
+  if (!Api) return; // implantação clássica do Apps Script: sem sessão por token
+
+  var CAMINHO_DADOS_ABERTOS = 'dados-abertos/';
+  var FUNDO = 'assets/fundo-login.jpg'; // foto da Reitoria (Luiz Pantoja, CC BY 2.0; crédito no login)
+  var tela = null;
+  var estado = ''; // 'carregando' | 'erro' | 'login' | 'liberado'
+
+  function el(tag, atributos, filhos) {
+    var n = document.createElement(tag);
+    Object.keys(atributos || {}).forEach(function (k) {
+      if (k === 'texto') n.textContent = atributos[k]; else n.setAttribute(k, atributos[k]);
+    });
+    (filhos || []).forEach(function (f) { n.appendChild(f); });
+    return n;
+  }
+  function icone(nome) { return el('span', { 'class': 'material-symbols-outlined', 'aria-hidden': 'true', texto: nome }); }
+  function botao(classe, nomeIcone, texto) { return el('button', { type: 'button', 'class': classe }, [icone(nomeIcone), el('span', { texto: texto })]); }
+  function ocupado(b, sim, textoOcupado, textoNormal) { b.disabled = sim; b.lastChild.textContent = sim ? textoOcupado : textoNormal; }
+
+  /** Logo clonado de components_marca.html (única fonte da marca). */
+  function logo() {
+    var modelo = document.getElementById('samauma-marca');
+    var svg = modelo && modelo.content.firstElementChild ? modelo.content.firstElementChild.cloneNode(true) : null;
+    if (!svg) return el('span', { texto: 'Samaúma' });
+    svg.setAttribute('height', '34'); svg.setAttribute('width', '171');
+    return svg;
+  }
+
+  // A tela vive no <html> (não no <body>): cobre o sistema desde o primeiro quadro e o <body> pode ficar inerte por baixo.
+  function garantirTela() {
+    if (!tela) {
+      tela = el('div', { id: 'samauma-tela', 'class': 'ds-tela-cheia ds-tela-cheia--imagem', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Samaúma' });
+      tela.style.setProperty('--ds-tela-fundo', 'url("' + FUNDO + '")');
+      document.documentElement.appendChild(tela);
+    }
+    if (document.body && tela.parentNode !== document.body) document.body.appendChild(tela); // dentro do <body>: herda o tema (o alto contraste mora em body.high-contrast)
+    bloquearSistema(true);
+    return tela;
+  }
+  /** Tudo que não é a tela de acesso fica inerte (sem foco nem clique) enquanto ela estiver aberta. */
+  function bloquearSistema(sim) {
+    if (!document.body) return;
+    Array.prototype.forEach.call(document.body.children, function (c) { if (c !== tela) c.inert = sim; });
+  }
+  function mostrar(conteudo) { garantirTela().replaceChildren(conteudo); }
+  document.addEventListener('DOMContentLoaded', function () { if (tela && estado !== 'liberado') { document.body.appendChild(tela); bloquearSistema(true); } });
+
+  /** Crédito exigido pela licença da foto de fundo (CC BY 2.0). */
+  function creditoFoto() {
+    var autor = el('a', { 'class': 'ds-link', href: 'https://commons.wikimedia.org/wiki/File:Reitoria_ufpa.jpg', target: '_blank', rel: 'noopener noreferrer', texto: 'Luiz Pantoja' });
+    return el('small', { 'class': 'ds-help' }, [document.createTextNode('Foto: Reitoria da UFPA, '), autor, document.createTextNode(' (CC BY 2.0)')]);
+  }
+
+  // ---- Carregando ----
+  var avisoLentidao = 0;
+  function telaCarregando() {
+    estado = 'carregando';
+    var texto = el('span', { texto: 'Carregando o sistema…' });
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-stack ds-stack--3', role: 'status', 'aria-live': 'polite' }, [
+      logo(),
+      el('div', { 'class': 'lista-spinner-wrap' }, [el('div', { 'class': 'lista-spinner' }), texto])
+    ]));
+    clearTimeout(avisoLentidao);
+    avisoLentidao = setTimeout(function () { texto.textContent = 'Isso está demorando mais que o normal…'; }, 8000);
+  }
+  function telaErro(mensagem) {
+    estado = 'erro'; clearTimeout(avisoLentidao);
+    var tentar = botao('ds-btn ds-btn--primary ds-btn--block', 'refresh', 'Tentar novamente');
+    tentar.addEventListener('click', iniciar);
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card ds-stack ds-stack--3' }, [
+      logo(),
+      el('h1', { 'class': 'ds-tela-cheia__titulo', texto: 'Não foi possível carregar' }),
+      el('p', { 'class': 'ds-help ds-help--error', role: 'alert', texto: mensagem }),
+      tentar
+    ]));
+    tentar.focus();
+  }
+  function liberar() {
+    if (estado !== 'carregando') return;
+    estado = 'liberado'; clearTimeout(avisoLentidao);
+    tela.remove(); bloquearSistema(false); tela = null;
+  }
+
+  // Confirma a sessão no servidor e espera a página terminar de carregar; só então o sistema aparece.
+  function iniciar() {
+    telaCarregando();
+    var carregou = new Promise(function (ok) {
+      if (document.readyState === 'complete') ok(); else window.addEventListener('load', function () { ok(); });
+    });
+    var confirmada = new Promise(function (ok, falha) {
+      Api.enviar('apiAuthSessao', [], function (res) {
+        if (res && res.ok) { ok(); return; }
+        if (res && res.codigo === 'SESSAO_INVALIDA') { Api.gravarToken(''); pedirLogin('Sua sessão expirou. Entre novamente.'); return; }
+        falha(new Error((res && res.erro) || 'Erro desconhecido.'));
+      }, falha);
+    });
+    Promise.all([confirmada, carregou]).then(function () {
+      requestAnimationFrame(function () { requestAnimationFrame(liberar); }); // deixa a primeira pintura do sistema acontecer por baixo
+    }, function (err) { if (estado === 'carregando') telaErro(err.message); });
+  }
+
+  // ---- Login ----
+  function pedirLogin(aviso) {
+    if (estado === 'login') { var m = tela.querySelector('[data-msg]'); if (m && aviso) { m.textContent = aviso; m.classList.add('ds-help--error'); } return; }
+    montarLogin(aviso);
+  }
+
+  function montarLogin(aviso) {
+    estado = 'login'; clearTimeout(avisoLentidao);
+    var BTN = 'ds-btn ds-btn--primary ds-btn--block', LINK = 'ds-btn ds-btn--ghost ds-btn--block';
+    function campo(id, rotulo, input) { return el('div', { 'class': 'ds-field' }, [el('label', { 'class': 'ds-label', 'for': id, texto: rotulo }), input]); }
+    function acoes(botoes) { return el('div', { 'class': 'ds-stack ds-stack--2' }, botoes); }
+
+    var titulo = el('h1', { 'class': 'ds-tela-cheia__titulo', texto: 'Entrar' });
+    var sub = el('p', { 'class': 'ds-tela-cheia__sub' });
+    var msg = el('p', { 'data-msg': '', 'class': 'ds-help ds-help--error ds-tela-cheia__aviso', role: 'alert', texto: aviso || '' });
+    var inEmail = el('input', { type: 'email', autocomplete: 'username', placeholder: 'seu.nome@ufpa.br', id: 'samauma-login-email', 'class': 'ds-input' });
+    var inCodigo = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'one-time-code', maxlength: '6', placeholder: '000000', 'class': 'ds-input ds-input--codigo', id: 'samauma-login-codigo' });
+    var btnEnviar = botao(BTN, 'send', 'Enviar código');
+    var btnEntrar = botao(BTN, 'arrow_forward', 'Entrar');
+    var btnOutro = botao(LINK, 'arrow_back', 'Usar outro e-mail');
+    var btnJaTenho = el('button', { type: 'button', 'class': LINK, texto: 'Já tenho um código' });
+    var btnReenviar = el('button', { type: 'button', 'class': LINK, texto: 'Reenviar código' });
+    var btnPrimeiro = el('button', { type: 'button', 'class': LINK + ' hidden', texto: 'Primeiro acesso' });
+
+    // Primeiro acesso por identificação (e-mail + matrícula + CPF). O 2º passo é o mesmo campo de código do login.
+    var paEmail = el('input', { type: 'email', autocomplete: 'email', maxlength: '254', placeholder: 'seu.nome@ufpa.br', id: 'samauma-pa-email', 'class': 'ds-input' });
+    var paMatricula = el('input', { type: 'text', autocomplete: 'off', maxlength: '20', id: 'samauma-pa-matricula', 'class': 'ds-input' });
+    var paCpf = el('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', maxlength: '14', placeholder: '000.000.000-00', id: 'samauma-pa-cpf', 'class': 'ds-input' });
+    var btnPaEnviar = botao(BTN, 'send', 'Enviar código');
+    var btnPaVoltar = botao(LINK, 'arrow_back', 'Voltar ao login');
+    var btnFimVoltar = botao(LINK, 'arrow_back', 'Voltar ao login');
+    var modoPa = false; // true: o passo do código confirma o primeiro acesso em vez do login
+
+    // Acesso público, sem entrar: só no primeiro passo.
+    var linkAbertos = botao(LINK, 'analytics', 'Dados abertos');
+    linkAbertos.addEventListener('click', function () { window.location.assign(CAMINHO_DADOS_ABERTOS); });
+    var passo1 = el('div', { 'class': 'ds-stack' }, [campo('samauma-login-email', 'E-mail cadastrado', inEmail), acoes([btnEnviar, btnJaTenho, btnPrimeiro, linkAbertos])]);
+    var passoPa = el('div', { 'class': 'hidden ds-stack' }, [
+      campo('samauma-pa-email', 'E-mail', paEmail),
+      campo('samauma-pa-matricula', 'Matrícula', paMatricula),
+      campo('samauma-pa-cpf', 'CPF', paCpf),
+      acoes([btnPaEnviar, btnPaVoltar])]);
+    var passoFim = el('div', { 'class': 'hidden' }, [acoes([btnFimVoltar])]);
+    var passo2 = el('div', { 'class': 'hidden ds-stack' }, [campo('samauma-login-codigo', 'Código de 6 dígitos', inCodigo), acoes([btnEntrar, btnReenviar, btnOutro])]);
+
+    mostrar(el('div', { 'class': 'ds-tela-cheia__card' }, [
+      el('div', { 'class': 'ds-stack ds-stack--3' }, [logo(), titulo]), sub, msg, passo1, passoPa, passo2, passoFim,
+      el('hr', { 'class': 'ds-divisor' }), el('div', { 'class': 'ds-stack ds-stack--3' }, [el('div', { 'class': 'ds-cluster' }, [SeletorTema.criar()]), creditoFoto()])]));
+    inEmail.value = Api.lerEmail();
+    inEmail.focus();
+
+    function aviso_(texto, ok) { msg.textContent = texto || ''; msg.classList.toggle('ds-help--error', !ok); }
+    function mostrarPasso(p, tituloTexto, subTexto) {
+      [passo1, passoPa, passo2, passoFim].forEach(function (x) { x.classList.toggle('hidden', x !== p); });
+      titulo.textContent = tituloTexto; sub.textContent = subTexto;
+    }
+    function passoEmail() { mostrarPasso(passo1, 'Entrar', 'Use seu e-mail institucional para receber o código de acesso.'); }
+    function passoCodigo() { mostrarPasso(passo2, 'Digite o código', 'Enviamos um código de 6 dígitos para ' + (modoPa ? paEmail.value.trim() : inEmail.value.trim()) + '.'); }
+    function passoPrimeiroAcesso() { mostrarPasso(passoPa, 'Primeiro acesso', 'Confirme seus dados para receber o código de acesso.'); }
+    function passoPendente() { mostrarPasso(passoFim, 'Primeiro acesso', ''); }
+    passoEmail();
+
+    function irParaCodigo(texto) { passoCodigo(); aviso_(texto || '', !!texto); inCodigo.focus(); }
+
+    function pedirCodigo() {
+      var email = inEmail.value.trim();
+      if (!email) { aviso_('Informe o e-mail.'); return; }
+      ocupado(btnEnviar, true, 'Enviando…', 'Enviar código');
+      btnReenviar.disabled = true;
+      aviso_('');
+      Api.enviar('apiAuthSolicitarCodigo', [email], function (res) {
+        ocupado(btnEnviar, false, '', 'Enviar código'); btnReenviar.disabled = false;
+        if (res && res.ok) { passoCodigo(); aviso_(res.dados && res.dados.mensagem, true); inCodigo.focus(); }
+        else if (res && res.erro && /^Aguarde|Muitos pedidos/.test(res.erro)) irParaCodigo(res.erro + ' Se você já recebeu um código, digite-o abaixo.');
+        else aviso_((res && res.erro) || 'Não foi possível enviar o código.');
+      }, function (err) { ocupado(btnEnviar, false, '', 'Enviar código'); btnReenviar.disabled = false; aviso_(err.message); });
+    }
+
+    // O link só aparece quando o modo de cadastro usa a base (BASE / BASE_OU_AVULSO): rota pública informa.
+    Api.enviar('apiAuthInfoPrimeiroAcesso', [], function (res) {
+      if (res && res.ok && res.dados && res.dados.disponivel === true) btnPrimeiro.classList.remove('hidden');
+    }, function () { /* sem a informação, o link fica oculto */ });
+
+    function abrirPrimeiroAcesso() {
+      modoPa = true; aviso_('');
+      if (!paEmail.value) paEmail.value = inEmail.value.trim();
+      passoPrimeiroAcesso(); paEmail.focus();
+    }
+    function voltarLogin() { modoPa = false; inCodigo.value = ''; aviso_(''); passoEmail(); inEmail.focus(); }
+    function pedirPrimeiroAcesso() {
+      var email = paEmail.value.trim(), matricula = paMatricula.value.trim(), cpf = paCpf.value.trim();
+      if (!email || !matricula || !cpf) { aviso_('Informe e-mail, matrícula e CPF.'); return; }
+      ocupado(btnPaEnviar, true, 'Enviando…', 'Enviar código');
+      btnReenviar.disabled = true;
+      aviso_('');
+      Api.enviar('apiAuthPrimeiroAcesso', [email, matricula, cpf], function (res) {
+        ocupado(btnPaEnviar, false, '', 'Enviar código'); btnReenviar.disabled = false;
+        if (res && res.ok) { inEmail.value = email; passoCodigo(); aviso_(res.dados && res.dados.mensagem, true); inCodigo.focus(); }
+        else aviso_((res && res.erro) || 'Não foi possível enviar o código.');
+      }, function (err) { ocupado(btnPaEnviar, false, '', 'Enviar código'); btnReenviar.disabled = false; aviso_(err.message); });
+    }
+    function confirmarPrimeiroAcesso() {
+      var email = paEmail.value.trim(), codigo = inCodigo.value.trim();
+      if (codigo.replace(/\D/g, '').length !== 6) { aviso_('Digite o código de 6 dígitos.'); return; }
+      ocupado(btnEntrar, true, 'Entrando…', 'Entrar');
+      aviso_('');
+      Api.enviar('apiAuthConfirmarPrimeiroAcesso', [email, codigo], function (res) {
+        ocupado(btnEntrar, false, '', 'Entrar');
+        var d = res && res.ok ? res.dados || {} : null;
+        if (d && d.token) { Api.gravarToken(d.token); Api.gravarEmail(d.email || email); window.location.reload(); return; }
+        if (d && d.pendente === true) { inCodigo.value = ''; passoPendente(); aviso_(d.mensagem, true); return; }
+        aviso_((res && res.erro) || 'Código inválido ou expirado.');
+      }, function (err) { ocupado(btnEntrar, false, '', 'Entrar'); aviso_(err.message); });
+    }
+
+    function entrar() {
+      if (modoPa) { confirmarPrimeiroAcesso(); return; }
+      var email = inEmail.value.trim(), codigo = inCodigo.value.trim();
+      if (codigo.replace(/\D/g, '').length !== 6) { aviso_('Digite o código de 6 dígitos.'); return; }
+      ocupado(btnEntrar, true, 'Entrando…', 'Entrar');
+      aviso_('');
+      Api.enviar('apiAuthVerificarCodigo', [email, codigo], function (res) {
+        if (res && res.ok && res.dados && res.dados.token) {
+          Api.gravarToken(res.dados.token); Api.gravarEmail(res.dados.email);
+          window.location.reload();
+        } else {
+          ocupado(btnEntrar, false, '', 'Entrar');
+          aviso_((res && res.erro) || 'Código inválido ou expirado.');
+        }
+      }, function (err) { ocupado(btnEntrar, false, '', 'Entrar'); aviso_(err.message); });
+    }
+
+    btnEnviar.addEventListener('click', pedirCodigo);
+    btnReenviar.addEventListener('click', function () { if (modoPa) pedirPrimeiroAcesso(); else pedirCodigo(); });
+    btnPrimeiro.addEventListener('click', abrirPrimeiroAcesso);
+    btnPaEnviar.addEventListener('click', pedirPrimeiroAcesso);
+    btnPaVoltar.addEventListener('click', voltarLogin);
+    btnFimVoltar.addEventListener('click', voltarLogin);
+    [paEmail, paMatricula, paCpf].forEach(function (x) { x.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') pedirPrimeiroAcesso(); }); });
+    btnJaTenho.addEventListener('click', function () { if (!inEmail.value.trim()) { aviso_('Informe o e-mail.'); inEmail.focus(); return; } irParaCodigo(''); });
+    btnEntrar.addEventListener('click', entrar);
+    btnOutro.addEventListener('click', function () {
+      inCodigo.value = ''; aviso_('');
+      if (modoPa) { passoPrimeiroAcesso(); paEmail.focus(); return; }
+      passoEmail(); inEmail.focus();
+    });
+    inEmail.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') pedirCodigo(); });
+    inCodigo.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') entrar(); });
+  }
+
+  window.SamaumaAcesso = { pedirLogin: pedirLogin };
+
+  if (Api.lerToken()) iniciar(); else montarLogin();
+})();
+</script>
+
     <script>
       // Aplica tema (claro/escuro) e estado da sidebar ANTES da primeira pintura,
       // para não piscar. Os toggles ficam em components_header.html.
@@ -1717,19 +1899,15 @@ if (!window._uiDelegacaoAtiva) {
   <!-- ============ SIDEBAR ============ -->
   <aside id="sidebar" class="ds-sidebar ds-glass" aria-label="Navegação principal">
     <div class="brand">
-      <!-- Logo completo (sidebar expandida) -->
-      <svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" viewBox="0 0 40801.62 8090.51" class="brand-logo" role="img" aria-label="Samaúma">
-         <g id="Layer_x0020_1" style="fill: currentColor;">
-            <polygon points="28949.84,2288.47 28949.84,3015.46 27495.86,3015.46 "/>
-            <path d="M9333.05 4544.72c514.47,53.55 898.57,165.28 1152.32,336.39 253.74,169.94 380.61,469.06 380.61,895.08 0,426.01 -155.96,729.79 -465.58,911.37 -310.77,182.75 -758.89,273.53 -1345.53,273.53 -1006.81,0 -1607.42,-173.43 -1800.63,-517.96l0 -583.14c543.57,226.97 1087.12,339.88 1630.69,339.88 451.62,0 740.28,-36.08 865.98,-108.25 124.55,-73.32 187.4,-178.08 187.4,-315.42 0,-137.35 -68.67,-225.81 -206.02,-264.23 -138.52,-39.57 -452.78,-84.97 -945.13,-138.51 -492.36,-53.55 -876.46,-159.46 -1152.32,-318.92 -275.85,-159.46 -414.37,-445.79 -414.37,-861.33 0,-414.36 154.81,-718.15 465.59,-911.37 309.61,-193.22 758.89,-289.83 1345.53,-289.83 892.75,0 1447.95,115.23 1663.28,346.85l0 583.15c-429.49,-112.9 -927.67,-169.94 -1493.35,-169.94 -452.77,0 -741.43,36.08 -865.98,109.41 -124.54,72.16 -187.39,166.44 -187.39,280.51 0,115.23 68.67,197.87 206.02,247.92 137.35,50.05 463.26,101.27 978.88,154.8zm4904.9 2071.83c-181.59,229.3 -476.06,344.54 -882.28,344.54l-416.69 0c-549.39,0 -959.09,-114.07 -1227.97,-341.04 -267.71,-226.97 -401.56,-528.44 -401.56,-904.4 0,-365.48 109.4,-656.46 328.23,-872.96 219.99,-215.34 594.78,-323.58 1124.37,-323.58 334.06,0 656.47,23.27 968.41,68.67l0 657.63 -968.41 0c-168.77,0 -297.97,36.08 -388.75,109.41 -90.79,72.16 -136.19,193.21 -136.19,360.82 0,168.78 55.88,290.99 166.45,368.98 111.73,76.82 294.48,115.23 549.39,115.23l402.72 0c270.04,0 485.37,-75.66 643.67,-228.13 159.46,-152.48 238.61,-387.59 238.61,-705.36l0 -736.78c0,-261.9 -79.15,-462.09 -238.61,-604.09 -158.3,-140.84 -452.78,-210.68 -882.27,-210.68 -521.45,0 -1018.46,57.04 -1494.51,169.94l0 -548.22c171.1,-254.91 669.27,-382.95 1494.51,-382.95 699.53,0 1216.32,131.53 1549.21,392.25 332.9,261.89 499.34,652.98 499.34,1173.26l0 2373.3 -927.66 0 0 -275.86zm3926 -2159.13c0,-236.28 -45.39,-413.2 -136.18,-531.92 -91.96,-117.56 -288.67,-176.93 -593.62,-176.93 -304.96,0 -502.83,59.37 -593.61,176.93 -90.79,118.72 -136.18,295.64 -136.18,531.92l0 2434.99 -927.67 0 0 -2434.99c0,-547.06 148.98,-934.65 448.12,-1162.78 299.14,-226.96 701.87,-341.04 1209.34,-341.04 565.68,0 963.75,122.22 1193.06,365.48 229.29,-243.26 627.37,-365.48 1194.21,-365.48 506.33,0 909.05,114.07 1208.18,341.04 299.14,228.13 448.12,615.73 448.12,1162.78l0 2434.99 -926.5 0 0 -2434.99c0,-236.28 -46.56,-413.2 -137.35,-531.92 -90.79,-117.56 -288.66,-176.93 -592.45,-176.93 -304.96,0 -502.83,59.37 -593.61,176.93 -90.79,118.72 -136.18,295.64 -136.18,531.92l0 2434.99 -927.67 0 0 -2434.99zm6685.74 2159.13c-181.59,229.3 -476.06,344.54 -882.28,344.54l-416.69 0c-549.39,0 -959.09,-114.07 -1227.97,-341.04 -267.71,-226.97 -401.56,-528.44 -401.56,-904.4 0,-365.48 109.4,-656.46 328.23,-872.96 219.99,-215.34 594.78,-323.58 1124.37,-323.58 334.06,0 656.47,23.27 968.41,68.67l0 657.63 -968.41 0c-168.77,0 -297.97,36.08 -388.75,109.41 -90.79,72.16 -136.19,193.21 -136.19,360.82 0,168.78 55.88,290.99 166.45,368.98 111.73,76.82 294.48,115.23 549.39,115.23l402.72 0c270.04,0 485.37,-75.66 643.67,-228.13 159.46,-152.48 238.61,-387.59 238.61,-705.36l0 -736.78c0,-261.9 -79.15,-462.09 -238.61,-604.09 -158.3,-140.84 -452.78,-210.68 -882.27,-210.68 -521.45,0 -1018.46,57.04 -1494.51,169.94l0 -548.22c171.1,-254.91 669.27,-382.95 1494.51,-382.95 699.53,0 1216.32,131.53 1549.21,392.25 332.9,261.89 499.34,652.98 499.34,1173.26l0 2373.3 -927.66 0 0 -275.86zm2466.41 -1155.8c0,236.28 57.04,413.2 169.94,531.92 114.06,117.56 368.97,176.93 764.71,176.93 394.58,0 649.48,-59.37 763.55,-176.93 112.9,-118.72 169.94,-295.64 169.94,-531.92l0 -2434.99 927.66 0 0 2434.99c0,547.06 -160.62,934.65 -481.87,1162.78 -322.41,226.97 -782.18,341.04 -1379.28,341.04 -598.27,0 -1058.03,-114.06 -1379.28,-341.04 -322.41,-228.13 -483.04,-615.73 -483.04,-1162.78l0 -2434.99 927.67 0 0 2434.99zm5872.13 -1003.33c0,-236.28 -45.39,-413.2 -136.18,-531.92 -91.96,-117.56 -288.67,-176.93 -593.62,-176.93 -304.96,0 -502.83,59.37 -593.61,176.93 -90.79,118.72 -136.18,295.64 -136.18,531.92l0 2434.99 -927.67 0 0 -2434.99c0,-547.06 148.98,-934.65 448.12,-1162.78 299.14,-226.96 701.87,-341.04 1209.34,-341.04 565.68,0 963.75,122.22 1193.06,365.48 229.29,-243.26 627.37,-365.48 1194.21,-365.48 506.33,0 909.05,114.07 1208.18,341.04 299.14,228.13 448.12,615.73 448.12,1162.78l0 2434.99 -926.5 0 0 -2434.99c0,-236.28 -46.56,-413.2 -137.35,-531.92 -90.79,-117.56 -288.66,-176.93 -592.45,-176.93 -304.96,0 -502.83,59.37 -593.61,176.93 -90.79,118.72 -136.18,295.64 -136.18,531.92l0 2434.99 -927.67 0 0 -2434.99zm6685.74 2159.13c-181.59,229.3 -476.06,344.54 -882.28,344.54l-416.69 0c-549.39,0 -959.09,-114.07 -1227.97,-341.04 -267.71,-226.97 -401.56,-528.44 -401.56,-904.4 0,-365.48 109.4,-656.46 328.23,-872.96 219.99,-215.34 594.78,-323.58 1124.37,-323.58 334.06,0 656.47,23.27 968.41,68.67l0 657.63 -968.41 0c-168.77,0 -297.97,36.08 -388.75,109.41 -90.79,72.16 -136.19,193.21 -136.19,360.82 0,168.78 55.88,290.99 166.45,368.98 111.73,76.82 294.48,115.23 549.39,115.23l402.72 0c270.04,0 485.37,-75.66 643.67,-228.13 159.46,-152.48 238.61,-387.59 238.61,-705.36l0 -736.78c0,-261.9 -79.15,-462.09 -238.61,-604.09 -158.3,-140.84 -452.78,-210.68 -882.27,-210.68 -521.45,0 -1018.46,57.04 -1494.51,169.94l0 -548.22c171.1,-254.91 669.27,-382.95 1494.51,-382.95 699.53,0 1216.32,131.53 1549.21,392.25 332.9,261.89 499.34,652.98 499.34,1173.26l0 2373.3 -927.66 0 0 -275.86z"/>
-            <path d="M4407.79 943.28c55.09,101.14 17.76,227.79 -83.39,282.87 -101.14,55.09 -227.78,17.76 -282.87,-83.39 -136.86,-251.16 -324.8,-424.14 -532.18,-537.5 -257.27,-140.64 -546.59,-192.11 -808.4,-188.03 -640.14,9.99 -1090.85,341.48 -1288.28,716.8 -82.36,156.57 -119.01,318.05 -104.54,461.99 12.99,129.12 69.59,245.08 174.32,328.13 224.93,178.39 663.18,224.11 1361.98,-5.24 1447.04,-474.92 2396.27,-396.24 2910.23,-56.18 262.65,173.79 417.35,413.4 472.44,686.17 52.96,262.14 10.52,550.23 -119.3,833.69 -303.24,662.13 -1100.53,1319.05 -2272.42,1529.31 -81.07,14.56 -162.79,28.21 -244.99,40.79 -1.5,18.83 -2.8,37.95 -3.89,57.42 -2.21,39.76 -4.01,66.07 -6.05,96.24 -36.38,535.85 -148.1,2181.42 927.53,2578.89 108.36,39.73 164,159.8 124.27,268.16 -39.73,108.36 -159.79,164 -268.16,124.27 -1369.85,-506.19 -1242.18,-2386.73 -1200.59,-2999.11 1.94,-28.64 3.71,-54.71 4.87,-72.4 -144.44,14.21 -289.66,24.01 -434.91,28.26 1.27,24.85 3.02,56.39 4.95,91.1 36.47,656.99 136.46,2457.82 -1201.35,2952.16 -108.36,39.73 -228.42,-15.91 -268.15,-124.27 -39.73,-108.36 15.91,-228.43 124.27,-268.16 1047.63,-387.12 960.18,-1962.2 928.27,-2536.84 -2.34,-42.16 -4.38,-78.95 -5.89,-118.12 -509.23,-26.27 -1010.12,-134.32 -1471.97,-372.69 -604.34,-311.91 -841.99,-734.72 -843.56,-1122.94 -0.89,-222.8 76.38,-431.07 208.03,-600.67 129.67,-167.05 311.97,-297.01 523.53,-366.01 400.8,-130.75 905.44,-47.01 1346.64,416.34 187.39,196.8 354.44,471.25 473.15,843.71 71.68,224.94 125.86,486.58 156.1,789.64 172.43,-4.52 345.25,-17.53 516.95,-36.82 49.31,-218.69 126.09,-396.12 218.53,-535.92 196.94,-297.85 468.05,-431.58 713.07,-436.25 115.13,-1.8 209.94,90.07 211.74,205.2 1.8,115.14 -90.07,209.95 -205.2,211.75 -118.94,2.27 -258.21,78.78 -371.33,249.86 -44.11,66.7 -83.5,146.72 -115.88,241.14 28.89,-4.92 57.71,-9.95 86.45,-15.11 1024.9,-183.89 1712.69,-737.68 1966.65,-1292.21 93.3,-203.7 125.2,-403.74 89.87,-578.63 -33.18,-164.27 -129.43,-310.61 -294.21,-419.65 -418.42,-276.84 -1241.45,-324.4 -2550.5,105.23 -852.25,279.7 -1425.37,193.29 -1751.14,-65.07 -198.52,-157.43 -305.52,-374.35 -329.65,-614.27 -22.62,-225.08 30.07,-468.84 150.33,-697.45 258.84,-492.07 838.79,-926.47 1652.91,-939.17 324.75,-5.07 686.43,60.32 1012.79,238.72 273.14,149.31 520.12,376.1 698.95,704.28zm-3372.91 3343.14c389.74,201.15 815.95,296.57 1252.59,324.17 -27.83,-252.13 -73.85,-469.69 -133.45,-656.67 -97.4,-305.6 -230.59,-526.72 -378.3,-681.84 -312.09,-327.76 -652.26,-392.49 -914.99,-306.78 -131.41,42.87 -243.65,122.3 -322.41,223.76 -76.79,98.93 -121.87,218.33 -121.36,343.97 0.99,245.32 175.04,524.82 617.91,753.41z"/>
-         </g>
-      </svg>
-      <!-- Só a marca (sidebar recolhida) -->
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 6250 8090" class="brand-mark" role="img" aria-label="Samaúma">
-        <g style="fill: currentColor;"><path d="M4407.79 943.28c55.09,101.14 17.76,227.79 -83.39,282.87 -101.14,55.09 -227.78,17.76 -282.87,-83.39 -136.86,-251.16 -324.8,-424.14 -532.18,-537.5 -257.27,-140.64 -546.59,-192.11 -808.4,-188.03 -640.14,9.99 -1090.85,341.48 -1288.28,716.8 -82.36,156.57 -119.01,318.05 -104.54,461.99 12.99,129.12 69.59,245.08 174.32,328.13 224.93,178.39 663.18,224.11 1361.98,-5.24 1447.04,-474.92 2396.27,-396.24 2910.23,-56.18 262.65,173.79 417.35,413.4 472.44,686.17 52.96,262.14 10.52,550.23 -119.3,833.69 -303.24,662.13 -1100.53,1319.05 -2272.42,1529.31 -81.07,14.56 -162.79,28.21 -244.99,40.79 -1.5,18.83 -2.8,37.95 -3.89,57.42 -2.21,39.76 -4.01,66.07 -6.05,96.24 -36.38,535.85 -148.1,2181.42 927.53,2578.89 108.36,39.73 164,159.8 124.27,268.16 -39.73,108.36 -159.79,164 -268.16,124.27 -1369.85,-506.19 -1242.18,-2386.73 -1200.59,-2999.11 1.94,-28.64 3.71,-54.71 4.87,-72.4 -144.44,14.21 -289.66,24.01 -434.91,28.26 1.27,24.85 3.02,56.39 4.95,91.1 36.47,656.99 136.46,2457.82 -1201.35,2952.16 -108.36,39.73 -228.42,-15.91 -268.15,-124.27 -39.73,-108.36 15.91,-228.43 124.27,-268.16 1047.63,-387.12 960.18,-1962.2 928.27,-2536.84 -2.34,-42.16 -4.38,-78.95 -5.89,-118.12 -509.23,-26.27 -1010.12,-134.32 -1471.97,-372.69 -604.34,-311.91 -841.99,-734.72 -843.56,-1122.94 -0.89,-222.8 76.38,-431.07 208.03,-600.67 129.67,-167.05 311.97,-297.01 523.53,-366.01 400.8,-130.75 905.44,-47.01 1346.64,416.34 187.39,196.8 354.44,471.25 473.15,843.71 71.68,224.94 125.86,486.58 156.1,789.64 172.43,-4.52 345.25,-17.53 516.95,-36.82 49.31,-218.69 126.09,-396.12 218.53,-535.92 196.94,-297.85 468.05,-431.58 713.07,-436.25 115.13,-1.8 209.94,90.07 211.74,205.2 1.8,115.14 -90.07,209.95 -205.2,211.75 -118.94,2.27 -258.21,78.78 -371.33,249.86 -44.11,66.7 -83.5,146.72 -115.88,241.14 28.89,-4.92 57.71,-9.95 86.45,-15.11 1024.9,-183.89 1712.69,-737.68 1966.65,-1292.21 93.3,-203.7 125.2,-403.74 89.87,-578.63 -33.18,-164.27 -129.43,-310.61 -294.21,-419.65 -418.42,-276.84 -1241.45,-324.4 -2550.5,105.23 -852.25,279.7 -1425.37,193.29 -1751.14,-65.07 -198.52,-157.43 -305.52,-374.35 -329.65,-614.27 -22.62,-225.08 30.07,-468.84 150.33,-697.45 258.84,-492.07 838.79,-926.47 1652.91,-939.17 324.75,-5.07 686.43,60.32 1012.79,238.72 273.14,149.31 520.12,376.1 698.95,704.28zm-3372.91 3343.14c389.74,201.15 815.95,296.57 1252.59,324.17 -27.83,-252.13 -73.85,-469.69 -133.45,-656.67 -97.4,-305.6 -230.59,-526.72 -378.3,-681.84 -312.09,-327.76 -652.26,-392.49 -914.99,-306.78 -131.41,42.87 -243.65,122.3 -322.41,223.76 -76.79,98.93 -121.87,218.33 -121.36,343.97 0.99,245.32 175.04,524.82 617.91,753.41z"/></g>
-      </svg>
+      <!-- Marca (logo e símbolo): clonada de components_marca.html logo abaixo -->
     </div>
+    <script>
+      (function () { // logo e símbolo vêm de components_marca.html; as classes de tamanho/alternância são deste cabeçalho
+        var marca = document.getElementById('samauma-marca').content.cloneNode(true);
+        marca.children[0].classList.add('brand-logo'); marca.children[1].classList.add('brand-mark');
+        document.querySelector('#sidebar .brand').appendChild(marca);
+      })();
+    </script>
 
     <!-- Navegação Principal -->
     <!-- Mensagens: Enviadas/Rascunhos/Programadas só para quem pode enviar (ADMIN/DEV ou dirigente) — reveladas em ntfAposLogin() (components_notificacoes.html).
@@ -3257,7 +3435,7 @@ var SeletorResponsaveis = (function() {
 .selop-oculto { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; clip: rect(0 0 0 0); }
 .selop-trigger { width: 100%; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .selop-trigger.selop-vazio { color: var(--ds-color-text-muted); }
-:has(> .selop-lista) { position: relative; }  .selsup-lista.selop-lista { position: absolute; left: 0; right: 0; top: calc(100% + 4px); margin-top: 0; }
+.selsup-lista.selop-lista { position: absolute; left: 0; right: 0; top: calc(100% + 4px); margin-top: 0; }
 .selsup-desab .selsup-chip-x { display: none; }
 .selsup-desab .selsup-input-wrap > .ds-input { cursor: not-allowed; background: var(--ds-color-surface-2); }
 .selsup-trava { font-size: 16px; color: var(--ds-color-text-muted); cursor: help; vertical-align: middle; margin-left: 4px; }
@@ -3674,8 +3852,9 @@ var SeletorOpcao = (function () {
     trig.type = 'button'; trig.className = 'ds-select selop-trigger'; trig.setAttribute('aria-haspopup', 'listbox'); trig.setAttribute('aria-expanded', 'false');
     var lista = document.createElement('div');
     lista.className = 'selsup-lista selop-lista hidden'; lista.setAttribute('role', 'listbox');
-    host.insertBefore(trig, sel);
-    host.appendChild(lista);
+    var wrap = document.createElement('div'); wrap.className = 'selsup-input-wrap'; // ancora a lista ao campo (e não ao contêiner, que tem a linha de erro/ajuda)
+    wrap.appendChild(trig); wrap.appendChild(lista);
+    host.insertBefore(wrap, sel);
     sel.classList.add('selop-oculto'); sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
     if (sel.id) { trig.id = sel.id + '-selop'; var lbl = document.querySelector('label[for="' + sel.id + '"]'); if (lbl) lbl.setAttribute('for', trig.id); }
     var aberto = false, ativo = -1;
