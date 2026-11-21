@@ -2755,7 +2755,7 @@ body.high-contrast .hdr-vinc-opcao, body.high-contrast .sidebar-footer .hdr-vinc
   .nav-item { min-height: 44px; }
   .nav-submenu-item { min-height: 44px; }
   .tb-icon-btn { width: 44px; height: 44px; }
-  .tb-burger, #tb-voltar { display: inline-flex; }   /* voltar no topo só no mobile, ao lado do menu */
+  .tb-burger, #tb-voltar { display: inline-flex; }   /* voltar no topo só no mobile (onde há voltar não há ☰; o menu abre também arrastando da borda) */ #topbar:has(#tb-voltar:not(.hidden)) .tb-burger { display: none; }
   .tb-hide-mobile, .tb-search { display: none; }
   .ds-topbar { padding: 0 12px; gap: 4px; }
   .sb-user { min-height: 44px; }
@@ -3122,6 +3122,21 @@ function toggleMenu() {
   if (burger) { burger.setAttribute('aria-expanded', String(abrir)); burger.setAttribute('aria-label', abrir ? 'Fechar menu' : 'Abrir menu'); }
   if (!abrir) fecharNavSubmenus();
 }
+// Mobile: arrastar da borda esquerda para a direita abre o menu lateral (o ☰ some onde há botão de voltar).
+(function () {
+  var x0 = null, y0 = null;
+  document.addEventListener('touchstart', function (e) {
+    var t = e.touches[0];
+    x0 = (e.touches.length === 1 && t.clientX <= 40 && window.matchMedia('(max-width: 768px)').matches) ? t.clientX : null; y0 = t.clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (x0 === null) return;
+    var t = e.changedTouches[0], dx = t.clientX - x0, dy = Math.abs(t.clientY - y0);
+    x0 = null;
+    if (dx > 60 && dx > dy * 1.5 && !_drawerAberto()) toggleMenu();
+  }, { passive: true });
+})();
+
 // MESMO nome. Corrige o bug: antes chamava fecharNavSubmenus() sempre, recolhendo o grupo na sidebar expandida.
 function fecharMenuMobile() {
   if (_drawerAberto()) toggleMenu();
@@ -10129,7 +10144,8 @@ function uiFabFechar(el) {
 var _uiNavPilha = [];
 var _uiNavVoltando = false;
 function uiNavRegistrar(pagina, extra) {
-  if (_uiNavVoltando) { _uiNavVoltando = false; }
+  if (pagina === 'home') { _uiNavPilha = [{ pagina: pagina, extra: extra || {} }]; _uiNavVoltando = false; }   // o Início é a raiz: recomeça a pilha, sem voltar
+  else if (_uiNavVoltando) { _uiNavVoltando = false; }
   else {
     var topo = _uiNavPilha[_uiNavPilha.length - 1];
     if (!topo || topo.pagina !== pagina || JSON.stringify(topo.extra) !== JSON.stringify(extra || {})) _uiNavPilha.push({ pagina: pagina, extra: extra || {} });
@@ -10168,7 +10184,9 @@ function uiVoltarGarantir(pagina) {
     b.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>';
     linha.insertBefore(b, linha.firstChild);
   });
-  var some = _uiNavPilha.length < 2;
+  // sem para onde voltar, ou a tela anterior é o Início (que tem item próprio na barra de navegação): sem botão
+  var anterior = _uiNavPilha[_uiNavPilha.length - 2];
+  var some = !anterior || anterior.pagina === 'home';
   Array.prototype.forEach.call(document.querySelectorAll('.ds-pagina__voltar'), function (b) { b.classList.toggle('hidden', some); });
 }
 
