@@ -137,9 +137,14 @@ main { flex: 1; min-height: 0; padding: var(--ds-main-pad-y) var(--ds-main-pad-x
 }
 @media (max-width: 768px) {
   .ds-pagina__hero { flex-direction: column; align-items: stretch; min-height: 0; padding-right: 0; }
+  .ds-pagina__titulo-linha { display: none; }   /* no mobile o título (e o voltar) moram na barra do topo, no lugar da trilha */
   .ds-pagina__acoes { position: static; width: 100%; height: auto; margin-top: 0; padding-left: 0; justify-content: flex-end; background: none; }
   .ds-pagina__faixa { position: static; padding-right: 0; }
-  .ds-pagina__filtros { position: relative; }   /* solta, mas ainda posicionada (âncora de ::after das barras) */
+  /* busca e filtros grudam no alto da área rolável (padrão Gmail); top: 0 anula o deslocamento do desktop */
+  .ds-pagina__filtros { top: calc(-1 * var(--ds-main-pad-y)); }   /* o sticky para no padding da área rolável: compensa para colar no topo */
+  /* hero sem nada além do título (que no mobile mora na barra do topo) não ocupa espaço */
+  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha))) { display: none; }
+  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha))) ~ .ds-pagina__filtros { margin-top: calc(-1 * var(--ds-main-pad-y)); }   /* busca colada ao topo */
 }
 
 .card { background: var(--ds-glass-bg-strong); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-2xl); box-shadow: var(--ds-glass-shadow); padding: 20px; margin-bottom: 20px; }
@@ -663,14 +668,15 @@ body.high-contrast {
   .ds-tabela, .ds-tabela thead { display: block; width: 100%; }
   /* cabeçalho vira uma barra de "selecionar todos" + ordenação */
   .ds-tabela thead tr {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 8px 12px;
-    background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-glass-border); border-radius: var(--ds-r-xl);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 4px 4px 0;   /* sem moldura: é a linha "Selecionar tudo" */
   }
   .ds-tabela thead th { position: static; padding: 6px 0; border: none; display: inline-flex; align-items: center; }
   .ds-tabela thead .ds-tabela__check { width: auto; padding: 6px 4px 6px 0; }
-  .ds-tabela thead .ds-tabela__so-larga { display: inline-flex; }
-  .ds-tabela thead .ds-col-sobreposta, .ds-tabela thead .ds-col-acoes { margin-left: auto; }
-  .ds-tabela thead .ds-tabela__card { display: none; }
+  /* no cartão de cabeçalho ficam só o "selecionar todos" e o botão de ordenar (que abre o sheet de ordenação) */
+  .ds-tabela thead th.ds-th-ord, .ds-tabela thead .ds-th-ferramentas__rotulo { display: none; }
+  /* no mobile o cabeçalho é a linha "Selecionar tudo" (a tela o mostra só no modo de seleção): caixa + rótulo .ds-tabela__card; sem ordenação nem ferramentas (ordenar fica na barra de filtros) */
+  .ds-tabela thead .ds-tabela__card { display: inline; margin-left: var(--ds-space-2); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
+  .ds-tabela thead th.ds-tabela__card, .ds-tabela thead .ds-col-sobreposta, .ds-tabela thead .ds-col-acoes { display: none; }
   /* corpo: grade de cartões (1 coluna no celular; 2 ou mais em telas maiores) */
   .ds-tabela tbody { display: grid; width: 100%; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 12px; }
   .ds-tabela tbody tr {
@@ -727,6 +733,66 @@ body.high-contrast {
   .ds-fab { display: flex; }
   .ds-pagina:has(> .ds-fab) > .ds-pagina__acoes, .ds-pagina:has(> .ds-fab) .ds-pagina__hero > .ds-pagina__acoes { display: none; }
 }
+
+/* Voltar: botão discreto (.ds-icon-action) à esquerda do título; injetado por uiVoltarGarantir (app_ui_utils.html) em todo .ds-pagina__hero. Some quando não há para onde voltar. */
+.ds-pagina__voltar { flex: none; margin-left: calc(-1 * var(--ds-space-2)); background: none; border-color: transparent; box-shadow: none; }
+.ds-pagina__voltar.hidden { display: none; }
+
+/* Bottom sheet (painel que sobe da base da tela, no mobile): .ds-sheet(.is-aberto) > .ds-sheet__fundo + .ds-sheet__painel > .ds-sheet__alca + .ds-sheet__cab (__titulo + ação opcional, ex. "Limpar" + fechar à direita) + .ds-sheet__corpo + .ds-sheet__rodape (opcional).
+   Aberto por uiSheetAbrir(opcoes) (app_ui_utils.html): fecha no fundo, no ×, no Esc e arrastando a alça para baixo. Grupos de opções dentro do corpo: .ds-sheet__grupo > .ds-sheet__rotulo + itens .acoes-menu-item (abrirMenuSelecao no mobile). */
+.ds-sheet { position: fixed; inset: 0; z-index: var(--ds-z-modal); display: flex; align-items: flex-end; justify-content: center; visibility: hidden; pointer-events: none; }
+.ds-sheet.is-aberto { visibility: visible; pointer-events: auto; }
+.ds-sheet__fundo { position: absolute; inset: 0; background: var(--ds-color-scrim); opacity: 0; transition: opacity var(--ds-duration-base) var(--ds-ease-standard); }
+.ds-sheet.is-aberto .ds-sheet__fundo { opacity: 1; }
+.ds-sheet__painel {
+  position: relative; display: flex; flex-direction: column; width: 100%; max-width: 560px; max-height: 85vh;
+  background: var(--ds-color-surface); border-radius: var(--ds-r-2xl) var(--ds-r-2xl) 0 0; box-shadow: var(--ds-shadow-4);
+  transform: translateY(100%); transition: transform var(--ds-duration-slow) var(--ds-ease-emphasized);
+}
+.ds-sheet.is-aberto .ds-sheet__painel { transform: none; }
+.ds-sheet__alca { flex: none; width: 40px; height: 4px; margin: var(--ds-space-2) auto 0; border-radius: var(--ds-r-pill); background: var(--ds-color-border); touch-action: none; }
+.ds-sheet__cab { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-3); padding: var(--ds-space-2) var(--ds-space-4) var(--ds-space-2); touch-action: none; }
+.ds-sheet__titulo { flex: 1 1 auto; min-width: 0; margin: 0; font-size: var(--ds-text-md); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ds-sheet__corpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--ds-space-5); padding: var(--ds-space-2) var(--ds-space-4) var(--ds-space-4); }
+.ds-sheet__rodape { flex: none; display: flex; gap: var(--ds-space-2); padding: var(--ds-space-3) var(--ds-space-4); padding-bottom: max(var(--ds-space-3), env(safe-area-inset-bottom)); border-top: var(--ds-borda) solid var(--ds-color-border); }
+.ds-sheet__rodape > .ds-btn { flex: 1; }
+.ds-sheet__grupo { display: flex; flex-direction: column; gap: var(--ds-space-2); }
+.ds-sheet__rotulo { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ds-color-text-muted); }
+
+/* Barra de navegação (mobile): fixa na base do app, só ≤768px. .ds-navbar > button.ds-navbar__item(.is-ativo) > ícone + .ds-navbar__rotulo.
+   Primeiro, "Abas" (--destaque: cor de ação e separador), que só existe quando a página tem abas e surge com animação; depois o ciclo do plano
+   (Início, Planos, Execução, Avaliação). Montada e mantida por uiNavbarAtualizar() (app_ui_utils.html), chamada pelo navigate(). */
+.ds-navbar { display: none; }
+@keyframes ds-navbar-surgir {
+  0% { opacity: 0; transform: translateY(16px) scale(.5); }
+  60% { opacity: 1; transform: translateY(-3px) scale(1.12); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes ds-navbar-pulso {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ds-color-action) 55%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+@media (max-width: 768px) {
+  .ds-navbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--ds-z-header); display: flex; align-items: stretch;
+    padding: var(--ds-space-1) var(--ds-space-2) max(var(--ds-space-1), env(safe-area-inset-bottom));
+    background: var(--ds-color-surface); border-top: var(--ds-borda) solid var(--ds-color-border);
+  }
+  .ds-navbar__item {
+    flex: 1 1 0; min-width: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    padding: var(--ds-space-1); border: 0; background: none; cursor: pointer; color: var(--ds-color-text-muted); font-family: var(--ds-font-sans);
+  }
+  .ds-navbar__item .material-symbols-outlined { font-size: var(--ds-icon-lg); padding: 2px var(--ds-space-4); border-radius: var(--ds-r-pill); }
+  .ds-navbar__item.is-ativo { color: var(--ds-color-text); }
+  .ds-navbar__item.is-ativo .material-symbols-outlined { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
+  .ds-navbar__item.hidden { display: none; }
+  .ds-navbar__item--destaque { flex: none; padding: var(--ds-space-1) var(--ds-space-3) var(--ds-space-1) var(--ds-space-1); margin-right: var(--ds-space-1); border-right: var(--ds-borda) solid var(--ds-color-border); color: var(--ds-color-action); font-weight: var(--ds-weight-semibold); animation: ds-navbar-surgir var(--ds-duration-slow) var(--ds-ease-emphasized) both; }
+  .ds-navbar__item--destaque .material-symbols-outlined { background: var(--ds-color-action); color: var(--ds-color-on-action); animation: ds-navbar-pulso 1.2s var(--ds-ease-standard) .35s 2; }
+  .ds-navbar__rotulo { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  body:has(.ds-navbar) #main-content { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  body:has(.ds-navbar) .ds-fab { bottom: calc(72px + var(--ds-space-4)); }
+}
+@media (prefers-reduced-motion: reduce) { .ds-navbar__item--destaque, .ds-navbar__item--destaque .material-symbols-outlined { animation: none; } }
 
 /* ---- Badges / chips ---- */
 /* Forma única da pílula (altura, arredondamento, fonte): badge de situação, tipo/nível e responsável compartilham as mesmas medidas; cada um só define cor e peso. */
@@ -988,6 +1054,12 @@ body.high-contrast .ds-tabs-nav__item.active { border-bottom-color: var(--ds-col
 .ds-tab-count--notificacao,
 .ds-tabs-nav__item.active .ds-tab-count--notificacao { background: var(--ds-color-notificacao); color: var(--ds-color-on-notificacao); }
 
+@media (max-width: 768px) {
+  /* Abas no mobile: saem da tela; trocam-se pelo item "Abas" da barra de navegação (.ds-navbar), que as lista num bottom sheet */
+  .ds-tabs-nav { display: none; }
+}
+}
+
 /* ---- Abas do painel lateral (Detalhes / Atividade / Lixeira…) — .ds-tabs-painel ---- */
 .ds-tabs-painel { display: flex; align-items: center; gap: 4px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--ds-color-border); flex-shrink: 0; }
 .ds-tabs-painel__item {
@@ -1165,7 +1237,8 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
   font-size: var(--ds-icon-lg); color: var(--ds-color-text-muted); pointer-events: none;
 }
-.ds-busca__input { width: 220px; max-width: 60vw; padding-left: 42px; padding-right: 38px; }
+/* mesma altura e arredondamento das pílulas de filtro (.ds-filtro__btn) */
+.ds-busca__input { width: 220px; max-width: 60vw; height: 36px; padding-left: 42px; padding-right: 38px; border-radius: var(--ds-r-pill); }
 .ds-busca__limpar {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
@@ -1180,7 +1253,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-filtro { display: inline-flex; align-items: stretch; }
 .ds-filtro__btn {
   display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px;
-  background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-lg);
+  background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-pill);
   color: var(--ds-color-text); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
   cursor: pointer; white-space: nowrap;
 }
@@ -1195,7 +1268,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   display: inline-flex; align-items: center; justify-content: center; width: 26px; padding: 0; cursor: pointer;
   background: var(--ds-color-info-bg); color: var(--ds-color-info-fg);
   border: var(--ds-borda) solid var(--ds-color-info-bg); border-left-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
-  border-top-right-radius: var(--ds-r-lg); border-bottom-right-radius: var(--ds-r-lg);
+  border-top-right-radius: var(--ds-r-pill); border-bottom-right-radius: var(--ds-r-pill);
 }
 .ds-filtro__x.hidden { display: none; }
 .ds-filtro__x:hover { filter: brightness(0.94); }
@@ -1248,10 +1321,16 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-split .ds-split__seta { border-radius: 0 var(--ds-r-sm) var(--ds-r-sm) 0; padding: 0 8px; min-width: 40px; border-left: var(--ds-borda) solid color-mix(in srgb, var(--ds-color-on-action) 35%, transparent); }
 .ds-split .ds-split__principal.hidden + .ds-split__seta { border-radius: var(--ds-r-sm); border-left: 0; }
 
+/* Mobile (padrão Gmail/Drive): a busca fica sempre aberta e ocupa a linha (uiBuscaAbrir/uiBuscaRecolher, app_ui_utils.html); os filtros são pílulas
+   que abrem o bottom sheet do próprio filtro (abrirMenuSelecao no mobile) e mostram o valor escolhido; limpar um filtro é no × da própria pílula (ou no "Limpar" do sheet); sem "Limpar filtros" geral. */
 @media (max-width: 768px) {
   .ds-filtros { flex-wrap: wrap; }
-  .ds-filtro { flex: 1 1 108px; }
-  .ds-filtro__btn { width: 100%; justify-content: space-between; }
+  .ds-filtros__normal { row-gap: var(--ds-space-2); }
+  .ds-filtros__normal > .ds-busca { flex: 1 1 100%; }
+  .ds-busca__caixa { flex: 1 1 auto; }
+  .ds-busca__input { width: 100%; max-width: none; }
+  .ds-filtro { flex: none; }
+  .ds-filtros__normal > .ds-link { display: none; }  /* sem "Limpar filtros" geral: cada filtro limpa no próprio × */
 }
 
 /* ===================== MENUS SUSPENSOS E AÇÕES DE LINHA (canônicos; script em components_acoes_linha.html) =====================
@@ -1377,6 +1456,9 @@ tr:hover > td > .ds-celula-sobreposta > .ds-celula-sobreposta__acoes, tr:focus-w
 @media (max-width: 768px) {
   .acoes-direto { display: none; }
   .acoes-so-mobile { display: inline-flex; }
+  /* na barra de seleção em lote todas as ações ficam à mostra, sem ⋮ */
+  .ds-filtros__selecao .acoes-direto { display: inline-flex; }
+  .ds-filtros__selecao .acoes-so-mobile { display: none; }
   .acoes-btn { width: 44px; height: 44px; }
   .acoes-menu-item { min-height: 44px; }
 }
@@ -2307,6 +2389,11 @@ if (!window._uiDelegacaoAtiva) {
       <span class="material-symbols-outlined">menu</span>
     </button>
 
+    <!-- Voltar no topo: só no mobile, onde o título da página mora na barra (uiVoltarGarantir mostra/esconde junto com o da página) -->
+    <button type="button" class="tb-icon-btn ds-pagina__voltar hidden" id="tb-voltar" data-on-click="ui.chamar" data-chamada-click="uiVoltar()" data-title="Voltar" aria-label="Voltar">
+      <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+    </button>
+
     <!-- #breadcrumb-nav (components_breadcrumb.html) é movido para cá em runtime -->
     <div class="tb-crumbs" id="topbar-crumbs"></div>
 
@@ -2586,7 +2673,7 @@ body.high-contrast .hdr-vinc-opcao, body.high-contrast .sidebar-footer .hdr-vinc
 }
 .tb-icon-btn .material-symbols-outlined { font-size: 22px; }
 .tb-icon-btn:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
-.tb-burger { display: none; color: var(--ds-color-text); margin-left: -8px; }
+.tb-burger, #tb-voltar { display: none; color: var(--ds-color-text); margin-left: -8px; }
 
 .tb-icon-btn { position: relative; }
 
@@ -2668,14 +2755,14 @@ body.high-contrast .hdr-vinc-opcao, body.high-contrast .sidebar-footer .hdr-vinc
   .nav-item { min-height: 44px; }
   .nav-submenu-item { min-height: 44px; }
   .tb-icon-btn { width: 44px; height: 44px; }
-  .tb-burger { display: inline-flex; }
+  .tb-burger, #tb-voltar { display: inline-flex; }   /* voltar no topo só no mobile, ao lado do menu */
   .tb-hide-mobile, .tb-search { display: none; }
   .ds-topbar { padding: 0 12px; gap: 4px; }
   .sb-user { min-height: 44px; }
   .user-menu-item { min-height: 44px; }
 
-  /* no mobile só a página atual aparece na trilha */
-  .ds-topbar .bc-item, .ds-topbar .bc-label, .ds-topbar .bc-sep { display: none; }
+  /* no mobile não há trilha: o item atual vira o título da página (o do corpo some, .ds-pagina__titulo-linha) */
+  .ds-topbar .bc-item, .ds-topbar .bc-label, .ds-topbar .bc-sep { display: none; } #topbar .bc-current { font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 </style>
 
@@ -9341,13 +9428,40 @@ function acoesLinhaFechar(devolverFoco) {
 // opções", pra qualquer seletor de opção única de uma tela inteira (ex.: filtros
 // Tipo/Ano/Status e o menu "Ordenar" em pages_planos_lista.html).
 // grupos = [{ label?: string, itens: [{ label, ativo, dot?: corCss, onclick }] }]
+// opcoes (opcional) = { titulo, limpar }: no celular (≤768px) o menu abre como bottom sheet (uiSheetAbrir) com esse
+// título; `limpar` (código JS) põe "Limpar" no canto do cabeçalho — passe só quando houver seleção.
 var _menuSelecaoGatilho = null;
+var _menuSelecaoNoSheet = false;
 
-function abrirMenuSelecao(gatilho, grupos) {
+function abrirMenuSelecao(gatilho, grupos, opcoes) {
   if (!gatilho || gatilho === document.documentElement || gatilho === document.body) return;
   if (_menuSelecaoGatilho === gatilho) { fecharMenuSelecao(); return; }
   fecharMenuSelecao();
   acoesLinhaFechar(); // nunca dois popovers abertos ao mesmo tempo
+  opcoes = opcoes || {};
+
+  if (_acoesLinhaMobile()) {
+    var corpo = grupos.map(function(g) {
+      var itens = g.itens.map(function(it) {
+        var dot = it.dot ? '<span class="acoes-menu-dot" style="background:' + it.dot + '"></span>' : '';
+        return '<button type="button" role="menuitemradio" aria-checked="' + (it.ativo ? 'true' : 'false') + '" class="acoes-menu-item"'
+          + ' ' + uiAtributosAcao('fecharMenuSelecao(); ' + it.onclick + '', 'click') + '>'
+          + '<span class="material-symbols-outlined" aria-hidden="true">' + (it.ativo ? 'check_circle' : 'radio_button_unchecked') + '</span>'
+          + dot + '<span>' + escapeHtml(it.label) + '</span></button>';
+      }).join('');
+      return '<div class="ds-sheet__grupo">' + (g.label ? '<span class="ds-sheet__rotulo">' + escapeHtml(g.label) + '</span>' : '') + '<div>' + itens + '</div></div>';
+    }).join('');
+    var limpar = opcoes.limpar ? '<button type="button" class="ds-link"' + uiAtributosAcao('fecharMenuSelecao(); ' + opcoes.limpar, 'click') + '>Limpar</button>' : '';
+    _menuSelecaoGatilho = gatilho;
+    _menuSelecaoNoSheet = true;
+    gatilho.setAttribute('aria-expanded', 'true');
+    var titulo = opcoes.titulo || gatilho.getAttribute('aria-label') || (gatilho.textContent || '').trim();
+    uiSheetAbrir({ titulo: titulo, corpo: corpo, acaoCab: limpar, aoFechar: function() {
+      _menuSelecaoNoSheet = false;
+      if (_menuSelecaoGatilho) { _menuSelecaoGatilho.setAttribute('aria-expanded', 'false'); _menuSelecaoGatilho = null; }
+    } });
+    return;
+  }
 
   var pop = document.createElement('div');
   pop.className = 'acoes-menu';
@@ -9381,6 +9495,7 @@ function abrirMenuSelecao(gatilho, grupos) {
 }
 
 function fecharMenuSelecao(devolverFoco) {
+  if (_menuSelecaoNoSheet) { uiSheetFechar(); return; }
   var pop = document.getElementById('menu-selecao-aberto');
   if (pop) pop.remove();
   if (_menuSelecaoGatilho) {
@@ -9935,6 +10050,7 @@ function uiTituloPagina(el, texto) {
 // (abas, filtros, barra de seleção, ações); a mudança de largura da janela e a chegada das fontes remedem todas as páginas visíveis.
 // Página escondida não é medida (mediria 0 e desmontaria o empilhamento). Filtros: o primeiro .ds-pagina__filtros visível.
 function uiPaginaMedir(pagina) {
+  if (pagina) { uiVoltarGarantir(pagina); _uiBuscaSincronizar(pagina); }
   if (!pagina || !pagina.offsetHeight) return;
   var visivel = function (sel) {
     return Array.prototype.filter.call(pagina.querySelectorAll(sel), function (el) { return el.offsetHeight > 0; })[0];
@@ -10007,6 +10123,192 @@ function uiFabFechar(el) {
   var gatilho = fab.querySelector('.ds-fab__principal');
   if (gatilho) gatilho.setAttribute('aria-expanded', 'false');
 }
+
+// Voltar: pilha das telas visitadas (registrada por navigate). uiVoltar() volta à anterior; o botão (.ds-pagina__voltar) é injetado por uiVoltarGarantir em todo
+// .ds-pagina__hero (e remedido por uiPaginaMedir, que as telas montadas por script já chamam). Hero que já tem seu próprio "Voltar" não ganha outro.
+var _uiNavPilha = [];
+var _uiNavVoltando = false;
+function uiNavRegistrar(pagina, extra) {
+  if (_uiNavVoltando) { _uiNavVoltando = false; }
+  else {
+    var topo = _uiNavPilha[_uiNavPilha.length - 1];
+    if (!topo || topo.pagina !== pagina || JSON.stringify(topo.extra) !== JSON.stringify(extra || {})) _uiNavPilha.push({ pagina: pagina, extra: extra || {} });
+    if (_uiNavPilha.length > 30) _uiNavPilha.shift();
+  }
+  uiVoltarGarantir();
+}
+function uiVoltar() {
+  if (_uiNavPilha.length < 2) return;
+  _uiNavPilha.pop();
+  var destino = _uiNavPilha[_uiNavPilha.length - 1];
+  _uiNavVoltando = true;
+  navigate(destino.pagina, destino.extra);
+}
+function uiVoltarGarantir(pagina) {
+  var paginas = pagina ? [pagina] : Array.prototype.slice.call(document.querySelectorAll('.ds-pagina'));
+  paginas.forEach(function (p) {
+    var hero = p.querySelector(':scope > .ds-pagina__hero');
+    if (!hero || hero.querySelector('.ds-pagina__voltar, [aria-label^="Voltar"]')) return;
+    var titulo = hero.querySelector('.ds-pagina__titulo');
+    if (!titulo) return;
+    var linha = titulo.closest('.ds-pagina__titulo-linha');
+    if (!linha) {
+      linha = document.createElement('div');
+      linha.className = 'ds-pagina__titulo-linha';
+      titulo.parentNode.insertBefore(linha, titulo);
+      linha.appendChild(titulo);
+    }
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ds-icon-action ds-pagina__voltar';
+    b.setAttribute('data-title', 'Voltar');
+    b.setAttribute('aria-label', 'Voltar');
+    b.setAttribute('data-on-click', 'ui.chamar');
+    b.setAttribute('data-chamada-click', 'uiVoltar()');
+    b.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>';
+    linha.insertBefore(b, linha.firstChild);
+  });
+  var some = _uiNavPilha.length < 2;
+  Array.prototype.forEach.call(document.querySelectorAll('.ds-pagina__voltar'), function (b) { b.classList.toggle('hidden', some); });
+}
+
+// Bottom sheet (.ds-sheet): uiSheetAbrir({ titulo, corpo, rodape, acaoCab, aoFechar }) — corpo, rodape e acaoCab (canto direito do cabeçalho, ex. "Limpar") são HTML. uiSheetAtualizar(corpo, rodape) redesenha o conteúdo sem fechar
+// (opção escolhida que muda o que está à mostra); uiSheetFechar() fecha. Um sheet por vez. Fecha também no Esc e arrastando a alça/cabeçalho para baixo.
+var _uiSheet = null;
+function uiSheetAbrir(op) {
+  uiSheetFechar(true);
+  var el = document.createElement('div');
+  el.className = 'ds-sheet';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.setAttribute('aria-label', op.titulo || 'Opções');
+  el.innerHTML = '<div class="ds-sheet__fundo"' + uiAtributosAcao('uiSheetFechar()', 'click') + '></div>'
+    + '<div class="ds-sheet__painel"><div class="ds-sheet__alca" aria-hidden="true"></div>'
+    + '<div class="ds-sheet__cab"><h2 class="ds-sheet__titulo">' + escapeHtml(op.titulo || '') + '</h2>' + (op.acaoCab || '')
+    + '<button type="button" class="ds-icon-action" aria-label="Fechar"' + uiAtributosAcao('uiSheetFechar()', 'click') + '><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div>'
+    + '<div class="ds-sheet__corpo">' + (op.corpo || '') + '</div>'
+    + (op.rodape ? '<div class="ds-sheet__rodape">' + op.rodape + '</div>' : '') + '</div>';
+  document.body.appendChild(el);
+  _uiSheet = { el: el, aoFechar: op.aoFechar };
+  window.requestAnimationFrame(function () { window.requestAnimationFrame(function () { el.classList.add('is-aberto'); }); });
+  // arrastar para baixo (alça e cabeçalho)
+  var painel = el.querySelector('.ds-sheet__painel'), y0 = null;
+  Array.prototype.forEach.call(el.querySelectorAll('.ds-sheet__alca, .ds-sheet__cab'), function (a) {
+    a.addEventListener('touchstart', function (e) { y0 = e.touches[0].clientY; }, { passive: true });
+    a.addEventListener('touchmove', function (e) { if (y0 !== null) painel.style.setProperty('transform', 'translateY(' + Math.max(0, e.touches[0].clientY - y0) + 'px)'); }, { passive: true });
+    a.addEventListener('touchend', function (e) {
+      var dy = y0 === null ? 0 : e.changedTouches[0].clientY - y0; y0 = null;
+      painel.style.removeProperty('transform');
+      if (dy > 80) uiSheetFechar();
+    });
+  });
+  return el;
+}
+function uiSheetAtualizar(corpo, rodape) {
+  if (!_uiSheet) return;
+  var c = _uiSheet.el.querySelector('.ds-sheet__corpo'), r = _uiSheet.el.querySelector('.ds-sheet__rodape');
+  if (c && corpo !== undefined) c.innerHTML = corpo;
+  if (r && rodape !== undefined) r.innerHTML = rodape;
+}
+function uiSheetFechar(imediato) {
+  if (!_uiSheet) return;
+  var s = _uiSheet; _uiSheet = null;
+  s.el.classList.remove('is-aberto');
+  if (imediato === true) s.el.remove(); else window.setTimeout(function () { s.el.remove(); }, 340);
+  if (typeof s.aoFechar === 'function') s.aoFechar();
+}
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && _uiSheet) uiSheetFechar(); });
+
+// Busca expansível (.ds-busca): no desktop é o ícone que expande ao clicar; no celular (padrão Gmail/Drive) fica sempre aberta.
+// Telas abrem e recolhem só por aqui; uiPaginaMedir sincroniza as buscas da página (a largura pode ter cruzado os 768px).
+function _uiBuscaMobile() { return window.matchMedia('(max-width: 768px)').matches; }
+function uiBuscaAbrir(wrap, focar) {
+  if (!wrap) return;
+  var toggle = wrap.querySelector(':scope > .ds-icon-action'), caixa = wrap.querySelector('.ds-busca__caixa');
+  if (toggle) toggle.classList.add('hidden');
+  if (caixa) caixa.classList.remove('hidden');
+  var inp = caixa && caixa.querySelector('input');
+  if (focar && inp) inp.focus();
+}
+function uiBuscaRecolher(wrap, forcar) {
+  if (!wrap || _uiBuscaMobile()) return;
+  var toggle = wrap.querySelector(':scope > .ds-icon-action'), caixa = wrap.querySelector('.ds-busca__caixa');
+  var inp = caixa && caixa.querySelector('input');
+  if (!forcar && inp && inp.value) return;
+  if (caixa) caixa.classList.add('hidden');
+  if (toggle) toggle.classList.remove('hidden');
+}
+function _uiBuscaSincronizar(raiz) {
+  Array.prototype.forEach.call((raiz || document).querySelectorAll('.ds-busca'), function (w) {
+    if (_uiBuscaMobile()) uiBuscaAbrir(w, false); else uiBuscaRecolher(w, false);
+  });
+}
+
+// Rolagem infinita: observa um sentinela logo depois de `depoisDe` (dentro de #main-content, que é quem rola) e chama aoChegar() quando ele
+// se aproxima do fim da tela. Devolve { verificar() }: chame depois de acrescentar itens (se o sentinela continuar à vista, carrega de novo).
+function uiRolagemInfinita(depoisDe, aoChegar) {
+  if (!depoisDe) return { verificar: function () {} };
+  if (depoisDe._uiRolagem) { depoisDe._uiRolagem.aoChegar = aoChegar; return depoisDe._uiRolagem; }
+  var sentinela = document.createElement('div');
+  sentinela.setAttribute('aria-hidden', 'true');
+  depoisDe.parentNode.insertBefore(sentinela, depoisDe.nextSibling);
+  var ctl = { aoChegar: aoChegar };
+  var obs = new IntersectionObserver(function (es) {
+    if (es.some(function (e) { return e.isIntersecting; })) ctl.aoChegar();
+  }, { root: document.getElementById('main-content'), rootMargin: '0px 0px 400px 0px' });
+  obs.observe(sentinela);
+  ctl.verificar = function () { obs.unobserve(sentinela); obs.observe(sentinela); };
+  depoisDe._uiRolagem = ctl;
+  return ctl;
+}
+
+// Barra de navegação do mobile (.ds-navbar, index.html): itens fixos + "Abas", que aparece só quando a página visível tem abas
+// (.ds-tabs-nav, escondidas no mobile). uiNavbarAtualizar marca o item ativo; roda no navigate() e quando o conteúdo muda
+// (as abas costumam chegar depois, com os dados).
+var UI_NAVBAR_PAGINAS = { inicio: ['home'], planos: ['planos', 'plano-detalhe'], execucao: ['execucao-planos', 'execucao-tarefas', 'validacao-resultados'], avaliacao: ['avaliacao-planos', 'avaliacao-executar'] };
+function _uiNavbarAbasDaPagina() {
+  var pag = document.querySelector('#main-content > .page-content:not(.hidden)');
+  var barra = pag && pag.querySelector('.ds-tabs-nav');
+  return barra ? Array.prototype.slice.call(barra.querySelectorAll('.ds-tabs-nav__item')).filter(function (b) { return !b.classList.contains('hidden'); }) : [];
+}
+function _uiNavbarRotulo(el) {
+  var c = el.cloneNode(true);
+  Array.prototype.forEach.call(c.querySelectorAll('.material-symbols-outlined, .ds-tab-count'), function (x) { x.remove(); });
+  return (c.textContent || '').replace(/\s+/g, ' ').trim();
+}
+function uiNavbarAtualizar() {
+  var nav = document.getElementById('ui-navbar');
+  if (!nav) return;
+  var pag = document.querySelector('#main-content > .page-content:not(.hidden)');
+  var id = pag ? pag.id.replace(/^page-/, '') : '';
+  Array.prototype.forEach.call(nav.querySelectorAll('[data-navbar]'), function (b) {
+    var ativo = (UI_NAVBAR_PAGINAS[b.dataset.navbar] || []).indexOf(id) >= 0;
+    b.classList.toggle('is-ativo', ativo);
+    if (ativo) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  var abas = nav.querySelector('[data-navbar-abas]');
+  if (abas) abas.classList.toggle('hidden', _uiNavbarAbasDaPagina().length < 2);
+}
+function uiNavbarAbas(gatilho) {
+  var abas = _uiNavbarAbasDaPagina();
+  abrirMenuSelecao(gatilho, [{ itens: abas.map(function (b, i) {
+    return { label: _uiNavbarRotulo(b) + (b.querySelector('.ds-tab-count') && b.querySelector('.ds-tab-count').textContent ? ' (' + b.querySelector('.ds-tab-count').textContent + ')' : ''),
+      ativo: b.classList.contains('active'), onclick: 'uiNavbarIrAba(' + i + ')' };
+  }) }], { titulo: 'Abas' });
+}
+function uiNavbarIrAba(i) {
+  var b = _uiNavbarAbasDaPagina()[i];
+  if (b) b.click();
+}
+(function () {
+  var t = null;
+  document.addEventListener('DOMContentLoaded', function () {
+    var main = document.getElementById('main-content');
+    if (!main || !window.MutationObserver) return;
+    new MutationObserver(function () { clearTimeout(t); t = setTimeout(uiNavbarAtualizar, 150); })
+      .observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+  });
+})();
 
 // Abas de navegação (.ds-tabs-nav, styles_design_system.html). A tela escreve só .ds-tabs-nav > .ds-tabs-nav__scroll > abas; esta
 // função monta, na primeira chamada, o invólucro e as setas ‹ › do carrossel, e mostra cada seta só quando as abas não cabem e
@@ -13447,59 +13749,65 @@ uiRegistrarAcoes('pages_execucao_validacao', {
   <!-- Barra de filtros: busca (expansível), Tipo/Ano/Status (viram chip + x ao serem
        selecionados) e Limpar filtros; ↻/⬇ à direita. Vira barra de seleção em lote quando
        algum item é marcado (mesma posição — nunca as duas ao mesmo tempo). -->
-  <div class="pll-filtros ds-pagina__filtros" id="pll-filtros-card">
+  <div class="ds-filtros ds-pagina__filtros" id="pll-filtros-card">
 
-    <div class="pll-filtros-normal" id="pll-filtros-normal">
-      <div class="pll-search" id="pll-search-wrap">
+    <div class="ds-filtros__normal" id="pll-filtros-normal">
+      <div class="ds-busca" id="pll-search-wrap">
         <button type="button" class="ds-icon-action" id="pll-search-toggle" data-on-click="pages_planos_lista.4"
                 data-title="Buscar plano" aria-label="Buscar plano">
           <span class="material-symbols-outlined">search</span>
         </button>
-        <div class="pll-search-caixa hidden" id="pll-search-caixa">
-          <span class="material-symbols-outlined pll-search-icon" aria-hidden="true">search</span>
-          <input type="text" id="filtro-busca" class="ds-input pll-search-input"
+        <div class="ds-busca__caixa hidden" id="pll-search-caixa">
+          <span class="material-symbols-outlined ds-busca__icone" aria-hidden="true">search</span>
+          <input type="text" id="filtro-busca" class="ds-input ds-busca__input"
             placeholder="Buscar plano pelo nome…" data-on-input="pages_planos_lista.5" aria-label="Buscar plano pelo nome">
-          <button type="button" id="btn-limpar-busca" class="pll-search-clear hidden" data-on-click="pages_planos_lista.6"
+          <button type="button" id="btn-limpar-busca" class="ds-busca__limpar hidden" data-on-click="pages_planos_lista.6"
             data-title="Limpar busca" aria-label="Limpar busca">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>
       </div>
 
-      <div class="pll-filtro" data-filtro="tipo">
-        <button type="button" class="pll-filtro-btn" id="pll-filtro-btn-tipo" data-on-click="pages_planos_lista.7"
+
+      <div class="ds-filtro" data-filtro="tipo">
+        <button type="button" class="ds-filtro__btn" id="pll-filtro-btn-tipo" data-on-click="pages_planos_lista.7"
                 aria-haspopup="menu" aria-expanded="false">
           <span id="pll-filtro-label-tipo">Tipo</span><span class="material-symbols-outlined">expand_more</span>
         </button>
-        <button type="button" class="pll-filtro-x hidden" id="pll-filtro-x-tipo" data-on-click="pages_planos_lista.8"
+        <button type="button" class="ds-filtro__x hidden" id="pll-filtro-x-tipo" data-on-click="pages_planos_lista.8"
                 data-title="Remover filtro de tipo" aria-label="Remover filtro de tipo">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div class="pll-filtro" data-filtro="ano">
-        <button type="button" class="pll-filtro-btn" id="pll-filtro-btn-ano" data-on-click="pages_planos_lista.9"
+      <div class="ds-filtro" data-filtro="ano">
+        <button type="button" class="ds-filtro__btn" id="pll-filtro-btn-ano" data-on-click="pages_planos_lista.9"
                 aria-haspopup="menu" aria-expanded="false">
           <span id="pll-filtro-label-ano">Ano</span><span class="material-symbols-outlined">expand_more</span>
         </button>
-        <button type="button" class="pll-filtro-x hidden" id="pll-filtro-x-ano" data-on-click="pages_planos_lista.10"
+        <button type="button" class="ds-filtro__x hidden" id="pll-filtro-x-ano" data-on-click="pages_planos_lista.10"
                 data-title="Remover filtro de ano" aria-label="Remover filtro de ano">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div class="pll-filtro" data-filtro="status">
-        <button type="button" class="pll-filtro-btn" id="pll-filtro-btn-status" data-on-click="pages_planos_lista.11"
+      <div class="ds-filtro" data-filtro="status">
+        <button type="button" class="ds-filtro__btn" id="pll-filtro-btn-status" data-on-click="pages_planos_lista.11"
                 aria-haspopup="menu" aria-expanded="false">
           <span id="pll-filtro-label-status">Status</span><span class="material-symbols-outlined">expand_more</span>
         </button>
-        <button type="button" class="pll-filtro-x hidden" id="pll-filtro-x-status" data-on-click="pages_planos_lista.12"
+        <button type="button" class="ds-filtro__x hidden" id="pll-filtro-x-status" data-on-click="pages_planos_lista.12"
                 data-title="Remover filtro de status" aria-label="Remover filtro de status">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <button type="button" id="btn-limpar-filtros-planos" class="pll-limpar-link hidden" data-on-click="pages_planos_lista.13">
+      <!-- Ordenar no mobile: só com a busca em foco, na linha das pílulas (no desktop a ordenação é no cabeçalho da tabela) -->
+      <button type="button" class="ds-icon-action hidden" id="pll-ordenar-mob" data-on-click="ui.chamar" data-chamada-click="pllAbrirMenuOrdenar(null, this)" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu">
+        <span class="material-symbols-outlined" aria-hidden="true">sort</span>
+      </button>
+
+      <button type="button" id="btn-limpar-filtros-planos" class="ds-link hidden" data-on-click="pages_planos_lista.13">
         Limpar filtros
       </button>
     </div>
@@ -13508,30 +13816,30 @@ uiRegistrarAcoes('pages_execucao_validacao', {
          mas a PAGINAÇÃO (abaixo, fora dos dois) continua visível nos dois modos, pra dar
          pra navegar entre páginas e continuar selecionando itens de outras páginas sem
          perder a seleção atual — pedido explícito do usuário. -->
-    <div class="pll-filtros-selecao hidden" id="pll-filtros-selecao">
+    <div class="ds-filtros__selecao hidden" id="pll-filtros-selecao">
       <button type="button" class="ds-icon-action" data-on-click="pages_planos_lista.14" data-title="Cancelar seleção" aria-label="Cancelar seleção">
         <span class="material-symbols-outlined">close</span>
       </button>
-      <span class="pll-selecao-texto" id="pll-selecao-texto">0 selecionado(s)</span>
-      <div class="pll-selecao-divisor"></div>
+      <span class="ds-filtros__selecao-texto" id="pll-selecao-texto">0 selecionado(s)</span>
+      <div class="ds-filtros__divisor"></div>
       <!-- Preenchido via JS (_pllRenderizarAcoesSelecao): com 1 item, as MESMAS ações e
            permissões da coluna de opções daquela linha; com mais de um, só as ações que
            fazem sentido em lote e que valem pra todos os selecionados (hoje, só excluir,
            só se todos permitirem) — pedido explícito do usuário. -->
-      <div class="pll-selecao-acoes" id="pll-selecao-acoes"></div>
+      <div id="pll-selecao-acoes"></div>
     </div>
 
     <!-- Contador + paginação: sempre visível (nem os filtros nem a seleção em lote a
        escondem — ver comentário acima). Sem "Exibir": tamanho de página fixo, sem
        seletor; as ferramentas da tabela (ordenar, atualizar, baixar, imprimir) vivem no
        cabeçalho da última coluna (.ds-th-ferramentas). -->
-    <div class="pll-pag-wrap">
-      <span id="planos-pag-counter" class="pll-pag-counter">0 de 0</span>
-      <div class="pll-pag-nav">
+    <div class="ds-filtros__pag ds-paginador">
+      <span id="planos-pag-counter" class="ds-paginador__contador">0 de 0</span>
+      <div class="ds-paginador__nav">
         <button type="button" id="planos-pag-prev" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_planos_lista.15" data-title="Página anterior" aria-label="Página anterior">
           <span class="material-symbols-outlined">chevron_left</span>
         </button>
-        <span id="planos-pag-atual" class="pll-pag-atual">1</span>
+        <span id="planos-pag-atual" class="ds-paginador__atual">1</span>
         <button type="button" id="planos-pag-next" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_planos_lista.16" data-title="Próxima página" aria-label="Próxima página">
           <span class="material-symbols-outlined">chevron_right</span>
         </button>
@@ -13549,6 +13857,7 @@ uiRegistrarAcoes('pages_execucao_validacao', {
               <input type="checkbox" id="chk-select-all-planos"
                 data-on-change="pages_planos_lista.17"
                 aria-label="Selecionar todos">
+              <label for="chk-select-all-planos" class="ds-tabela__card" id="pll-selall-rotulo">Selecionar tudo</label>
             </th>
             <th class="ds-th-ord ds-tabela__principal" data-on-click="pages_planos_lista.18">Nome<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-nome"></span></th>
             <th class="ds-th-ord" data-on-click="pages_planos_lista.20">Responsável<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-responsavel"></span></th>
@@ -13651,75 +13960,7 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
    40px do <main> precisa criar um respiro real entre a lista e o sidebar). Sem "cara de
    card": no Drive a barra de filtros e a lista não têm contêiner visível (nem borda, nem
    sombra, nem fundo próprio) — só um respiro discreto entre as seções. Fixa abaixo das abas: .ds-pagina__filtros. */
-/* Flex row: .pll-filtros-normal/.pll-filtros-selecao (um dos dois, nunca junto) ocupam o
-   espaço flexível à esquerda; .pll-pag-wrap fica fixo à direita nos DOIS modos — pedido
-   explícito do usuário (senão, ao selecionar itens, a paginação sumia junto com os
-   filtros e não dava pra navegar até outra página pra continuar selecionando). */
-#page-planos .pll-filtros { display: flex; align-items: center; gap: 8px; padding: 10px 0; }
-#page-planos .pll-filtros-normal,
-#page-planos .pll-filtros-selecao { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 1 1 auto; min-width: 0; }
-#page-planos .pll-filtros-normal.hidden,
-#page-planos .pll-filtros-selecao.hidden { display: none; }
-#page-planos .pll-pag-wrap { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-#page-planos .pll-selecao-texto { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); font-size: var(--ds-text-sm); }
-#page-planos .pll-selecao-divisor { width: 1px; align-self: stretch; margin: 2px 4px; background: var(--ds-color-border); }
-/* Ações preenchidas via JS (acoesLinhaHTML) — o .acoes-linha dela vem com opacity:0 por
-   padrão SÓ dentro da tabela (regra escopada a .pll-tabela); aqui, fora da tabela, herda
-   opacity normal (sempre visível) sem precisar de override. */
-#page-planos .pll-selecao-acoes { display: inline-flex; align-items: center; }
-
-/* Busca expansível: ícone só-botão vira caixa de texto ao clicar */
-#page-planos .pll-search { position: relative; display: inline-flex; align-items: center; }
-#page-planos .pll-search-caixa { position: relative; display: flex; align-items: center; }
-#page-planos .pll-search-caixa.hidden { display: none; }
-#page-planos .pll-search-icon {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  font-size: 20px; color: var(--ds-color-text-muted); pointer-events: none;
-}
-#page-planos .pll-search-input { width: 220px; max-width: 60vw; padding-left: 42px; padding-right: 38px; }
-#page-planos .pll-search-clear {
-  position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0;
-  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
-  background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted);
-}
-#page-planos .pll-search-clear:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-text); }
-#page-planos .pll-search-clear .material-symbols-outlined { font-size: 18px; }
-
-/* Filtros Tipo/Ano/Status: botão + "x"; quando ativo, os dois se fundem numa única pastilha
-   (mesma cor, sem costura no meio — só a borda externa arredondada), como no modelo do
-   Claude Design, em vez de duas caixas separadas. */
-#page-planos .pll-filtro { display: inline-flex; align-items: stretch; }
-#page-planos .pll-filtro-btn {
-  display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px;
-  background: var(--ds-color-surface); border: 1px solid var(--ds-color-border); border-radius: var(--ds-r-lg);
-  color: var(--ds-color-text); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
-  cursor: pointer; white-space: nowrap;
-}
-#page-planos .pll-filtro-btn:hover { background: var(--ds-sidebar-item-hover); }
-#page-planos .pll-filtro-btn .material-symbols-outlined { font-size: 18px; color: var(--ds-color-text-muted); }
-#page-planos .pll-filtro-btn--ativo {
-  background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); border-color: var(--ds-color-info-bg); font-weight: var(--ds-weight-semibold);
-}
-#page-planos .pll-filtro-btn--ativo .material-symbols-outlined { color: var(--ds-color-info-fg); }
-/* Com o "x" visível (filtro ativo), o botão perde o arredondamento/borda do lado direito
-   para os dois virarem uma peça só */
-#page-planos .pll-filtro-btn:has(+ .pll-filtro-x:not(.hidden)) {
-  border-top-right-radius: 0; border-bottom-right-radius: 0; border-right-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
-}
-#page-planos .pll-filtro-x {
-  display: inline-flex; align-items: center; justify-content: center; width: 26px; padding: 0;
-  background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); cursor: pointer;
-  border: 1px solid var(--ds-color-info-bg); border-left-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
-  border-top-right-radius: var(--ds-r-lg); border-bottom-right-radius: var(--ds-r-lg);
-}
-#page-planos .pll-filtro-x:hover { filter: brightness(0.94); }
-#page-planos .pll-filtro-x .material-symbols-outlined { font-size: 15px; }
-
-#page-planos .pll-limpar-link {
-  background: none; border: none; padding: 6px 4px; color: var(--ds-color-action); font-family: var(--ds-font-sans);
-  font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; white-space: nowrap;
-}
-#page-planos .pll-limpar-link:hover { text-decoration: underline; }
+#pll-selecao-acoes { display: inline-flex; align-items: center; }
 
 #page-planos .pll-vig { white-space: nowrap; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
 #page-planos .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); }
@@ -13730,26 +13971,14 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 #page-planos .pll-prog-txt { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); min-width: 34px; }
 #page-planos .pll-sem-prog { color: var(--ds-color-text-muted); }
 
-/* Contador + paginação: agora na própria barra de filtros (sem seletor de "Exibir" nem
-   rodapé próprio) — [1-8 de 8] [atualizar] [exportar] [< 1 >], pedido explícito do usuário. */
-#page-planos .pll-pag-counter { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; }
-#page-planos .pll-pag-nav { display: inline-flex; align-items: center; gap: 2px; }
-#page-planos .pll-pag-atual {
-  min-width: 20px; text-align: center; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text);
-}
-#page-planos .ds-icon-action--sm:disabled { opacity: 0.4; cursor: not-allowed; }
-
 /* Impressão: só a tabela (sem menu, filtros nem seleção) */
 @media print {
-  #main-header, #sidebar, #page-planos #pll-filtros-card { display: none !important; }
+  #main-header, #sidebar, #pll-filtros-card { display: none !important; }
   #page-planos #pll-tabela-card { overflow: visible !important; margin: 0 !important; }
 }
 
 /* Responsivo: <=768 Vigência/Responsável descem p/ linha secundária */
 @media (max-width: 768px) {
-  #page-planos .pll-filtros { margin: 0; width: 100%; }
-  #page-planos .pll-filtro { flex: 1 1 108px; }
-  #page-planos .pll-filtro-btn { width: 100%; justify-content: space-between; }
 
 
   #page-planos .pll-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
@@ -13836,6 +14065,7 @@ function initPlanos() {
 }
 
 function _pllIniciar() {
+  _pllMobilePreparar();
   _pllPrepararListenersTabela();
   if (estadoPlanos.dadosBrutos.length > 0) {
     _renderizarAbas();
@@ -14022,25 +14252,55 @@ function pllLimparBusca() {
 }
 
 // ---- Busca expansível ------------------------------------------------
+// Abrir/recolher pelo design system (uiBuscaAbrir/uiBuscaRecolher): no celular a busca fica sempre aberta.
 
 function pllAbrirBusca() {
-  document.getElementById('pll-search-toggle').classList.add('hidden');
-  document.getElementById('pll-search-caixa').classList.remove('hidden');
-  document.getElementById('filtro-busca').focus();
+  uiBuscaAbrir(document.getElementById('pll-search-wrap'), true);
 }
 
 // Fecha a caixa de busca ao clicar fora dela, exceto se houver texto digitado
 // (mantém aberta pra não "sumir" o filtro ativo sem o usuário limpar antes).
 document.addEventListener('click', function(e) {
   var wrap = document.getElementById('pll-search-wrap');
-  var caixa = document.getElementById('pll-search-caixa');
-  if (!wrap || !caixa || caixa.classList.contains('hidden')) return;
-  if (wrap.contains(e.target)) return;
-  var inp = document.getElementById('filtro-busca');
-  if (inp && inp.value) return;
-  caixa.classList.add('hidden');
-  document.getElementById('pll-search-toggle').classList.remove('hidden');
+  if (!wrap || wrap.contains(e.target)) return;
+  uiBuscaRecolher(wrap);
 });
+
+// ---- Mobile (padrão Gmail/Drive) -------------------------------------------
+// As pílulas de filtro só aparecem com a busca em foco ou com algum filtro aplicado; a lista não tem paginador,
+// carrega mais ao rolar (uiRolagemInfinita). No desktop nada disso muda.
+var PLL_LOTE_MOBILE = 20;
+function _pllMobile() { return window.matchMedia('(max-width: 768px)').matches; }
+
+function _pllMobileSincronizar() {
+  var mob = _pllMobile(), f = estadoPlanos.filtros;
+  var mostrar = !mob || estadoPlanos._buscaEmFoco || _menuSelecaoNoSheet || !!(f.tipo || f.ano || f.status);
+  Array.prototype.forEach.call(document.querySelectorAll('#pll-filtros-normal > .ds-filtro'), function(el) { el.classList.toggle('hidden', !mostrar); });
+  var foco = estadoPlanos._buscaEmFoco || _menuSelecaoNoSheet;
+  document.getElementById('pll-ordenar-mob').classList.toggle('hidden', !(mob && foco));
+  var pag = document.querySelector('#pll-filtros-card > .ds-filtros__pag');
+  if (pag) pag.classList.toggle('hidden', mob);
+  // no mobile o cabeçalho da tabela é só a linha "Selecionar tudo", que aparece no modo de seleção
+  var thead = document.querySelector('#tabela-planos thead');
+  if (thead) thead.classList.toggle('hidden', mob && !estadoPlanos.selecionados.size);
+}
+window.matchMedia('(max-width: 768px)').addEventListener('change', function() { _pllMobileSincronizar(); if (estadoPlanos._planosVisiveis) _renderizarPagina(); });
+
+function _pllMobilePreparar() {
+  var inp = document.getElementById('filtro-busca');
+  if (inp && !inp.dataset.pllMobile) {
+    inp.dataset.pllMobile = '1';
+    inp.addEventListener('focus', function() { estadoPlanos._buscaEmFoco = true; _pllMobileSincronizar(); });
+    // espera o toque numa pílula chegar antes de escondê-las
+    inp.addEventListener('blur', function() { setTimeout(function() { estadoPlanos._buscaEmFoco = false; _pllMobileSincronizar(); }, 250); });
+  }
+  estadoPlanos._rolagem = uiRolagemInfinita(document.getElementById('pll-tabela-card'), function() {
+    if (!_pllMobile() || estadoPlanos._qtdMobile >= (estadoPlanos._planosVisiveis || []).length) return;
+    estadoPlanos._qtdMobile += PLL_LOTE_MOBILE;
+    _renderizarPagina();
+  });
+  _pllMobileSincronizar();
+}
 
 // ---- Filtros -------------------------------------------------------------
 // Menu de filtro (Tipo/Ano/Status) usa abrirMenuSelecao()/fecharMenuSelecao() —
@@ -14074,7 +14334,7 @@ function pllAbrirFiltro(campo, ev, gatilho) {
       if (campo === 'status') item.dot = 'var(--ds-status-' + (STATUS_BADGE_CLASS[o] || 'finalizado') + '-fg)';
       return item;
     }));
-  abrirMenuSelecao(gatilho, [{ itens: itens }]);
+  abrirMenuSelecao(gatilho, [{ itens: itens }], { titulo: def.label, limpar: atual ? "pllLimparUmFiltro('" + campo + "')" : '' });
 }
 
 function pllSelecionarFiltro(campo, valor) {
@@ -14096,8 +14356,9 @@ function _pllAtualizarBotaoFiltro(campo) {
   var label = document.getElementById('pll-filtro-label-' + campo);
   var x     = document.getElementById('pll-filtro-x-' + campo);
   label.textContent = valor || def.label;
-  btn.classList.toggle('pll-filtro-btn--ativo', !!valor);
+  btn.classList.toggle('ds-filtro__btn--ativo', !!valor);
   x.classList.toggle('hidden', !valor);
+  _pllMobileSincronizar();
 }
 
 function limparTodosFiltros() {
@@ -14123,6 +14384,7 @@ function aplicarFiltros() {
 
   estadoPlanos._planosVisiveis = _ordenarPlanos(filtrados);
   estadoPlanos.paginaAtual = 1;
+  estadoPlanos._qtdMobile = PLL_LOTE_MOBILE;
   _atualizarBotaoLimpar();
   _renderizarPagina();
   // Filtro virando chip pode mudar a largura ocupada e, em janelas estreitas, a barra
@@ -14167,7 +14429,7 @@ function pllAbrirMenuOrdenar(ev, gatilho) {
       { label: 'Crescente',   ativo: dirAtual === 'asc',  onclick: "pllDefinirDirecaoMenu('asc')" },
       { label: 'Decrescente', ativo: dirAtual === 'desc', onclick: "pllDefinirDirecaoMenu('desc')" }
     ] }
-  ]);
+  ], { titulo: 'Ordenar' });
   // o ícone de ordenar revela as demais ferramentas (atualizar, baixar, imprimir)
   var ferr = document.getElementById('pll-ferramentas');
   if (ferr) ferr.classList.toggle('is-aberto', !!document.getElementById('menu-selecao-aberto'));
@@ -14220,8 +14482,14 @@ function _renderizarPagina() {
 
   var start = (estadoPlanos.paginaAtual - 1) * ipp;
   var end   = Math.min(start + ipp, total);
+  if (_pllMobile()) {   // sem páginas: os primeiros _qtdMobile, mais ao rolar
+    start = 0;
+    end = Math.min(estadoPlanos._qtdMobile || PLL_LOTE_MOBILE, total);
+  }
   _renderizarTabela(estadoPlanos._planosVisiveis.slice(start, end));
   _pllAtualizarBarraPaginacao(total, start, end, totalPags);
+  if (estadoPlanos._rolagem) estadoPlanos._rolagem.verificar();
+  _pllMobileSincronizar();
 }
 
 // Contador + navegação de página agora vivem na própria barra de filtros (sem seletor de
@@ -14519,6 +14787,9 @@ function atualizarBarraSelecaoPlanos() {
       qtd + ' plano' + (qtd > 1 ? 's' : '') + ' selecionado' + (qtd > 1 ? 's' : '');
     _pllRenderizarAcoesSelecao(qtd);
   }
+  var chkAll = document.getElementById('chk-select-all-planos');
+  document.getElementById('pll-selall-rotulo').textContent = chkAll && chkAll.checked ? 'Desmarcar tudo' : 'Selecionar tudo';
+  _pllMobileSincronizar();
   uiPaginaMedir(document.getElementById('page-planos'));
   pllAtualizarAlturaMinTabela();
 }
@@ -14546,7 +14817,7 @@ function _pllRenderizarAcoesSelecao(qtd) {
     ].concat(p && p.status === 'Excluído' ? [
       { icone: 'restore', rotulo: 'Restaurar', onclick: "pllRestaurarPlano(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", oculto: !perm.restaurar },
       { icone: 'delete_forever', rotulo: 'Excluir definitivamente', onclick: "pllExcluirDefinitivo(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", cor: 'var(--ds-color-danger-fg)', oculto: !perm.excluirDefinitivo }
-    ] : []).map(function(it) { return (it.icone === 'edit' || it.icone === 'delete') && p.status === 'Excluído' ? Object.assign({}, it, { oculto: true }) : it; }), { maxDireto: 3 }) : '';
+    ] : []).map(function(it) { return (it.icone === 'edit' || it.icone === 'delete') && p.status === 'Excluído' ? Object.assign({}, it, { oculto: true }) : it; }), { maxDireto: 99 }) : '';
     return;
   }
 
@@ -20782,8 +21053,7 @@ function execTarefasCarregar(preservar) {
     e.filtroStatus = 'todos'; e.busca = ''; e.dentroDe = ''; e.paginaAtual = 1;
     var buscaEl = document.getElementById('ext-busca');
     if (buscaEl) buscaEl.value = '';
-    document.getElementById('ext-search-caixa').classList.add('hidden');
-    document.getElementById('ext-search-toggle').classList.remove('hidden');
+    uiBuscaRecolher(document.getElementById('ext-search-wrap'), true);
     document.getElementById('ext-container').innerHTML = spinnerListaHTML('Carregando o registro de execução…');
   }
 
@@ -20998,13 +21268,8 @@ document.addEventListener('keydown', function(e) {
 // Fechamento da caixa de busca ao clicar fora
 document.addEventListener('click', function(e) {
   var wrap = document.getElementById('ext-search-wrap');
-  var caixa = document.getElementById('ext-search-caixa');
-  if (!wrap || !caixa || caixa.classList.contains('hidden') || wrap.contains(e.target)) return;
-  var inp = document.getElementById('ext-busca');
-  if (inp && inp.value) return;
-  caixa.classList.add('hidden');
-  var toggle = document.getElementById('ext-search-toggle');
-  if (toggle) toggle.classList.remove('hidden');
+  if (!wrap || wrap.contains(e.target)) return;
+  uiBuscaRecolher(wrap);
 });
 
 // --- ABAS POR SITUAÇÃO ---
@@ -21031,12 +21296,7 @@ function _extAbaUI() {
 // --- FILTROS (componentes canônicos .ds-filtro / .ds-busca) ---
 
 function extAbrirBusca() {
-  var toggle = document.getElementById('ext-search-toggle');
-  var caixa = document.getElementById('ext-search-caixa');
-  var inp = document.getElementById('ext-busca');
-  if (toggle) toggle.classList.add('hidden');
-  if (caixa) caixa.classList.remove('hidden');
-  if (inp) inp.focus();
+  uiBuscaAbrir(document.getElementById('ext-search-wrap'), true);
 }
 
 function extLimparBusca() {
@@ -21087,10 +21347,7 @@ function extFiltrar(campo, valor) {
 function extLimparFiltros() {
   var inp = document.getElementById('ext-busca');
   if (inp) inp.value = '';
-  var caixa = document.getElementById('ext-search-caixa');
-  var toggle = document.getElementById('ext-search-toggle');
-  if (caixa) caixa.classList.add('hidden');
-  if (toggle) toggle.classList.remove('hidden');
+  uiBuscaRecolher(document.getElementById('ext-search-wrap'), true);
   estadoExecTarefas.busca = '';
   estadoExecTarefas.filtroStatus = 'todos';
   estadoExecTarefas.dentroDe = '';
@@ -28515,6 +28772,25 @@ uiRegistrarAcoes('pages_logs', {
 </script>
     </main>
 
+    <!-- Barra de navegação do mobile (.ds-navbar): "Abas" em destaque (só quando a página tem abas) + o ciclo do plano. uiNavbarAtualizar() em app_ui_utils.html -->
+    <nav class="ds-navbar" id="ui-navbar" aria-label="Navegação principal">
+      <button type="button" class="ds-navbar__item ds-navbar__item--destaque hidden" data-navbar-abas data-on-click="ui.chamar" data-chamada-click="uiNavbarAbas(this)" aria-haspopup="dialog">
+        <span class="material-symbols-outlined" aria-hidden="true">view_column</span><span class="ds-navbar__rotulo">Abas</span>
+      </button>
+      <button type="button" class="ds-navbar__item" data-navbar="inicio" data-on-click="ui.chamar" data-chamada-click="navigate('home')">
+        <span class="material-symbols-outlined" aria-hidden="true">home</span><span class="ds-navbar__rotulo">Início</span>
+      </button>
+      <button type="button" class="ds-navbar__item" data-navbar="planos" data-on-click="ui.chamar" data-chamada-click="navigate('planos')">
+        <span class="material-symbols-outlined" aria-hidden="true">list_alt</span><span class="ds-navbar__rotulo">Planos</span>
+      </button>
+      <button type="button" class="ds-navbar__item" data-navbar="execucao" data-on-click="ui.chamar" data-chamada-click="navigate('execucao-planos')">
+        <span class="material-symbols-outlined" aria-hidden="true">checklist</span><span class="ds-navbar__rotulo">Execução</span>
+      </button>
+      <button type="button" class="ds-navbar__item" data-navbar="avaliacao" data-on-click="ui.chamar" data-chamada-click="navigate('avaliacao-planos')">
+        <span class="material-symbols-outlined" aria-hidden="true">star_half</span><span class="ds-navbar__rotulo">Avaliação</span>
+      </button>
+    </nav>
+
     <script>
       // Controle de Roteamento Simples (SPA)
       // --- CONTROLE DE ROTEAMENTO (SPA) ---
@@ -28533,6 +28809,8 @@ function _salvarUltimaTela(pageName, extra) {
 
 function navigate(pageName, extra) {
   _salvarUltimaTela(pageName, extra);
+  uiNavRegistrar(pageName, extra);
+  uiNavbarAtualizar();
   hdrNavSincronizarAtivo(hdrNavChaveDe(pageName, extra)); // item ativo do menu lateral
   // #main-content é quem rola agora (não mais a janela) — sem isso, trocar de
   // página manteria o scroll da página anterior, abrindo a nova já rolada.

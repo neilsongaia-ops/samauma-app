@@ -126,9 +126,14 @@ main { flex: 1; min-height: 0; padding: var(--ds-main-pad-y) var(--ds-main-pad-x
 }
 @media (max-width: 768px) {
   .ds-pagina__hero { flex-direction: column; align-items: stretch; min-height: 0; padding-right: 0; }
+  .ds-pagina__titulo-linha { display: none; }   /* no mobile o título (e o voltar) moram na barra do topo, no lugar da trilha */
   .ds-pagina__acoes { position: static; width: 100%; height: auto; margin-top: 0; padding-left: 0; justify-content: flex-end; background: none; }
   .ds-pagina__faixa { position: static; padding-right: 0; }
-  .ds-pagina__filtros { position: relative; }   /* solta, mas ainda posicionada (âncora de ::after das barras) */
+  /* busca e filtros grudam no alto da área rolável (padrão Gmail); top: 0 anula o deslocamento do desktop */
+  .ds-pagina__filtros { top: calc(-1 * var(--ds-main-pad-y)); }   /* o sticky para no padding da área rolável: compensa para colar no topo */
+  /* hero sem nada além do título (que no mobile mora na barra do topo) não ocupa espaço */
+  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha))) { display: none; }
+  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha))) ~ .ds-pagina__filtros { margin-top: calc(-1 * var(--ds-main-pad-y)); }   /* busca colada ao topo */
 }
 
 .card { background: var(--ds-glass-bg-strong); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-2xl); box-shadow: var(--ds-glass-shadow); padding: 20px; margin-bottom: 20px; }
@@ -652,14 +657,15 @@ body.high-contrast {
   .ds-tabela, .ds-tabela thead { display: block; width: 100%; }
   /* cabeçalho vira uma barra de "selecionar todos" + ordenação */
   .ds-tabela thead tr {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 8px 12px;
-    background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-glass-border); border-radius: var(--ds-r-xl);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 4px 4px 0;   /* sem moldura: é a linha "Selecionar tudo" */
   }
   .ds-tabela thead th { position: static; padding: 6px 0; border: none; display: inline-flex; align-items: center; }
   .ds-tabela thead .ds-tabela__check { width: auto; padding: 6px 4px 6px 0; }
-  .ds-tabela thead .ds-tabela__so-larga { display: inline-flex; }
-  .ds-tabela thead .ds-col-sobreposta, .ds-tabela thead .ds-col-acoes { margin-left: auto; }
-  .ds-tabela thead .ds-tabela__card { display: none; }
+  /* no cartão de cabeçalho ficam só o "selecionar todos" e o botão de ordenar (que abre o sheet de ordenação) */
+  .ds-tabela thead th.ds-th-ord, .ds-tabela thead .ds-th-ferramentas__rotulo { display: none; }
+  /* no mobile o cabeçalho é a linha "Selecionar tudo" (a tela o mostra só no modo de seleção): caixa + rótulo .ds-tabela__card; sem ordenação nem ferramentas (ordenar fica na barra de filtros) */
+  .ds-tabela thead .ds-tabela__card { display: inline; margin-left: var(--ds-space-2); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
+  .ds-tabela thead th.ds-tabela__card, .ds-tabela thead .ds-col-sobreposta, .ds-tabela thead .ds-col-acoes { display: none; }
   /* corpo: grade de cartões (1 coluna no celular; 2 ou mais em telas maiores) */
   .ds-tabela tbody { display: grid; width: 100%; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; margin-top: 12px; }
   .ds-tabela tbody tr {
@@ -716,6 +722,66 @@ body.high-contrast {
   .ds-fab { display: flex; }
   .ds-pagina:has(> .ds-fab) > .ds-pagina__acoes, .ds-pagina:has(> .ds-fab) .ds-pagina__hero > .ds-pagina__acoes { display: none; }
 }
+
+/* Voltar: botão discreto (.ds-icon-action) à esquerda do título; injetado por uiVoltarGarantir (app_ui_utils.html) em todo .ds-pagina__hero. Some quando não há para onde voltar. */
+.ds-pagina__voltar { flex: none; margin-left: calc(-1 * var(--ds-space-2)); background: none; border-color: transparent; box-shadow: none; }
+.ds-pagina__voltar.hidden { display: none; }
+
+/* Bottom sheet (painel que sobe da base da tela, no mobile): .ds-sheet(.is-aberto) > .ds-sheet__fundo + .ds-sheet__painel > .ds-sheet__alca + .ds-sheet__cab (__titulo + ação opcional, ex. "Limpar" + fechar à direita) + .ds-sheet__corpo + .ds-sheet__rodape (opcional).
+   Aberto por uiSheetAbrir(opcoes) (app_ui_utils.html): fecha no fundo, no ×, no Esc e arrastando a alça para baixo. Grupos de opções dentro do corpo: .ds-sheet__grupo > .ds-sheet__rotulo + itens .acoes-menu-item (abrirMenuSelecao no mobile). */
+.ds-sheet { position: fixed; inset: 0; z-index: var(--ds-z-modal); display: flex; align-items: flex-end; justify-content: center; visibility: hidden; pointer-events: none; }
+.ds-sheet.is-aberto { visibility: visible; pointer-events: auto; }
+.ds-sheet__fundo { position: absolute; inset: 0; background: var(--ds-color-scrim); opacity: 0; transition: opacity var(--ds-duration-base) var(--ds-ease-standard); }
+.ds-sheet.is-aberto .ds-sheet__fundo { opacity: 1; }
+.ds-sheet__painel {
+  position: relative; display: flex; flex-direction: column; width: 100%; max-width: 560px; max-height: 85vh;
+  background: var(--ds-color-surface); border-radius: var(--ds-r-2xl) var(--ds-r-2xl) 0 0; box-shadow: var(--ds-shadow-4);
+  transform: translateY(100%); transition: transform var(--ds-duration-slow) var(--ds-ease-emphasized);
+}
+.ds-sheet.is-aberto .ds-sheet__painel { transform: none; }
+.ds-sheet__alca { flex: none; width: 40px; height: 4px; margin: var(--ds-space-2) auto 0; border-radius: var(--ds-r-pill); background: var(--ds-color-border); touch-action: none; }
+.ds-sheet__cab { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-3); padding: var(--ds-space-2) var(--ds-space-4) var(--ds-space-2); touch-action: none; }
+.ds-sheet__titulo { flex: 1 1 auto; min-width: 0; margin: 0; font-size: var(--ds-text-md); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ds-sheet__corpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--ds-space-5); padding: var(--ds-space-2) var(--ds-space-4) var(--ds-space-4); }
+.ds-sheet__rodape { flex: none; display: flex; gap: var(--ds-space-2); padding: var(--ds-space-3) var(--ds-space-4); padding-bottom: max(var(--ds-space-3), env(safe-area-inset-bottom)); border-top: var(--ds-borda) solid var(--ds-color-border); }
+.ds-sheet__rodape > .ds-btn { flex: 1; }
+.ds-sheet__grupo { display: flex; flex-direction: column; gap: var(--ds-space-2); }
+.ds-sheet__rotulo { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--ds-color-text-muted); }
+
+/* Barra de navegação (mobile): fixa na base do app, só ≤768px. .ds-navbar > button.ds-navbar__item(.is-ativo) > ícone + .ds-navbar__rotulo.
+   Primeiro, "Abas" (--destaque: cor de ação e separador), que só existe quando a página tem abas e surge com animação; depois o ciclo do plano
+   (Início, Planos, Execução, Avaliação). Montada e mantida por uiNavbarAtualizar() (app_ui_utils.html), chamada pelo navigate(). */
+.ds-navbar { display: none; }
+@keyframes ds-navbar-surgir {
+  0% { opacity: 0; transform: translateY(16px) scale(.5); }
+  60% { opacity: 1; transform: translateY(-3px) scale(1.12); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes ds-navbar-pulso {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ds-color-action) 55%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+@media (max-width: 768px) {
+  .ds-navbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--ds-z-header); display: flex; align-items: stretch;
+    padding: var(--ds-space-1) var(--ds-space-2) max(var(--ds-space-1), env(safe-area-inset-bottom));
+    background: var(--ds-color-surface); border-top: var(--ds-borda) solid var(--ds-color-border);
+  }
+  .ds-navbar__item {
+    flex: 1 1 0; min-width: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    padding: var(--ds-space-1); border: 0; background: none; cursor: pointer; color: var(--ds-color-text-muted); font-family: var(--ds-font-sans);
+  }
+  .ds-navbar__item .material-symbols-outlined { font-size: var(--ds-icon-lg); padding: 2px var(--ds-space-4); border-radius: var(--ds-r-pill); }
+  .ds-navbar__item.is-ativo { color: var(--ds-color-text); }
+  .ds-navbar__item.is-ativo .material-symbols-outlined { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
+  .ds-navbar__item.hidden { display: none; }
+  .ds-navbar__item--destaque { flex: none; padding: var(--ds-space-1) var(--ds-space-3) var(--ds-space-1) var(--ds-space-1); margin-right: var(--ds-space-1); border-right: var(--ds-borda) solid var(--ds-color-border); color: var(--ds-color-action); font-weight: var(--ds-weight-semibold); animation: ds-navbar-surgir var(--ds-duration-slow) var(--ds-ease-emphasized) both; }
+  .ds-navbar__item--destaque .material-symbols-outlined { background: var(--ds-color-action); color: var(--ds-color-on-action); animation: ds-navbar-pulso 1.2s var(--ds-ease-standard) .35s 2; }
+  .ds-navbar__rotulo { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  body:has(.ds-navbar) #main-content { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  body:has(.ds-navbar) .ds-fab { bottom: calc(72px + var(--ds-space-4)); }
+}
+@media (prefers-reduced-motion: reduce) { .ds-navbar__item--destaque, .ds-navbar__item--destaque .material-symbols-outlined { animation: none; } }
 
 /* ---- Badges / chips ---- */
 /* Forma única da pílula (altura, arredondamento, fonte): badge de situação, tipo/nível e responsável compartilham as mesmas medidas; cada um só define cor e peso. */
@@ -977,6 +1043,12 @@ body.high-contrast .ds-tabs-nav__item.active { border-bottom-color: var(--ds-col
 .ds-tab-count--notificacao,
 .ds-tabs-nav__item.active .ds-tab-count--notificacao { background: var(--ds-color-notificacao); color: var(--ds-color-on-notificacao); }
 
+@media (max-width: 768px) {
+  /* Abas no mobile: saem da tela; trocam-se pelo item "Abas" da barra de navegação (.ds-navbar), que as lista num bottom sheet */
+  .ds-tabs-nav { display: none; }
+}
+}
+
 /* ---- Abas do painel lateral (Detalhes / Atividade / Lixeira…) — .ds-tabs-painel ---- */
 .ds-tabs-painel { display: flex; align-items: center; gap: 4px; padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--ds-color-border); flex-shrink: 0; }
 .ds-tabs-painel__item {
@@ -1154,7 +1226,8 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
   font-size: var(--ds-icon-lg); color: var(--ds-color-text-muted); pointer-events: none;
 }
-.ds-busca__input { width: 220px; max-width: 60vw; padding-left: 42px; padding-right: 38px; }
+/* mesma altura e arredondamento das pílulas de filtro (.ds-filtro__btn) */
+.ds-busca__input { width: 220px; max-width: 60vw; height: 36px; padding-left: 42px; padding-right: 38px; border-radius: var(--ds-r-pill); }
 .ds-busca__limpar {
   position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
@@ -1169,7 +1242,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-filtro { display: inline-flex; align-items: stretch; }
 .ds-filtro__btn {
   display: inline-flex; align-items: center; gap: 4px; height: 36px; padding: 0 12px;
-  background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-lg);
+  background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-pill);
   color: var(--ds-color-text); font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium);
   cursor: pointer; white-space: nowrap;
 }
@@ -1184,7 +1257,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   display: inline-flex; align-items: center; justify-content: center; width: 26px; padding: 0; cursor: pointer;
   background: var(--ds-color-info-bg); color: var(--ds-color-info-fg);
   border: var(--ds-borda) solid var(--ds-color-info-bg); border-left-color: color-mix(in srgb, var(--ds-color-info-fg) 30%, transparent);
-  border-top-right-radius: var(--ds-r-lg); border-bottom-right-radius: var(--ds-r-lg);
+  border-top-right-radius: var(--ds-r-pill); border-bottom-right-radius: var(--ds-r-pill);
 }
 .ds-filtro__x.hidden { display: none; }
 .ds-filtro__x:hover { filter: brightness(0.94); }
@@ -1237,10 +1310,16 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-split .ds-split__seta { border-radius: 0 var(--ds-r-sm) var(--ds-r-sm) 0; padding: 0 8px; min-width: 40px; border-left: var(--ds-borda) solid color-mix(in srgb, var(--ds-color-on-action) 35%, transparent); }
 .ds-split .ds-split__principal.hidden + .ds-split__seta { border-radius: var(--ds-r-sm); border-left: 0; }
 
+/* Mobile (padrão Gmail/Drive): a busca fica sempre aberta e ocupa a linha (uiBuscaAbrir/uiBuscaRecolher, app_ui_utils.html); os filtros são pílulas
+   que abrem o bottom sheet do próprio filtro (abrirMenuSelecao no mobile) e mostram o valor escolhido; limpar um filtro é no × da própria pílula (ou no "Limpar" do sheet); sem "Limpar filtros" geral. */
 @media (max-width: 768px) {
   .ds-filtros { flex-wrap: wrap; }
-  .ds-filtro { flex: 1 1 108px; }
-  .ds-filtro__btn { width: 100%; justify-content: space-between; }
+  .ds-filtros__normal { row-gap: var(--ds-space-2); }
+  .ds-filtros__normal > .ds-busca { flex: 1 1 100%; }
+  .ds-busca__caixa { flex: 1 1 auto; }
+  .ds-busca__input { width: 100%; max-width: none; }
+  .ds-filtro { flex: none; }
+  .ds-filtros__normal > .ds-link { display: none; }  /* sem "Limpar filtros" geral: cada filtro limpa no próprio × */
 }
 
 /* ===================== MENUS SUSPENSOS E AÇÕES DE LINHA (canônicos; script em components_acoes_linha.html) =====================
@@ -1366,6 +1445,9 @@ tr:hover > td > .ds-celula-sobreposta > .ds-celula-sobreposta__acoes, tr:focus-w
 @media (max-width: 768px) {
   .acoes-direto { display: none; }
   .acoes-so-mobile { display: inline-flex; }
+  /* na barra de seleção em lote todas as ações ficam à mostra, sem ⋮ */
+  .ds-filtros__selecao .acoes-direto { display: inline-flex; }
+  .ds-filtros__selecao .acoes-so-mobile { display: none; }
   .acoes-btn { width: 44px; height: 44px; }
   .acoes-menu-item { min-height: 44px; }
 }
