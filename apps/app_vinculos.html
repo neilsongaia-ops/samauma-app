@@ -45,9 +45,6 @@
 .vinc-nivel--vazio { visibility: hidden; }
 .vinc-nome { min-width: 0; font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.vinc-prog { display: flex; align-items: center; gap: 8px; }
-.vinc-prog .ds-kpi-track { width: 64px; flex: none; }
-.vinc-prog-txt { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); min-width: 32px; }
 .vinc-vazio { color: var(--ds-color-text-muted); }
 
 /* decisão (Aguarda você): botões com texto + ⋮ */
@@ -1214,12 +1211,7 @@ function _vincLinhaHTML(p, podeEditar) {
     : '<span class="vinc-vazio">—</span>';
   var status = p.status
     ? '<span class="ds-badge ds-badge--' + (_VINC_STATUS_SLUG[p.status] || 'finalizado') + '">' + escapeHtml(p.status) + '</span>' : '<span class="vinc-vazio">—</span>';
-  var pct = (p.progresso == null || isNaN(Number(p.progresso))) ? null : Math.max(0, Math.min(100, Number(p.progresso)));
-  var progHtml = pct === null
-    ? '<span class="vinc-vazio" data-title="Sem elementos para calcular o progresso">—</span>'
-    : '<div class="vinc-prog" data-title="Média do % de conclusão dos elementos (cancelados fora)">'
-      + '<div class="ds-kpi-track"><div class="ds-kpi-fill ds-tone-info" style="width:' + pct.toFixed(0) + '%"></div></div>'
-      + '<span class="vinc-prog-txt">' + pct.toFixed(0) + '%</span></div>';
+  var progHtml = uiProgressoHTML(p.progresso, 'Média do % de conclusão dos elementos (cancelados fora)');
   var tip = escapeHtml(_vincTipSituacao(p));
   var nivel = p.tipo ? '<span class="ds-badge-tipo vinc-nivel" data-title="' + escapeHtml(p.tipo) + '">' + escapeHtml(p.tipo) + '</span>' : '<span class="ds-badge-tipo vinc-nivel vinc-nivel--vazio" aria-hidden="true"></span>';
 

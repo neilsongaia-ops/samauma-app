@@ -655,18 +655,9 @@ body.high-contrast {
 @media (max-width: 1024px) { .ds-tabela .ds-tabela__so-larga { display: none; } }
 @media (max-width: 768px) {
   .ds-tabela-wrap { margin: 0; width: 100%; display: block; background: none; }
-  .ds-tabela, .ds-tabela thead { display: block; width: 100%; }
-  /* cabeçalho vira uma barra de "selecionar todos" + ordenação */
-  .ds-tabela thead tr {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 4px 4px 0;   /* sem moldura: é a linha "Selecionar tudo" */
-  }
-  .ds-tabela thead th { position: static; padding: 6px 0; border: none; display: inline-flex; align-items: center; }
-  .ds-tabela thead .ds-tabela__check { width: auto; padding: 6px 4px 6px 0; }
-  /* no cartão de cabeçalho ficam só o "selecionar todos" e o botão de ordenar (que abre o sheet de ordenação) */
-  .ds-tabela thead th.ds-th-ord, .ds-tabela thead .ds-th-ferramentas__rotulo { display: none; }
-  /* no mobile o cabeçalho é a linha "Selecionar tudo" (a tela o mostra só no modo de seleção): caixa + rótulo .ds-tabela__card; sem ordenação nem ferramentas (ordenar fica na barra de filtros) */
-  .ds-tabela thead .ds-tabela__card { display: inline; margin-left: var(--ds-space-2); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
-  .ds-tabela thead th.ds-tabela__card, .ds-tabela thead .ds-col-sobreposta, .ds-tabela thead .ds-col-acoes { display: none; }
+  .ds-tabela { display: block; width: 100%; }
+  /* o cabeçalho não existe no celular: ordenar está na barra de filtros e "Selecionar tudo" na linha base dela (.ds-filtros__base) */
+  .ds-tabela thead { display: none; }
   /* corpo: lista de linhas compactas (padrão Gmail), uma coluna: 1ª linha = badge do tipo à esquerda + vigência à direita (leve); 2ª = título; 3ª = badges, responsável e progresso; ⋮ centrado na altura.
      A caixa de seleção só aparece no modo de seleção (.ds-tabela--selecionando, ligado pelo toque longo), no lugar do ⋮: toque abre o item; com a seleção ligada, toque marca/desmarca. */
   .ds-tabela tbody { display: block; width: 100%; margin-top: 4px; }
@@ -1220,6 +1211,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-filtros__normal.hidden, .ds-filtros__selecao.hidden { display: none; }
 .ds-filtros__selecao-texto { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
 .ds-filtros__divisor { width: var(--ds-borda); align-self: stretch; margin: 2px 4px; background: var(--ds-color-border); }
+.ds-filtros__base { display: none; }
 .ds-filtros__pag { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
 
 /* Busca expansível: .ds-busca > [botão .ds-icon-action] + .ds-busca__caixa(.hidden) > __icone + input.ds-input.ds-busca__input + __limpar */
@@ -1318,12 +1310,16 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
    que abrem o bottom sheet do próprio filtro (abrirMenuSelecao no mobile) e mostram o valor escolhido; limpar um filtro é no × da própria pílula (ou no "Limpar" do sheet); sem "Limpar filtros" geral. */
 @media (max-width: 768px) {
   .ds-filtros { flex-wrap: wrap; }
+  .ds-filtros__normal, .ds-filtros__selecao { min-height: 44px; }   /* mesma altura: trocar a busca pela faixa de seleção não move a lista */
   .ds-filtros__normal { row-gap: var(--ds-space-2); }
   .ds-filtros__normal > .ds-busca { flex: 1 1 100%; }
   .ds-busca__caixa { flex: 1 1 auto; }
   .ds-busca__input { width: 100%; max-width: none; }
   .ds-filtro { flex: none; }
   .ds-filtros__normal > .ds-link { display: none; }  /* sem "Limpar filtros" geral: cada filtro limpa no próprio × */
+  /* linha base: "Selecionar tudo" sob a busca/faixa de seleção; reserva a altura o tempo todo para a lista não se mover */
+  .ds-filtros__base { display: flex; flex: 1 1 100%; align-items: center; gap: var(--ds-space-2); min-height: 32px; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); cursor: pointer; }
+  .ds-filtros__base[aria-hidden="true"] { visibility: hidden; }
 }
 
 /* ===================== MENUS SUSPENSOS E AÇÕES DE LINHA (canônicos; script em components_acoes_linha.html) =====================

@@ -666,18 +666,9 @@ body.high-contrast {
 @media (max-width: 1024px) { .ds-tabela .ds-tabela__so-larga { display: none; } }
 @media (max-width: 768px) {
   .ds-tabela-wrap { margin: 0; width: 100%; display: block; background: none; }
-  .ds-tabela, .ds-tabela thead { display: block; width: 100%; }
-  /* cabeçalho vira uma barra de "selecionar todos" + ordenação */
-  .ds-tabela thead tr {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 4px 4px 0;   /* sem moldura: é a linha "Selecionar tudo" */
-  }
-  .ds-tabela thead th { position: static; padding: 6px 0; border: none; display: inline-flex; align-items: center; }
-  .ds-tabela thead .ds-tabela__check { width: auto; padding: 6px 4px 6px 0; }
-  /* no cartão de cabeçalho ficam só o "selecionar todos" e o botão de ordenar (que abre o sheet de ordenação) */
-  .ds-tabela thead th.ds-th-ord, .ds-tabela thead .ds-th-ferramentas__rotulo { display: none; }
-  /* no mobile o cabeçalho é a linha "Selecionar tudo" (a tela o mostra só no modo de seleção): caixa + rótulo .ds-tabela__card; sem ordenação nem ferramentas (ordenar fica na barra de filtros) */
-  .ds-tabela thead .ds-tabela__card { display: inline; margin-left: var(--ds-space-2); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
-  .ds-tabela thead th.ds-tabela__card, .ds-tabela thead .ds-col-sobreposta, .ds-tabela thead .ds-col-acoes { display: none; }
+  .ds-tabela { display: block; width: 100%; }
+  /* o cabeçalho não existe no celular: ordenar está na barra de filtros e "Selecionar tudo" na linha base dela (.ds-filtros__base) */
+  .ds-tabela thead { display: none; }
   /* corpo: lista de linhas compactas (padrão Gmail), uma coluna: 1ª linha = badge do tipo à esquerda + vigência à direita (leve); 2ª = título; 3ª = badges, responsável e progresso; ⋮ centrado na altura.
      A caixa de seleção só aparece no modo de seleção (.ds-tabela--selecionando, ligado pelo toque longo), no lugar do ⋮: toque abre o item; com a seleção ligada, toque marca/desmarca. */
   .ds-tabela tbody { display: block; width: 100%; margin-top: 4px; }
@@ -1231,6 +1222,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-filtros__normal.hidden, .ds-filtros__selecao.hidden { display: none; }
 .ds-filtros__selecao-texto { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
 .ds-filtros__divisor { width: var(--ds-borda); align-self: stretch; margin: 2px 4px; background: var(--ds-color-border); }
+.ds-filtros__base { display: none; }
 .ds-filtros__pag { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
 
 /* Busca expansível: .ds-busca > [botão .ds-icon-action] + .ds-busca__caixa(.hidden) > __icone + input.ds-input.ds-busca__input + __limpar */
@@ -1329,12 +1321,16 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
    que abrem o bottom sheet do próprio filtro (abrirMenuSelecao no mobile) e mostram o valor escolhido; limpar um filtro é no × da própria pílula (ou no "Limpar" do sheet); sem "Limpar filtros" geral. */
 @media (max-width: 768px) {
   .ds-filtros { flex-wrap: wrap; }
+  .ds-filtros__normal, .ds-filtros__selecao { min-height: 44px; }   /* mesma altura: trocar a busca pela faixa de seleção não move a lista */
   .ds-filtros__normal { row-gap: var(--ds-space-2); }
   .ds-filtros__normal > .ds-busca { flex: 1 1 100%; }
   .ds-busca__caixa { flex: 1 1 auto; }
   .ds-busca__input { width: 100%; max-width: none; }
   .ds-filtro { flex: none; }
   .ds-filtros__normal > .ds-link { display: none; }  /* sem "Limpar filtros" geral: cada filtro limpa no próprio × */
+  /* linha base: "Selecionar tudo" sob a busca/faixa de seleção; reserva a altura o tempo todo para a lista não se mover */
+  .ds-filtros__base { display: flex; flex: 1 1 100%; align-items: center; gap: var(--ds-space-2); min-height: 32px; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); color: var(--ds-color-text); cursor: pointer; }
+  .ds-filtros__base[aria-hidden="true"] { visibility: hidden; }
 }
 
 /* ===================== MENUS SUSPENSOS E AÇÕES DE LINHA (canônicos; script em components_acoes_linha.html) =====================
@@ -3128,18 +3124,27 @@ function toggleMenu() {
   if (burger) { burger.setAttribute('aria-expanded', String(abrir)); burger.setAttribute('aria-label', abrir ? 'Fechar menu' : 'Abrir menu'); }
   if (!abrir) fecharNavSubmenus();
 }
-// Mobile: arrastar da borda esquerda para a direita abre o menu lateral (o ☰ some onde há botão de voltar).
+// Mobile: arrastar para a direita abre o menu lateral (o ☰ some onde há botão de voltar). Não começa na borda (os ~48 px da esquerda são do
+// gesto de voltar do Android) nem em área que rola de lado (pílulas, abas) nem em campo de texto: vale em qualquer outro ponto até a metade da tela.
 (function () {
   var x0 = null, y0 = null;
+  function rolaDeLado(el) {
+    for (; el && el !== document.body; el = el.parentElement) {
+      if (el.scrollWidth > el.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(el).overflowX)) return true;
+    }
+    return false;
+  }
   document.addEventListener('touchstart', function (e) {
-    var t = e.touches[0];
-    x0 = (e.touches.length === 1 && t.clientX <= 40 && window.matchMedia('(max-width: 768px)').matches) ? t.clientX : null; y0 = t.clientY;
+    var t = e.touches[0], alvo = e.target;
+    x0 = (e.touches.length === 1 && t.clientX >= 48 && t.clientX <= window.innerWidth * 0.5 && window.matchMedia('(max-width: 768px)').matches
+      && !alvo.closest('input, textarea, select, .ds-sheet, .modal-overlay') && !rolaDeLado(alvo)) ? t.clientX : null;
+    y0 = t.clientY;
   }, { passive: true });
   document.addEventListener('touchend', function (e) {
     if (x0 === null) return;
     var t = e.changedTouches[0], dx = t.clientX - x0, dy = Math.abs(t.clientY - y0);
     x0 = null;
-    if (dx > 60 && dx > dy * 1.5 && !_drawerAberto()) toggleMenu();
+    if (dx > 80 && dx > dy * 2 && !_drawerAberto()) toggleMenu();
   }, { passive: true });
 })();
 
@@ -13890,6 +13895,12 @@ uiRegistrarAcoes('pages_execucao_validacao', {
       <div id="pll-selecao-acoes"></div>
     </div>
 
+    <!-- Linha base (celular): "Selecionar tudo / Desmarcar tudo", logo abaixo da busca e da faixa de seleção. Ocupa o espaço o tempo todo (invisível sem seleção) para a lista não se mover ao selecionar. -->
+    <label class="ds-filtros__base" id="pll-selall-linha" aria-hidden="true">
+      <input type="checkbox" id="chk-select-all-planos-mob" data-on-change="pages_planos_lista.17" aria-label="Selecionar todos" tabindex="-1">
+      <span id="pll-selall-rotulo">Selecionar tudo</span>
+    </label>
+
     <!-- Contador + paginação: sempre visível (nem os filtros nem a seleção em lote a
        escondem — ver comentário acima). Sem "Exibir": tamanho de página fixo, sem
        seletor; as ferramentas da tabela (ordenar, atualizar, baixar, imprimir) vivem no
@@ -13918,7 +13929,6 @@ uiRegistrarAcoes('pages_execucao_validacao', {
               <input type="checkbox" id="chk-select-all-planos"
                 data-on-change="pages_planos_lista.17"
                 aria-label="Selecionar todos">
-              <label for="chk-select-all-planos" class="ds-tabela__card" id="pll-selall-rotulo">Selecionar tudo</label>
             </th>
             <th class="ds-th-ord ds-tabela__principal" data-on-click="pages_planos_lista.18">Nome<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-nome"></span></th>
             <th class="ds-th-ord" data-on-click="pages_planos_lista.20">Responsável<span class="material-symbols-outlined ds-th-ord__icone" id="sort-icon-responsavel"></span></th>
@@ -14026,12 +14036,6 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 #page-planos .pll-vig { white-space: nowrap; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
 #page-planos .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); }
 
-/* Progresso */
-#page-planos .pll-prog { display: flex; align-items: center; gap: 10px; }
-#page-planos .pll-prog .ds-kpi-track { width: 72px; flex: none; }
-#page-planos .pll-prog-txt { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); min-width: 34px; }
-#page-planos .pll-sem-prog { color: var(--ds-color-text-muted); }
-
 /* Impressão: só a tabela (sem menu, filtros nem seleção) */
 @media print {
   #main-header, #sidebar, #pll-filtros-card { display: none !important; }
@@ -14044,10 +14048,7 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 
   #page-planos .pll-card-meta { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; }
   #page-planos .pll-card-meta .ds-resp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #page-planos .pll-card-prog { flex: 1 1 56px; min-width: 48px; }
-  #page-planos .pll-card-prog .pll-prog { gap: 6px; }
-  #page-planos .pll-card-prog .ds-kpi-track { flex: 1; width: auto; }
-  #page-planos .pll-prog-txt { min-width: 0; }
+  #page-planos .pll-card-prog { margin-top: 6px; }
 }
 </style>
 
@@ -14342,9 +14343,6 @@ function _pllMobileSincronizar() {
   document.getElementById('pll-ordenar-mob').classList.toggle('hidden', !(mob && foco));
   var pag = document.querySelector('#pll-filtros-card > .ds-filtros__pag');
   if (pag) pag.classList.toggle('hidden', mob);
-  // no mobile o cabeçalho da tabela é só a linha "Selecionar tudo", que aparece no modo de seleção
-  var thead = document.querySelector('#tabela-planos thead');
-  if (thead) thead.classList.toggle('hidden', mob && !estadoPlanos.selecionados.size);
 }
 window.matchMedia('(max-width: 768px)').addEventListener('change', function() { _pllMobileSincronizar(); if (estadoPlanos._planosVisiveis) _renderizarPagina(); });
 
@@ -14354,7 +14352,15 @@ function _pllMobilePreparar() {
     inp.dataset.pllMobile = '1';
     inp.addEventListener('focus', function() { estadoPlanos._buscaEmFoco = true; _pllMobileSincronizar(); });
     // espera o toque numa pílula chegar antes de escondê-las
-    inp.addEventListener('blur', function() { setTimeout(function() { estadoPlanos._buscaEmFoco = false; _pllMobileSincronizar(); }, 250); });
+    inp.addEventListener('blur', function() {
+      setTimeout(function() {
+        // tocar numa pílula tira o foco do campo: enquanto o toque está na barra (ou o sheet aberto) as pílulas ficam
+        if (Date.now() - (estadoPlanos._toqueBarra || 0) < 1500) return;
+        estadoPlanos._buscaEmFoco = false; _pllMobileSincronizar();
+      }, 250);
+    });
+    var barra = document.getElementById('pll-filtros-normal');
+    ['touchstart', 'mousedown'].forEach(function(t) { barra.addEventListener(t, function() { estadoPlanos._toqueBarra = Date.now(); }, { passive: true }); });
   }
   uiToqueLongo(document.getElementById('tbody-planos'), 'tr.ds-linha-clicavel', function(tr) {
     var chk = tr.querySelector('.plano-select-checkbox');
@@ -14652,12 +14658,7 @@ function _renderizarTabela(planos) {
       escapeHtml(nomeRespExib) +
       (nAdic ? ' <span class="resp-mais">+' + nAdic + '</span>' : '') + '</span>';
 
-    var pct = (p.progresso == null || isNaN(Number(p.progresso))) ? null : Math.max(0, Math.min(100, Number(p.progresso)));
-    var progHtml = pct === null
-      ? '<span class="pll-sem-prog" data-title="Sem elementos para calcular o progresso">—</span>'
-      : '<div class="pll-prog" data-title="Média do % de conclusão dos elementos (cancelados fora)">' +
-          '<div class="ds-kpi-track"><div class="ds-kpi-fill ds-tone-info" style="width:' + pct.toFixed(0) + '%"></div></div>' +
-          '<span class="pll-prog-txt">' + pct.toFixed(0) + '%</span></div>';
+    var progHtml = uiProgressoHTML(p.progresso, 'Média do % de conclusão dos elementos (cancelados fora)');
 
     var tr = document.createElement('tr');
     tr.classList.add('ds-linha-lista', 'ds-linha-clicavel');
@@ -14688,7 +14689,7 @@ function _renderizarTabela(planos) {
       // Linha do celular: status + responsável + progresso, tudo numa linha só
       '<td class="ds-tabela__card"><div class="pll-card-meta">' +
         '<span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' +
-        respHtml + lixHtml + '<div class="pll-card-prog">' + progHtml + '</div></div></td>';
+        respHtml + lixHtml + '</div><div class="pll-card-prog">' + progHtml + '</div></td>';
     tbody.appendChild(tr);
   });
 
@@ -14834,23 +14835,23 @@ function limparSelecaoPlanos() {
     chk.checked = false;
     chk.closest('tr').classList.remove('is-selecionada');
   });
-  var chkAll = document.getElementById('chk-select-all-planos');
-  if (chkAll) { chkAll.checked = false; chkAll.indeterminate = false; }
+  _pllMarcarTodasCaixas(false, false);
   atualizarBarraSelecaoPlanos();
 }
 
 function _atualizarCheckAll() {
-  var chkAll = document.getElementById('chk-select-all-planos');
   var caixas = document.querySelectorAll('#tbody-planos .plano-select-checkbox');
-  if (!chkAll) return;
-  if (caixas.length === 0) {
-    chkAll.checked = false; chkAll.indeterminate = false;
-  } else {
-    var marcados = Array.from(caixas).filter(function(c) { return c.checked; }).length;
-    chkAll.checked = marcados === caixas.length;
-    chkAll.indeterminate = marcados > 0 && marcados < caixas.length;
-  }
+  var marcados = Array.from(caixas).filter(function(c) { return c.checked; }).length;
+  _pllMarcarTodasCaixas(caixas.length > 0 && marcados === caixas.length, marcados > 0 && marcados < caixas.length);
   atualizarBarraSelecaoPlanos();
+}
+
+// "Selecionar todos": a caixa do cabeçalho (desktop) e a da linha base (celular) mostram sempre o mesmo estado.
+function _pllMarcarTodasCaixas(marcada, indeterminada) {
+  ['chk-select-all-planos', 'chk-select-all-planos-mob'].forEach(function(id) {
+    var c = document.getElementById(id);
+    if (c) { c.checked = marcada; c.indeterminate = indeterminada; }
+  });
 }
 
 // Ao marcar/desmarcar qualquer checkbox, a barra de filtros vira barra de seleção em lote
@@ -14865,8 +14866,11 @@ function atualizarBarraSelecaoPlanos() {
     _pllRenderizarAcoesSelecao(qtd);
   }
   document.getElementById('tabela-planos').classList.toggle('ds-tabela--selecionando', qtd > 0);
-  var chkAll = document.getElementById('chk-select-all-planos');
-  document.getElementById('pll-selall-rotulo').textContent = chkAll && chkAll.checked ? 'Desmarcar tudo' : 'Selecionar tudo';
+  var caixasLista = document.querySelectorAll('#tbody-planos .plano-select-checkbox');
+  var todasMarcadas = caixasLista.length > 0 && estadoPlanos.selecionados.size >= caixasLista.length;
+  document.getElementById('pll-selall-rotulo').textContent = todasMarcadas ? 'Desmarcar tudo' : 'Selecionar tudo';
+  document.getElementById('pll-selall-linha').setAttribute('aria-hidden', String(qtd === 0));
+  document.getElementById('chk-select-all-planos-mob').tabIndex = qtd === 0 ? -1 : 0;
   _pllMobileSincronizar();
   uiPaginaMedir(document.getElementById('page-planos'));
   pllAtualizarAlturaMinTabela();
