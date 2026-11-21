@@ -153,8 +153,41 @@
     var passoFim = el('div', { 'class': 'hidden' }, [acoes([btnFimVoltar])]);
     var passo2 = el('div', { 'class': 'hidden ds-stack' }, [campo('samauma-login-codigo', 'Código de 6 dígitos', inCodigo), acoes([btnEntrar, btnReenviar, btnOutro])]);
 
+    // Captcha (Turnstile) nos dois pedidos de código. Invisível; só mostra o desafio quando a Cloudflare julga necessário. Sem a chave do build, não existe.
+    var capLocal = el('div', { id: 'samauma-captcha' });
+    var capWidget = null, capPendente = null;
+    function capTema() { return document.body.classList.contains('high-contrast') || document.documentElement.getAttribute('data-ds-theme') === 'dark' ? 'dark' : 'light'; }
+    function capCarregar(pronto, falhou) {
+      if (window.turnstile) { pronto(); return; }
+      var s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; s.async = true;
+      s.onload = pronto; s.onerror = function () { falhou(); };
+      document.head.appendChild(s);
+    }
+    function capResolver(token, erro) { var p = capPendente; capPendente = null; if (p) { if (erro) p.falha(new Error(erro)); else p.ok(token); } }
+    function obterCaptcha(ok, falha) {
+      var chave = window.SAMAUMA_TURNSTILE_CHAVE;
+      if (!chave) { ok(''); return; }
+      var MSG = 'Não foi possível confirmar que você é uma pessoa. Recarregue a página e tente novamente.';
+      capCarregar(function () {
+        capPendente = { ok: ok, falha: falha };
+        if (capWidget === null) {
+          capWidget = window.turnstile.render(capLocal, {
+            sitekey: chave, appearance: 'interaction-only', execution: 'execute', language: 'pt-br', theme: capTema(),
+            callback: function (t) { capResolver(t); },
+            'error-callback': function () { capResolver('', MSG); },
+            'expired-callback': function () { window.turnstile.reset(capWidget); }
+          });
+        } else window.turnstile.reset(capWidget);
+        window.turnstile.execute(capWidget);
+      }, function () { falha(new Error(MSG)); });
+    }
+    function enviarComCaptcha(nome, args, ok, falha) {
+      obterCaptcha(function (token) { Api.enviar(nome, args, ok, falha, token); }, falha);
+    }
+
     mostrar(el('div', { 'class': 'ds-tela-cheia__card' }, [
-      el('div', { 'class': 'ds-stack ds-stack--3' }, [logo(), titulo]), sub, msg, passo1, passoPa, passo2, passoFim,
+      el('div', { 'class': 'ds-stack ds-stack--3' }, [logo(), titulo]), sub, msg, passo1, passoPa, passo2, passoFim, capLocal,
       el('hr', { 'class': 'ds-divisor' }), el('div', { 'class': 'ds-stack ds-stack--3' }, [el('div', { 'class': 'ds-cluster' }, [SeletorTema.criar()]), creditoFoto()])]));
     inEmail.value = Api.lerEmail();
     inEmail.focus();
@@ -178,7 +211,7 @@
       ocupado(btnEnviar, true, 'Enviando…', 'Enviar código');
       btnReenviar.disabled = true;
       aviso_('');
-      Api.enviar('apiAuthSolicitarCodigo', [email], function (res) {
+      enviarComCaptcha('apiAuthSolicitarCodigo', [email], function (res) {
         ocupado(btnEnviar, false, '', 'Enviar código'); btnReenviar.disabled = false;
         if (res && res.ok) { passoCodigo(); aviso_(res.dados && res.dados.mensagem, true); inCodigo.focus(); }
         else if (res && res.erro && /^Aguarde|Muitos pedidos/.test(res.erro)) irParaCodigo(res.erro + ' Se você já recebeu um código, digite-o abaixo.');
@@ -203,7 +236,7 @@
       ocupado(btnPaEnviar, true, 'Enviando…', 'Enviar código');
       btnReenviar.disabled = true;
       aviso_('');
-      Api.enviar('apiAuthPrimeiroAcesso', [email, matricula, cpf], function (res) {
+      enviarComCaptcha('apiAuthPrimeiroAcesso', [email, matricula, cpf], function (res) {
         ocupado(btnPaEnviar, false, '', 'Enviar código'); btnReenviar.disabled = false;
         if (res && res.ok) { inEmail.value = email; passoCodigo(); aviso_(res.dados && res.dados.mensagem, true); inCodigo.focus(); }
         else aviso_((res && res.erro) || 'Não foi possível enviar o código.');
