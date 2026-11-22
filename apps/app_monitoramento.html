@@ -1580,7 +1580,7 @@ function _monitRenderCorpo() {
         ? '<span class="ds-resp"' + (respTitle ? ' data-title="' + escapeHtml(respTitle) + '"' : '') + '>'
           + '<span class="material-symbols-outlined">' + ico + '</span>'
           + '<span>' + escapeHtml(nomesTodos[0] || 'Não definido') + '</span>'
-          + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '')
+          + (nAdic > 0 ? ' <span class="ds-resp-mais">+' + nAdic + '</span>' : '')
           + '</span>'
         : '—';
       var acoes = (typeof acoesLinhaHTML === 'function') ? acoesLinhaHTML('mon-el-' + l.id, [

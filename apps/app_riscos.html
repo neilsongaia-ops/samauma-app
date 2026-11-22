@@ -2087,7 +2087,7 @@ function _riscoLinhaHTML(r, podeEditar) {
     respHtml = '<span class="ds-resp"' + (respTitle ? ' data-title="' + escapeHtml(respTitle) + '"' : '') + '>'
       + '<span class="material-symbols-outlined">' + ico + '</span>'
       + '<span>' + escapeHtml(primeiro || 'Não definido') + '</span>'
-      + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '')
+      + (nAdic > 0 ? ' <span class="ds-resp-mais">+' + nAdic + '</span>' : '')
       + '</span>';
   }
   var pi = (r.probabilidade || '—') + ' × ' + String(r.impacto || '—').toLowerCase();

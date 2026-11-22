@@ -1207,7 +1207,7 @@ function _vincLinhaHTML(p, podeEditar) {
     ? '<span class="ds-resp"' + (titResp ? ' data-title="' + escapeHtml(titResp) + '"' : '') + '>'
       + '<span class="material-symbols-outlined">' + (p.tipoResponsavel === 'USER' ? 'person' : 'apartment') + '</span>'
       + '<span>' + escapeHtml(respNome) + '</span>'
-      + (nAdic > 0 ? '<span class="resp-mais">+' + nAdic + '</span>' : '') + '</span>'
+      + (nAdic > 0 ? '<span class="ds-resp-mais">+' + nAdic + '</span>' : '') + '</span>'
     : '<span class="vinc-vazio">—</span>';
   var status = p.status
     ? '<span class="ds-badge ds-badge--' + (_VINC_STATUS_SLUG[p.status] || 'finalizado') + '">' + escapeHtml(p.status) + '</span>' : '<span class="vinc-vazio">—</span>';

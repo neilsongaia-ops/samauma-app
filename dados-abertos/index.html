@@ -713,7 +713,9 @@ body.high-contrast {
   .ds-tabela tbody tr.ds-item-grupo--meio { border-radius: 0; margin-top: calc(-1 * var(--ds-space-1)); }
   .ds-tabela tbody tr.ds-item-grupo--fim { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: calc(-1 * var(--ds-space-1)); }
   .ds-tabela tbody tr.ds-item-grupo--meio::before, .ds-tabela tbody tr.ds-item-grupo--fim::before { content: ''; position: absolute; top: 0; left: var(--ds-space-4); right: var(--ds-space-4); height: var(--ds-borda); background: var(--ds-color-border); }
+  .ds-tabela tbody tr.ds-item-cor::before { background: var(--ds-color-borda-item); }   /* divisória colorida: a tela define a cor (a do item mais profundo dos dois que ela separa, do 3.º nível em diante) */
   .ds-tabela--arvore tbody tr { padding-left: calc(var(--ds-space-3) + 24px); }
+  .ds-tabela--arvore tbody tr.ds-item-sem-seta { padding-left: var(--ds-space-3); }   /* raiz sem filhos: sem a faixa da seta, o conteúdo volta à esquerda e destaca quem tem filhos */
   .ds-tabela tbody .ds-tabela__expandir { position: absolute; left: var(--ds-space-2); top: 50%; transform: translateY(-50%); }
   .ds-tabela tbody tr.ds-linha-filha.is-aberta { display: grid; }
   .ds-tabela tbody tr:hover { background: color-mix(in srgb, var(--ds-color-surface-2), var(--ds-color-text) 8%); }   /* destaque do item sob o dedo/cursor: mais claro que o cartão */
@@ -735,14 +737,14 @@ body.high-contrast {
   /* 3ª linha: cabem quantos badges couberem, sem quebrar; o que não cabe some e o badge "…" (.ds-badge--mais) sinaliza (uiMetaPreencher) */
   .ds-tabela__meta { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--ds-space-2); overflow: hidden; }
   .ds-tabela__meta > * { flex: none; white-space: nowrap; }
-  .ds-tabela__meta > :first-child { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .ds-tabela__meta > :first-child { min-width: 0; max-width: 100%; }   /* o 1.º (responsável) não cede espaço aos outros: some antes o que está no fim; só se ele sozinho não couber, o nome ganha reticências */
   .ds-badge--mais { justify-content: center; padding-left: var(--ds-space-2); padding-right: var(--ds-space-2); }
-  .ds-badge--mais .material-symbols-outlined { display: block; font-size: var(--ds-icon-sm); }
+  .ds-badge--mais .material-symbols-outlined { display: block; line-height: var(--ds-leading-tight); }   /* o ícone sozinho tem a mesma altura de linha (16,8px) que o texto dos outros badges: pílula de altura única */
   /* 1ª linha: o tipo/nível é texto neutro e leve, da cor da data (sem badge) */
   .ds-tabela tbody .ds-tabela__tipo { padding: 0; border: 0; border-radius: 0; background: none !important; color: var(--ds-color-text-muted) !important; font-size: var(--ds-text-xs); font-weight: var(--ds-weight-regular); }
   .ds-tabela__prog { margin-top: var(--ds-space-2); }
   /* o item tem a cor surface-2: as pílulas de dentro (nível, responsável) usam a surface para continuar visíveis */
-  .ds-tabela tbody .ds-resp, .ds-tabela tbody .ds-badge[class*="ds-badge--ico"], .ds-tabela tbody .ds-badge:not([class*=" ds-badge--"]) { background: var(--ds-color-surface); }   /* badges neutros (sem tom de status) também saem da cor do item */
+  .ds-tabela tbody .ds-resp, .ds-tabela tbody .ds-badge--mais, .ds-tabela tbody .ds-badge--neutral, .ds-tabela tbody .ds-badge[class*="ds-badge--ico"], .ds-tabela tbody .ds-badge:not([class*=" ds-badge--"]) { background: var(--ds-color-surface); }   /* badges neutros (sem tom de status) também saem da cor do item */
   .ds-tabela tbody .ds-progresso .ds-kpi-track { flex: 1 1 auto; width: auto; }   /* na linha da lista a barra ocupa a largura disponível */
   .ds-tabela tbody .ds-tabela__so-desktop { display: none; }
   /* linha de aviso ocupa a largura toda, sem virar cartão */
@@ -1366,7 +1368,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-resp > :not(.material-symbols-outlined) { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .ds-resp .material-symbols-outlined { flex-shrink: 0; }
 .ds-resp .material-symbols-outlined { font-size: var(--ds-icon-xs); }
-.ds-resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); }
+.ds-resp-mais { flex: none; color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); }
 
 /* Progresso: .ds-progresso > .ds-kpi-track > .ds-kpi-fill (style="width:N%", valor calculado) + .ds-progresso__valor "N%" */
 .ds-progresso { display: flex; align-items: center; gap: 10px; }

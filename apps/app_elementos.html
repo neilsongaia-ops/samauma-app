@@ -3813,7 +3813,7 @@ function elToggleFilhos(ev, parentId) {
 }
 
 /** Celular: cola o item raiz e seus descendentes abertos num só bloco e desenha o contorno colorido (cor do tipo do raiz) quando há itens abertos; liga a faixa da seta quando há hierarquia.
- *  O contorno anima só quando o bloco acaba de abrir (ou muda de tamanho); redesenhos por rolagem/redimensionamento o mantêm parado. */
+ *  O contorno anima só na primeira abertura do raiz; abrir um filho, rolar ou redimensionar o redesenham parado. */
 function elAtualizarGruposArvore() {
   var tbody = document.getElementById('el-tbody');
   var tabela = document.getElementById('el-tabela');
@@ -3822,6 +3822,7 @@ function elAtualizarGruposArvore() {
   Array.prototype.forEach.call(wrap.querySelectorAll('.ds-item-contorno'), function(n) { n.remove(); });
   var linhas = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-id]'));
   tabela.classList.toggle('ds-tabela--arvore', linhas.some(function(tr) { return tr.querySelector('.ds-item-seta'); }));
+  linhas.forEach(function(tr) { tr.classList.toggle('ds-item-sem-seta', tr.dataset.level === '0' && !tr.querySelector('.ds-item-seta')); });
   var anteriores = tbody._elContornos || {};
   var atuais = {};
   var grupo = [];
@@ -3829,11 +3830,16 @@ function elAtualizarGruposArvore() {
     grupo.forEach(function(tr, i) {
       var pos = grupo.length === 1 ? '' : (i === 0 ? 'ini' : (i === grupo.length - 1 ? 'fim' : 'meio'));
       ['ini', 'meio', 'fim'].forEach(function(p) { tr.classList.toggle('ds-item-grupo--' + p, p === pos); });
+      // divisória colorida: do 3.º nível em diante, a linha entre dois itens leva a cor do tipo do mais profundo dos dois (abre e fecha cada sequência com a mesma cor)
+      var ant = grupo[i - 1], fundo = ant && +ant.dataset.level > +tr.dataset.level ? ant : tr;
+      var colore = i > 0 && +fundo.dataset.level >= 2 && fundo.dataset.cor;
+      tr.classList.toggle('ds-item-cor', !!colore);
+      if (colore) tr.style.setProperty('--ds-color-borda-item', fundo.dataset.cor); else tr.style.removeProperty('--ds-color-borda-item');
     });
     if (grupo.length > 1 && _elMobile()) {
       var raiz = grupo[0].dataset.id;
       atuais[raiz] = grupo.length;
-      elDesenharContorno(wrap, grupo, anteriores[raiz] !== grupo.length);
+      elDesenharContorno(wrap, grupo, anteriores[raiz] === undefined);
     }
     grupo = [];
   }
@@ -3923,7 +3929,7 @@ function criarNoDOM(item) {
     if (!isNaN(val)) custoTxt = val.toLocaleString('pt-BR', {minimumFractionDigits: 2});
     else custoTxt = item.custo;
   }
-  const custoHtml = custoTxt ? `<span class="ds-badge ds-badge--warning">R$ ${escapeHtml(custoTxt)}</span>` : '';
+  const custoHtml = custoTxt ? `<span class="ds-badge ds-badge--ico-custo"><span class="material-symbols-outlined">payments</span><span>R$ ${escapeHtml(custoTxt)}</span></span>` : '';
 
   let respHtml = '';
   if (item.quem && item.quem.length > 0) {
@@ -5184,7 +5190,7 @@ function renderizarTabelaEstrutura() {
     var tdElem = '<td class="ds-tabela__principal"><div class="ds-tabela__id el-elem-content">' +
       tipoHtml +
       '<div class="ds-tabela__nome-wrap"><div class="ds-tabela__nome" data-title="' + escapeHtml(no.titulo) + '">' +
-        (no.codigo ? '<span class="ds-tabela__codigo">' + escapeHtml(no.codigo) + '</span>' : '') + escapeHtml(no.titulo) + '</div></div>' +
+        (no.codigo ? '<span class="ds-tabela__codigo"' + (nivel >= 2 && corTipo ? ' style="color:' + escapeHtml(corTipo) + '"' : '') + '>' + escapeHtml(no.codigo) + '</span>' : '') + escapeHtml(no.titulo) + '</div></div>' +
       '<span class="ds-tabela__so-desktop">' + _iconeAcimaDoLimiteEl(no) + '</span>' +
       (chipsHtml ? chipsHtml.replace('class="el-meta-chips"', 'class="el-meta-chips ds-tabela__so-desktop"') : '') +
       '</div></td>';
@@ -5204,7 +5210,7 @@ function renderizarTabelaEstrutura() {
         (respTitle ? ' data-title="' + escapeHtml(respTitle) + '"' : '') +
         '><span class="material-symbols-outlined">' + ico + '</span>' +
         '<span>' + escapeHtml(primeiro) + '</span>' +
-        (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '') +
+        (nAdic > 0 ? ' <span class="ds-resp-mais">+' + nAdic + '</span>' : '') +
         '</span>';
     }
     var tdResp = '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + respHtml + '</td>';
@@ -5407,7 +5413,7 @@ function renderizarOrganograma() {
       respHtml = '<span class="ds-resp"' + (tit ? ' data-title="' + escapeHtml(tit) + '"' : '') + '>'
         + '<span class="material-symbols-outlined">' + (el.quem[0].tipo === 'USER' ? 'person' : 'apartment') + '</span>'
         + '<span>' + escapeHtml(nomes[0] || 'Não definido') + '</span>'
-        + (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '') + '</span>';
+        + (nAdic > 0 ? ' <span class="ds-resp-mais">+' + nAdic + '</span>' : '') + '</span>';
     }
     var nInd = Number(el.qtdIndicadores || 0);
     var indHtml = uiChipPrazoHTML(el.prazo || el.fim) + (nInd ? '<span class="ds-badge ds-badge--ico-indicador" data-title="' + nInd + (nInd === 1 ? ' indicador' : ' indicadores') + '"><span class="material-symbols-outlined">speed</span><span>' + nInd + '</span></span>' : '');
@@ -5621,7 +5627,7 @@ function renderizarTabelaDetalhes() {
         (respTitle ? ' data-title="' + escapeHtml(respTitle) + '"' : '') +
         '><span class="material-symbols-outlined">' + ico + '</span>' +
         '<span>' + escapeHtml(primeiro) + '</span>' +
-        (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '') +
+        (nAdic > 0 ? ' <span class="ds-resp-mais">+' + nAdic + '</span>' : '') +
         '</span>';
     }
     var tdResp = '<td class="w5-col-resp">' + respHtml + '</td>';
