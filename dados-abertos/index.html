@@ -752,6 +752,17 @@ body.high-contrast {
 
 /* Bottom sheet (painel que sobe da base da tela, no mobile): .ds-sheet(.is-aberto) > .ds-sheet__fundo + .ds-sheet__painel > .ds-sheet__alca + .ds-sheet__cab (__titulo + ação opcional, ex. "Limpar" + fechar à direita) + .ds-sheet__corpo + .ds-sheet__rodape (opcional).
    Aberto por uiSheetAbrir(opcoes) (app_ui_utils.html): fecha no fundo, no ×, no Esc e arrastando a alça para baixo. Grupos de opções dentro do corpo: .ds-sheet__grupo > .ds-sheet__rotulo + itens .acoes-menu-item (abrirMenuSelecao no mobile). */
+.ds-esqueleto { display: none; }
+@media (max-width: 768px) {
+  /* carregamento de lista no celular: esqueleto (blocos no formato do item) em vez do spinner, que fica no desktop */
+  .ds-carregando .lista-spinner-wrap { display: none; }
+  .ds-esqueleto { display: flex; flex-direction: column; gap: var(--ds-space-1); width: 100%; }
+  .ds-esqueleto__item { display: flex; flex-direction: column; gap: var(--ds-space-2); padding: 14px var(--ds-space-3); border-radius: var(--ds-r-md); background: var(--ds-color-surface-2); }
+  .ds-esqueleto__linha { display: block; width: 100%; height: 12px; border-radius: var(--ds-r-pill); background: linear-gradient(90deg, var(--ds-color-border) 25%, var(--ds-color-surface) 50%, var(--ds-color-border) 75%); background-size: 200% 100%; animation: ds-brilho 1.2s linear infinite; }
+  .ds-esqueleto__linha--curta { width: 30%; }
+  .ds-esqueleto__linha--media { width: 60%; }
+}
+@keyframes ds-brilho { from { background-position: 200% 0; } to { background-position: -200% 0; } }
 .ds-puxar { position: fixed; top: 60px; left: 50%; z-index: var(--ds-z-header); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-left: -20px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-color-border); color: var(--ds-color-text-muted); opacity: 0; pointer-events: none; }   /* arrastar a lista para baixo atualiza (uiPuxarParaAtualizar) */
 .ds-puxar.is-pronto { color: var(--ds-color-action); }
 .ds-puxar.is-atualizando { opacity: 1; transform: translateY(24px); }
@@ -1345,7 +1356,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   #topbar-crumbs { flex: 0 3 auto; }
   #topbar > :last-child { margin-left: auto; }
   #topbar[data-abas] > #topbar-crumbs { display: none; }
-  .ds-topbar-status__ponto { display: block; width: 14px; height: 14px; padding: 0; border-radius: var(--ds-r-pill); }   /* a cor é a do fundo do .ds-badge--<tom> */
+  .ds-topbar-status__ponto { display: block; width: 14px; height: 14px; padding: 0; border-radius: var(--ds-r-pill); background: currentColor; }   /* a cor é a da fonte do .ds-badge--<tom> */
   .ds-topbar-aba { display: flex; align-items: center; gap: var(--ds-space-1); flex: 0 1 auto; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-family: inherit; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
   .ds-topbar-aba.hidden { display: none; }
   .ds-topbar-aba .material-symbols-outlined { flex: none; font-size: var(--ds-icon-md); color: var(--ds-color-text-muted); }

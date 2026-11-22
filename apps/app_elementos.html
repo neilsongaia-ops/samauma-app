@@ -2099,9 +2099,7 @@ function atualizarConteudoPlano() {
   if (!_elCtx) return;
   var tbody = document.getElementById('el-tbody');
   if (tbody) {
-    tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="5">' +
-      '<div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Atualizando elementos…</span></div>' +
-      '</td></tr>';
+    tbody.innerHTML = '<tr class="el-linha-msg ds-tabela__msg"><td colspan="5">' + esqueletoListaHTML('Atualizando elementos…') + '</td></tr>';
   }
   var maisWrap = document.getElementById('el-carregar-mais-wrap');
   if (maisWrap) maisWrap.innerHTML = '';
@@ -2135,7 +2133,7 @@ function _elIniciar() {
   if (btnNovoItem) btnNovoItem.classList.toggle('hidden', !(_elCtx.permissoes || {}).gerenciarElementos);
 
   var tbody = document.getElementById('el-tbody');
-  if (tbody) tbody.innerHTML = '<tr class="el-linha-msg"><td colspan="5">' + spinnerListaHTML() + '</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr class="el-linha-msg ds-tabela__msg"><td colspan="5">' + esqueletoListaHTML() + '</td></tr>';
   _elementosSDK.chamar('apiGetAbaElementos', _elCtx.idPlano).then(function(res) {
     _elCarregado = true;
     _elElementos = res.elementos || [];
