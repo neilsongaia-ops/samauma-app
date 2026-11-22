@@ -133,8 +133,8 @@ main { flex: 1; min-height: 0; padding: var(--ds-main-pad-y) var(--ds-main-pad-x
   /* busca e filtros grudam no alto da área rolável (padrão Gmail); top: 0 anula o deslocamento do desktop */
   .ds-pagina__filtros { top: calc(-1 * var(--ds-main-pad-y)); }   /* o sticky para no padding da área rolável: compensa para colar no topo */
   /* hero sem nada além do título (que no mobile mora na barra do topo) não ocupa espaço */
-  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha))) { display: none; }
-  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha))) ~ .ds-pagina__filtros { margin-top: calc(-1 * var(--ds-main-pad-y)); }   /* busca colada ao topo */
+  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) { display: none; }
+  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) ~ .ds-pagina__filtros, .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) ~ * .ds-pagina__filtros { margin-top: calc(-1 * var(--ds-main-pad-y)); }   /* busca colada ao topo */
 }
 
 .card { background: var(--ds-glass-bg-strong); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-2xl); box-shadow: var(--ds-glass-shadow); padding: 20px; margin-bottom: 20px; }
@@ -653,6 +653,9 @@ body.high-contrast {
 .ds-tabela__ordenar { display: none; }
 .ds-tabela__id { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ds-tabela__nome-wrap { flex: 1 1 auto; min-width: 0; }
+.ds-tabela__codigo { margin-right: var(--ds-space-1); font-weight: var(--ds-weight-regular); color: var(--ds-color-text-muted); }   /* texto cinza que antecede o nome do item: sigla do plano, código do elemento… */
+.ds-tabela__rotulo { text-transform: none; letter-spacing: normal; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ds-tabela__cab-acoes { display: none; }
 .ds-tabela__nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 1024px) { .ds-tabela .ds-tabela__so-larga { display: none; } }
 @media (max-width: 768px) {
@@ -664,9 +667,11 @@ body.high-contrast {
   .ds-tabela thead tr { display: flex; align-items: center; min-height: 36px; padding: 0 var(--ds-space-2); }
   .ds-tabela thead, .ds-tabela thead tr, .ds-tabela thead th { background: none; }
   .ds-tabela thead th { display: none; }
-  .ds-tabela thead th.ds-tabela__ordenar { display: block; padding: 2px 0; border: none; }
+  .ds-tabela thead th.ds-tabela__ordenar, .ds-tabela thead th.ds-tabela__cab-acoes { position: static; }
+  .ds-tabela thead th.ds-tabela__ordenar { display: block; flex: 1 1 auto; padding: 2px 0; border: none; }
+  .ds-tabela thead th.ds-tabela__cab-acoes { display: block; padding: 0; border: none; }   /* ações da lista (⋮) à direita do cabeçalho, no lugar dos modos de visualização */
   /* com a seleção ligada, o item de ordenação dá lugar a "Selecionar tudo / Desmarcar tudo" (mesma altura: a lista não se move) */
-  .ds-tabela--selecionando thead th.ds-tabela__ordenar { display: none; }
+  .ds-tabela--selecionando thead th.ds-tabela__ordenar, .ds-tabela--selecionando thead th.ds-tabela__cab-acoes { display: none; }
   .ds-tabela--selecionando thead th.ds-tabela__check { display: flex; align-items: center; gap: var(--ds-space-2); width: auto; padding: 2px 0; border: none; }
   .ds-tabela thead .ds-tabela__card { display: inline; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
   .ds-tabela__ordenar-btn { display: inline-flex; align-items: center; gap: var(--ds-space-2); padding: 0; border: 0; background: none; cursor: pointer; font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); }
@@ -699,7 +704,7 @@ body.high-contrast {
   .ds-tabela__meta .ds-resp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ds-tabela__prog { margin-top: var(--ds-space-2); }
   /* o item tem a cor surface-2: as pílulas de dentro (nível, responsável) usam a surface para continuar visíveis */
-  .ds-tabela tbody .ds-badge-tipo, .ds-tabela tbody .ds-resp { background: var(--ds-color-surface); }
+  .ds-tabela tbody .ds-badge-tipo, .ds-tabela tbody .ds-resp, .ds-tabela tbody .ds-badge[class*="ds-badge--ico"], .ds-tabela tbody .ds-badge:not([class*=" ds-badge--"]) { background: var(--ds-color-surface); }   /* badges neutros (sem tom de status) também saem da cor do item */
   .ds-tabela tbody .ds-progresso .ds-kpi-track { flex: 1 1 auto; width: auto; }   /* na linha da lista a barra ocupa a largura disponível */
   .ds-tabela tbody .ds-tabela__so-desktop { display: none; }
   /* linha de aviso ocupa a largura toda, sem virar cartão */
@@ -711,18 +716,21 @@ body.high-contrast {
 /* Botão flutuante (FAB, só ≤768 px): o botão principal da página e as ações acessórias (as da seta do botão dividido) no celular. Montado por uiAcoesPaginaMontar
    (app_ui_utils.html), nunca à mão: <div class="ds-fab"> com .ds-fab__fundo, .ds-fab__opcoes (> .ds-fab__item > .ds-fab__rotulo + .ds-fab__mini) e .ds-fab__principal.
    Aberto = .is-aberto (o + gira para ×, o fundo escurece). Com FAB na página, as ações da barra do topo somem no mobile (o FAB as substitui). */
-.ds-fab { display: none; position: fixed; right: var(--ds-space-5); bottom: var(--ds-space-5); z-index: var(--ds-z-fab); flex-direction: column-reverse; align-items: flex-end; gap: var(--ds-space-4); }
+.ds-fab { display: none; position: fixed; right: var(--ds-space-5); bottom: var(--ds-space-5); z-index: var(--ds-z-fab); flex-direction: column; align-items: flex-end; gap: var(--ds-space-4); }
 .ds-fab__principal {
   position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border: 0; border-radius: var(--ds-r-pill); cursor: pointer;
   color: var(--ds-color-on-action); background: var(--ds-color-action); box-shadow: var(--ds-shadow-3);
   transition: transform var(--ds-duration-fast) var(--ds-ease-standard), background var(--ds-duration-fast) var(--ds-ease-standard);
 }
 .ds-fab__principal:active { transform: scale(0.95); }
+.ds-fab { pointer-events: none; }   /* o contêiner cobre as opções recolhidas: só o botão e as opções abertas recebem toque, senão o fim da lista fica sem clique */
+.ds-fab__principal { pointer-events: auto; }
+.ds-fab.is-aberto, .ds-fab.is-aberto .ds-fab__fundo { pointer-events: auto; }
 .ds-fab__principal .material-symbols-outlined { font-size: var(--ds-icon-xl); transition: transform var(--ds-duration-slow) var(--ds-ease-standard); }
 .ds-fab.is-aberto .ds-fab__principal { background: var(--ds-color-text); }
 .ds-fab.is-aberto .ds-fab__principal .material-symbols-outlined { transform: rotate(45deg); }
 .ds-fab__opcoes {
-  position: relative; z-index: 2; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: var(--ds-space-3); padding-bottom: var(--ds-space-1);
+  position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: var(--ds-space-3); padding-bottom: var(--ds-space-1);
   opacity: 0; pointer-events: none; transform: translateY(20px);
   transition: opacity var(--ds-duration-slow) var(--ds-ease-emphasized), transform var(--ds-duration-slow) var(--ds-ease-emphasized);
 }
@@ -744,6 +752,10 @@ body.high-contrast {
 
 /* Bottom sheet (painel que sobe da base da tela, no mobile): .ds-sheet(.is-aberto) > .ds-sheet__fundo + .ds-sheet__painel > .ds-sheet__alca + .ds-sheet__cab (__titulo + ação opcional, ex. "Limpar" + fechar à direita) + .ds-sheet__corpo + .ds-sheet__rodape (opcional).
    Aberto por uiSheetAbrir(opcoes) (app_ui_utils.html): fecha no fundo, no ×, no Esc e arrastando a alça para baixo. Grupos de opções dentro do corpo: .ds-sheet__grupo > .ds-sheet__rotulo + itens .acoes-menu-item (abrirMenuSelecao no mobile). */
+.ds-puxar { position: fixed; top: 60px; left: 50%; z-index: var(--ds-z-header); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-left: -20px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-color-border); color: var(--ds-color-text-muted); opacity: 0; pointer-events: none; }   /* arrastar a lista para baixo atualiza (uiPuxarParaAtualizar) */
+.ds-puxar.is-pronto { color: var(--ds-color-action); }
+.ds-puxar.is-atualizando { opacity: 1; transform: translateY(24px); }
+.ds-puxar.is-atualizando .material-symbols-outlined { animation: lista-spin 0.8s linear infinite; }
 .ds-sheet { position: fixed; inset: 0; z-index: var(--ds-z-modal); display: flex; align-items: flex-end; justify-content: center; visibility: hidden; pointer-events: none; }
 .ds-sheet.is-aberto { visibility: visible; pointer-events: auto; }
 .ds-sheet__fundo { position: absolute; inset: 0; background: var(--ds-color-scrim); opacity: 0; transition: opacity var(--ds-duration-base) var(--ds-ease-standard); }
@@ -1333,6 +1345,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   #topbar-crumbs { flex: 0 3 auto; }
   #topbar > :last-child { margin-left: auto; }
   #topbar[data-abas] > #topbar-crumbs { display: none; }
+  .ds-topbar-status__ponto { display: block; width: 14px; height: 14px; padding: 0; border-radius: var(--ds-r-pill); }   /* a cor é a do fundo do .ds-badge--<tom> */
   .ds-topbar-aba { display: flex; align-items: center; gap: var(--ds-space-1); flex: 0 1 auto; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-family: inherit; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
   .ds-topbar-aba.hidden { display: none; }
   .ds-topbar-aba .material-symbols-outlined { flex: none; font-size: var(--ds-icon-md); color: var(--ds-color-text-muted); }

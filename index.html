@@ -144,8 +144,8 @@ main { flex: 1; min-height: 0; padding: var(--ds-main-pad-y) var(--ds-main-pad-x
   /* busca e filtros grudam no alto da área rolável (padrão Gmail); top: 0 anula o deslocamento do desktop */
   .ds-pagina__filtros { top: calc(-1 * var(--ds-main-pad-y)); }   /* o sticky para no padding da área rolável: compensa para colar no topo */
   /* hero sem nada além do título (que no mobile mora na barra do topo) não ocupa espaço */
-  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha))) { display: none; }
-  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha))) ~ .ds-pagina__filtros { margin-top: calc(-1 * var(--ds-main-pad-y)); }   /* busca colada ao topo */
+  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) { display: none; }
+  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) ~ .ds-pagina__filtros, .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) ~ * .ds-pagina__filtros { margin-top: calc(-1 * var(--ds-main-pad-y)); }   /* busca colada ao topo */
 }
 
 .card { background: var(--ds-glass-bg-strong); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-2xl); box-shadow: var(--ds-glass-shadow); padding: 20px; margin-bottom: 20px; }
@@ -664,6 +664,9 @@ body.high-contrast {
 .ds-tabela__ordenar { display: none; }
 .ds-tabela__id { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ds-tabela__nome-wrap { flex: 1 1 auto; min-width: 0; }
+.ds-tabela__codigo { margin-right: var(--ds-space-1); font-weight: var(--ds-weight-regular); color: var(--ds-color-text-muted); }   /* texto cinza que antecede o nome do item: sigla do plano, código do elemento… */
+.ds-tabela__rotulo { text-transform: none; letter-spacing: normal; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ds-tabela__cab-acoes { display: none; }
 .ds-tabela__nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 1024px) { .ds-tabela .ds-tabela__so-larga { display: none; } }
 @media (max-width: 768px) {
@@ -675,9 +678,11 @@ body.high-contrast {
   .ds-tabela thead tr { display: flex; align-items: center; min-height: 36px; padding: 0 var(--ds-space-2); }
   .ds-tabela thead, .ds-tabela thead tr, .ds-tabela thead th { background: none; }
   .ds-tabela thead th { display: none; }
-  .ds-tabela thead th.ds-tabela__ordenar { display: block; padding: 2px 0; border: none; }
+  .ds-tabela thead th.ds-tabela__ordenar, .ds-tabela thead th.ds-tabela__cab-acoes { position: static; }
+  .ds-tabela thead th.ds-tabela__ordenar { display: block; flex: 1 1 auto; padding: 2px 0; border: none; }
+  .ds-tabela thead th.ds-tabela__cab-acoes { display: block; padding: 0; border: none; }   /* ações da lista (⋮) à direita do cabeçalho, no lugar dos modos de visualização */
   /* com a seleção ligada, o item de ordenação dá lugar a "Selecionar tudo / Desmarcar tudo" (mesma altura: a lista não se move) */
-  .ds-tabela--selecionando thead th.ds-tabela__ordenar { display: none; }
+  .ds-tabela--selecionando thead th.ds-tabela__ordenar, .ds-tabela--selecionando thead th.ds-tabela__cab-acoes { display: none; }
   .ds-tabela--selecionando thead th.ds-tabela__check { display: flex; align-items: center; gap: var(--ds-space-2); width: auto; padding: 2px 0; border: none; }
   .ds-tabela thead .ds-tabela__card { display: inline; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
   .ds-tabela__ordenar-btn { display: inline-flex; align-items: center; gap: var(--ds-space-2); padding: 0; border: 0; background: none; cursor: pointer; font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); }
@@ -710,7 +715,7 @@ body.high-contrast {
   .ds-tabela__meta .ds-resp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ds-tabela__prog { margin-top: var(--ds-space-2); }
   /* o item tem a cor surface-2: as pílulas de dentro (nível, responsável) usam a surface para continuar visíveis */
-  .ds-tabela tbody .ds-badge-tipo, .ds-tabela tbody .ds-resp { background: var(--ds-color-surface); }
+  .ds-tabela tbody .ds-badge-tipo, .ds-tabela tbody .ds-resp, .ds-tabela tbody .ds-badge[class*="ds-badge--ico"], .ds-tabela tbody .ds-badge:not([class*=" ds-badge--"]) { background: var(--ds-color-surface); }   /* badges neutros (sem tom de status) também saem da cor do item */
   .ds-tabela tbody .ds-progresso .ds-kpi-track { flex: 1 1 auto; width: auto; }   /* na linha da lista a barra ocupa a largura disponível */
   .ds-tabela tbody .ds-tabela__so-desktop { display: none; }
   /* linha de aviso ocupa a largura toda, sem virar cartão */
@@ -722,18 +727,21 @@ body.high-contrast {
 /* Botão flutuante (FAB, só ≤768 px): o botão principal da página e as ações acessórias (as da seta do botão dividido) no celular. Montado por uiAcoesPaginaMontar
    (app_ui_utils.html), nunca à mão: <div class="ds-fab"> com .ds-fab__fundo, .ds-fab__opcoes (> .ds-fab__item > .ds-fab__rotulo + .ds-fab__mini) e .ds-fab__principal.
    Aberto = .is-aberto (o + gira para ×, o fundo escurece). Com FAB na página, as ações da barra do topo somem no mobile (o FAB as substitui). */
-.ds-fab { display: none; position: fixed; right: var(--ds-space-5); bottom: var(--ds-space-5); z-index: var(--ds-z-fab); flex-direction: column-reverse; align-items: flex-end; gap: var(--ds-space-4); }
+.ds-fab { display: none; position: fixed; right: var(--ds-space-5); bottom: var(--ds-space-5); z-index: var(--ds-z-fab); flex-direction: column; align-items: flex-end; gap: var(--ds-space-4); }
 .ds-fab__principal {
   position: relative; z-index: 2; display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border: 0; border-radius: var(--ds-r-pill); cursor: pointer;
   color: var(--ds-color-on-action); background: var(--ds-color-action); box-shadow: var(--ds-shadow-3);
   transition: transform var(--ds-duration-fast) var(--ds-ease-standard), background var(--ds-duration-fast) var(--ds-ease-standard);
 }
 .ds-fab__principal:active { transform: scale(0.95); }
+.ds-fab { pointer-events: none; }   /* o contêiner cobre as opções recolhidas: só o botão e as opções abertas recebem toque, senão o fim da lista fica sem clique */
+.ds-fab__principal { pointer-events: auto; }
+.ds-fab.is-aberto, .ds-fab.is-aberto .ds-fab__fundo { pointer-events: auto; }
 .ds-fab__principal .material-symbols-outlined { font-size: var(--ds-icon-xl); transition: transform var(--ds-duration-slow) var(--ds-ease-standard); }
 .ds-fab.is-aberto .ds-fab__principal { background: var(--ds-color-text); }
 .ds-fab.is-aberto .ds-fab__principal .material-symbols-outlined { transform: rotate(45deg); }
 .ds-fab__opcoes {
-  position: relative; z-index: 2; display: flex; flex-direction: column-reverse; align-items: flex-end; gap: var(--ds-space-3); padding-bottom: var(--ds-space-1);
+  position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: var(--ds-space-3); padding-bottom: var(--ds-space-1);
   opacity: 0; pointer-events: none; transform: translateY(20px);
   transition: opacity var(--ds-duration-slow) var(--ds-ease-emphasized), transform var(--ds-duration-slow) var(--ds-ease-emphasized);
 }
@@ -755,6 +763,10 @@ body.high-contrast {
 
 /* Bottom sheet (painel que sobe da base da tela, no mobile): .ds-sheet(.is-aberto) > .ds-sheet__fundo + .ds-sheet__painel > .ds-sheet__alca + .ds-sheet__cab (__titulo + ação opcional, ex. "Limpar" + fechar à direita) + .ds-sheet__corpo + .ds-sheet__rodape (opcional).
    Aberto por uiSheetAbrir(opcoes) (app_ui_utils.html): fecha no fundo, no ×, no Esc e arrastando a alça para baixo. Grupos de opções dentro do corpo: .ds-sheet__grupo > .ds-sheet__rotulo + itens .acoes-menu-item (abrirMenuSelecao no mobile). */
+.ds-puxar { position: fixed; top: 60px; left: 50%; z-index: var(--ds-z-header); display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-left: -20px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface); border: var(--ds-borda) solid var(--ds-color-border); color: var(--ds-color-text-muted); opacity: 0; pointer-events: none; }   /* arrastar a lista para baixo atualiza (uiPuxarParaAtualizar) */
+.ds-puxar.is-pronto { color: var(--ds-color-action); }
+.ds-puxar.is-atualizando { opacity: 1; transform: translateY(24px); }
+.ds-puxar.is-atualizando .material-symbols-outlined { animation: lista-spin 0.8s linear infinite; }
 .ds-sheet { position: fixed; inset: 0; z-index: var(--ds-z-modal); display: flex; align-items: flex-end; justify-content: center; visibility: hidden; pointer-events: none; }
 .ds-sheet.is-aberto { visibility: visible; pointer-events: auto; }
 .ds-sheet__fundo { position: absolute; inset: 0; background: var(--ds-color-scrim); opacity: 0; transition: opacity var(--ds-duration-base) var(--ds-ease-standard); }
@@ -1344,6 +1356,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   #topbar-crumbs { flex: 0 3 auto; }
   #topbar > :last-child { margin-left: auto; }
   #topbar[data-abas] > #topbar-crumbs { display: none; }
+  .ds-topbar-status__ponto { display: block; width: 14px; height: 14px; padding: 0; border-radius: var(--ds-r-pill); }   /* a cor é a do fundo do .ds-badge--<tom> */
   .ds-topbar-aba { display: flex; align-items: center; gap: var(--ds-space-1); flex: 0 1 auto; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-family: inherit; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
   .ds-topbar-aba.hidden { display: none; }
   .ds-topbar-aba .material-symbols-outlined { flex: none; font-size: var(--ds-icon-md); color: var(--ds-color-text-muted); }
@@ -2448,6 +2461,7 @@ if (!window._uiDelegacaoAtiva) {
 
     <div class="tb-actions">
       <!-- só no mobile e só onde a página tem busca/abas: uiTopoAtualizar() (app_ui_utils.html) mostra e esconde -->
+      <button type="button" class="tb-icon-btn hidden" id="tb-status" data-on-click="ui.chamar" data-chamada-click="uiTopoStatusAbrir()" aria-haspopup="dialog"><span class="ds-badge ds-topbar-status__ponto"></span></button>
       <button type="button" class="tb-icon-btn hidden" id="tb-buscar" data-on-click="ui.chamar" data-chamada-click="uiTopoBuscar()" data-title="Buscar" aria-label="Buscar" aria-expanded="false">
         <span class="material-symbols-outlined" aria-hidden="true">search</span>
       </button>
@@ -10361,6 +10375,16 @@ function _uiBuscaSincronizar(raiz) {
   });
 }
 
+// Filtros no celular: as pílulas (.ds-filtro) só aparecem com a busca do topo aberta, com a gaveta de filtro aberta ou com algum filtro aplicado;
+// o paginador/ferramentas da direita (.ds-filtros__pag) somem. `normal` = .ds-filtros__normal; `aplicado` = há filtro ativo.
+function uiFiltrosMobileSincronizar(normal, aplicado) {
+  if (!normal) return;
+  var mob = _uiBuscaMobile(), mostrar = !mob || document.getElementById('topbar').hasAttribute('data-buscando') || _menuSelecaoNoSheet || !!aplicado;
+  Array.prototype.forEach.call(normal.querySelectorAll(':scope > .ds-filtro'), function (el) { el.classList.toggle('hidden', !mostrar); });
+  var pag = normal.parentNode.querySelector(':scope > .ds-filtros__pag');
+  if (pag) pag.classList.toggle('hidden', mob);
+}
+
 // Rolagem infinita: observa um sentinela logo depois de `depoisDe` (dentro de #main-content, que é quem rola) e chama aoChegar() quando ele
 // se aproxima do fim da tela. Devolve { verificar() }: chame depois de acrescentar itens (se o sentinela continuar à vista, carrega de novo).
 function uiRolagemInfinita(depoisDe, aoChegar) {
@@ -10421,6 +10445,12 @@ function uiTopoAtualizar() {
     if (aplicada) b.setAttribute('data-ativo', ''); else b.removeAttribute('data-ativo');
     b.setAttribute('aria-label', aplicada ? 'Buscar (há busca aplicada)' : 'Buscar');
     b.setAttribute('aria-expanded', String(document.getElementById('topbar').hasAttribute('data-buscando')));
+  }
+  var st = document.getElementById('tb-status');
+  if (st) {   // círculo da cor do status do plano (só no celular, onde a página o declarou)
+    var stat = p && p.dataset.status;
+    st.classList.toggle('hidden', !(mob && stat));
+    if (stat) { var pt = st.querySelector('.ds-topbar-status__ponto'); pt.className = 'ds-badge ds-topbar-status__ponto ds-badge--' + uiStatusPlanoTom(stat); st.setAttribute('aria-label', 'Status: ' + stat); st.setAttribute('data-title', stat); }
   }
   if (sino) sino.classList.toggle('tb-hide-mobile', id !== 'home');
   var abas = _uiTopoAbasLista(), ativa = abas.filter(function (x) { return x.classList.contains('active'); })[0], tab = document.getElementById('tb-aba-atual');
@@ -10500,6 +10530,42 @@ function uiTopoIrAba(i) {
     var main = document.getElementById('main-content');
     if (main && window.MutationObserver) new MutationObserver(function () { clearTimeout(t); t = setTimeout(uiTopoAtualizar, 150); }).observe(main, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     window.matchMedia('(max-width: 768px)').addEventListener('change', uiTopoAtualizar);
+  });
+})();
+
+// Puxar para atualizar (celular): arrastar a página para baixo, estando no topo, chama a função registrada: uiPuxarParaAtualizar('page-xxx', function () {...}).
+var UI_PUXAR = {};
+function uiPuxarParaAtualizar(idPagina, fn) { UI_PUXAR[idPagina] = fn; }
+(function () {
+  var LIMITE = 72, y0 = null, dy = 0, ind = null;
+  function indicador() {
+    if (!ind) { ind = document.createElement('div'); ind.className = 'ds-puxar'; ind.setAttribute('aria-hidden', 'true'); ind.innerHTML = '<span class="material-symbols-outlined">refresh</span>'; document.body.appendChild(ind); }
+    return ind;
+  }
+  function esconder() { if (ind) { ind.removeAttribute('style'); ind.classList.remove('is-pronto', 'is-atualizando'); } }
+  document.addEventListener('DOMContentLoaded', function () {
+    var main = document.getElementById('main-content');
+    if (!main) return;
+    main.addEventListener('touchstart', function (e) {
+      var p = _uiTopoPagina();
+      y0 = (window.matchMedia('(max-width: 768px)').matches && main.scrollTop <= 0 && p && UI_PUXAR[p.id] && e.touches.length === 1 && !document.querySelector('.ds-sheet.is-aberto')) ? e.touches[0].clientY : null;
+      dy = 0;
+    }, { passive: true });
+    main.addEventListener('touchmove', function (e) {
+      if (y0 === null) return;
+      dy = e.touches[0].clientY - y0;
+      if (dy <= 0 || main.scrollTop > 0) { esconder(); return; }
+      var el = indicador(), k = Math.min(dy / LIMITE, 1);
+      el.style.setProperty('opacity', String(k)); el.style.setProperty('transform', 'translateY(' + Math.round(k * 24) + 'px) rotate(' + Math.round(k * 270) + 'deg)');
+      el.classList.toggle('is-pronto', dy >= LIMITE);
+    }, { passive: true });
+    main.addEventListener('touchend', function () {
+      if (y0 === null) return;
+      var p = _uiTopoPagina(), fn = p && UI_PUXAR[p.id], pronto = dy >= LIMITE; y0 = null;
+      if (!pronto || !fn) { esconder(); return; }
+      var el = indicador(); el.removeAttribute('style'); el.classList.add('is-atualizando');
+      try { fn(); } finally { setTimeout(esconder, 900); }
+    }, { passive: true });
   });
 })();
 
@@ -10646,6 +10712,33 @@ function uiStatusPlanoTom(status) { return UI_STATUS_PLANO_TOM[status] || 'final
 /** Badge da situação do plano. */
 function uiStatusPlanoHTML(status) {
   return '<span class="ds-badge ds-badge--' + uiStatusPlanoTom(status) + '">' + escapeHtml(status || '—') + '</span>';
+}
+var UI_STATUS_PLANO_DESCRICAO = {
+  'Em Elaboração': 'O plano está sendo montado: elementos, indicadores, metas e responsáveis ainda podem ser definidos. Quando estiver pronto, é submetido.',
+  'Em Análise': 'O plano foi submetido e aguarda a análise e a aprovação de quem responde por ele. Ainda não entrou em execução.',
+  'Em Execução': 'O plano está em andamento: a equipe lança progresso e resultados, e a estrutura fica travada, só mudando por uma revisão.',
+  'Em Avaliação': 'A vigência terminou e o plano está sendo avaliado. Pode ser finalizado ou prorrogado.',
+  'Prorrogado': 'O prazo do plano foi estendido: a execução continua até o novo fim, com a vigência original preservada.',
+  'Em Revisão': 'A estrutura do plano foi reaberta temporariamente para ajustes. Ao concluir a revisão, ele volta ao status anterior.',
+  'Finalizado': 'O plano foi concluído e encerrado. Os resultados ficam apenas para consulta.',
+  'Cancelado': 'O plano foi cancelado e não segue em execução. Pode ser restaurado por quem tem permissão.',
+  'Excluído': 'O plano está na lixeira e será apagado depois do prazo de retenção, se não for restaurado.'
+};
+/** Cabeçalho do plano no celular: o círculo da cor do status fica na barra do topo e abre uma gaveta com o significado do status. */
+function uiTopoStatus(idPagina, status) {
+  var p = document.getElementById(idPagina);
+  if (p) { p.dataset.status = status || ''; uiTopoAtualizar(); }
+}
+function uiTopoStatusAbrir() {
+  var p = _uiTopoPagina(), st = p && p.dataset.status;
+  if (!st) return;
+  uiSheetAbrir({ titulo: st, corpo: '<div>' + uiStatusPlanoHTML(st) + '<p>' + escapeHtml(UI_STATUS_PLANO_DESCRICAO[st] || '') + '</p></div>' });
+}
+/** Itens da 3ª linha do item da lista (badges, responsável…): no máximo 2; havendo mais, entra um badge "…" na mesma linha. `itens` = lista de HTML. */
+function uiMetaItensHTML(itens) {
+  var l = (itens || []).filter(Boolean);
+  if (l.length <= 2) return l.join('');
+  return l.slice(0, 2).join('') + '<span class="ds-badge" data-title="Há mais informações no item">…</span>';
 }
 /** Pastilha de responsável: servidor (USER) com ícone person e 1º + último nome; unidade com ícone apartment e nome inteiro;
  *  `adicionais` (lista de nomes) vira "+N" e entra na dica. */
@@ -14212,6 +14305,7 @@ function _pllMostrarCarregando() {
   if (tbody) tbody.innerHTML = '<tr class="ds-tabela__msg"><td colspan="7"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando planos…</span></div></td></tr>';
 }
 
+uiPuxarParaAtualizar('page-planos', function() { atualizarListaPlanos(); });
 function atualizarListaPlanos() {
   invalidarCacheListaPlanos();
   initPlanos();
@@ -14383,11 +14477,8 @@ var PLL_LOTE_MOBILE = 20;
 function _pllMobile() { return window.matchMedia('(max-width: 768px)').matches; }
 
 function _pllMobileSincronizar() {
-  var mob = _pllMobile(), f = estadoPlanos.filtros;
-  var mostrar = !mob || document.getElementById('topbar').hasAttribute('data-buscando') || _menuSelecaoNoSheet || !!(f.tipo || f.ano || f.status);
-  Array.prototype.forEach.call(document.querySelectorAll('#pll-filtros-normal > .ds-filtro'), function(el) { el.classList.toggle('hidden', !mostrar); });
-  var pag = document.querySelector('#pll-filtros-card > .ds-filtros__pag');
-  if (pag) pag.classList.toggle('hidden', mob);
+  var f = estadoPlanos.filtros;
+  uiFiltrosMobileSincronizar(document.getElementById('pll-filtros-normal'), f.tipo || f.ano || f.status);
 }
 window.matchMedia('(max-width: 768px)').addEventListener('change', function() { _pllMobileSincronizar(); if (estadoPlanos._planosVisiveis) _renderizarPagina(); });
 
@@ -14495,7 +14586,7 @@ function aplicarFiltros() {
 
   var filtrados = estadoPlanos.dadosBrutos.filter(function(p) {
     if (!_planoNaAba(p, abaAtual)) return false;
-    if (busca && !(p.nome || '').toLowerCase().includes(busca)) return false;
+    if (busca && !((p.nome || '') + ' ' + (p.sigla || '')).toLowerCase().includes(busca)) return false;
     if (f.ano && String(p.anoInicio) !== f.ano && String(p.anoFim) !== f.ano) return false;
     if (f.tipo && p.tipo !== f.tipo) return false;
     if (f.status && p.status !== f.status) return false;
@@ -14729,7 +14820,7 @@ function _renderizarTabela(planos) {
       '<td class="ds-tabela__principal"><div class="ds-tabela__id">' +
         '<span class="ds-badge-tipo ds-tabela__tipo">' + escapeHtml(p.tipo || '—') + '</span>' +
         '<div class="ds-tabela__nome-wrap">' +
-          '<div class="ds-tabela__nome" data-title="' + escapeHtml(p.nome) + '">' + escapeHtml(p.nome) + '</div>' +
+          '<div class="ds-tabela__nome" data-title="' + escapeHtml(p.nome) + '">' + (p.sigla ? '<span class="ds-tabela__codigo">' + escapeHtml(p.sigla) + '</span>' : '') + escapeHtml(p.nome) + '</div>' +
         '</div></div></td>' +
       '<td class="ds-tabela__vig">' + vigencia + '</td>' +
       '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + respHtml + '</td>' +
@@ -14739,8 +14830,8 @@ function _renderizarTabela(planos) {
         '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>' +
       // Linha do celular: status + responsável + progresso, tudo numa linha só
       '<td class="ds-tabela__card"><div class="ds-tabela__meta">' +
-        uiStatusPlanoHTML(p.status) +
-        respHtml + '</div><div class="ds-tabela__prog">' + progHtml + '</div></td>';
+        uiMetaItensHTML([uiStatusPlanoHTML(p.status), respHtml]) +
+        '</div><div class="ds-tabela__prog">' + progHtml + '</div></td>';
     tbody.appendChild(tr);
   });
 
@@ -17469,25 +17560,25 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
 @media (hover: none) { .el-tabela .acoes-linha { opacity: 1; } }
 
 /* Indentação por nível hierárquico */
-.el-tabela tbody tr[data-level="1"] .el-elem-content { padding-left: 24px; }
-.el-tabela tbody tr[data-level="2"] .el-elem-content { padding-left: 48px; }
-.el-tabela tbody tr[data-level="3"] .el-elem-content { padding-left: 72px; }
-.el-tabela tbody tr[data-level="4"] .el-elem-content { padding-left: 96px; }
-.el-tabela tbody tr[data-level="5"] .el-elem-content { padding-left: 120px; }
+#el-tabela tbody tr[data-level="1"] .el-elem-content { padding-left: 24px; }
+#el-tabela tbody tr[data-level="2"] .el-elem-content { padding-left: 48px; }
+#el-tabela tbody tr[data-level="3"] .el-elem-content { padding-left: 72px; }
+#el-tabela tbody tr[data-level="4"] .el-elem-content { padding-left: 96px; }
+#el-tabela tbody tr[data-level="5"] .el-elem-content { padding-left: 120px; }
 
 /* Linhas filhas ocultas por padrão */
-.el-tabela tbody tr.el-filho { display: none; }
-.el-tabela tbody tr.el-filho.el-visivel { display: table-row; }
+#el-tabela tbody tr.el-filho { display: none; }
+#el-tabela tbody tr.el-filho.el-visivel { display: table-row; }
 
 /* Drag and Drop na tabela hierárquica (Modo Reorganizar) */
-.el-tabela tr.el-drag-source { opacity: 0.35; background: var(--ds-sidebar-item-hover) !important; }
-.el-tabela tr.el-drag-before td { border-top: 3px solid var(--ds-color-action) !important; }
-.el-tabela tr.el-drag-after td { border-bottom: 3px solid var(--ds-color-action) !important; }
-.el-tabela tr.el-drag-inside td { background: var(--ds-color-info-bg) !important; }
+#el-tabela tr.el-drag-source { opacity: 0.35; background: var(--ds-sidebar-item-hover) !important; }
+#el-tabela tr.el-drag-before td { border-top: 3px solid var(--ds-color-action) !important; }
+#el-tabela tr.el-drag-after td { border-bottom: 3px solid var(--ds-color-action) !important; }
+#el-tabela tr.el-drag-inside td { background: var(--ds-color-info-bg) !important; }
 .el-drag-handle { cursor: grab; user-select: none; display: inline-flex; align-items: center; justify-content: center; }
 .el-drag-handle:active { cursor: grabbing; }
-.el-tabela.modo-reorganizar tbody tr { cursor: grab; }
-.el-tabela.modo-reorganizar tbody tr:active { cursor: grabbing; }
+#el-tabela.modo-reorganizar tbody tr { cursor: grab; }
+#el-tabela.modo-reorganizar tbody tr:active { cursor: grabbing; }
 
 /* Cabeçalho do modo reorganizar */
 #el-th-reorganizar.hidden, #el-th-normal.hidden { display: none !important; }
@@ -17974,7 +18065,7 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
 body.high-contrast .view-mode-toggle { background: #000; border-color: #fff; }
 
 @media (max-width: 1024px) {
-  .detalhe-content-area { padding-top: 4px; }
+  .detalhe-content-area { padding-top: 0; }
 }
 
 @media print {
@@ -18229,6 +18320,7 @@ function carregarDetalhesPlano(idPlano, metaOtimista) {
       _otimista: true
     };
     uiTopoPrefixo('page-plano-detalhe', metaOtimista.nomeCurto || metaOtimista.sigla || '');
+    uiTopoStatus('page-plano-detalhe', metaOtimista.status || '');
     if (metaOtimista.nome) {
       setBreadcrumb([
         { label: 'Planejamento', page: 'planejamento' },
@@ -18260,6 +18352,7 @@ function carregarDetalhesPlano(idPlano, metaOtimista) {
         { label: res.plano.nome }
       ]);
       uiTopoPrefixo('page-plano-detalhe', res.plano.nomeCurto || res.plano.sigla || '');
+      uiTopoStatus('page-plano-detalhe', res.plano.status || '');
 
       // _appsRenderizarAbas recria os botões das abas: guarda a aba ativa antes
       var abaAtivaAntes = _detAbaAtivaId();
@@ -19063,6 +19156,7 @@ function mudarView(modo) {
 
   document.getElementById('view-' + modo).classList.remove('hidden');
   uiPaginaMedir(document.getElementById('page-plano-detalhe'));
+  detFabAtualizar();
 }
 
 
@@ -19495,6 +19589,7 @@ function renderizarBotoesTramite(plano) {
   setTimeout(function() {
     uiPaginaMedir(document.getElementById('page-plano-detalhe'));
     uiAbasNavAtualizar(document.getElementById('det-tabs-row'));
+    detFabAtualizar();
   }, 0);
 }
 
@@ -19508,7 +19603,11 @@ function _detAbrirMenuAcoes(ev) {
   const gatilho = ev.currentTarget;
   if (_detMenuGatilho === gatilho) { _detFecharMenuAcoes(); return; }
   if (!dadosDetalhados || !dadosDetalhados.plano) return;
-  const p = dadosDetalhados.plano;
+  _detMontarMenu(gatilho, _detGruposMenuPlano(dadosDetalhados.plano));
+}
+
+// Grupos do menu do plano: a seta do botão dividido (desktop) e a gaveta "Plano" do botão flutuante (celular) usam os mesmos.
+function _detGruposMenuPlano(p) {
   const perm = p.permissoes || {};
   const grupos = [];
 
@@ -19552,7 +19651,33 @@ function _detAbrirMenuAcoes(ev) {
     if (perm.excluirDefinitivo) grupos.push({ itens: [{ icone: 'delete_forever', label: 'Excluir definitivamente', onclick: 'detExcluirDefinitivamenteAtual()', perigo: true }] });
   } else if (perm.excluir) grupos.push({ itens: [{ icone: 'delete', label: 'Excluir plano', onclick: 'confirmarExclusaoPlanoAtual()', perigo: true }] });
 
-  _detMontarMenu(gatilho, grupos);
+  return grupos;
+}
+
+// ---- Celular: o botão flutuante reúne as ações da aba (principal) e as do plano -------------------------------------------
+// Cada aba registra em DET_ACOES_ABA[idDaAba] uma função que devolve suas ações (formato de acoesLinhaHTML; a 1ª visível é a principal do botão).
+// O botão traz as ações da aba (a 1ª é a principal), a ação de trâmite do plano, "Detalhes do plano" e "Mais do plano" (gaveta com o restante do menu do plano).
+var DET_ACOES_ABA = {};
+function detFabAtualizar() {
+  const pagina = document.getElementById('page-plano-detalhe');
+  if (!pagina || !dadosDetalhados || !dadosDetalhados.plano) return;
+  const p = dadosDetalhados.plano;
+  const fnAba = DET_ACOES_ABA[_detAbaAtivaId()];
+  const daAba = (fnAba ? fnAba() : []).filter(function(a) { return !a.oculto; }).map(function(a, i) { return Object.assign({}, a, { principal: i === 0 }); });
+  const tramite = _detAcaoTramitePrincipal(p);
+  // ordem de baixo para cima no botão: a ação principal da aba, as demais da aba, o trâmite, "Detalhes" e "Mais do plano" (no topo)
+  const itens = [{ icone: 'more_vert', rotulo: 'Mais do plano', onclick: 'detAbrirGavetaPlano()' },
+    { icone: 'right_panel_open', rotulo: 'Detalhes do plano', onclick: 'abrirDetalhesPlanoPainel()', principal: !daAba.length && !tramite }];
+  if (tramite) itens.push({ icone: tramite.icone, rotulo: tramite.rotulo, onclick: tramite.onclick, principal: !daAba.length });
+  itens.push.apply(itens, daAba.slice().reverse());
+  uiAcoesPaginaMontar(pagina, 'detalhe-plano', itens);
+}
+function detAbrirGavetaPlano() {
+  if (!dadosDetalhados || !dadosDetalhados.plano) return;
+  const todos = [];
+  _detGruposMenuPlano(dadosDetalhados.plano).forEach(function(g) { g.itens.forEach(function(it) { todos.push(_acoesLinhaNormalizar(it)); }); });
+  if (!todos.length) return;
+  uiSheetAbrir({ titulo: 'Plano', corpo: '<div role="menu">' + _acoesLinhaItensHTML(todos, 'uiSheetFechar(); ') + '</div>' });
 }
 
 function _detMontarMenu(gatilho, grupos) {

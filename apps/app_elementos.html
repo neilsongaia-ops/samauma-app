@@ -1233,56 +1233,56 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
            do host, que mantém a classe view-section/hidden) — sem um wrapper
            próprio com id="view-elementos" aqui, para não duplicar esse id no DOM. -->
 
-      <!-- Barra de filtros (padrão pll): busca expansível + chip-buttons + modos + ações -->
-      <div id="el-filtros-normal" class="el-filtros ds-pagina__filtros">
-        <!-- Busca expansível -->
-        <div class="el-search" id="el-search-wrap">
-          <button type="button" class="ds-icon-action" id="el-search-toggle" data-on-click="el.22" data-title="Buscar" aria-label="Buscar">
-            <span class="material-symbols-outlined">search</span>
-          </button>
-          <div class="el-search-caixa hidden" id="el-search-caixa">
-            <span class="material-symbols-outlined el-search-icon" aria-hidden="true">search</span>
-            <input type="text" class="ds-input el-search-input" id="filtro-texto" aria-label="Buscar por título ou código"
-                   placeholder="Buscar por título ou código…" data-on-input="el.23">
-            <button type="button" class="el-search-clear hidden" id="btn-clear-filtro-texto"
-                    data-on-click="el.24" data-title="Limpar busca" aria-label="Limpar busca">
+      <!-- Barra de filtros (padrão da lista de planos, ver docs/design_system.md "Página de lista de entidades"): busca + pílulas + limpar OU seleção em lote; à direita, modos de visualização e ação da aba (só desktop) -->
+      <div class="ds-filtros ds-pagina__filtros" id="el-filtros-card">
+        <div class="ds-filtros__normal" id="el-filtros-normal">
+          <div class="ds-busca" id="el-search-wrap">
+            <button type="button" class="ds-icon-action" id="el-search-toggle" data-on-click="el.22" data-title="Buscar" aria-label="Buscar">
+              <span class="material-symbols-outlined">search</span>
+            </button>
+            <div class="ds-busca__caixa hidden" id="el-search-caixa">
+              <span class="material-symbols-outlined ds-busca__icone" aria-hidden="true">search</span>
+              <input type="text" class="ds-input ds-busca__input" id="filtro-texto" aria-label="Buscar por título ou código"
+                     placeholder="Buscar por título ou código…" data-on-input="el.23">
+              <button type="button" class="ds-busca__limpar hidden" id="btn-clear-filtro-texto"
+                      data-on-click="el.24" data-title="Limpar busca" aria-label="Limpar busca">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="ds-filtro" data-filtro="tipo">
+            <button type="button" class="ds-filtro__btn" id="el-filtro-btn-tipo" data-on-click="el.25" aria-haspopup="menu" aria-expanded="false">
+              <span id="el-filtro-label-tipo">Tipo</span><span class="material-symbols-outlined">expand_more</span>
+            </button>
+            <button type="button" class="ds-filtro__x hidden" id="el-filtro-x-tipo" data-on-click="el.26" data-title="Remover filtro de tipo" aria-label="Remover filtro de tipo">
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
+
+          <div class="ds-filtro" data-filtro="resp">
+            <button type="button" class="ds-filtro__btn" id="el-filtro-btn-resp" data-on-click="el.27" aria-haspopup="menu" aria-expanded="false">
+              <span id="el-filtro-label-resp">Responsável</span><span class="material-symbols-outlined">expand_more</span>
+            </button>
+            <button type="button" class="ds-filtro__x hidden" id="el-filtro-x-resp" data-on-click="el.28" data-title="Remover filtro de responsável" aria-label="Remover filtro de responsável">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <button type="button" class="ds-link hidden" id="btn-limpar-filtros-el" data-on-click="el.29">Limpar filtros</button>
         </div>
 
-        <!-- Filtro Tipo (chip-button) -->
-        <div class="el-filtro">
-          <button type="button" class="el-filtro-btn" id="el-filtro-btn-tipo" data-on-click="el.25">
-            <span id="el-filtro-label-tipo">Tipo</span>
-            <span class="material-symbols-outlined" style="font-size:18px">expand_more</span>
+        <div class="ds-filtros__selecao hidden" id="el-filtros-selecao">
+          <button type="button" class="ds-icon-action" data-on-click="el.36" data-title="Cancelar seleção" aria-label="Cancelar seleção">
+            <span class="material-symbols-outlined">close</span>
           </button>
-          <button type="button" class="el-filtro-x hidden" id="el-filtro-x-tipo" data-on-click="el.26" aria-label="Limpar filtro tipo">
-            <span class="material-symbols-outlined" style="font-size:15px">close</span>
-          </button>
+          <span class="ds-filtros__selecao-texto" id="el-selecao-texto">0</span>
+          <div class="ds-filtros__divisor"></div>
+          <div id="el-selecao-acoes"></div>
         </div>
 
-        <!-- Filtro Responsável (chip-button) -->
-        <div class="el-filtro">
-          <button type="button" class="el-filtro-btn" id="el-filtro-btn-resp" data-on-click="el.27">
-            <span id="el-filtro-label-resp">Responsável</span>
-            <span class="material-symbols-outlined" style="font-size:18px">expand_more</span>
-          </button>
-          <button type="button" class="el-filtro-x hidden" id="el-filtro-x-resp" data-on-click="el.28" aria-label="Limpar filtro responsável">
-            <span class="material-symbols-outlined" style="font-size:15px">close</span>
-          </button>
-        </div>
-
-        <!-- Limpar filtros -->
-        <button type="button" class="el-limpar-link hidden" id="btn-limpar-filtros-el"
-                data-on-click="el.29" aria-label="Limpar filtros">
-          Limpar filtros
-        </button>
-
-        <!-- Spacer empurra o resto à direita -->
-        <div style="flex:1"></div>
-
-        <!-- Modos de visualização -->
+        <div class="ds-filtros__pag">
+          <!-- Modos de visualização -->
         <div class="det-modos" role="group" aria-label="Modo de visualização">
           <button type="button" class="det-modo ativo" id="btn-modo-arvore" data-on-click="el.30"
                   data-title="Lista" aria-label="Lista" aria-pressed="true">
@@ -1299,42 +1299,31 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
         </div>
 
         <!-- Botão dividido: "Novo elemento" (hierarquia secundária) + menu -->
-        <div class="det-split desktop-only-flex">
+        <div class="det-split">
           <button type="button" class="ds-btn ds-btn--glass-secondary det-split-main hidden" id="btn-novo-item"
                   data-on-click="el.34"><span class="material-symbols-outlined">add</span> Novo elemento</button>
           <button type="button" class="ds-btn ds-btn--glass-secondary det-split-seta acoes-mais" data-on-click="el.35"
                   data-title="Mais opções" aria-label="Mais opções de elementos" aria-haspopup="menu" aria-expanded="false">
             <span class="material-symbols-outlined">expand_more</span></button>
         </div>
-      </div>
-
-      <!-- Barra de seleção em lote (oculta por padrão) -->
-      <div id="el-filtros-selecao" class="el-filtros-selecao ds-pagina__filtros hidden">
-        <button type="button" class="ds-icon-action" data-on-click="el.36" data-title="Cancelar seleção" aria-label="Cancelar seleção">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-        <span class="el-selecao-texto" id="el-selecao-texto">0 selecionado(s)</span>
-        <div class="el-selecao-divisor"></div>
-        <div class="el-selecao-acoes" id="el-selecao-acoes"></div>
+        </div>
       </div>
 
       <!-- MODO: ESTRUTURA (Tabela hierárquica) -->
       <div id="modo-arvore" class="elementos-modo">
-        <div class="el-table-wrap">
-          <table class="el-tabela" id="el-tabela">
-            <colgroup>
-              <col class="el-col-check">
-              <col class="el-col-expand">
-              <col class="el-col-elem">
-              <col class="el-col-resp">
-              <col class="ds-col-sobreposta">
-            </colgroup>
+        <div class="ds-tabela-wrap">
+          <table class="ds-tabela ds-tabela--selecao" id="el-tabela">
             <thead>
               <tr id="el-th-normal">
-                <th class="el-col-check"><input type="checkbox" id="chk-select-all-el" data-on-change="el.37" aria-label="Selecionar todos"></th>
-                <th class="el-col-expand"></th>
-                <th class="el-col-elem">Elemento</th>
-                <th class="el-col-resp">Responsável</th>
+                <th class="ds-tabela__ordenar"><span class="ds-tabela__rotulo">Lista</span></th>
+                <th class="ds-tabela__cab-acoes"><button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ui.chamar" data-chamada-click="elAbrirMenuLista()" aria-haspopup="menu" data-title="Opções da lista" aria-label="Opções da lista"><span class="material-symbols-outlined">more_vert</span></button></th>
+                <th class="ds-tabela__check">
+                  <input type="checkbox" id="chk-select-all-el" data-on-change="el.37" aria-label="Selecionar todos">
+                  <label for="chk-select-all-el" class="ds-tabela__card">Selecionar tudo</label>
+                </th>
+                <th class="el-col-expand ds-tabela__so-desktop"></th>
+                <th class="ds-tabela__principal">Elemento</th>
+                <th class="ds-tabela__nowrap">Responsável</th>
                 <th class="ds-col-sobreposta">
                   <div class="ds-th-ferramentas">
                     <span class="ds-th-ferramentas__rotulo ds-th-ord" data-on-click="el.78">Prazo<span class="material-symbols-outlined ds-th-ord__icone" data-ord-prazo></span></span>
@@ -1633,6 +1622,13 @@ document.addEventListener('click', function(e) {
 var EL_CHIPS_VINCULO_MAX = 3;
 var EL_REL_TIP_MAX = 12, _elRelMapa = { src: null, len: -1, map: null };
 let _filtrosElementos = { texto: '', tipo: '', resp: '' };
+// Ações da aba no botão flutuante do celular (host: detFabAtualizar em pages_plano_detalhe_lista.html)
+if (typeof DET_ACOES_ABA !== 'undefined') DET_ACOES_ABA.elementos = function() {
+  return [
+    { icone: 'add', rotulo: 'Novo elemento', onclick: 'abrirModalNovoElemento()', oculto: !((_elCtx && _elCtx.permissoes) || {}).gerenciarElementos },
+    { icone: 'upload', rotulo: 'Importar elementos', onclick: "showMessage('info', 'Em Desenvolvimento', 'A importação de elementos será liberada em breve.')" }
+  ];
+};
 document.addEventListener('click', function(e) {
   var wrap = document.getElementById('el-search-wrap');
   if (!wrap) return;
@@ -1676,6 +1672,7 @@ var _ganttUltimoDiffMonths = 12;
 let arvoreTotalmenteExpandida = false;
 
 let _pagRootElementos = 10;
+let _elTotalRaizVisivel = 0;   // total de elementos-raiz da lista atual (limite da rolagem infinita)
 var _orgEst = {
   V: true, zoom: 0.8, compactar: true, colapsados: {},
   ordem: null, base: null, basePai: null, hist: [],
@@ -2097,6 +2094,7 @@ function elImpConfirmar() {
     showMessage('error', 'Erro', escapeHtml(err.message));
   });
 }
+uiPuxarParaAtualizar('page-plano-detalhe', function() { if (typeof atualizarConteudoPlano === 'function') atualizarConteudoPlano(); });
 function atualizarConteudoPlano() {
   if (!_elCtx) return;
   var tbody = document.getElementById('el-tbody');
@@ -4279,7 +4277,7 @@ function elAbrirFiltro(campo, ev) {
     return item;
   }));
 
-  abrirMenuSelecao(gatilho, [{ itens: itens }]);
+  abrirMenuSelecao(gatilho, [{ itens: itens }], { titulo: def.label, limpar: atual ? "elLimparUmFiltro('" + campo + "')" : '' });
 }
 
 function elSelecionarFiltro(campo, valor) {
@@ -4301,8 +4299,20 @@ function _elAtualizarBotaoFiltro(campo) {
   var rotuloExibicao = valor;
   if (valor && campo === 'resp') rotuloExibicao = nomeRespExibicao(valor, 'USER');
   if (label) label.textContent = rotuloExibicao || def.label;
-  if (btn) btn.classList.toggle('el-filtro-btn--ativo', !!valor);
+  if (btn) btn.classList.toggle('ds-filtro__btn--ativo', !!valor);
+  _elFiltrosMobileSincronizar();
   if (x) x.classList.toggle('hidden', !valor);
+}
+
+/* Celular: as pílulas de filtro só aparecem com a busca do topo aberta ou com filtro aplicado (uiFiltrosMobileSincronizar) */
+function _elMobile() { return window.matchMedia('(max-width: 768px)').matches; }
+function _elFiltrosMobileSincronizar() {
+  uiFiltrosMobileSincronizar(document.getElementById('el-filtros-normal'), _filtrosElementos.tipo || _filtrosElementos.resp);
+}
+if (!document._elBuscaTopo) {
+  document._elBuscaTopo = true;
+  document.addEventListener('ui-busca-topo', _elFiltrosMobileSincronizar);
+  window.matchMedia('(max-width: 768px)').addEventListener('change', function() { _elFiltrosMobileSincronizar(); if (document.getElementById('el-tbody')) _elReRenderizarModoAtivo(); });
 }
 
 /* Seleção de elementos */
@@ -4312,6 +4322,15 @@ function elCliqueLinha(ev, id) {
   if (vp && vp._isDragging) return;
   if (ev.target.tagName === 'INPUT' || ev.target.closest('.acoes-linha, button, .el-th-btn, .ds-icon-action, a')) return;
   var idStr = String(id);
+
+  // Celular: toque abre o elemento; com a seleção ligada (toque longo) o toque marca/desmarca
+  if (_elMobile()) {
+    if (uiToqueLongoRecente(document.getElementById('el-tbody'))) return;
+    if (!_elSelecionados.size) { abrirDetalhesElementoPainel(idStr); return; }
+    if (_elSelecionados.has(idStr)) _elSelecionados.delete(idStr); else _elSelecionados.add(idStr);
+    _elAtualizarSelecaoVisual();
+    return;
+  }
 
   if (ev.shiftKey && _elUltimoClicado) {
     _elSelecionarIntervalo(_elUltimoClicado, idStr);
@@ -4398,7 +4417,7 @@ function _elAtualizarSelecaoVisual() {
   rows.forEach(function(tr) {
     var id = tr.dataset.id;
     var sel = id && _elSelecionados.has(id);
-    tr.classList.toggle('selecionada', sel);
+    tr.classList.toggle(tr.closest('#el-tbody') ? 'is-selecionada' : 'selecionada', sel);
     var chk = tr.querySelector('input[type="checkbox"]');
     if (chk) chk.checked = sel;
   });
@@ -4433,8 +4452,11 @@ function _elAtualizarSelecaoVisual() {
   var texto = document.getElementById('el-selecao-texto');
   if (texto) {
     var qtd = _elSelecionados.size;
-    texto.textContent = qtd + ' elemento' + (qtd > 1 ? 's' : '') + ' selecionado' + (qtd > 1 ? 's' : '');
+    texto.textContent = qtd;
+    texto.setAttribute('aria-label', qtd + ' elemento' + (qtd > 1 ? 's' : '') + ' selecionado' + (qtd > 1 ? 's' : ''));
   }
+  var tabelaEl = document.getElementById('el-tabela');
+  if (tabelaEl) tabelaEl.classList.toggle('ds-tabela--selecionando', _elSelecionados.size > 0);
   // Renderizar ações de seleção (alinhadas à esquerda, ícones diretos estilo planos lista)
   var acoesCont = document.getElementById('el-selecao-acoes');
   if (acoesCont && _elSelecionados.size > 0) {
@@ -4479,6 +4501,16 @@ function elExcluirSelecionados() {
 function popularFiltrosElementos() {
   // Chip-filters são populados sob demanda via _elFiltrosDef.getData()
   // Nada a fazer aqui no novo layout
+}
+// Celular: as ferramentas da lista (que no desktop ficam na última coluna do cabeçalho) abrem numa gaveta
+function elAbrirMenuLista() {
+  const lista = [
+    { icone: 'low_priority', rotulo: 'Reorganizar', onclick: 'toggleModoReorganizar()', oculto: !((_elCtx && _elCtx.permissoes) || {}).gerenciarElementos },
+    { icone: 'unfold_more', rotulo: 'Expandir tudo', onclick: 'toggleExpandirTudo()' },
+    { icone: 'print', rotulo: 'Imprimir', onclick: 'imprimirElementos()' },
+    { icone: 'download', rotulo: 'Exportar', onclick: 'exportarElementosCSV()' }
+  ].map(_acoesLinhaNormalizar);
+  uiSheetAbrir({ titulo: 'Lista', corpo: '<div role="menu">' + _acoesLinhaItensHTML(lista.filter(function(i) { return !i.oculto; }), 'uiSheetFechar(); ') + '</div>' });
 }
 function abrirMenuElementosMais(ev) {
   const itens = [
@@ -4677,7 +4709,7 @@ function _recalcularCodigosTabela() {
     prefixes[level] = novoCodigo;
 
     ordens.push({ id: id, novoCodigo: novoCodigo, idPai: pai });
-    var codSpan = tr.querySelector('.el-codigo');
+    var codSpan = tr.querySelector('.ds-tabela__codigo');
     if (codSpan) codSpan.textContent = novoCodigo;
   });
 
@@ -5018,25 +5050,27 @@ function renderizarTabelaEstrutura() {
 
   var temFiltroAtivo = _filtrosElementos.texto || _filtrosElementos.tipo || _filtrosElementos.resp;
   var podeEditarElemento = planoPermiteEdicao();
+  // Celular: lista linear (sem elemento dentro de elemento por ora): todos os níveis viram itens do mesmo nível
+  var linear = _elMobile() && !_modoReorganizar;
 
   // Achatar a árvore em linhas de tabela
   function achatarNo(no, nivel, parentExpanded) {
     var id = String(no.id);
     var temFilhos = no.children && no.children.length > 0;
-    var isRoot = nivel === 0;
+    var isRoot = nivel === 0 || linear;
     var sel = _elSelecionados.has(id);
     var corTipo = _corDoTipo(no.tipo);
 
     var tr = document.createElement('tr');
-    tr.className = 'ds-linha-lista';
+    tr.className = 'ds-linha-lista ds-linha-clicavel';
     tr.dataset.id = id;
-    tr.dataset.level = String(nivel);
+    tr.dataset.level = String(linear ? 0 : nivel);
     tr.dataset.pai = no.idPai ? String(no.idPai) : '';
     if (!isRoot) {
       tr.classList.add('el-filho');
       if (parentExpanded || temFiltroAtivo || _modoReorganizar) tr.classList.add('el-visivel');
     }
-    if (sel && !_modoReorganizar) tr.classList.add('selecionada');
+    if (sel && !_modoReorganizar) tr.classList.add('is-selecionada');
     if (!_modoReorganizar) {
       tr.setAttribute('data-on-click', 'ui.chamar'); tr.setAttribute('data-chamada-click', "elCliqueLinha(event, '" + id + "')");
       tr.setAttribute('data-on-dblclick', 'ui.chamar'); tr.setAttribute('data-chamada-dblclick', "elDuploCliqueLinha(event, '" + id + "')");
@@ -5045,14 +5079,14 @@ function renderizarTabelaEstrutura() {
     // Checkbox ou Ícone de Reorganização
     var tdCheck = '';
     if (_modoReorganizar) {
-      tdCheck = '<td class="el-col-check"><span class="material-symbols-outlined el-drag-handle" style="color:var(--ds-color-text-muted);font-size:20px" data-title="Arrastar para reorganizar">drag_indicator</span></td>';
+      tdCheck = '<td class="ds-tabela__check"><span class="material-symbols-outlined el-drag-handle" style="color:var(--ds-color-text-muted);font-size:20px" data-title="Arrastar para reorganizar">drag_indicator</span></td>';
     } else {
-      tdCheck = '<td class="el-col-check"><input type="checkbox" data-on-change="el.69" data-achange0="' + id + '"' + (sel ? ' checked' : '') + ' aria-label="Selecionar"></td>';
+      tdCheck = '<td class="ds-tabela__check"><input type="checkbox" data-on-change="el.69" data-achange0="' + id + '"' + (sel ? ' checked' : '') + ' aria-label="Selecionar"></td>';
     }
 
     // Expand button (no modo reorganizar, todos os filhos são expandidos)
-    var tdExpand = '<td class="el-col-expand">';
-    if (temFilhos) {
+    var tdExpand = '<td class="el-col-expand ds-tabela__so-desktop">';
+    if (temFilhos && !linear) {
       var expanded = temFiltroAtivo || _modoReorganizar;
       tdExpand += '<button type="button" class="el-toggle-btn' + (expanded ? ' expanded' : '') + '" data-on-click="el.70" data-aclick0="' + id + '" aria-label="Expandir">' +
         '<span class="material-symbols-outlined">chevron_right</span></button>';
@@ -5066,6 +5100,7 @@ function renderizarTabelaEstrutura() {
     } else if (no.tipo) {
       tipoHtml = uiBadgeTipoHTML(no.tipo);
     }
+    tipoHtml = tipoHtml.replace('class="ds-badge-tipo"', 'class="ds-badge-tipo ds-tabela__tipo"');
 
     // Chips de informações adicionais (estilo anexos do Gmail: pills médias com ícones)
     var custoFmt = formatarCustoElemento(no.custo);
@@ -5085,12 +5120,12 @@ function renderizarTabelaEstrutura() {
     }
     var chipsHtml = chipsList.length > 0 ? '<div class="el-meta-chips">' + chipsList.join('') + '</div>' : '';
 
-    var tdElem = '<td class="el-col-elem"><div class="el-elem-content">' +
+    var tdElem = '<td class="ds-tabela__principal"><div class="ds-tabela__id el-elem-content">' +
       tipoHtml +
-      '<span class="el-codigo">' + escapeHtml(no.codigo || '') + '</span>' +
-      '<span class="el-titulo" data-title="' + escapeHtml(no.titulo) + '">' + escapeHtml(no.titulo) + '</span>' +
-      _iconeAcimaDoLimiteEl(no) +
-      chipsHtml +
+      '<div class="ds-tabela__nome-wrap"><div class="ds-tabela__nome" data-title="' + escapeHtml(no.titulo) + '">' +
+        (no.codigo ? '<span class="ds-tabela__codigo">' + escapeHtml(no.codigo) + '</span>' : '') + escapeHtml(no.titulo) + '</div></div>' +
+      '<span class="ds-tabela__so-desktop">' + _iconeAcimaDoLimiteEl(no) + '</span>' +
+      (chipsHtml ? chipsHtml.replace('class="el-meta-chips"', 'class="el-meta-chips ds-tabela__so-desktop"') : '') +
       '</div></td>';
 
     // Responsável (estilo ds-resp com conexão fluida ao indicativo de mais responsáveis)
@@ -5111,7 +5146,7 @@ function renderizarTabelaEstrutura() {
         (nAdic > 0 ? ' <span class="resp-mais">+' + nAdic + '</span>' : '') +
         '</span>';
     }
-    var tdResp = '<td class="el-col-resp">' + respHtml + '</td>';
+    var tdResp = '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + respHtml + '</td>';
 
     // Ações
     var tbId = 'el-tb-' + id;
@@ -5123,10 +5158,13 @@ function renderizarTabelaEstrutura() {
       { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "abrirDetalhesElementoPainel('" + id + "')", principal: true },
       { icone: 'delete', rotulo: 'Excluir', onclick: "confirmarExclusaoElemento('" + id + "','" + escapeJsAttr(no.titulo) + "')", perigo: true, oculto: !podeEditarElemento }
     ], { maxDireto: 2 });
-    var tdAcoes = '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info">' + escapeHtml(no.prazo || no.fim || '') + '</div>' +
+    var prazoTxt = escapeHtml(no.prazo || no.fim || '');
+    var tdVig = '<td class="ds-tabela__vig">' + prazoTxt + '</td>';
+    var tdAcoes = '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="ds-texto-leve ds-tabela__so-desktop">' + prazoTxt + '</span></div>' +
       '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>';
+    var tdCard = '<td class="ds-tabela__card"><div class="ds-tabela__meta">' + uiMetaItensHTML([respHtml].concat(chipsList)) + '</div></td>';
 
-    tr.innerHTML = tdCheck + tdExpand + tdElem + tdResp + tdAcoes;
+    tr.innerHTML = tdCheck + tdExpand + tdElem + tdVig + tdResp + tdAcoes + tdCard;
     tbody.appendChild(tr);
 
     // Recursão para filhos
@@ -5139,6 +5177,15 @@ function renderizarTabelaEstrutura() {
   }
 
   visiveis.forEach(function(no) { achatarNo(no, 0, false); });
+  if (!tbody._elToqueLongo) {
+    tbody._elToqueLongo = true;
+    uiToqueLongo(tbody, 'tr.ds-linha-clicavel', function(tr) {
+      if (!_elMobile() || _elSelecionados.has(tr.dataset.id)) return;
+      _elSelecionados.add(tr.dataset.id);
+      _elAtualizarSelecaoVisual();
+    });
+  }
+  _elFiltrosMobileSincronizar();
 
   // Controle do cabeçalho da tabela e ativação de drag em modo reorganizar
   _atualizarCabecalhoReorganizar();
@@ -5149,7 +5196,19 @@ function renderizarTabelaEstrutura() {
   if (_modoReorganizar) _ativarDragTabela();
 
   // Botão "Carregar mais"
-  if (!_modoReorganizar && totalRaiz > limite && maisWrap) {
+  // Celular: sem botão, a lista carrega mais ao rolar (uiRolagemInfinita)
+  if (maisWrap && !maisWrap.dataset.rolagem) {
+    maisWrap.dataset.rolagem = '1';
+    uiRolagemInfinita(maisWrap, function() {
+      if (!window.matchMedia('(max-width: 768px)').matches || _modoReorganizar) return;
+      if (_pagRootElementos >= _elTotalRaizVisivel) return;
+      _pagRootElementos += 10;
+      renderizarTabelaEstrutura();
+    });
+  }
+  _elTotalRaizVisivel = totalRaiz;
+  if (maisWrap && maisWrap._uiRolagem) maisWrap._uiRolagem.verificar();
+  if (!_modoReorganizar && totalRaiz > limite && maisWrap && !window.matchMedia('(max-width: 768px)').matches) {
     var restantes = Math.min(10, totalRaiz - limite);
     var btn = document.createElement('button');
     btn.className = 'btn-carregar-mais';
@@ -5615,6 +5674,7 @@ function elAlternarOrdemPrazo() {
 function _elReRenderizarModoAtivo() {
   var btnNovoItem = document.getElementById('btn-novo-item');
   if (btnNovoItem) btnNovoItem.classList.toggle('hidden', !(_elCtx.permissoes || {}).gerenciarElementos);
+  if (typeof detFabAtualizar === 'function') detFabAtualizar();
   var modoAtivo = document.querySelector('.elementos-modo:not(.hidden)');
   if (!modoAtivo || modoAtivo.id === 'modo-arvore') renderizarTabelaEstrutura();
   else if (modoAtivo.id === 'modo-organograma') renderizarOrganograma();
