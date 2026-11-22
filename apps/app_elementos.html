@@ -1282,15 +1282,15 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
         </div>
 
         <div class="ds-filtros__selecao hidden" id="el-filtros-reorganizar">
-          <button type="button" class="ds-icon-action" id="btn-reorg-cancelar-m" data-on-click="el.45" data-title="Sair da reorganização" aria-label="Sair da reorganização">
+          <button type="button" class="ds-icon-action" id="btn-reorg-cancelar" data-on-click="el.45" data-title="Sair da reorganização" aria-label="Sair da reorganização">
             <span class="material-symbols-outlined">close</span>
           </button>
-          <span class="ds-filtros__selecao-texto" id="el-reorg-texto-m">Arraste os elementos para reorganizar</span>
-          <div class="ds-filtros__divisor hidden" id="el-reorg-divisor-m"></div>
-          <button type="button" class="acoes-btn hidden" id="btn-reorg-principal-m" data-on-click="el.43" data-title="Confirmar e salvar nova ordem" aria-label="Confirmar e salvar nova ordem">
+          <span class="ds-filtros__selecao-texto" id="el-reorg-texto">Arraste os elementos para reorganizar</span>
+          <div class="ds-filtros__divisor hidden" id="el-reorg-divisor"></div>
+          <button type="button" class="acoes-btn hidden" id="btn-reorg-principal" data-on-click="el.43" data-title="Confirmar e salvar nova ordem" aria-label="Confirmar e salvar nova ordem">
             <span class="material-symbols-outlined">check</span>
           </button>
-          <button type="button" class="acoes-btn hidden" id="btn-reorg-restaurar-m" data-on-click="el.44" data-title="Restaurar ordem que estava antes" aria-label="Restaurar ordem que estava antes">
+          <button type="button" class="acoes-btn hidden" id="btn-reorg-restaurar" data-on-click="el.44" data-title="Restaurar ordem que estava antes" aria-label="Restaurar ordem que estava antes">
             <span class="material-symbols-outlined">restart_alt</span>
           </button>
         </div>
@@ -1328,7 +1328,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
         <div class="ds-tabela-wrap">
           <table class="ds-tabela ds-tabela--selecao" id="el-tabela">
             <thead>
-              <tr id="el-th-normal">
+              <tr>
                 <th class="ds-tabela__ordenar"><span class="ds-tabela__rotulo">Lista</span></th>
                 <th class="ds-tabela__cab-acoes"><button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ui.chamar" data-chamada-click="elAbrirMenuLista()" aria-haspopup="menu" data-title="Opções da lista" aria-label="Opções da lista"><span class="material-symbols-outlined">more_vert</span></button></th>
                 <th class="ds-tabela__check">
@@ -1349,23 +1349,6 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                       <button type="button" class="ds-icon-action ds-icon-action--sm" id="btn-exportar-elem" data-on-click="el.42" data-title="Exportar" aria-label="Exportar"><span class="material-symbols-outlined">download</span></button>
                     </span>
                     <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="el.77" data-title="Opções" aria-label="Opções" aria-haspopup="true"><span class="material-symbols-outlined">more_vert</span></button>
-                  </div>
-                </th>
-              </tr>
-              <tr id="el-th-reorganizar" class="hidden">
-                <th colspan="5" class="el-th-reorg-th">
-                  <div class="el-th-reorg-bar">
-                    <button type="button" class="ds-icon-action" id="btn-reorg-principal" data-on-click="el.43" data-title="Cancelar reorganização" aria-label="Cancelar reorganização">
-                      <span class="material-symbols-outlined" id="ico-reorg-principal">close</span>
-                    </button>
-                    <span class="el-reorg-texto" id="el-reorg-texto">Arraste os elementos para reorganizar</span>
-                    <div class="el-reorg-divisor hidden" id="el-reorg-divisor"></div>
-                    <button type="button" class="ds-icon-action hidden" id="btn-reorg-restaurar" data-on-click="el.44" data-title="Restaurar ordem que estava antes" aria-label="Restaurar ordem que estava antes">
-                      <span class="material-symbols-outlined">restart_alt</span>
-                    </button>
-                    <button type="button" class="ds-icon-action hidden" id="btn-reorg-cancelar" data-on-click="el.45" data-title="Cancelar alterações e sair" aria-label="Cancelar alterações e sair">
-                      <span class="material-symbols-outlined">close</span>
-                    </button>
                   </div>
                 </th>
               </tr>
@@ -1731,6 +1714,13 @@ _elementosSDK.aoContexto(function(ctx) {
 
 _elementosSDK.aoTecla(function(evt) {
   if (evt.key === 'Escape') {
+    // reorganizando: Esc sai do modo sem salvar (como o X); durante o salvamento os botões ficam travados e o Esc também
+    if (_modoReorganizar) {
+      var btnReorg = document.getElementById('btn-reorg-principal');
+      if (btnReorg && btnReorg.disabled) return true;
+      _cancelarModoReorganizar();
+      return true;
+    }
     if (typeof _elSelecionados !== 'undefined' && _elSelecionados.size > 0) {
       elCancelarSelecao();
       return true;
@@ -2675,46 +2665,18 @@ function _atualizarContadorTipos() {
 
 
 // app_elementos_reorganizar — modo Reorganizar da lista (arrastar linhas, salvar/cancelar ordem)
+// A faixa de ações do modo ocupa o lugar dos filtros (a barra de seleção faz o mesmo): nada na tabela desce nem sobe
 function _atualizarCabecalhoReorganizar(salvando) {
-  var thNormal = document.getElementById('el-th-normal');
-  var thReorg = document.getElementById('el-th-reorganizar');
-  if (!thNormal || !thReorg) return;
-  var mobile = _elMobile();   // celular: as ações do modo ocupam a barra do topo (faixa de seleção); web: linha do cabeçalho da tabela
   var faixa = document.getElementById('el-filtros-reorganizar');
   var normal = document.getElementById('el-filtros-normal');
-  thNormal.classList.toggle('hidden', _modoReorganizar && !mobile);
-  thReorg.classList.toggle('hidden', !_modoReorganizar || mobile);
-  if (faixa && normal) {
-    faixa.classList.toggle('hidden', !_modoReorganizar || !mobile);
-    normal.classList.toggle('hidden', _modoReorganizar && mobile);
-  }
+  if (!faixa || !normal) return;
+  faixa.classList.toggle('hidden', !_modoReorganizar);
+  normal.classList.toggle('hidden', _modoReorganizar);
   if (!_modoReorganizar) return;
-
-  var texto = document.getElementById('el-reorg-texto');
-  var texto_m = document.getElementById('el-reorg-texto-m');
   var msg = salvando ? 'Salvando reorganização...' : (_reorgAlterado ? 'Ordem alterada' : 'Arraste os elementos para reorganizar');
-  if (texto) texto.textContent = msg;
-  if (texto_m) texto_m.textContent = msg;
-
-  // web: [X/✓ principal] texto | restaurar, cancelar
-  var btnPrincipal = document.getElementById('btn-reorg-principal');
-  var icoPrincipal = document.getElementById('ico-reorg-principal');
-  var btnRestaurar = document.getElementById('btn-reorg-restaurar');
-  var btnCancelar = document.getElementById('btn-reorg-cancelar');
-  var divisor = document.getElementById('el-reorg-divisor');
-  [btnPrincipal, btnRestaurar, btnCancelar].forEach(function(b) { b.disabled = !!salvando; });
-  var titulo = _reorgAlterado ? 'Confirmar e salvar nova ordem' : 'Cancelar reorganização';
-  btnPrincipal.dataset.title = salvando ? 'Salvando...' : titulo;
-  btnPrincipal.setAttribute('aria-label', titulo);
-  icoPrincipal.textContent = _reorgAlterado ? 'check' : 'close';
-  icoPrincipal.style.color = _reorgAlterado ? 'var(--ds-color-success-fg)' : '';
-  divisor.classList.toggle('hidden', !_reorgAlterado);
-  btnRestaurar.classList.toggle('hidden', !_reorgAlterado);
-  btnCancelar.classList.toggle('hidden', !_reorgAlterado);
-
-  // celular: [X sair, com borda] texto | confirmar, restaurar (sem borda)
-  [['btn-reorg-cancelar-m', salvando], ['btn-reorg-principal-m', salvando], ['btn-reorg-restaurar-m', salvando]].forEach(function(p) { document.getElementById(p[0]).disabled = !!p[1]; });
-  ['el-reorg-divisor-m', 'btn-reorg-principal-m', 'btn-reorg-restaurar-m'].forEach(function(id) { document.getElementById(id).classList.toggle('hidden', !_reorgAlterado); });
+  document.getElementById('el-reorg-texto').textContent = msg;
+  ['btn-reorg-cancelar', 'btn-reorg-principal', 'btn-reorg-restaurar'].forEach(function(id) { document.getElementById(id).disabled = !!salvando; });
+  ['el-reorg-divisor', 'btn-reorg-principal', 'btn-reorg-restaurar'].forEach(function(id) { document.getElementById(id).classList.toggle('hidden', !_reorgAlterado); });
 }
 
 function _cliqueReorgPrincipal() {

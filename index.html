@@ -17503,13 +17503,6 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
   overflow: visible;
 }
 .el-tabela > thead > tr > th.el-col-acoes { text-align: right; }
-#el-th-reorganizar th {
-  position: sticky;
-  top: calc(var(--ds-pagina-topo-tabela) - 2px);
-  z-index: 40;
-  background: var(--ds-color-surface);
-  border-bottom: 2px solid var(--ds-color-border);
-}
 
 .el-tabela col.el-col-check, .el-tabela .el-col-check {
   width: 44px; min-width: 44px; max-width: 44px;
@@ -17658,64 +17651,6 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
 #el-tabela tbody tr[data-level="4"] .el-elem-content { padding-left: 96px; }
 #el-tabela tbody tr[data-level="5"] .el-elem-content { padding-left: 120px; }
 
-/* Cabeçalho do modo reorganizar */
-#el-th-reorganizar.hidden, #el-th-normal.hidden { display: none !important; }
-.el-th-reorg-th {
-  padding: 8px 16px 8px 10px !important;   /* o X (botão de 32 em volta de ícone de 20) fica centrado na alça de arrastar da linha: 10 = 16 da célula de seleção − 6 de folga do botão */
-  background: var(--ds-color-surface) !important;
-  border-bottom: 2px solid var(--ds-color-border) !important;
-  text-align: left !important;
-  vertical-align: middle !important;
-  font-weight: normal !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-}
-.el-th-reorg-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 32px;
-  width: 100%;
-}
-.el-th-reorg-bar .ds-icon-action {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: var(--ds-r-md);
-  border: none;
-  background: none;
-  color: var(--ds-color-text-muted);
-  cursor: pointer;
-  transition: background var(--ds-duration-fast) var(--ds-ease-standard), color var(--ds-duration-fast) var(--ds-ease-standard);
-}
-.el-th-reorg-bar .ds-icon-action:hover {
-  background: var(--ds-sidebar-item-hover);
-  color: var(--ds-color-action);
-}
-.el-th-reorg-bar .ds-icon-action .material-symbols-outlined {
-  font-size: 20px;
-}
-.el-reorg-texto {
-  font-size: var(--ds-text-sm);
-  font-weight: var(--ds-weight-semibold);
-  color: var(--ds-color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-.el-reorg-divisor {
-  width: 1px;
-  height: 20px;
-  background: var(--ds-color-border);
-  margin: 0 4px;
-  flex-shrink: 0;
-}
-
 #el-carregar-mais-wrap { text-align: center; padding: 12px 0; }
 
 /* ── EMPTY STATES ────────────────────────────────────── */
@@ -17733,7 +17668,7 @@ body.high-contrast .log-icon { background: #000; border: 1px solid #fff; color: 
 
 /* Mobile */
 @media (max-width: 768px) {
-  .el-tabela > thead > tr > th, #el-th-reorganizar th { position: static; }
+  .el-tabela > thead > tr > th { position: static; }
   .el-filtros { gap: 6px; }
   #view-elementos .el-search-input { width: 150px !important; }
   .el-tabela col.el-col-resp, .el-tabela .el-col-resp { display: none; }
