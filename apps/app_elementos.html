@@ -5161,10 +5161,11 @@ function renderizarTabelaEstrutura() {
     var tdVig = '<td class="ds-tabela__vig">' + prazoTxt + '</td>';
     var tdAcoes = '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="ds-texto-leve ds-tabela__so-desktop">' + prazoTxt + '</span></div>' +
       '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>';
-    var tdCard = '<td class="ds-tabela__card"><div class="ds-tabela__meta">' + uiMetaItensHTML([respHtml].concat(chipsList)) + '</div></td>';
+    var tdCard = '<td class="ds-tabela__card"><div class="ds-tabela__meta"></div></td>';
 
     tr.innerHTML = tdCheck + tdExpand + tdElem + tdVig + tdResp + tdAcoes + tdCard;
     tbody.appendChild(tr);
+    uiMetaPreencher(tr, [respHtml].concat(chipsList));
 
     // Recursão para filhos
     if (temFilhos) {

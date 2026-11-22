@@ -106,6 +106,9 @@ main { flex: 1; min-height: 0; padding: var(--ds-main-pad-y) var(--ds-main-pad-x
   --ds-pagina-topo: calc(-1 * var(--ds-main-pad-y));   /* o sticky conta da borda do padding de <main>: assim encosta na barra do topo */
   --ds-pagina-faixa-h: 44px;
   --ds-pagina-filtros-h: 0px;
+  --ds-pagina-filtros-pad: var(--ds-space-2-5);   /* respiro acima e abaixo da barra de filtros */
+  --ds-pagina-filtros-linha: 44px;   /* altura da linha da barra de filtros (busca, pílulas ou seleção) no celular */
+  --ds-pagina-lista-cab: 36px;   /* altura do cabeçalho da lista no celular (ordenação ou rótulo + ferramentas) */
   --ds-pagina-acoes-w: 0px;
   --ds-pagina-topo-tabela: calc(var(--ds-pagina-topo) + var(--ds-pagina-faixa-h) + var(--ds-pagina-filtros-h));
 }
@@ -145,7 +148,7 @@ main { flex: 1; min-height: 0; padding: var(--ds-main-pad-y) var(--ds-main-pad-x
   .ds-pagina__filtros { top: calc(-1 * var(--ds-main-pad-y)); }   /* o sticky para no padding da área rolável: compensa para colar no topo */
   /* hero sem nada além do título (que no mobile mora na barra do topo) não ocupa espaço */
   .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) { display: none; }
-  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) ~ .ds-pagina__filtros, .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) ~ * .ds-pagina__filtros { margin-top: calc(-1 * var(--ds-main-pad-y)); }   /* busca colada ao topo */
+  .ds-pagina:has(> .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden)))) .ds-pagina__filtros { margin-top: var(--ds-pagina-topo); }   /* regra única: hero vazio → a barra de filtros (irmã do hero ou dentro da área de conteúdo) cola no topo */
 }
 
 .card { background: var(--ds-glass-bg-strong); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-2xl); box-shadow: var(--ds-glass-shadow); padding: 20px; margin-bottom: 20px; }
@@ -675,7 +678,7 @@ body.high-contrast {
   .ds-tabela { display: block; width: 100%; }
   /* cabeçalho (padrão Drive): um só item, a ordenação atual com a seta da direção; tocar abre o menu de ordenar. À direita ficarão os modos de visualização, nas telas que os tiverem. */
   .ds-tabela thead { display: block; }
-  .ds-tabela thead tr { display: flex; align-items: center; min-height: 36px; padding: 0 var(--ds-space-2); }
+  .ds-tabela thead tr { display: flex; align-items: center; min-height: var(--ds-pagina-lista-cab); padding: 0 var(--ds-space-2); }
   .ds-tabela thead, .ds-tabela thead tr, .ds-tabela thead th { background: none; }
   .ds-tabela thead th { display: none; }
   .ds-tabela thead th.ds-tabela__ordenar, .ds-tabela thead th.ds-tabela__cab-acoes { position: static; }
@@ -711,7 +714,7 @@ body.high-contrast {
   .ds-tabela tbody .ds-tabela__nome { grid-area: 2 / 1 / 3 / 3; min-width: 0; font-size: var(--ds-text-md); }
   .ds-tabela tbody .ds-col-sobreposta, .ds-tabela tbody .ds-col-acoes { grid-area: 1 / 3 / 4 / 4; width: auto; align-self: center; justify-self: end; margin-right: calc(-1 * var(--ds-space-2)); }
   .ds-tabela tbody .ds-tabela__card { grid-area: 3 / 1 / 4 / 3; display: block; min-width: 0; }
-  /* 3ª linha: cabem quantos badges couberem, sem quebrar; o que não cabe some e o badge "…" (.ds-badge--mais) sinaliza (uiMetaAjustar) */
+  /* 3ª linha: cabem quantos badges couberem, sem quebrar; o que não cabe some e o badge "…" (.ds-badge--mais) sinaliza (uiMetaPreencher) */
   .ds-tabela__meta { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--ds-space-2); overflow: hidden; }
   .ds-tabela__meta > * { flex: none; white-space: nowrap; }
   .ds-tabela__meta > :first-child { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -1260,7 +1263,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
    (components_acoes_linha.html) — nunca montar outro popover. */
 
 /* Barra de filtros: [__normal | __selecao] (um ou outro) + __pag à direita. Vai dentro do .ds-pagina__filtros. */
-.ds-filtros { display: flex; align-items: center; gap: 8px; padding: 10px 0; }
+.ds-filtros { display: flex; align-items: center; gap: 8px; padding: var(--ds-pagina-filtros-pad) 0; }
 .ds-filtros__normal, .ds-filtros__selecao { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 1 1 auto; min-width: 0; }
 .ds-filtros__normal.hidden, .ds-filtros__selecao.hidden { display: none; }
 .ds-filtros__selecao-texto { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
@@ -1363,7 +1366,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
    que abrem o bottom sheet do próprio filtro (abrirMenuSelecao no mobile) e mostram o valor escolhido; limpar um filtro é no × da própria pílula (ou no "Limpar" do sheet); sem "Limpar filtros" geral. */
 @media (max-width: 768px) {
   .ds-filtros { flex-wrap: wrap; }
-  .ds-filtros__normal, .ds-filtros__selecao { min-height: 44px; }   /* mesma altura: trocar a busca pela faixa de seleção não move a lista */
+  .ds-filtros__normal, .ds-filtros__selecao { min-height: var(--ds-pagina-filtros-linha); }   /* mesma altura: trocar a busca pela faixa de seleção não move a lista */
   .ds-filtros__normal { row-gap: var(--ds-space-2); }
   .ds-filtros__normal > .ds-busca { flex: 1 1 100%; }
   /* a busca vive na barra do topo (uiTopoBuscar); a barra de filtros só aparece com pílulas à vista ou em seleção, senão some inteira */
@@ -10764,33 +10767,25 @@ function uiTopoStatusAbrir() {
   if (!st) return;
   uiSheetAbrir({ titulo: st, corpo: '<div>' + uiStatusPlanoHTML(st) + '<p>' + escapeHtml(UI_STATUS_PLANO_DESCRICAO[st] || '') + '</p></div>' });
 }
-/** Itens da 3ª linha do item da lista (badges, responsável…): `itens` = lista de HTML. Cabem quantos couberem na largura (uiMetaAjustar); o que não cabe some e o badge de reticências sinaliza. */
-function uiMetaItensHTML(itens) {
-  var l = (itens || []).filter(Boolean);
-  return l.join('') + '<span class="ds-badge ds-badge--mais hidden" data-title="Há mais informações no item" aria-label="Há mais informações no item"><span class="material-symbols-outlined" aria-hidden="true">more_horiz</span></span>';
+/** Cabe o que couber: mostra os itens da 3ª linha enquanto couberem e põe o badge de reticências quando sobra. Reage à largura da própria linha (ResizeObserver), sem varrer a página. */
+function uiMetaAjustarUm(meta) {
+  var mais = meta.querySelector(':scope > .ds-badge--mais');
+  if (!mais || !meta.clientWidth) return;
+  var itens = Array.prototype.slice.call(meta.children).filter(function (x) { return x !== mais; });
+  itens.forEach(function (x) { x.classList.remove('hidden'); });
+  mais.classList.add('hidden');
+  if (meta.scrollWidth <= meta.clientWidth + 1) return;
+  mais.classList.remove('hidden');
+  for (var k = itens.length - 1; k >= 1 && meta.scrollWidth > meta.clientWidth + 1; k--) itens[k].classList.add('hidden');
 }
-function uiMetaAjustar() {
-  if (!window.matchMedia('(max-width: 768px)').matches) return;
-  Array.prototype.forEach.call(document.querySelectorAll('.ds-tabela__meta'), function (meta) {
-    var mais = meta.querySelector(':scope > .ds-badge--mais');
-    if (!mais || !meta.clientWidth) return;
-    var itens = Array.prototype.slice.call(meta.children).filter(function (x) { return x !== mais; });
-    itens.forEach(function (x) { x.classList.remove('hidden'); });
-    mais.classList.add('hidden');
-    if (meta.scrollWidth <= meta.clientWidth + 1) return;
-    mais.classList.remove('hidden');
-    for (var k = itens.length - 1; k >= 1 && meta.scrollWidth > meta.clientWidth + 1; k--) itens[k].classList.add('hidden');
-  });
+var _uiMetaObs = window.ResizeObserver ? new ResizeObserver(function (es) { es.forEach(function (e) { uiMetaAjustarUm(e.target); }); }) : null;
+/** 3ª linha do item da lista: preenche o `.ds-tabela__meta` da linha `tr` com `itens` (lista de HTML: status, responsável, chips…) e o badge de reticências, e passa a ajustar sozinho à largura (cabem quantos couberem; o excedente some). Chamar depois de inserir `tr` no documento. */
+function uiMetaPreencher(tr, itens) {
+  var meta = tr.querySelector('.ds-tabela__meta');
+  if (!meta) return;
+  meta.innerHTML = (itens || []).filter(Boolean).join('') + '<span class="ds-badge ds-badge--mais hidden" data-title="Há mais informações no item" aria-label="Há mais informações no item"><span class="material-symbols-outlined" aria-hidden="true">more_horiz</span></span>';
+  if (_uiMetaObs) _uiMetaObs.observe(meta);
 }
-(function () {
-  var t = 0;
-  function agendar() { cancelAnimationFrame(t); t = requestAnimationFrame(uiMetaAjustar); }
-  document.addEventListener('DOMContentLoaded', function () {
-    var main = document.getElementById('main-content');
-    if (main && window.MutationObserver) new MutationObserver(agendar).observe(main, { childList: true, subtree: true });
-    window.addEventListener('resize', agendar);
-  });
-})();
 /** Pastilha de responsável: servidor (USER) com ícone person e 1º + último nome; unidade com ícone apartment e nome inteiro;
  *  `adicionais` (lista de nomes) vira "+N" e entra na dica. */
 function uiRespHTML(nome, tipo, adicionais) {
@@ -14880,10 +14875,9 @@ function _renderizarTabela(planos) {
       '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="ds-texto-leve ds-tabela__so-desktop">' + vigencia + '</span></div>' +
         '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>' +
       // Linha do celular: status + responsável + progresso, tudo numa linha só
-      '<td class="ds-tabela__card"><div class="ds-tabela__meta">' +
-        uiMetaItensHTML([uiStatusPlanoHTML(p.status), respHtml]) +
-        '</div><div class="ds-tabela__prog">' + progHtml + '</div></td>';
+      '<td class="ds-tabela__card"><div class="ds-tabela__meta"></div><div class="ds-tabela__prog">' + progHtml + '</div></td>';
     tbody.appendChild(tr);
+    uiMetaPreencher(tr, [uiStatusPlanoHTML(p.status), respHtml]);
   });
 
   _atualizarIconesOrdenacao();
