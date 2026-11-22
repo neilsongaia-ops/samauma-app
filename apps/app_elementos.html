@@ -5023,6 +5023,7 @@ function renderizarTabelaEstrutura() {
   var tbody = document.getElementById('el-tbody');
   var maisWrap = document.getElementById('el-carregar-mais-wrap');
   if (!tbody) return;
+  _elFiltrosMobileSincronizar();   // antes de qualquer retorno: plano sem elementos também esconde pílulas e modos no celular
   tbody.innerHTML = '';
   if (maisWrap) maisWrap.innerHTML = '';
 
@@ -5183,7 +5184,6 @@ function renderizarTabelaEstrutura() {
       _elAtualizarSelecaoVisual();
     });
   }
-  _elFiltrosMobileSincronizar();
 
   // Controle do cabeçalho da tabela e ativação de drag em modo reorganizar
   _atualizarCabecalhoReorganizar();
