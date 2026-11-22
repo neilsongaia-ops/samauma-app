@@ -647,6 +647,7 @@ body.high-contrast {
 .ds-tabela tbody tr.ds-tabela__msg:hover td { background: transparent; }
 .ds-tabela .ds-tabela__check { width: 48px; text-align: left; padding: 14px 0 14px 16px; }
 .ds-tabela thead .ds-tabela__check { padding-top: 12px; padding-bottom: 12px; }
+.ds-tabela .ds-tabela__expandir { width: 32px; padding-left: 0; padding-right: 0; }   /* coluna da seta de expandir: estreita, o conteúdo fica junto dela */
 .ds-tabela input[type="checkbox"] { display: block; margin: 0; width: 16px; height: 16px; }
 .ds-tabela__principal { width: 46%; min-width: 260px; }
 @media (min-width: 769px) { .ds-tabela td.ds-tabela__principal { max-width: 0; } }
@@ -655,15 +656,32 @@ body.high-contrast {
 .ds-tabela__vig { display: none; }
 .ds-tabela__ordenar { display: none; }
 .ds-tabela__id { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.ds-tabela__nome-wrap { flex: 1 1 auto; min-width: 0; }
+.ds-tabela__nome-wrap { flex: 0 1 auto; min-width: 0; }   /* o nome ocupa só o seu texto: chips e ícones que vêm depois ficam junto dele */
 .ds-tabela__codigo { margin-right: var(--ds-space-1); font-weight: var(--ds-weight-regular); color: var(--ds-color-text-muted); }   /* texto cinza que antecede o nome do item: sigla do plano, código do elemento… */
 .ds-tabela__rotulo { text-transform: none; letter-spacing: normal; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
 .ds-tabela__cab-acoes { display: none; }
+.ds-tabela tbody tr.ds-linha-filha { display: none; }   /* descendente de um item da árvore: aparece só com o pai aberto (.is-aberta) */
+.ds-tabela tbody tr.ds-linha-filha.is-aberta { display: table-row; }
+/* Contorno colorido de um bloco aberto da lista em árvore (celular): SVG desenhado por elAtualizarGruposArvore sobre o bloco; o traço percorre a borda como uma cobrinha
+   (topo esquerdo, desce pela esquerda, base, sobe pela direita e fecha no topo) quando o bloco abre (.is-animado). A cor vem de --ds-color-borda-item (tipo do raiz). */
+.ds-item-contorno { position: absolute; pointer-events: none; overflow: visible; --ds-color-borda-item: var(--ds-color-action); }
+.ds-item-contorno path { fill: none; stroke: var(--ds-color-borda-item); stroke-width: var(--ds-borda-forte); stroke-dasharray: 1 1; stroke-dashoffset: 0; }
+.ds-item-contorno.is-animado path { stroke-dashoffset: 1; animation: ds-contorno-desenhar 700ms var(--ds-ease-standard) forwards; }
+@keyframes ds-contorno-desenhar { to { stroke-dashoffset: 0; } }
+/* Seta de expandir/recolher do item de uma lista em árvore: gira 90° quando aberta (.is-aberto) */
+.ds-item-seta {
+  width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--ds-r-md); color: var(--ds-color-text-muted);
+  transition: background var(--ds-duration-fast) var(--ds-ease-standard), transform var(--ds-duration-fast) var(--ds-ease-standard);
+}
+.ds-item-seta:hover { background: var(--ds-sidebar-item-hover); color: var(--ds-color-action); }
+.ds-item-seta.is-aberto { transform: rotate(90deg); }
+.ds-item-seta .material-symbols-outlined { font-size: var(--ds-icon-md); }
 .ds-tabela__nome { font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 1024px) { .ds-tabela .ds-tabela__so-larga { display: none; } }
 @media (max-width: 768px) {
   /* lista (padrão Drive): sem painel; o fundo é o da página e cada item é um bloco arredondado de cor DIFERENTE do fundo (--ds-color-surface-2), com um pequeno vão entre eles */
-  .ds-tabela-wrap { margin: 0; width: 100%; display: block; padding: 0; background: none; }
+  .ds-tabela-wrap { margin: 0; width: 100%; display: block; padding: 0; background: none; position: relative; }
   .ds-tabela { display: block; width: 100%; }
   /* cabeçalho (padrão Drive): um só item, a ordenação atual com a seta da direção; tocar abre o menu de ordenar. À direita ficarão os modos de visualização, nas telas que os tiverem. */
   .ds-tabela thead { display: block; }
@@ -678,15 +696,26 @@ body.high-contrast {
   .ds-tabela--selecionando thead th.ds-tabela__check { display: flex; align-items: center; gap: var(--ds-space-2); width: auto; padding: 2px 0; border: none; }
   .ds-tabela thead .ds-tabela__card { display: inline; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
   .ds-tabela__ordenar-btn { display: inline-flex; align-items: center; gap: var(--ds-space-2); padding: 0; border: 0; background: none; cursor: pointer; font-family: var(--ds-font-sans); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); }
-  .ds-tabela__ordenar-btn .material-symbols-outlined { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); font-size: var(--ds-icon-md); }
+  .ds-tabela__ordenar-btn .material-symbols-outlined, .ds-tabela thead th.ds-tabela__cab-acoes .ds-icon-action { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); font-size: var(--ds-icon-md); }
+  .ds-tabela thead th.ds-tabela__cab-acoes .ds-icon-action { border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ds-tabela thead th.ds-tabela__cab-acoes .ds-icon-action .material-symbols-outlined { font-size: var(--ds-icon-md); }
   /* corpo: lista de linhas compactas (padrão Gmail), uma coluna: 1ª linha = badge do tipo à esquerda + vigência à direita (leve); 2ª = título; 3ª = badges, responsável e progresso; ⋮ centrado na altura.
      A caixa de seleção só aparece no modo de seleção (.ds-tabela--selecionando, ligado pelo toque longo), no lugar do ⋮: toque abre o item; com a seleção ligada, toque marca/desmarca. */
   .ds-tabela tbody { display: flex; flex-direction: column; gap: var(--ds-space-1); width: 100%; margin-top: var(--ds-space-1); }
   .ds-tabela tbody tr {
     display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-rows: auto auto auto;
-    gap: 4px 8px; align-items: center; padding: 10px var(--ds-space-3) 10px var(--ds-space-3); border-radius: var(--ds-r-md); background: var(--ds-color-surface-2);
+    gap: 4px 8px; align-items: center; padding: 10px var(--ds-space-3) 10px var(--ds-space-3); border-radius: var(--ds-r-md); background: var(--ds-color-surface-2); position: relative;
   }
+  /* lista em árvore: o item raiz e seus descendentes abertos se colam num só bloco (--ini/--meio/--fim), separados por uma linha cinza curta; o contorno colorido
+     (.ds-item-contorno) é desenhado por cima, só enquanto o bloco está aberto; a seta fica na faixa da esquerda */
+  .ds-tabela tbody tr.ds-item-grupo--ini { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .ds-tabela tbody tr.ds-item-grupo--meio { border-radius: 0; margin-top: calc(-1 * var(--ds-space-1)); }
+  .ds-tabela tbody tr.ds-item-grupo--fim { border-top-left-radius: 0; border-top-right-radius: 0; margin-top: calc(-1 * var(--ds-space-1)); }
+  .ds-tabela tbody tr.ds-item-grupo--meio::before, .ds-tabela tbody tr.ds-item-grupo--fim::before { content: ''; position: absolute; top: 0; left: var(--ds-space-4); right: var(--ds-space-4); height: var(--ds-borda); background: var(--ds-color-border); }
+  .ds-tabela--arvore tbody tr { padding-left: calc(var(--ds-space-3) + 24px); }
+  .ds-tabela tbody .ds-tabela__expandir { position: absolute; left: var(--ds-space-2); top: 50%; transform: translateY(-50%); }
+  .ds-tabela tbody tr.ds-linha-filha.is-aberta { display: grid; }
   .ds-tabela tbody tr:hover { background: color-mix(in srgb, var(--ds-color-surface-2), var(--ds-color-text) 8%); }   /* destaque do item sob o dedo/cursor: mais claro que o cartão */
   .ds-tabela tbody tr.is-selecionada { background: var(--ds-sidebar-item-active); }
   .ds-tabela tbody td { display: block; padding: 0; border: none; }

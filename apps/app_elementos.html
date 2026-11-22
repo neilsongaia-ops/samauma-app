@@ -1321,7 +1321,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                   <input type="checkbox" id="chk-select-all-el" data-on-change="el.37" aria-label="Selecionar todos">
                   <label for="chk-select-all-el" class="ds-tabela__card">Selecionar tudo</label>
                 </th>
-                <th class="el-col-expand ds-tabela__so-desktop"></th>
+                <th class="ds-tabela__expandir"></th>
                 <th class="ds-tabela__principal">Elemento</th>
                 <th class="ds-tabela__nowrap">Responsável</th>
                 <th class="ds-col-sobreposta">
@@ -2616,13 +2616,14 @@ function toggleExpandirTudo() {
   // Tabela hierárquica (modo padrão)
   const tbody = document.getElementById('el-tbody');
   if (tbody) {
-    tbody.querySelectorAll('tr.el-filho').forEach(tr => {
-      tr.classList.toggle('el-visivel', arvoreTotalmenteExpandida);
+    tbody.querySelectorAll('tr.ds-linha-filha').forEach(tr => {
+      tr.classList.toggle('is-aberta', arvoreTotalmenteExpandida);
     });
-    tbody.querySelectorAll('.el-toggle-btn').forEach(btn => {
-      btn.classList.toggle('expanded', arvoreTotalmenteExpandida);
+    tbody.querySelectorAll('.ds-item-seta').forEach(btn => {
+      btn.classList.toggle('is-aberto', arvoreTotalmenteExpandida);
       btn.setAttribute('aria-label', arvoreTotalmenteExpandida ? 'Recolher' : 'Expandir');
     });
+    elAtualizarGruposArvore();
   }
 
   // tree-root legado (modo reorganizar)
@@ -3784,38 +3785,94 @@ function orgDescartar() {
 // app_elementos_arvore — árvore da lista: montar hierarquia, expandir/recolher e nós DOM
 function elToggleFilhos(ev, parentId) {
   if (ev && ev.stopPropagation) ev.stopPropagation();
-  var btn = (ev && ev.currentTarget && ev.currentTarget.classList && ev.currentTarget.classList.contains('el-toggle-btn'))
+  var btn = (ev && ev.currentTarget && ev.currentTarget.classList && ev.currentTarget.classList.contains('ds-item-seta'))
     ? ev.currentTarget
-    : document.querySelector('#el-tbody tr[data-id="' + parentId + '"] .el-toggle-btn');
+    : document.querySelector('#el-tbody tr[data-id="' + parentId + '"] .ds-item-seta');
   if (!btn) return;
-  var expanded = btn.classList.toggle('expanded');
+  var expanded = btn.classList.toggle('is-aberto');
   btn.setAttribute('aria-label', expanded ? 'Recolher' : 'Expandir');
 
-  // Mostrar/ocultar filhos diretos e netos (recursivo)
-  var rows = document.querySelectorAll('#el-tbody tr');
+  // Abrir revela só o próximo nível (os netos abrem quando o filho for aberto); recolher esconde todos os descendentes e fecha as setas deles
   var parentIds = new Set([parentId]);
-  rows.forEach(function(tr) {
+  document.querySelectorAll('#el-tbody tr').forEach(function(tr) {
     var pai = tr.dataset.pai;
-    if (!pai) return;
-    if (parentIds.has(pai)) {
-      var subBtn = tr.querySelector('.el-toggle-btn');
-      if (expanded) {
-        tr.classList.add('el-visivel');
-        if (subBtn) {
-          subBtn.classList.add('expanded');
-          subBtn.setAttribute('aria-label', 'Recolher');
-        }
-      } else {
-        tr.classList.remove('el-visivel');
-        // Recolher sub-filhos também
-        if (subBtn) {
-          subBtn.classList.remove('expanded');
-          subBtn.setAttribute('aria-label', 'Expandir');
-        }
+    if (!pai || !parentIds.has(pai)) return;
+    if (expanded) {
+      tr.classList.add('is-aberta');
+    } else {
+      tr.classList.remove('is-aberta');
+      var subBtn = tr.querySelector('.ds-item-seta');
+      if (subBtn) {
+        subBtn.classList.remove('is-aberto');
+        subBtn.setAttribute('aria-label', 'Expandir');
       }
       parentIds.add(tr.dataset.id);
     }
   });
+  elAtualizarGruposArvore();
+}
+
+/** Celular: cola o item raiz e seus descendentes abertos num só bloco e desenha o contorno colorido (cor do tipo do raiz) quando há itens abertos; liga a faixa da seta quando há hierarquia.
+ *  O contorno anima só quando o bloco acaba de abrir (ou muda de tamanho); redesenhos por rolagem/redimensionamento o mantêm parado. */
+function elAtualizarGruposArvore() {
+  var tbody = document.getElementById('el-tbody');
+  var tabela = document.getElementById('el-tabela');
+  if (!tbody || !tabela) return;
+  var wrap = tabela.parentNode;
+  Array.prototype.forEach.call(wrap.querySelectorAll('.ds-item-contorno'), function(n) { n.remove(); });
+  var linhas = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-id]'));
+  tabela.classList.toggle('ds-tabela--arvore', linhas.some(function(tr) { return tr.querySelector('.ds-item-seta'); }));
+  var anteriores = tbody._elContornos || {};
+  var atuais = {};
+  var grupo = [];
+  function fechar() {
+    grupo.forEach(function(tr, i) {
+      var pos = grupo.length === 1 ? '' : (i === 0 ? 'ini' : (i === grupo.length - 1 ? 'fim' : 'meio'));
+      ['ini', 'meio', 'fim'].forEach(function(p) { tr.classList.toggle('ds-item-grupo--' + p, p === pos); });
+    });
+    if (grupo.length > 1 && _elMobile()) {
+      var raiz = grupo[0].dataset.id;
+      atuais[raiz] = grupo.length;
+      elDesenharContorno(wrap, grupo, anteriores[raiz] !== grupo.length);
+    }
+    grupo = [];
+  }
+  linhas.forEach(function(tr) {
+    if (tr.classList.contains('ds-linha-filha') && !tr.classList.contains('is-aberta')) return;
+    if (tr.dataset.level === '0') fechar();
+    grupo.push(tr);
+  });
+  fechar();
+  tbody._elContornos = atuais;
+}
+
+/** Desenha o SVG do contorno sobre as linhas do bloco: caminho no sentido anti-horário a partir do canto superior esquerdo. */
+function elDesenharContorno(wrap, grupo, animar) {
+  var NS = 'http://www.w3.org/2000/svg';
+  var w0 = wrap.getBoundingClientRect(), p = grupo[0].getBoundingClientRect(), u = grupo[grupo.length - 1].getBoundingClientRect();
+  var w = p.width, h = u.bottom - p.top, i = 1;
+  var r = parseFloat(getComputedStyle(grupo[0]).borderTopLeftRadius) || 6;
+  var x2 = w - i, y2 = h - i;
+  var svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'ds-item-contorno' + (animar ? ' is-animado' : ''));
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.setProperty('left', (p.left - w0.left) + 'px');
+  svg.style.setProperty('top', (p.top - w0.top) + 'px');
+  var cor = grupo[0].dataset.cor;
+  if (cor) svg.style.setProperty('--ds-color-borda-item', cor);
+  var path = document.createElementNS(NS, 'path');
+  path.setAttribute('pathLength', '1');
+  path.setAttribute('d', 'M' + i + ',' + (i + r) + ' L' + i + ',' + (y2 - r) + ' A' + r + ',' + r + ' 0 0 0 ' + (i + r) + ',' + y2
+    + ' L' + (x2 - r) + ',' + y2 + ' A' + r + ',' + r + ' 0 0 0 ' + x2 + ',' + (y2 - r)
+    + ' L' + x2 + ',' + (i + r) + ' A' + r + ',' + r + ' 0 0 0 ' + (x2 - r) + ',' + i
+    + ' L' + (i + r) + ',' + i + ' A' + r + ',' + r + ' 0 0 0 ' + i + ',' + (i + r));
+  svg.appendChild(path);
+  wrap.appendChild(svg);
+}
+if (!window._elContornoResize) {
+  window._elContornoResize = true;
+  window.addEventListener('resize', function() { if (document.getElementById('el-tbody')) elAtualizarGruposArvore(); });
 }
 
 function construirHierarquia(lista) {
@@ -4324,7 +4381,13 @@ function elCliqueLinha(ev, id) {
   // Celular: toque abre o elemento; com a seleção ligada (toque longo) o toque marca/desmarca
   if (_elMobile()) {
     if (uiToqueLongoRecente(document.getElementById('el-tbody'))) return;
-    if (!_elSelecionados.size) { abrirDetalhesElementoPainel(idStr); return; }
+    if (!_elSelecionados.size) {
+      // item com filhos: o toque abre/recolhe a hierarquia; os detalhes saem pelo ⋮
+      var trToque = document.querySelector('#el-tbody tr[data-id="' + idStr + '"]');
+      if (trToque && trToque.querySelector('.ds-item-seta')) { elToggleFilhos(null, idStr); return; }
+      abrirDetalhesElementoPainel(idStr);
+      return;
+    }
     if (_elSelecionados.has(idStr)) _elSelecionados.delete(idStr); else _elSelecionados.add(idStr);
     _elAtualizarSelecaoVisual();
     return;
@@ -4345,7 +4408,7 @@ function elCliqueLinha(ev, id) {
   var modoAtivo = document.querySelector('.elementos-modo:not(.hidden)');
   if (!modoAtivo || modoAtivo.id === 'modo-arvore') {
     var tr = document.querySelector('#el-tbody tr[data-id="' + idStr + '"]');
-    var btnToggle = tr ? tr.querySelector('.el-toggle-btn') : null;
+    var btnToggle = tr ? tr.querySelector('.ds-item-seta') : null;
     if (btnToggle) {
       elToggleFilhos(null, idStr);
       return;
@@ -5049,25 +5112,24 @@ function renderizarTabelaEstrutura() {
 
   var temFiltroAtivo = _filtrosElementos.texto || _filtrosElementos.tipo || _filtrosElementos.resp;
   var podeEditarElemento = planoPermiteEdicao();
-  // Celular: lista linear (sem elemento dentro de elemento por ora): todos os níveis viram itens do mesmo nível
-  var linear = _elMobile() && !_modoReorganizar;
 
   // Achatar a árvore em linhas de tabela
   function achatarNo(no, nivel, parentExpanded) {
     var id = String(no.id);
     var temFilhos = no.children && no.children.length > 0;
-    var isRoot = nivel === 0 || linear;
+    var isRoot = nivel === 0;
     var sel = _elSelecionados.has(id);
     var corTipo = _corDoTipo(no.tipo);
 
     var tr = document.createElement('tr');
     tr.className = 'ds-linha-lista ds-linha-clicavel';
     tr.dataset.id = id;
-    tr.dataset.level = String(linear ? 0 : nivel);
+    tr.dataset.level = String(nivel);
+    if (corTipo) tr.dataset.cor = corTipo;
     tr.dataset.pai = no.idPai ? String(no.idPai) : '';
     if (!isRoot) {
-      tr.classList.add('el-filho');
-      if (parentExpanded || temFiltroAtivo || _modoReorganizar) tr.classList.add('el-visivel');
+      tr.classList.add('ds-linha-filha');
+      if (parentExpanded || temFiltroAtivo || _modoReorganizar) tr.classList.add('is-aberta');
     }
     if (sel && !_modoReorganizar) tr.classList.add('is-selecionada');
     if (!_modoReorganizar) {
@@ -5084,10 +5146,10 @@ function renderizarTabelaEstrutura() {
     }
 
     // Expand button (no modo reorganizar, todos os filhos são expandidos)
-    var tdExpand = '<td class="el-col-expand ds-tabela__so-desktop">';
-    if (temFilhos && !linear) {
+    var tdExpand = '<td class="ds-tabela__expandir">';
+    if (temFilhos) {
       var expanded = temFiltroAtivo || _modoReorganizar;
-      tdExpand += '<button type="button" class="el-toggle-btn' + (expanded ? ' expanded' : '') + '" data-on-click="el.70" data-aclick0="' + id + '" aria-label="Expandir">' +
+      tdExpand += '<button type="button" class="ds-item-seta' + (expanded ? ' is-aberto' : '') + '" data-on-click="el.70" data-aclick0="' + id + '" aria-label="Expandir">' +
         '<span class="material-symbols-outlined">chevron_right</span></button>';
     }
     tdExpand += '</td>';
@@ -5177,6 +5239,7 @@ function renderizarTabelaEstrutura() {
   }
 
   visiveis.forEach(function(no) { achatarNo(no, 0, false); });
+  elAtualizarGruposArvore();
   if (!tbody._elToqueLongo) {
     tbody._elToqueLongo = true;
     uiToqueLongo(tbody, 'tr.ds-linha-clicavel', function(tr) {
