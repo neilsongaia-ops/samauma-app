@@ -706,6 +706,9 @@ body.high-contrast {
   .ds-tabela tbody .ds-tabela__nome { grid-area: 2 / 1 / 3 / 3; min-width: 0; font-size: var(--ds-text-md); }
   .ds-tabela tbody .ds-col-sobreposta, .ds-tabela tbody .ds-col-acoes { grid-area: 1 / 3 / 4 / 4; width: auto; align-self: center; justify-self: end; margin-right: calc(-1 * var(--ds-space-2)); }
   .ds-tabela tbody .ds-tabela__card { grid-area: 3 / 1 / 4 / 3; display: block; min-width: 0; }
+  .ds-tabela__meta { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--ds-space-2); }
+  .ds-tabela__meta .ds-resp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ds-tabela__prog { margin-top: var(--ds-space-2); }
   /* o item tem a cor surface-2: as pílulas de dentro (nível, responsável) usam a surface para continuar visíveis */
   .ds-tabela tbody .ds-badge-tipo, .ds-tabela tbody .ds-resp { background: var(--ds-color-surface); }
   .ds-tabela tbody .ds-progresso .ds-kpi-track { flex: 1 1 auto; width: auto; }   /* na linha da lista a barra ocupa a largura disponível */
@@ -1211,6 +1214,9 @@ body .form-control:focus { border-color: var(--ds-color-action); box-shadow: var
 .ds-icon-action:hover { color: var(--ds-color-action); box-shadow: var(--ds-glass-shadow); }
 .ds-icon-action .material-symbols-outlined { font-size: 20px; }
 .ds-icon-action--sm { width: 36px; height: 36px; }
+.ds-icon-action--perigo { color: var(--ds-color-danger-fg); }
+.ds-texto-leve { white-space: nowrap; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
+.ds-lista-nomes { margin: 0 0 var(--ds-space-2); padding-left: var(--ds-space-5); }
 .ds-icon-action[aria-pressed="true"] { color: var(--ds-color-action); background: var(--ds-sidebar-item-active); }
 /* Ícone (i) de explicação — promovido de .elwiz-info/.srv-info/.selresp-info/.selsup-info (2026-11).
    Uso: <span class="material-symbols-outlined ds-info" tabindex="0" data-title="texto">info</span>, logo após o rótulo. */
@@ -1333,20 +1339,20 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   .ds-filtros__normal > .ds-busca { flex: 1 1 100%; }
   /* a busca vive na barra do topo (uiTopoBuscar); a barra de filtros só aparece com pílulas à vista ou em seleção, senão some inteira */
   .ds-filtros__normal > .ds-busca { display: none; }
-  #topbar[data-buscando] > :not(#tb-busca-campo) { display: none !important; }
+  #topbar[data-buscando] > :not(.ds-topbar-busca) { display: none !important; }
   /* em página com abas o título é o nome da aba ativa (botão com seta de lista suspensa) e substitui a trilha; os ícones ficam à direita */
   #topbar-crumbs { flex: 0 3 auto; }
   #topbar > :last-child { margin-left: auto; }
   #topbar[data-abas] > #topbar-crumbs { display: none; }
-  #tb-aba-atual { display: flex; align-items: center; gap: var(--ds-space-1); flex: 0 1 auto; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-family: inherit; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
-  #tb-aba-atual.hidden { display: none; }
-  #tb-aba-atual .material-symbols-outlined { flex: none; font-size: var(--ds-icon-md); color: var(--ds-color-text-muted); }
-  #tb-aba-prefixo { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); }
-  #tb-aba-prefixo:empty { display: none; }
-  #tb-aba-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .ds-topbar-aba { display: flex; align-items: center; gap: var(--ds-space-1); flex: 0 1 auto; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-family: inherit; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
+  .ds-topbar-aba.hidden { display: none; }
+  .ds-topbar-aba .material-symbols-outlined { flex: none; font-size: var(--ds-icon-md); color: var(--ds-color-text-muted); }
+  .ds-topbar-aba__prefixo { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); }
+  .ds-topbar-aba__prefixo:empty { display: none; }
+  .ds-topbar-aba__txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   #tb-buscar[data-ativo] { color: var(--ds-color-action); }
-  #tb-busca-campo { flex: 1 1 auto; min-width: 0; gap: var(--ds-space-1); }
-  #tb-busca-input { flex: 1 1 auto; width: auto; max-width: none; padding-left: var(--ds-space-4); }
+  .ds-topbar-busca { flex: 1 1 auto; min-width: 0; gap: var(--ds-space-1); }
+  .ds-topbar-busca .ds-busca__input { flex: 1 1 auto; width: auto; max-width: none; padding-left: var(--ds-space-4); }
   .ds-filtros:not(:has(.ds-filtro:not(.hidden))):not(:has(.ds-filtros__selecao:not(.hidden))) { display: none; }
   /* seleção: a faixa de ações toma o lugar da barra do topo (nada desce nem sobe). A barra de filtros mantém o espaço que já ocupava (pílulas invisíveis) ou, se não havia, fica sem altura. */
   .ds-filtros__selecao:not(.hidden) { position: fixed; top: 0; left: 0; right: 0; z-index: calc(var(--ds-z-header) + 1); height: var(--ds-header-height); flex-wrap: nowrap; padding: 0 var(--ds-space-3); background: var(--ds-color-surface); border-bottom: var(--ds-borda) solid var(--ds-color-border); }
@@ -2425,7 +2431,7 @@ if (!window._uiDelegacaoAtiva) {
     <!-- #breadcrumb-nav (components_breadcrumb.html) é movido para cá em runtime -->
     <div class="tb-crumbs" id="topbar-crumbs"></div>
     <!-- mobile: em página com abas o título é [sigla do plano, apagada, quando a página tem uma] + o nome da aba ativa, com seta de lista suspensa; tocar abre as abas (uiTopoAtualizar / uiTopoAbas) -->
-    <button type="button" id="tb-aba-atual" class="hidden" data-on-click="ui.chamar" data-chamada-click="uiTopoAbas(this)" aria-haspopup="dialog"><span id="tb-aba-prefixo"></span><span id="tb-aba-txt"></span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></button>
+    <button type="button" id="tb-aba-atual" class="ds-topbar-aba hidden" data-on-click="ui.chamar" data-chamada-click="uiTopoAbas(this)" aria-haspopup="dialog"><span id="tb-aba-prefixo" class="ds-topbar-aba__prefixo"></span><span id="tb-aba-txt" class="ds-topbar-aba__txt"></span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></button>
 
     <div class="tb-search" aria-disabled="true" data-title="Busca global — em breve">
       <span class="material-symbols-outlined" aria-hidden="true">search</span>
@@ -2433,7 +2439,7 @@ if (!window._uiDelegacaoAtiva) {
     </div>
 
     <!-- Busca no mobile: ao tocar na lupa o campo toma a barra (os demais itens somem: #topbar[data-buscando]) e repassa o texto ao campo da página (uiTopoBuscar); perder o foco recolhe o campo -->
-    <div class="ds-busca__caixa hidden" id="tb-busca-campo">
+    <div class="ds-busca__caixa ds-topbar-busca hidden" id="tb-busca-campo">
       <input type="text" id="tb-busca-input" class="ds-input ds-busca__input" aria-label="Buscar" autocomplete="off">
       <button type="button" id="tb-busca-limpar" class="ds-busca__limpar hidden" data-on-click="ui.chamar" data-chamada-click="uiTopoBuscaLimpar()" data-title="Limpar busca" aria-label="Limpar busca">
         <span class="material-symbols-outlined">close</span>
@@ -11496,8 +11502,7 @@ body.high-contrast #page-home .hm-chip { background: #111; color: #ddd; }
 // ===================== PÁGINA INÍCIO (painel) =====================
 // Nomes com prefixo hm-/hm* (escopo global compartilhado da SPA).
 
-// Mapa status -> slug de .ds-badge--<slug>. Nome próprio para não colidir
-// com a STATUS_BADGE_CLASS de pages_planos_lista.html (mesmo escopo global).
+// Mapa status -> slug de .ds-badge--<slug>.
 const HM_STATUS_BADGE = {
   'Em Elaboração': 'elaboracao', 'Em Análise': 'analise', 'Em Execução': 'execucao',
   'Em Avaliação': 'avaliacao', 'Prorrogado': 'prorrogado', 'Em Revisão': 'revisao',
@@ -14098,73 +14103,8 @@ uiRegistrarAcoes('pages_execucao_validacao', {
 
 <!-- ===================== ESTILOS ===================== -->
 <style>
-/* --- Barra de seleção (compartilhada com outras páginas que ainda usam o padrão antigo) --- */
-.barra-selecao {
-  display: flex; justify-content: space-between; align-items: center;
-  flex-wrap: wrap; gap: 10px; padding: 10px 16px;
-  background: var(--ds-color-info-bg); border-bottom: 1px solid #c5d8fb;
-}
-.barra-selecao-info { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--ds-primary-700); }
-.barra-selecao-acoes { display: flex; align-items: center; gap: 8px; }
-body.high-contrast .barra-selecao { background: #000; border-color: var(--ds-color-action); }
-
-/* --- Tabela --- */
-.table-full { width: 100%; border-collapse: collapse; }
-.table-full thead th {
-  padding: 10px 14px; text-align: left; font-size: 0.8rem;
-  font-weight: 600; color: var(--ds-color-text-muted); background: var(--ds-color-surface-2);
-  border-bottom: 1px solid var(--ds-color-border);
-}
-.table-full tbody td {
-  padding: 10px 14px; border-bottom: 1px solid var(--ds-color-border); vertical-align: middle;
-}
-.table-full tbody tr:last-child td { border-bottom: none; }
-.table-full tbody tr:hover td { background-color: var(--ds-sidebar-item-hover); }
-.table-full tbody tr.selecionada td { background-color: var(--ds-sidebar-item-active); }
-body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a2e; }
-
-/* Estado vazio */
-.planos-vazio {
-  display: flex; flex-direction: column; align-items: center;
-  gap: 10px; padding: 40px 16px; color: var(--ds-color-text-muted);
-}
-.planos-vazio .material-symbols-outlined { font-size: 54px; opacity: 0.35; }
-.planos-vazio p { font-size: 0.88rem; margin: 0; }
-
-/* Colunas ordenáveis: cabeçalho continua clicável (convenção do sistema), mas só a coluna
-   ativa mostra a seta — o menu "Ordenar" (coluna de ações) é a via alternativa/descoberta. */
-.th-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
-.th-sortable:hover { color: var(--ds-primary-700); }
-.sort-icon {
-  display: inline-flex; align-items: center; vertical-align: middle;
-  font-family: 'Material Symbols Outlined'; font-size: 14px;
-  font-weight: 300; margin-left: 3px; color: var(--ds-primary-700);
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
-}
-.sort-icon:empty { display: none; }
-
-/* Menu de popover (filtros e ordenar): usa abrirMenuSelecao()/.acoes-menu-label/
-   .acoes-menu-dot, componente compartilhado em components_acoes_linha.html — ver ali. */
-
-/* Mobile */
-@media (max-width: 640px) {
-  .filtros-bar { padding: 10px 12px; }
-  .table-full th:nth-child(2), .table-full td:nth-child(2),
-  .table-full th:nth-child(5), .table-full td:nth-child(5) { display: none; }
-}
-
-/* ============================================================================
-   Planos: o layout (hero, ações, abas e filtros fixos) é o .ds-pagina do design system; aqui fica só o que é desta tela.
-   ============================================================================ */
-
-/* Barra de filtros — SEM sangria lateral (mesmo motivo da linha de abas: o padding de
-   40px do <main> precisa criar um respiro real entre a lista e o sidebar). Sem "cara de
-   card": no Drive a barra de filtros e a lista não têm contêiner visível (nem borda, nem
-   sombra, nem fundo próprio) — só um respiro discreto entre as seções. Fixa abaixo das abas: .ds-pagina__filtros. */
+/* Só o que é desta tela; o layout (hero, ações, abas, filtros, lista) é o .ds-pagina / .ds-tabela do design system. */
 #pll-selecao-acoes { display: inline-flex; align-items: center; }
-
-#page-planos .pll-vig { white-space: nowrap; color: var(--ds-color-text-muted); font-size: var(--ds-text-sm); }
-#page-planos .resp-mais { color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); font-size: var(--ds-text-xs); }
 
 /* Impressão: só a tabela (sem menu, filtros nem seleção) */
 @media print {
@@ -14172,34 +14112,11 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
   #page-planos #pll-tabela-card { overflow: visible !important; margin: 0 !important; }
 }
 
-/* Responsivo: <=768 Vigência/Responsável descem p/ linha secundária */
-@media (max-width: 768px) {
-
-
-  #page-planos .pll-card-meta { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; }
-  #page-planos .pll-card-meta .ds-resp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #page-planos .pll-card-prog { margin-top: 6px; }
-}
 </style>
 
 <!-- ===================== SCRIPT ===================== -->
 <script>
 // ---- Constantes ---------------------------------------------------------
-
-// Mapa status → slug de .ds-badge--<slug> (tokens --ds-status-*, fonte única
-// documentada em docs/design_system.md — Excluído compartilha as cores de
-// Cancelado, mesmo par usado lá).
-const STATUS_BADGE_CLASS = {
-  'Em Elaboração': 'elaboracao',
-  'Em Análise':    'analise',
-  'Em Execução':   'execucao',
-  'Em Avaliação':  'avaliacao',
-  'Prorrogado':    'prorrogado',
-  'Em Revisão':    'revisao',
-  'Finalizado':    'finalizado',
-  'Cancelado':     'cancelado',
-  'Excluído':      'cancelado',
-};
 
 // "Todos os planos" é a 1ª aba (aprovado pelo usuário) — não é uma categoria de
 // _classificarPlano, é a união de meus/unidade/outras (tudo, exceto a Lixeira).
@@ -14278,9 +14195,9 @@ function _pllIniciar() {
     })
     .withFailureHandler(function(err) {
       document.getElementById('tbody-planos').innerHTML =
-        `<tr><td colspan="7"><div class="planos-vazio">
-           <span class="material-symbols-outlined">error</span>
-           <p>Erro ao carregar planos: ${escapeHtml(err.message)}</p>
+        `<tr class="ds-tabela__msg"><td colspan="7"><div class="ds-vazio">
+           <span class="material-symbols-outlined ds-vazio__icone">error</span>
+           <p class="ds-vazio__titulo">Erro ao carregar planos: ${escapeHtml(err.message)}</p>
          </div></td></tr>`;
     })
     .apiGetPlanos();
@@ -14534,7 +14451,7 @@ function pllAbrirFiltro(campo, ev, gatilho) {
     .concat(def.getOpcoes().map(function(o) {
       var item = { label: o, ativo: o === atual, onclick: "pllSelecionarFiltro('" + campo + "','" + escapeJsAttr(o) + "')" };
       // Filtro Status: bolinha com a cor do badge (mesmo mapeamento da coluna Status da tabela)
-      if (campo === 'status') item.dot = 'var(--ds-status-' + (STATUS_BADGE_CLASS[o] || 'finalizado') + '-fg)';
+      if (campo === 'status') item.dot = 'var(--ds-status-' + uiStatusPlanoTom(o) + '-fg)';
       return item;
     }));
   abrirMenuSelecao(gatilho, [{ itens: itens }], { titulo: def.label, limpar: atual ? "pllLimparUmFiltro('" + campo + "')" : '' });
@@ -14764,7 +14681,6 @@ function _renderizarTabela(planos) {
 
   tbody.innerHTML = '';
   planos.forEach(function(p) {
-    var badgeSlug = STATUS_BADGE_CLASS[p.status] || 'finalizado';
     var perm     = p.permissoes || {};
     var iconResp = (p.tipoResponsavel === 'USER') ? 'person' : 'apartment';
     var sel      = estadoPlanos.selecionados.has(String(p.id));
@@ -14817,14 +14733,14 @@ function _renderizarTabela(planos) {
         '</div></div></td>' +
       '<td class="ds-tabela__vig">' + vigencia + '</td>' +
       '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + respHtml + '</td>' +
-      '<td class="ds-tabela__nowrap ds-tabela__so-desktop"><span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span></td>' +
+      '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + uiStatusPlanoHTML(p.status) + '</td>' +
       '<td class="ds-tabela__so-larga ds-tabela__so-desktop">' + progHtml + '</td>' +
-      '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="pll-vig ds-tabela__so-desktop">' + vigencia + '</span></div>' +
+      '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="ds-texto-leve ds-tabela__so-desktop">' + vigencia + '</span></div>' +
         '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>' +
       // Linha do celular: status + responsável + progresso, tudo numa linha só
-      '<td class="ds-tabela__card"><div class="pll-card-meta">' +
-        '<span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' +
-        respHtml + '</div><div class="pll-card-prog">' + progHtml + '</div></td>';
+      '<td class="ds-tabela__card"><div class="ds-tabela__meta">' +
+        uiStatusPlanoHTML(p.status) +
+        respHtml + '</div><div class="ds-tabela__prog">' + progHtml + '</div></td>';
     tbody.appendChild(tr);
   });
 
@@ -15040,13 +14956,13 @@ function _pllRenderizarAcoesSelecao(qtd) {
     var podeDef  = selecionados.every(function(p) { return (p.permissoes || {}).excluirDefinitivo; });
     alvo.innerHTML =
       (podeRest ? '<button type="button" class="ds-icon-action" data-on-click="pages_planos_lista.28" data-title="Restaurar selecionados" aria-label="Restaurar selecionados"><span class="material-symbols-outlined">restore</span></button>' : '') +
-      (podeDef ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" data-on-click="pages_planos_lista.29" data-title="Excluir definitivamente" aria-label="Excluir definitivamente"><span class="material-symbols-outlined">delete_forever</span></button>' : '');
+      (podeDef ? '<button type="button" class="ds-icon-action ds-icon-action--perigo" data-on-click="pages_planos_lista.29" data-title="Excluir definitivamente" aria-label="Excluir definitivamente"><span class="material-symbols-outlined">delete_forever</span></button>' : '');
     return;
   }
 
   var todosPodemExcluir = selecionados.length > 0 && selecionados.every(function(p) { return (p.permissoes || {}).excluir; });
   alvo.innerHTML = todosPodemExcluir
-    ? '<button type="button" class="ds-icon-action" style="color:var(--ds-color-danger-fg)" data-on-click="pages_planos_lista.30" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>'
+    ? '<button type="button" class="ds-icon-action ds-icon-action--perigo" data-on-click="pages_planos_lista.30" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>'
     : '';
 }
 
@@ -15072,7 +14988,7 @@ function executarAcaoLotePlanos(acao) {
     var nomes = estadoPlanos.dadosBrutos.filter(function(p) { return estadoPlanos.selecionados.has(String(p.id)); })
       .map(function(p) { return '<li>' + escapeHtml(p.nome || '') + '</li>'; }).join('');
     showConfirm('Excluir definitivamente ' + ids.length + ' planos?',
-      '<ul style="margin:0 0 8px; padding-left:18px">' + nomes + '</ul>' +
+      '<ul class="ds-lista-nomes">' + nomes + '</ul>' +
       '<strong>Tudo destes planos será apagado e não pode ser recuperado</strong> — elementos, indicadores, metas, resultados, riscos, fórum e vínculos.',
       function() { _pllExecutarLoteSequencial(ids, function(id) { return ['apiExcluirPlanoDefinitivo', Number(id)]; }, 'Excluídos definitivamente'); });
   }
@@ -15143,8 +15059,8 @@ function pllExcluirDefinitivo(id, nomePlano, aoConcluir) {
   _pllConfNomeDigitado = '';
   showConfirm('Excluir definitivamente?',
     'O plano <strong>' + escapeHtml(nomePlano || '') + '</strong> e <strong>tudo do plano será apagado e não pode ser recuperado</strong> — elementos, indicadores, metas, resultados, riscos, fórum e vínculos.' +
-    '<label style="display:block; margin-top:12px; font-size:0.85rem">Digite o nome do plano para confirmar' +
-    '<input type="text" class="ds-input" autocomplete="off" style="display:block; width:100%; margin-top:4px" data-on-input="pages_planos_lista.31"></label>',
+    '<div class="ds-field"><label class="ds-label">Digite o nome do plano para confirmar</label>' +
+    '<input type="text" class="ds-input" autocomplete="off" data-on-input="pages_planos_lista.31"></div>',
     function() {
       if (String(_pllConfNomeDigitado).trim() !== String(nomePlano || '').trim()) {
         showMessage('error', 'Nome não confere', 'Nada foi apagado. Digite o nome exato do plano para confirmar.');
