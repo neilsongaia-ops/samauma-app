@@ -700,11 +700,17 @@ body.high-contrast {
   .ds-tabela tbody .ds-tabela__nome { grid-area: 2 / 1 / 3 / 3; min-width: 0; font-size: var(--ds-text-md); }
   .ds-tabela tbody .ds-col-sobreposta, .ds-tabela tbody .ds-col-acoes { grid-area: 1 / 3 / 4 / 4; width: auto; align-self: center; justify-self: end; margin-right: calc(-1 * var(--ds-space-2)); }
   .ds-tabela tbody .ds-tabela__card { grid-area: 3 / 1 / 4 / 3; display: block; min-width: 0; }
-  .ds-tabela__meta { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--ds-space-2); }
-  .ds-tabela__meta .ds-resp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* 3ª linha: cabem quantos badges couberem, sem quebrar; o que não cabe some e o badge "…" (.ds-badge--mais) sinaliza (uiMetaAjustar) */
+  .ds-tabela__meta { display: flex; flex-wrap: nowrap; align-items: center; gap: var(--ds-space-2); overflow: hidden; }
+  .ds-tabela__meta > * { flex: none; white-space: nowrap; }
+  .ds-tabela__meta > :first-child { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .ds-badge--mais { justify-content: center; padding-left: var(--ds-space-2); padding-right: var(--ds-space-2); }
+  .ds-badge--mais .material-symbols-outlined { display: block; font-size: var(--ds-icon-sm); }
+  /* 1ª linha: o tipo/nível é texto neutro e leve, da cor da data (sem badge) */
+  .ds-tabela tbody .ds-tabela__tipo { padding: 0; border: 0; border-radius: 0; background: none !important; color: var(--ds-color-text-muted) !important; font-size: var(--ds-text-xs); font-weight: var(--ds-weight-regular); }
   .ds-tabela__prog { margin-top: var(--ds-space-2); }
   /* o item tem a cor surface-2: as pílulas de dentro (nível, responsável) usam a surface para continuar visíveis */
-  .ds-tabela tbody .ds-badge-tipo, .ds-tabela tbody .ds-resp, .ds-tabela tbody .ds-badge[class*="ds-badge--ico"], .ds-tabela tbody .ds-badge:not([class*=" ds-badge--"]) { background: var(--ds-color-surface); }   /* badges neutros (sem tom de status) também saem da cor do item */
+  .ds-tabela tbody .ds-resp, .ds-tabela tbody .ds-badge[class*="ds-badge--ico"], .ds-tabela tbody .ds-badge:not([class*=" ds-badge--"]) { background: var(--ds-color-surface); }   /* badges neutros (sem tom de status) também saem da cor do item */
   .ds-tabela tbody .ds-progresso .ds-kpi-track { flex: 1 1 auto; width: auto; }   /* na linha da lista a barra ocupa a largura disponível */
   .ds-tabela tbody .ds-tabela__so-desktop { display: none; }
   /* linha de aviso ocupa a largura toda, sem virar cartão */
