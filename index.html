@@ -14144,7 +14144,7 @@ uiRegistrarAcoes('pages_execucao_validacao', {
     <div class="ds-tabs-nav__scroll" id="planos-tabs" role="tablist" aria-label="Escopo da lista de planos"></div>
   </div>
 
-  <!-- Barra de filtros: busca (expansível), Tipo/Ano/Status (viram chip + x ao serem
+  <!-- Barra de filtros: busca (expansível), Nível/Ano/Status (viram chip + x ao serem
        selecionados) e Limpar filtros; ↻/⬇ à direita. Vira barra de seleção em lote quando
        algum item é marcado (mesma posição — nunca as duas ao mesmo tempo). -->
   <div class="ds-filtros ds-pagina__filtros" id="pll-filtros-card">
@@ -14170,7 +14170,7 @@ uiRegistrarAcoes('pages_execucao_validacao', {
       <div class="ds-filtro" data-filtro="tipo">
         <button type="button" class="ds-filtro__btn" id="pll-filtro-btn-tipo" data-on-click="pages_planos_lista.7"
                 aria-haspopup="menu" aria-expanded="false">
-          <span id="pll-filtro-label-tipo">Tipo</span><span class="material-symbols-outlined">expand_more</span>
+          <span id="pll-filtro-label-tipo">Nível</span><span class="material-symbols-outlined">expand_more</span>
         </button>
         <button type="button" class="ds-filtro__x hidden" id="pll-filtro-x-tipo" data-on-click="pages_planos_lista.8"
                 data-title="Remover filtro de tipo" aria-label="Remover filtro de tipo">
@@ -14319,10 +14319,10 @@ const ABAS_BASE = [
 ];
 const ABA_LIXEIRA = { key: 'lixeira', label: 'Lixeira', rotuloMobile: 'Planos excluídos', icon: 'delete_sweep' };
 
-// Definição dos filtros Tipo/Ano/Status: cada um vira um botão que, com valor
+// Definição dos filtros Nível/Ano/Status: cada um vira um botão que, com valor
 // selecionado, exibe o valor como chip + um "x" ao lado (limpa só aquele filtro).
 const PLL_FILTROS_DEF = {
-  tipo:   { label: 'Tipo',   getOpcoes: function() { return estadoPlanos._opcoesTipo   || []; } },
+  tipo:   { label: 'Nível',  getOpcoes: function() { return estadoPlanos._opcoesTipo   || []; } },
   ano:    { label: 'Ano',    getOpcoes: function() { return estadoPlanos._opcoesAno    || []; } },
   status: { label: 'Status', getOpcoes: function() { return estadoPlanos._opcoesStatus || []; } }
 };
@@ -14612,7 +14612,7 @@ function _pllMobilePreparar() {
 }
 
 // ---- Filtros -------------------------------------------------------------
-// Menu de filtro (Tipo/Ano/Status) usa abrirMenuSelecao()/fecharMenuSelecao() —
+// Menu de filtro (Nível/Ano/Status) usa abrirMenuSelecao()/fecharMenuSelecao() —
 // componente compartilhado em components_acoes_linha.html (lista com "check" no item
 // ativo, estilo Google Drive). Ver também "Menu Ordenar" mais abaixo, mesmo componente.
 
