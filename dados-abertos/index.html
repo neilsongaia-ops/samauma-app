@@ -38,6 +38,7 @@
 html { --ds-sb-w: var(--ds-sidebar-width); }
 html.ds-sb-collapsed { --ds-sb-w: var(--ds-sidebar-width-collapsed); }
 @media (max-width: 768px) { html, html.ds-sb-collapsed { --ds-sb-w: 0px; } }
+@supports (height: 100dvh) { body { height: 100dvh; } }   /* altura visível no celular (a barra do navegador não cobre o fim); o body tem 100vh de reserva */
 
 /* body = altura travada na viewport; quem rola é o <main> — ver docs/design_system.md
    "Área de conteúdo com altura travada (estilo Google Drive)". Sem seleção acidental de texto.
@@ -49,7 +50,7 @@ body {
   color: var(--ds-color-text);
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: 100vh;
   overflow-y: hidden;
   overflow-x: clip;
   transition: padding-left var(--ds-duration-slow) var(--ds-ease-standard);
@@ -1322,13 +1323,17 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   /* a busca vive na barra do topo (uiTopoBuscar); a barra de filtros só aparece com pílulas à vista ou em seleção, senão some inteira */
   .ds-filtros__normal > .ds-busca { display: none; }
   #topbar[data-buscando] > :not(#tb-busca-campo) { display: none !important; }
-  /* título e aba ativa lado a lado ("Planos > Todos"): o título encolhe primeiro, a aba por último; os ícones ficam à direita */
+  /* em página com abas o título é o nome da aba ativa (botão com seta de lista suspensa) e substitui a trilha; os ícones ficam à direita */
   #topbar-crumbs { flex: 0 3 auto; }
   #topbar > :last-child { margin-left: auto; }
-  #tb-aba-atual { display: flex; align-items: center; flex: 0 1 auto; min-width: 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
+  #topbar[data-abas] > #topbar-crumbs { display: none; }
+  #tb-aba-atual { display: flex; align-items: center; gap: var(--ds-space-1); flex: 0 1 auto; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-family: inherit; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
   #tb-aba-atual.hidden { display: none; }
+  #tb-aba-atual .material-symbols-outlined { flex: none; font-size: var(--ds-icon-md); color: var(--ds-color-text-muted); }
+  #tb-aba-prefixo { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); }
+  #tb-aba-prefixo:empty { display: none; }
   #tb-aba-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  #tb-buscar[aria-pressed="true"] { color: var(--ds-color-action); }
+  #tb-buscar[data-ativo] { color: var(--ds-color-action); }
   #tb-busca-campo { flex: 1 1 auto; min-width: 0; gap: var(--ds-space-1); }
   #tb-busca-input { flex: 1 1 auto; width: auto; max-width: none; padding-left: var(--ds-space-4); }
   .ds-filtros:not(:has(.ds-filtro:not(.hidden))):not(:has(.ds-filtros__selecao:not(.hidden))) { display: none; }

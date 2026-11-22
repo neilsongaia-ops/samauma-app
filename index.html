@@ -49,6 +49,7 @@
 html { --ds-sb-w: var(--ds-sidebar-width); }
 html.ds-sb-collapsed { --ds-sb-w: var(--ds-sidebar-width-collapsed); }
 @media (max-width: 768px) { html, html.ds-sb-collapsed { --ds-sb-w: 0px; } }
+@supports (height: 100dvh) { body { height: 100dvh; } }   /* altura visível no celular (a barra do navegador não cobre o fim); o body tem 100vh de reserva */
 
 /* body = altura travada na viewport; quem rola é o <main> — ver docs/design_system.md
    "Área de conteúdo com altura travada (estilo Google Drive)". Sem seleção acidental de texto.
@@ -60,7 +61,7 @@ body {
   color: var(--ds-color-text);
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: 100vh;
   overflow-y: hidden;
   overflow-x: clip;
   transition: padding-left var(--ds-duration-slow) var(--ds-ease-standard);
@@ -1333,13 +1334,17 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   /* a busca vive na barra do topo (uiTopoBuscar); a barra de filtros só aparece com pílulas à vista ou em seleção, senão some inteira */
   .ds-filtros__normal > .ds-busca { display: none; }
   #topbar[data-buscando] > :not(#tb-busca-campo) { display: none !important; }
-  /* título e aba ativa lado a lado ("Planos > Todos"): o título encolhe primeiro, a aba por último; os ícones ficam à direita */
+  /* em página com abas o título é o nome da aba ativa (botão com seta de lista suspensa) e substitui a trilha; os ícones ficam à direita */
   #topbar-crumbs { flex: 0 3 auto; }
   #topbar > :last-child { margin-left: auto; }
-  #tb-aba-atual { display: flex; align-items: center; flex: 0 1 auto; min-width: 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
+  #topbar[data-abas] > #topbar-crumbs { display: none; }
+  #tb-aba-atual { display: flex; align-items: center; gap: var(--ds-space-1); flex: 0 1 auto; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-family: inherit; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
   #tb-aba-atual.hidden { display: none; }
+  #tb-aba-atual .material-symbols-outlined { flex: none; font-size: var(--ds-icon-md); color: var(--ds-color-text-muted); }
+  #tb-aba-prefixo { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); }
+  #tb-aba-prefixo:empty { display: none; }
   #tb-aba-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  #tb-buscar[aria-pressed="true"] { color: var(--ds-color-action); }
+  #tb-buscar[data-ativo] { color: var(--ds-color-action); }
   #tb-busca-campo { flex: 1 1 auto; min-width: 0; gap: var(--ds-space-1); }
   #tb-busca-input { flex: 1 1 auto; width: auto; max-width: none; padding-left: var(--ds-space-4); }
   .ds-filtros:not(:has(.ds-filtro:not(.hidden))):not(:has(.ds-filtros__selecao:not(.hidden))) { display: none; }
@@ -2419,8 +2424,8 @@ if (!window._uiDelegacaoAtiva) {
 
     <!-- #breadcrumb-nav (components_breadcrumb.html) é movido para cá em runtime -->
     <div class="tb-crumbs" id="topbar-crumbs"></div>
-    <!-- mobile: aba ativa depois do título ("Planos > Todos"), só em página com abas (uiTopoAtualizar) -->
-    <span id="tb-aba-atual" class="hidden"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span><span id="tb-aba-txt"></span></span>
+    <!-- mobile: em página com abas o título é [sigla do plano, apagada, quando a página tem uma] + o nome da aba ativa, com seta de lista suspensa; tocar abre as abas (uiTopoAtualizar / uiTopoAbas) -->
+    <button type="button" id="tb-aba-atual" class="hidden" data-on-click="ui.chamar" data-chamada-click="uiTopoAbas(this)" aria-haspopup="dialog"><span id="tb-aba-prefixo"></span><span id="tb-aba-txt"></span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></button>
 
     <div class="tb-search" aria-disabled="true" data-title="Busca global — em breve">
       <span class="material-symbols-outlined" aria-hidden="true">search</span>
@@ -2439,9 +2444,6 @@ if (!window._uiDelegacaoAtiva) {
       <!-- só no mobile e só onde a página tem busca/abas: uiTopoAtualizar() (app_ui_utils.html) mostra e esconde -->
       <button type="button" class="tb-icon-btn hidden" id="tb-buscar" data-on-click="ui.chamar" data-chamada-click="uiTopoBuscar()" data-title="Buscar" aria-label="Buscar" aria-expanded="false">
         <span class="material-symbols-outlined" aria-hidden="true">search</span>
-      </button>
-      <button type="button" class="tb-icon-btn hidden" id="tb-abas" data-on-click="ui.chamar" data-chamada-click="uiTopoAbas(this)" data-title="Abas" aria-label="Abas" aria-haspopup="dialog">
-        <span class="material-symbols-outlined" aria-hidden="true">view_column</span>
       </button>
       <button type="button" class="tb-icon-btn tb-hide-mobile" id="ntf-sino-btn" data-title="Notificações" aria-label="Notificações" aria-haspopup="dialog" data-on-click="components_header.32">
         <span class="material-symbols-outlined">notifications</span>
@@ -10399,18 +10401,31 @@ function _uiTopoAbasLista() {
   return barra ? Array.prototype.slice.call(barra.querySelectorAll('.ds-tabs-nav__item')).filter(function (b) { return !b.classList.contains('hidden'); }) : [];
 }
 function _uiTopoRotulo(el) {
+  if (el.dataset.rotuloMobile) return el.dataset.rotuloMobile;   // nome pensado para o celular, onde a aba vira o título
   var c = el.cloneNode(true);
   Array.prototype.forEach.call(c.querySelectorAll('.material-symbols-outlined, .ds-tab-count'), function (x) { x.remove(); });
   return (c.textContent || '').replace(/\s+/g, ' ').trim();
 }
 function uiTopoAtualizar() {
   var mob = window.matchMedia('(max-width: 768px)').matches, p = _uiTopoPagina(), id = p ? p.id.replace(/^page-/, '') : '';
-  var busca = _uiTopoBusca(), b = document.getElementById('tb-buscar'), a = document.getElementById('tb-abas'), sino = document.getElementById('ntf-sino-btn');
-  if (b) { b.classList.toggle('hidden', !(mob && busca)); var pi = busca && busca.querySelector('input'); b.setAttribute('aria-pressed', String(!!(pi && pi.value))); }   // lupa acesa = há busca aplicada
-  if (a) a.classList.toggle('hidden', !(mob && _uiTopoAbasLista().length >= 2));
+  var busca = _uiTopoBusca(), b = document.getElementById('tb-buscar'), sino = document.getElementById('ntf-sino-btn');
+  if (b) {   // lupa acesa (data-ativo) = há busca aplicada
+    b.classList.toggle('hidden', !(mob && busca));
+    var pi = busca && busca.querySelector('input'), aplicada = !!(pi && pi.value);
+    if (aplicada) b.setAttribute('data-ativo', ''); else b.removeAttribute('data-ativo');
+    b.setAttribute('aria-label', aplicada ? 'Buscar (há busca aplicada)' : 'Buscar');
+    b.setAttribute('aria-expanded', String(document.getElementById('topbar').hasAttribute('data-buscando')));
+  }
   if (sino) sino.classList.toggle('tb-hide-mobile', id !== 'home');
-  var ativa = _uiTopoAbasLista().filter(function (x) { return x.classList.contains('active'); })[0], tab = document.getElementById('tb-aba-atual');
-  if (tab) { tab.classList.toggle('hidden', !(mob && ativa && _uiTopoAbasLista().length >= 2)); if (ativa) document.getElementById('tb-aba-txt').textContent = _uiTopoRotulo(ativa); }
+  var abas = _uiTopoAbasLista(), ativa = abas.filter(function (x) { return x.classList.contains('active'); })[0], tab = document.getElementById('tb-aba-atual');
+  var comAbas = !!(mob && ativa && abas.length >= 2);
+  if (tab) {   // com abas, o título da página é o nome da aba ativa (tocar nele abre as abas)
+    tab.classList.toggle('hidden', !comAbas);
+    var pref = (p && p.dataset.tituloPrefixo) || '';   // ex.: sigla do plano, no detalhe do plano
+    document.getElementById('tb-aba-prefixo').textContent = pref;
+    if (ativa) { var nome = _uiTopoRotulo(ativa); document.getElementById('tb-aba-txt').textContent = nome; tab.setAttribute('aria-label', (pref ? pref + ' ' : '') + nome + ' — trocar de aba'); }
+  }
+  if (comAbas) document.getElementById('topbar').setAttribute('data-abas', ''); else document.getElementById('topbar').removeAttribute('data-abas');
   if (!busca && document.getElementById('topbar').hasAttribute('data-buscando')) uiTopoBuscaFechar();
 }
 function _uiTopoBuscaRepassar(valor) {
@@ -10424,6 +10439,11 @@ var _uiTopoToque = 0;
 function _uiTopoBuscaMantem() {
   return document.activeElement === document.getElementById('tb-busca-input') || Date.now() - _uiTopoToque < 1500 || !!document.querySelector('.ds-sheet.is-aberto, #menu-selecao-aberto');
 }
+// Texto de contexto que antecede o nome da aba no título do celular (apagado). Fica na própria página: uiTopoPrefixo('page-plano-detalhe', 'SIGLA').
+function uiTopoPrefixo(idPagina, texto) {
+  var p = document.getElementById(idPagina);
+  if (p) { p.dataset.tituloPrefixo = texto || ''; uiTopoAtualizar(); }
+}
 function uiTopoBuscar() {
   var w = _uiTopoBusca(), pag = w && w.querySelector('input'), inp = document.getElementById('tb-busca-input');
   if (!pag) return;
@@ -10431,6 +10451,7 @@ function uiTopoBuscar() {
     inp._uiLigado = true;
     inp.addEventListener('input', function () { _uiTopoBuscaRepassar(inp.value); });
     // perder o foco recolhe o campo (o texto continua aplicado), exceto enquanto se toca nas pílulas ou a gaveta de um filtro está aberta
+    inp.addEventListener('keydown', function (e) { if (e.key === 'Escape') uiTopoBuscaFechar(true); });
     inp.addEventListener('blur', function () { setTimeout(function () { if (!_uiTopoBuscaMantem()) uiTopoBuscaFechar(); }, 250); });
     document.addEventListener('pointerdown', function (e) {
       _uiTopoToque = (e.target.closest && e.target.closest('.ds-filtros, .ds-sheet, #menu-selecao-aberto')) ? Date.now() : 0;
@@ -10448,11 +10469,12 @@ function uiTopoBuscaLimpar() {
   var inp = document.getElementById('tb-busca-input');
   inp.value = ''; _uiTopoBuscaRepassar(''); inp.focus();
 }
-function uiTopoBuscaFechar() {
+function uiTopoBuscaFechar(devolverFoco) {
   document.getElementById('topbar').removeAttribute('data-buscando');
   document.getElementById('tb-busca-campo').classList.add('hidden');
   document.dispatchEvent(new Event('ui-busca-topo'));
   uiTopoAtualizar();
+  if (devolverFoco) { var lupa = document.getElementById('tb-buscar'); if (lupa) lupa.focus(); }   // fechou pelo teclado: o foco volta à lupa
 }
 function uiTopoAbas(gatilho) {
   var abas = _uiTopoAbasLista();
@@ -14179,15 +14201,15 @@ const STATUS_BADGE_CLASS = {
   'Excluído':      'cancelado',
 };
 
-// "Todos" é a 1ª aba (aprovado pelo usuário) — não é uma categoria de
+// "Todos os planos" é a 1ª aba (aprovado pelo usuário) — não é uma categoria de
 // _classificarPlano, é a união de meus/unidade/outras (tudo, exceto a Lixeira).
 const ABAS_BASE = [
-  { key: 'todos',   label: 'Todos',  icon: 'apps'      },
-  { key: 'meus',    label: 'Meus',   icon: 'person'    },
-  { key: 'unidade', label: 'Unidade', icon: 'apartment' },
-  { key: 'outras',  label: 'Outras', icon: 'public'    },
+  { key: 'todos',   label: 'Todos os planos', rotuloMobile: 'Todos os planos',         icon: 'apps'      },
+  { key: 'meus',    label: 'Meus planos',     rotuloMobile: 'Meus planos',             icon: 'person'    },
+  { key: 'unidade', label: 'Minha unidade',   rotuloMobile: 'Planos da unidade',       icon: 'apartment' },
+  { key: 'outras',  label: 'Outras unidades', rotuloMobile: 'Planos de outras unidades', icon: 'public'  },
 ];
-const ABA_LIXEIRA = { key: 'lixeira', label: 'Lixeira', icon: 'delete_sweep' };
+const ABA_LIXEIRA = { key: 'lixeira', label: 'Lixeira', rotuloMobile: 'Planos excluídos', icon: 'delete_sweep' };
 
 // Definição dos filtros Tipo/Ano/Status: cada um vira um botão que, com valor
 // selecionado, exibe o valor como chip + um "x" ao lado (limpa só aquele filtro).
@@ -14362,7 +14384,7 @@ function _renderizarAbas() {
   estadoPlanos.abas.forEach(function(aba) {
     var ativa = aba.key === estadoPlanos.abaAtiva;
     bar.insertAdjacentHTML('beforeend',
-      '<button type="button" role="tab" aria-selected="' + ativa + '" class="ds-tabs-nav__item' + (ativa ? ' active' : '') + '" data-on-click="pages_planos_lista.26" data-aclick0="' + aba.key + '">' +
+      '<button type="button" role="tab" aria-selected="' + ativa + '" class="ds-tabs-nav__item' + (ativa ? ' active' : '') + '" data-rotulo-mobile="' + escapeHtml(aba.rotuloMobile || aba.label) + '" data-on-click="pages_planos_lista.26" data-aclick0="' + aba.key + '">' +
         '<span class="material-symbols-outlined">' + aba.icon + '</span>' +
         '<span>' + escapeHtml(aba.label) + '</span>' +
         '<span class="ds-tab-count" id="tab-count-' + aba.key + '">' + (contagem[aba.key] || 0) + '</span>' +
@@ -14468,7 +14490,7 @@ function _pllMobilePreparar() {
     var barra = document.getElementById('pll-filtros-normal');
     ['touchstart', 'mousedown'].forEach(function(t) { barra.addEventListener(t, function() { estadoPlanos._toqueBarra = Date.now(); }, { passive: true }); });
   }
-  document.addEventListener('ui-busca-topo', _pllMobileSincronizar);
+  if (!document._pllBuscaTopo) { document._pllBuscaTopo = true; document.addEventListener('ui-busca-topo', _pllMobileSincronizar); }
   uiToqueLongo(document.getElementById('tbody-planos'), 'tr.ds-linha-clicavel', function(tr) {
     var chk = tr.querySelector('.plano-select-checkbox');
     if (!chk || estadoPlanos.selecionados.has(chk.dataset.id)) return;
@@ -18290,6 +18312,7 @@ function carregarDetalhesPlano(idPlano, metaOtimista) {
       metas: null, coresTipo: [],
       _otimista: true
     };
+    uiTopoPrefixo('page-plano-detalhe', metaOtimista.nomeCurto || metaOtimista.sigla || '');
     if (metaOtimista.nome) {
       setBreadcrumb([
         { label: 'Planejamento', page: 'planejamento' },
@@ -18320,6 +18343,7 @@ function carregarDetalhesPlano(idPlano, metaOtimista) {
         { label: 'Planos', page: 'planos' },
         { label: res.plano.nome }
       ]);
+      uiTopoPrefixo('page-plano-detalhe', res.plano.nomeCurto || res.plano.sigla || '');
 
       // _appsRenderizarAbas recria os botões das abas: guarda a aba ativa antes
       var abaAtivaAntes = _detAbaAtivaId();
@@ -21235,6 +21259,7 @@ function execTarefasCarregar(preservar) {
           { label: dados.plano.nome }
         ]);
       }
+      uiTopoPrefixo('page-execucao-tarefas', dados.plano.nomeCurto || '');
       _extFiltrosAtualizarUI();
       execTarefasRenderizar();
       // riscos do plano: cada risco pertence a um elemento; entram na linha (ações devidas) e na etapa Riscos do modal
@@ -28972,6 +28997,7 @@ function _salvarUltimaTela(pageName, extra) {
 }
 
 function navigate(pageName, extra) {
+  if (document.getElementById('topbar').hasAttribute('data-buscando')) uiTopoBuscaFechar();   // a busca do topo não atravessa páginas
   _salvarUltimaTela(pageName, extra);
   uiNavRegistrar(pageName, extra);
   hdrNavSincronizarAtivo(hdrNavChaveDe(pageName, extra)); // item ativo do menu lateral
