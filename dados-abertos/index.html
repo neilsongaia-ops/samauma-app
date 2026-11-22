@@ -1322,10 +1322,21 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   /* a busca vive na barra do topo (uiTopoBuscar); a barra de filtros só aparece com pílulas à vista ou em seleção, senão some inteira */
   .ds-filtros__normal > .ds-busca { display: none; }
   #topbar[data-buscando] > :not(#tb-busca-campo) { display: none !important; }
+  /* título e aba ativa lado a lado ("Planos > Todos"): o título encolhe primeiro, a aba por último; os ícones ficam à direita */
+  #topbar-crumbs { flex: 0 3 auto; }
+  #topbar > :last-child { margin-left: auto; }
+  #tb-aba-atual { display: flex; align-items: center; flex: 0 1 auto; min-width: 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
+  #tb-aba-atual.hidden { display: none; }
+  #tb-aba-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   #tb-buscar[aria-pressed="true"] { color: var(--ds-color-action); }
   #tb-busca-campo { flex: 1 1 auto; min-width: 0; gap: var(--ds-space-1); }
   #tb-busca-input { flex: 1 1 auto; width: auto; max-width: none; padding-left: var(--ds-space-4); }
   .ds-filtros:not(:has(.ds-filtro:not(.hidden))):not(:has(.ds-filtros__selecao:not(.hidden))) { display: none; }
+  /* seleção: a faixa de ações toma o lugar da barra do topo (nada desce nem sobe). A barra de filtros mantém o espaço que já ocupava (pílulas invisíveis) ou, se não havia, fica sem altura. */
+  .ds-filtros__selecao:not(.hidden) { position: fixed; top: 0; left: 0; right: 0; z-index: calc(var(--ds-z-header) + 1); height: var(--ds-header-height); flex-wrap: nowrap; padding: 0 var(--ds-space-3); background: var(--ds-color-surface); border-bottom: var(--ds-borda) solid var(--ds-color-border); }
+  .ds-filtros:has(.ds-filtros__selecao:not(.hidden)) { z-index: calc(var(--ds-z-header) + 1); }
+  .ds-filtros:has(.ds-filtros__selecao:not(.hidden)) > .ds-filtros__normal.hidden { display: flex !important; visibility: hidden; }
+  .ds-filtros:has(.ds-filtros__selecao:not(.hidden)):not(:has(.ds-filtro:not(.hidden))) { height: 0; min-height: 0; padding: 0; margin: 0; }
   .ds-busca__caixa { flex: 1 1 auto; }
   .ds-busca__input { width: 100%; max-width: none; }
   .ds-filtro { flex: none; }

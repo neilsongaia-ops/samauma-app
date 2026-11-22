@@ -1333,10 +1333,21 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   /* a busca vive na barra do topo (uiTopoBuscar); a barra de filtros só aparece com pílulas à vista ou em seleção, senão some inteira */
   .ds-filtros__normal > .ds-busca { display: none; }
   #topbar[data-buscando] > :not(#tb-busca-campo) { display: none !important; }
+  /* título e aba ativa lado a lado ("Planos > Todos"): o título encolhe primeiro, a aba por último; os ícones ficam à direita */
+  #topbar-crumbs { flex: 0 3 auto; }
+  #topbar > :last-child { margin-left: auto; }
+  #tb-aba-atual { display: flex; align-items: center; flex: 0 1 auto; min-width: 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
+  #tb-aba-atual.hidden { display: none; }
+  #tb-aba-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   #tb-buscar[aria-pressed="true"] { color: var(--ds-color-action); }
   #tb-busca-campo { flex: 1 1 auto; min-width: 0; gap: var(--ds-space-1); }
   #tb-busca-input { flex: 1 1 auto; width: auto; max-width: none; padding-left: var(--ds-space-4); }
   .ds-filtros:not(:has(.ds-filtro:not(.hidden))):not(:has(.ds-filtros__selecao:not(.hidden))) { display: none; }
+  /* seleção: a faixa de ações toma o lugar da barra do topo (nada desce nem sobe). A barra de filtros mantém o espaço que já ocupava (pílulas invisíveis) ou, se não havia, fica sem altura. */
+  .ds-filtros__selecao:not(.hidden) { position: fixed; top: 0; left: 0; right: 0; z-index: calc(var(--ds-z-header) + 1); height: var(--ds-header-height); flex-wrap: nowrap; padding: 0 var(--ds-space-3); background: var(--ds-color-surface); border-bottom: var(--ds-borda) solid var(--ds-color-border); }
+  .ds-filtros:has(.ds-filtros__selecao:not(.hidden)) { z-index: calc(var(--ds-z-header) + 1); }
+  .ds-filtros:has(.ds-filtros__selecao:not(.hidden)) > .ds-filtros__normal.hidden { display: flex !important; visibility: hidden; }
+  .ds-filtros:has(.ds-filtros__selecao:not(.hidden)):not(:has(.ds-filtro:not(.hidden))) { height: 0; min-height: 0; padding: 0; margin: 0; }
   .ds-busca__caixa { flex: 1 1 auto; }
   .ds-busca__input { width: 100%; max-width: none; }
   .ds-filtro { flex: none; }
@@ -2408,6 +2419,8 @@ if (!window._uiDelegacaoAtiva) {
 
     <!-- #breadcrumb-nav (components_breadcrumb.html) é movido para cá em runtime -->
     <div class="tb-crumbs" id="topbar-crumbs"></div>
+    <!-- mobile: aba ativa depois do título ("Planos > Todos"), só em página com abas (uiTopoAtualizar) -->
+    <span id="tb-aba-atual" class="hidden"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span><span id="tb-aba-txt"></span></span>
 
     <div class="tb-search" aria-disabled="true" data-title="Busca global — em breve">
       <span class="material-symbols-outlined" aria-hidden="true">search</span>
@@ -10396,6 +10409,8 @@ function uiTopoAtualizar() {
   if (b) { b.classList.toggle('hidden', !(mob && busca)); var pi = busca && busca.querySelector('input'); b.setAttribute('aria-pressed', String(!!(pi && pi.value))); }   // lupa acesa = há busca aplicada
   if (a) a.classList.toggle('hidden', !(mob && _uiTopoAbasLista().length >= 2));
   if (sino) sino.classList.toggle('tb-hide-mobile', id !== 'home');
+  var ativa = _uiTopoAbasLista().filter(function (x) { return x.classList.contains('active'); })[0], tab = document.getElementById('tb-aba-atual');
+  if (tab) { tab.classList.toggle('hidden', !(mob && ativa && _uiTopoAbasLista().length >= 2)); if (ativa) document.getElementById('tb-aba-txt').textContent = _uiTopoRotulo(ativa); }
   if (!busca && document.getElementById('topbar').hasAttribute('data-buscando')) uiTopoBuscaFechar();
 }
 function _uiTopoBuscaRepassar(valor) {
@@ -13980,7 +13995,7 @@ uiRegistrarAcoes('pages_execucao_validacao', {
       <button type="button" class="ds-icon-action" data-on-click="pages_planos_lista.14" data-title="Cancelar seleção" aria-label="Cancelar seleção">
         <span class="material-symbols-outlined">close</span>
       </button>
-      <span class="ds-filtros__selecao-texto" id="pll-selecao-texto">0 selecionado(s)</span>
+      <span class="ds-filtros__selecao-texto" id="pll-selecao-texto">0</span>
       <div class="ds-filtros__divisor"></div>
       <!-- Preenchido via JS (_pllRenderizarAcoesSelecao): com 1 item, as MESMAS ações e
            permissões da coluna de opções daquela linha; com mais de um, só as ações que
@@ -14164,13 +14179,13 @@ const STATUS_BADGE_CLASS = {
   'Excluído':      'cancelado',
 };
 
-// "Todos os planos" é a 1ª aba (aprovado pelo usuário) — não é uma categoria de
+// "Todos" é a 1ª aba (aprovado pelo usuário) — não é uma categoria de
 // _classificarPlano, é a união de meus/unidade/outras (tudo, exceto a Lixeira).
 const ABAS_BASE = [
-  { key: 'todos',   label: 'Todos os planos', icon: 'apps'      },
-  { key: 'meus',    label: 'Meus planos',     icon: 'person'    },
-  { key: 'unidade', label: 'Minha unidade',   icon: 'apartment' },
-  { key: 'outras',  label: 'Outras unidades', icon: 'public'    },
+  { key: 'todos',   label: 'Todos',  icon: 'apps'      },
+  { key: 'meus',    label: 'Meus',   icon: 'person'    },
+  { key: 'unidade', label: 'Unidade', icon: 'apartment' },
+  { key: 'outras',  label: 'Outras', icon: 'public'    },
 ];
 const ABA_LIXEIRA = { key: 'lixeira', label: 'Lixeira', icon: 'delete_sweep' };
 
@@ -14732,7 +14747,9 @@ function _renderizarTabela(planos) {
     var iconResp = (p.tipoResponsavel === 'USER') ? 'person' : 'apartment';
     var sel      = estadoPlanos.selecionados.has(String(p.id));
     var nAdic    = (p.respAdicionaisNomes && p.respAdicionaisNomes.length) ? p.respAdicionaisNomes.length : 0;
-    var vigencia = (p.anoInicio || '?') + '–' + (p.anoFim || '?');
+    // plano na lixeira: o prazo de exclusão ocupa o lugar da vigência
+    var prazoLixeira = pllLixeiraPrazoTexto(p);
+    var vigencia = prazoLixeira ? '<span class="ds-help ds-help--error">' + escapeHtml(prazoLixeira) + '</span>' : ((p.anoInicio || '?') + '–' + (p.anoFim || '?'));
 
     // Ações da linha: 2 diretas + ⋮ (components_acoes_linha.html); aparecem no hover
     var acoes = acoesLinhaHTML('pll-' + p.id, [
@@ -14742,7 +14759,6 @@ function _renderizarTabela(planos) {
       { icone: 'restore', rotulo: 'Restaurar', onclick: "pllRestaurarPlano(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", oculto: !(p.status === 'Excluído' && perm.restaurar) },
       { icone: 'delete_forever', rotulo: 'Excluir definitivamente', onclick: "pllExcluirDefinitivo(" + p.id + ", '" + escapeJsAttr(p.nome) + "')", perigo: true, oculto: !(p.status === 'Excluído' && perm.excluirDefinitivo) }
     ], p.status === 'Excluído' ? { maxDireto: 0, titulo: p.nome } : { titulo: p.nome });
-    var lixHtml = pllLixeiraPrazoHTML(p);
 
     var nomeResp = p.nomeResponsavel || 'Não definido';
     var nomeRespExib = nomeRespExibicao(nomeResp, p.tipoResponsavel);  // servidor: 1º e último nome (global, index.html)
@@ -14779,14 +14795,14 @@ function _renderizarTabela(planos) {
         '</div></div></td>' +
       '<td class="ds-tabela__vig">' + vigencia + '</td>' +
       '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + respHtml + '</td>' +
-      '<td class="ds-tabela__nowrap ds-tabela__so-desktop"><span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' + lixHtml + '</td>' +
+      '<td class="ds-tabela__nowrap ds-tabela__so-desktop"><span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span></td>' +
       '<td class="ds-tabela__so-larga ds-tabela__so-desktop">' + progHtml + '</td>' +
       '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info"><span class="pll-vig ds-tabela__so-desktop">' + vigencia + '</span></div>' +
         '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>' +
       // Linha do celular: status + responsável + progresso, tudo numa linha só
       '<td class="ds-tabela__card"><div class="pll-card-meta">' +
         '<span class="ds-badge ds-badge--' + badgeSlug + '" style="white-space:nowrap">' + escapeHtml(p.status || '—') + '</span>' +
-        respHtml + lixHtml + '</div><div class="pll-card-prog">' + progHtml + '</div></td>';
+        respHtml + '</div><div class="pll-card-prog">' + progHtml + '</div></td>';
     tbody.appendChild(tr);
   });
 
@@ -14955,8 +14971,9 @@ function atualizarBarraSelecaoPlanos() {
   document.getElementById('pll-filtros-normal').classList.toggle('hidden', qtd > 0);
   document.getElementById('pll-filtros-selecao').classList.toggle('hidden', qtd === 0);
   if (qtd > 0) {
-    document.getElementById('pll-selecao-texto').textContent =
-      qtd + ' plano' + (qtd > 1 ? 's' : '') + ' selecionado' + (qtd > 1 ? 's' : '');
+    var txt = document.getElementById('pll-selecao-texto');
+    txt.textContent = String(qtd);   // só o número: a contagem se explica sozinha ao marcar
+    txt.setAttribute('aria-label', qtd + ' plano' + (qtd > 1 ? 's' : '') + ' selecionado' + (qtd > 1 ? 's' : ''));
     _pllRenderizarAcoesSelecao(qtd);
   }
   document.getElementById('tabela-planos').classList.toggle('ds-tabela--selecionando', qtd > 0);
@@ -15073,36 +15090,12 @@ function _pllExecutarLoteSequencial(ids, chamada, rotuloOk) {
 }
 
 // ---- Lixeira: prazo, restaurar, excluir definitivamente --------------------
-// Usadas também pelo detalhe do plano (pages_plano_detalhe.html).
-
-var PLL_LIXEIRA_POUCOS_DIAS = 7;
 
 function pllLixeiraPrazoTexto(p) {
   var lx = p && p.status === 'Excluído' && p.lixeira;
   if (!lx || !lx.excluidoEm || lx.diasRestantes == null || isNaN(Number(lx.diasRestantes))) return '';
   var n = Math.max(0, Number(lx.diasRestantes));
   return n === 0 ? 'apaga hoje' : 'apaga em ' + n + (n === 1 ? ' dia' : ' dias');
-}
-
-// O servidor manda excluidoEm em milissegundos (epoch); mostra dd/mm/aaaa.
-function pllLixeiraDataTexto(v) {
-  var d = new Date(isNaN(Number(v)) ? v : Number(v));
-  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('pt-BR');
-}
-
-function pllLixeiraRegraTexto(p) {
-  var lx = (p && p.lixeira) || {};
-  return 'Planos na lixeira são apagados definitivamente ' + (lx.retencaoDias || 90) + ' dias após a exclusão'
-    + (lx.excluidoEm ? ' (excluído em ' + pllLixeiraDataTexto(lx.excluidoEm) + ').' : '.');
-}
-
-function pllLixeiraPrazoHTML(p) {
-  var txt = pllLixeiraPrazoTexto(p);
-  if (!txt) return '';
-  var poucos = Number(p.lixeira.diasRestantes) <= PLL_LIXEIRA_POUCOS_DIAS;
-  return '<span class="pll-lix-prazo" tabindex="0" data-title="' + escapeHtml(pllLixeiraRegraTexto(p)) + '" style="display:inline-flex; align-items:center; gap:2px; margin-left:6px; font-size:0.8rem; white-space:nowrap; color:' +
-    (poucos ? 'var(--ds-color-danger-fg)' : 'var(--ds-color-text-muted)') + (poucos ? '; font-weight:600' : '') + '">' + escapeHtml(txt) +
-    '<span class="material-symbols-outlined" style="font-size:14px" aria-hidden="true">info</span></span>';
 }
 
 // aoConcluir(resposta) opcional — sem ele, recarrega a lista
