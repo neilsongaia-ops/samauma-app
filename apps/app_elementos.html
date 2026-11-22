@@ -1281,6 +1281,20 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
           <div id="el-selecao-acoes"></div>
         </div>
 
+        <div class="ds-filtros__selecao hidden" id="el-filtros-reorganizar">
+          <button type="button" class="ds-icon-action" id="btn-reorg-cancelar-m" data-on-click="el.45" data-title="Sair da reorganização" aria-label="Sair da reorganização">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+          <span class="ds-filtros__selecao-texto" id="el-reorg-texto-m">Arraste os elementos para reorganizar</span>
+          <div class="ds-filtros__divisor hidden" id="el-reorg-divisor-m"></div>
+          <button type="button" class="acoes-btn hidden" id="btn-reorg-principal-m" data-on-click="el.43" data-title="Confirmar e salvar nova ordem" aria-label="Confirmar e salvar nova ordem">
+            <span class="material-symbols-outlined">check</span>
+          </button>
+          <button type="button" class="acoes-btn hidden" id="btn-reorg-restaurar-m" data-on-click="el.44" data-title="Restaurar ordem que estava antes" aria-label="Restaurar ordem que estava antes">
+            <span class="material-symbols-outlined">restart_alt</span>
+          </button>
+        </div>
+
         <div class="ds-filtros__pag">
           <!-- Modos de visualização -->
         <div class="det-modos" role="group" aria-label="Modo de visualização">
@@ -2665,62 +2679,42 @@ function _atualizarCabecalhoReorganizar(salvando) {
   var thNormal = document.getElementById('el-th-normal');
   var thReorg = document.getElementById('el-th-reorganizar');
   if (!thNormal || !thReorg) return;
-
-  if (!_modoReorganizar) {
-    thNormal.classList.remove('hidden');
-    thReorg.classList.add('hidden');
-    return;
+  var mobile = _elMobile();   // celular: as ações do modo ocupam a barra do topo (faixa de seleção); web: linha do cabeçalho da tabela
+  var faixa = document.getElementById('el-filtros-reorganizar');
+  var normal = document.getElementById('el-filtros-normal');
+  thNormal.classList.toggle('hidden', _modoReorganizar && !mobile);
+  thReorg.classList.toggle('hidden', !_modoReorganizar || mobile);
+  if (faixa && normal) {
+    faixa.classList.toggle('hidden', !_modoReorganizar || !mobile);
+    normal.classList.toggle('hidden', _modoReorganizar && mobile);
   }
+  if (!_modoReorganizar) return;
 
-  thNormal.classList.add('hidden');
-  thReorg.classList.remove('hidden');
+  var texto = document.getElementById('el-reorg-texto');
+  var texto_m = document.getElementById('el-reorg-texto-m');
+  var msg = salvando ? 'Salvando reorganização...' : (_reorgAlterado ? 'Ordem alterada' : 'Arraste os elementos para reorganizar');
+  if (texto) texto.textContent = msg;
+  if (texto_m) texto_m.textContent = msg;
 
+  // web: [X/✓ principal] texto | restaurar, cancelar
   var btnPrincipal = document.getElementById('btn-reorg-principal');
   var icoPrincipal = document.getElementById('ico-reorg-principal');
-  var texto = document.getElementById('el-reorg-texto');
-  var divisor = document.getElementById('el-reorg-divisor');
   var btnRestaurar = document.getElementById('btn-reorg-restaurar');
   var btnCancelar = document.getElementById('btn-reorg-cancelar');
+  var divisor = document.getElementById('el-reorg-divisor');
+  [btnPrincipal, btnRestaurar, btnCancelar].forEach(function(b) { b.disabled = !!salvando; });
+  var titulo = _reorgAlterado ? 'Confirmar e salvar nova ordem' : 'Cancelar reorganização';
+  btnPrincipal.dataset.title = salvando ? 'Salvando...' : titulo;
+  btnPrincipal.setAttribute('aria-label', titulo);
+  icoPrincipal.textContent = _reorgAlterado ? 'check' : 'close';
+  icoPrincipal.style.color = _reorgAlterado ? 'var(--ds-color-success-fg)' : '';
+  divisor.classList.toggle('hidden', !_reorgAlterado);
+  btnRestaurar.classList.toggle('hidden', !_reorgAlterado);
+  btnCancelar.classList.toggle('hidden', !_reorgAlterado);
 
-  if (salvando) {
-    if (btnPrincipal) { btnPrincipal.disabled = true; btnPrincipal.dataset.title = 'Salvando...'; }
-    if (btnRestaurar) btnRestaurar.disabled = true;
-    if (btnCancelar) btnCancelar.disabled = true;
-    if (texto) texto.textContent = 'Salvando reorganização...';
-    return;
-  }
-
-  if (btnPrincipal) btnPrincipal.disabled = false;
-  if (btnRestaurar) btnRestaurar.disabled = false;
-  if (btnCancelar) btnCancelar.disabled = false;
-
-  if (_reorgAlterado) {
-    if (icoPrincipal) {
-      icoPrincipal.textContent = 'check';
-      icoPrincipal.style.color = 'var(--ds-color-success-fg)';
-    }
-    if (btnPrincipal) {
-      btnPrincipal.dataset.title = 'Confirmar e salvar nova ordem';
-      btnPrincipal.setAttribute('aria-label', 'Confirmar e salvar nova ordem');
-    }
-    if (texto) texto.textContent = 'Ordem alterada';
-    if (divisor) divisor.classList.remove('hidden');
-    if (btnRestaurar) btnRestaurar.classList.remove('hidden');
-    if (btnCancelar) btnCancelar.classList.remove('hidden');
-  } else {
-    if (icoPrincipal) {
-      icoPrincipal.textContent = 'close';
-      icoPrincipal.style.color = '';
-    }
-    if (btnPrincipal) {
-      btnPrincipal.dataset.title = 'Cancelar reorganização';
-      btnPrincipal.setAttribute('aria-label', 'Cancelar reorganização');
-    }
-    if (texto) texto.textContent = 'Arraste os elementos para reorganizar';
-    if (divisor) divisor.classList.add('hidden');
-    if (btnRestaurar) btnRestaurar.classList.add('hidden');
-    if (btnCancelar) btnCancelar.classList.add('hidden');
-  }
+  // celular: [X sair, com borda] texto | confirmar, restaurar (sem borda)
+  [['btn-reorg-cancelar-m', salvando], ['btn-reorg-principal-m', salvando], ['btn-reorg-restaurar-m', salvando]].forEach(function(p) { document.getElementById(p[0]).disabled = !!p[1]; });
+  ['el-reorg-divisor-m', 'btn-reorg-principal-m', 'btn-reorg-restaurar-m'].forEach(function(id) { document.getElementById(id).classList.toggle('hidden', !_reorgAlterado); });
 }
 
 function _cliqueReorgPrincipal() {
@@ -3822,7 +3816,7 @@ function elAtualizarGruposArvore() {
   Array.prototype.forEach.call(wrap.querySelectorAll('.ds-item-contorno'), function(n) { n.remove(); });
   var linhas = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-id]'));
   tabela.classList.toggle('ds-tabela--arvore', linhas.some(function(tr) { return tr.querySelector('.ds-item-seta'); }));
-  linhas.forEach(function(tr) { tr.classList.toggle('ds-item-sem-seta', tr.dataset.level === '0' && !tr.querySelector('.ds-item-seta')); });
+  linhas.forEach(function(tr) { tr.classList.toggle('ds-item-sem-seta', !_modoReorganizar && tr.dataset.level === '0' && !tr.querySelector('.ds-item-seta')); });
   var anteriores = tbody._elContornos || {};
   var atuais = {};
   var grupo = [];
@@ -4386,7 +4380,7 @@ function elCliqueLinha(ev, id) {
 
   // Celular: toque abre o elemento; com a seleção ligada (toque longo) o toque marca/desmarca
   if (_elMobile()) {
-    if (uiToqueLongoRecente(document.getElementById('el-tbody'))) return;
+    if (_modoReorganizar || uiToqueLongoRecente(document.getElementById('el-tbody'))) return;
     if (!_elSelecionados.size) {
       // item com filhos: o toque abre/recolhe a hierarquia; os detalhes saem pelo ⋮
       var trToque = document.querySelector('#el-tbody tr[data-id="' + idStr + '"]');
@@ -4621,6 +4615,10 @@ function exportarElementosCSV() {
 function _ativarDragTabela() {
   const tbody = document.getElementById('el-tbody');
   if (!tbody) return;
+  if (_elMobile()) {
+    tbody.addEventListener('pointerdown', _elAlcaPressionada);
+    return;
+  }
   tbody.querySelectorAll('tr').forEach(tr => {
     tr.setAttribute('draggable', 'true');
     tr.addEventListener('dragstart', _onDragStartTabela);
@@ -4634,6 +4632,7 @@ function _ativarDragTabela() {
 function _desativarDragTabela() {
   const tbody = document.getElementById('el-tbody');
   if (!tbody) return;
+  tbody.removeEventListener('pointerdown', _elAlcaPressionada);
   tbody.querySelectorAll('tr').forEach(tr => {
     tr.removeAttribute('draggable');
     tr.removeEventListener('dragstart', _onDragStartTabela);
@@ -4649,7 +4648,7 @@ function _onDragStartTabela(e) {
   _draggingFamily = _getTrComDescendentes(this);
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', this.dataset.id);
-  this.classList.add('el-drag-source');
+  this.classList.add('is-arrastando');
   e.stopPropagation();
 }
 
@@ -4669,44 +4668,48 @@ function _onDragOverTabela(e) {
     _clearDragIndicatorsTabela();
     _dragOverTr = this;
     _dragPos = pos;
-    if (pos === 'before') this.classList.add('el-drag-before');
-    else if (pos === 'after') this.classList.add('el-drag-after');
-    else this.classList.add('el-drag-inside');
+    if (pos === 'before') this.classList.add('is-solta-antes');
+    else if (pos === 'after') this.classList.add('is-solta-depois');
+    else this.classList.add('is-solta-dentro');
   }
 }
 
 function _onDragLeaveTabela(e) {
   if (!this.contains(e.relatedTarget)) {
-    this.classList.remove('el-drag-before', 'el-drag-after', 'el-drag-inside');
+    this.classList.remove('is-solta-antes', 'is-solta-depois', 'is-solta-dentro');
     if (_dragOverTr === this) { _dragOverTr = null; _dragPos = null; }
   }
 }
 
 function _clearDragIndicatorsTabela() {
-  document.querySelectorAll('.el-drag-before,.el-drag-after,.el-drag-inside').forEach(el =>
-    el.classList.remove('el-drag-before', 'el-drag-after', 'el-drag-inside'));
+  document.querySelectorAll('.is-solta-antes,.is-solta-depois,.is-solta-dentro').forEach(el =>
+    el.classList.remove('is-solta-antes', 'is-solta-depois', 'is-solta-dentro'));
 }
 
 function _onDropTabela(e) {
   e.preventDefault();
   e.stopPropagation();
-  if (!_draggingTr || _draggingTr === this || _draggingFamily.includes(this)) return;
+  _soltarTabela(this, _dragPos);
+}
+
+function _soltarTabela(alvo, pos) {
+  if (!_draggingTr || _draggingTr === alvo || _draggingFamily.includes(alvo)) return;
   _clearDragIndicatorsTabela();
 
   const tbody = document.getElementById('el-tbody');
-  const targetLevel = parseInt(this.dataset.level || '0', 10);
+  const targetLevel = parseInt(alvo.dataset.level || '0', 10);
   const oldLevel = parseInt(_draggingTr.dataset.level || '0', 10);
   let newLevel = targetLevel;
-  let newPai = this.dataset.pai || '';
+  let newPai = alvo.dataset.pai || '';
 
-  if (_dragPos === 'before') {
+  if (pos === 'before') {
     newLevel = targetLevel;
-    newPai = this.dataset.pai || '';
-    _draggingFamily.forEach(r => tbody.insertBefore(r, this));
-  } else if (_dragPos === 'after') {
+    newPai = alvo.dataset.pai || '';
+    _draggingFamily.forEach(r => tbody.insertBefore(r, alvo));
+  } else if (pos === 'after') {
     newLevel = targetLevel;
-    newPai = this.dataset.pai || '';
-    const targetDesc = _getTrComDescendentes(this);
+    newPai = alvo.dataset.pai || '';
+    const targetDesc = _getTrComDescendentes(alvo);
     const lastTarget = targetDesc[targetDesc.length - 1];
     const nextRef = lastTarget.nextElementSibling;
     _draggingFamily.forEach(r => {
@@ -4716,8 +4719,8 @@ function _onDropTabela(e) {
   } else {
     // inside: torna-se filho de target
     newLevel = targetLevel + 1;
-    newPai = this.dataset.id;
-    const targetDesc = _getTrComDescendentes(this);
+    newPai = alvo.dataset.id;
+    const targetDesc = _getTrComDescendentes(alvo);
     const lastTarget = targetDesc[targetDesc.length - 1];
     const nextRef = lastTarget.nextElementSibling;
     _draggingFamily.forEach(r => {
@@ -4735,10 +4738,13 @@ function _onDropTabela(e) {
     r.dataset.level = String(nl);
     const content = r.querySelector('.el-elem-content');
     if (content) content.style.paddingLeft = (nl * 24) + 'px';
+    r.classList.toggle('ds-linha-filha', nl > 0);
+    r.classList.toggle('is-aberta', nl > 0);
   });
 
   _marcarReorgAlterado();
   _recalcularCodigosTabela();
+  if (_elMobile()) elAtualizarGruposArvore();
 
   _draggingTr = null;
   _draggingFamily = [];
@@ -4746,8 +4752,88 @@ function _onDropTabela(e) {
   _dragPos = null;
 }
 
+// Celular: arrastar pela alça, com o dedo (o arrastar nativo não funciona por toque). A soltura reaproveita as zonas da web: borda de cima = antes, de baixo = depois, meio = vira filho.
+var _elArraste = null;
+function _elAlcaPressionada(ev) {
+  var alca = ev.target.closest('.ds-item-alca');
+  if (!alca || _elArraste) return;
+  var tr = alca.closest('tr');
+  if (!tr) return;
+  ev.preventDefault();
+  _draggingTr = tr;
+  _draggingFamily = _getTrComDescendentes(tr);
+  tr.classList.add('is-arrastando');
+  var fantasma = document.createElement('div');
+  fantasma.className = 'ds-arraste-fantasma';
+  fantasma.textContent = ((tr.querySelector('.ds-tabela__codigo') || {}).textContent || '') + ' ' + ((tr.querySelector('.ds-tabela__nome') || {}).dataset || {}).title;
+  document.body.appendChild(fantasma);
+  var rolagem = document.getElementById('main-content');
+  _elArraste = { alca: alca, id: ev.pointerId, fantasma: fantasma, y: ev.clientY, rolagem: rolagem, raf: 0 };
+  alca.setPointerCapture(ev.pointerId);
+  alca.addEventListener('pointermove', _elAlcaMovida);
+  alca.addEventListener('pointerup', _elAlcaSolta);
+  alca.addEventListener('pointercancel', _elAlcaSolta);
+  _elArrasteQuadro(ev.clientX, ev.clientY);
+}
+function _elAlcaMovida(ev) {
+  if (!_elArraste || ev.pointerId !== _elArraste.id) return;
+  _elArraste.y = ev.clientY;
+  _elArrasteQuadro(ev.clientX, ev.clientY);
+}
+// Atualiza o fantasma e a zona de soltura sob o dedo; rola a lista quando o dedo encosta na borda de cima ou de baixo
+function _elArrasteQuadro(x, y) {
+  var f = _elArraste.fantasma;
+  f.style.setProperty('left', x + 'px');
+  f.style.setProperty('top', y + 'px');
+  var alvo = document.elementFromPoint(x, y);
+  var tr = alvo && alvo.closest ? alvo.closest('#el-tbody tr') : null;
+  if (!tr || tr === _draggingTr || _draggingFamily.indexOf(tr) >= 0) {
+    _clearDragIndicatorsTabela();
+    _dragOverTr = null;
+    _dragPos = null;
+  } else {
+    var r = tr.getBoundingClientRect(), dy = y - r.top;
+    var pos = dy < r.height * 0.25 ? 'before' : dy > r.height * 0.75 ? 'after' : 'inside';
+    if (_dragOverTr !== tr || _dragPos !== pos) {
+      _clearDragIndicatorsTabela();
+      _dragOverTr = tr;
+      _dragPos = pos;
+      tr.classList.add('is-solta-' + ({ before: 'antes', after: 'depois', inside: 'dentro' })[pos]);
+    }
+  }
+  if (!_elArraste.raf && _elArraste.rolagem) _elArraste.raf = requestAnimationFrame(_elArrasteRolar);
+}
+function _elArrasteRolar() {
+  if (!_elArraste) return;
+  _elArraste.raf = 0;
+  var sc = _elArraste.rolagem, r = sc.getBoundingClientRect(), y = _elArraste.y, borda = 64, passo = 0;
+  if (y < r.top + borda) passo = -Math.ceil((r.top + borda - y) / 6);
+  else if (y > r.bottom - borda) passo = Math.ceil((y - (r.bottom - borda)) / 6);
+  if (!passo) return;
+  sc.scrollTop += passo;
+  _elArraste.raf = requestAnimationFrame(_elArrasteRolar);
+}
+function _elAlcaSolta(ev) {
+  if (!_elArraste || ev.pointerId !== _elArraste.id) return;
+  var a = _elArraste;
+  a.alca.removeEventListener('pointermove', _elAlcaMovida);
+  a.alca.removeEventListener('pointerup', _elAlcaSolta);
+  a.alca.removeEventListener('pointercancel', _elAlcaSolta);
+  if (a.raf) cancelAnimationFrame(a.raf);
+  a.fantasma.remove();
+  _elArraste = null;
+  var origem = _draggingTr;
+  if (origem) origem.classList.remove('is-arrastando');
+  if (ev.type === 'pointerup' && _dragOverTr && _dragPos) _soltarTabela(_dragOverTr, _dragPos);
+  _clearDragIndicatorsTabela();
+  _draggingTr = null;
+  _draggingFamily = [];
+  _dragOverTr = null;
+  _dragPos = null;
+}
+
 function _onDragEndTabela() {
-  this.classList.remove('el-drag-source');
+  this.classList.remove('is-arrastando');
   _clearDragIndicatorsTabela();
   _draggingTr = null;
   _draggingFamily = [];
@@ -5146,7 +5232,7 @@ function renderizarTabelaEstrutura() {
     // Checkbox ou Ícone de Reorganização
     var tdCheck = '';
     if (_modoReorganizar) {
-      tdCheck = '<td class="ds-tabela__check"><span class="material-symbols-outlined el-drag-handle" style="color:var(--ds-color-text-muted);font-size:20px" data-title="Arrastar para reorganizar">drag_indicator</span></td>';
+      tdCheck = '<td class="ds-tabela__check"><span class="material-symbols-outlined ds-item-alca" style="color:var(--ds-color-text-muted);font-size:20px" data-title="Arrastar para reorganizar">drag_indicator</span></td>';
     } else {
       tdCheck = '<td class="ds-tabela__check"><input type="checkbox" data-on-change="el.69" data-achange0="' + id + '"' + (sel ? ' checked' : '') + ' aria-label="Selecionar"></td>';
     }
@@ -5260,7 +5346,7 @@ function renderizarTabelaEstrutura() {
   var chkAll = document.getElementById('chk-select-all-el');
   if (chkAll) chkAll.style.display = _modoReorganizar ? 'none' : '';
   var tbl = document.getElementById('el-tabela');
-  if (tbl) tbl.classList.toggle('modo-reorganizar', _modoReorganizar);
+  if (tbl) tbl.classList.toggle('ds-tabela--reorganizando', _modoReorganizar);
   if (_modoReorganizar) _ativarDragTabela();
 
   // Botão "Carregar mais"

@@ -137,7 +137,7 @@ main { flex: 1; min-height: 0; padding: var(--ds-main-pad-y) var(--ds-main-pad-x
   .ds-pagina__filtros { top: calc(-1 * var(--ds-main-pad-y)); }   /* o sticky para no padding da área rolável: compensa para colar no topo */
   /* hero sem nada além do título (que no mobile mora na barra do topo) não ocupa espaço */
   .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) { display: none; }
-  .ds-pagina:has(> .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden)))) .ds-pagina__filtros { margin-top: var(--ds-pagina-topo); }   /* regra única: hero vazio → a barra de filtros (irmã do hero ou dentro da área de conteúdo) cola no topo */
+  .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) ~ .ds-pagina__filtros, .ds-pagina__hero:not(:has(> :not(.ds-pagina__titulo-linha):not(.hidden))) ~ * .ds-pagina__filtros { margin-top: var(--ds-pagina-topo); }   /* hero vazio → a barra de filtros (irmã do hero ou dentro da área de conteúdo) cola no topo; :has() não pode ser aninhado em :has() (a regra inteira seria descartada) */
 }
 
 .card { background: var(--ds-glass-bg-strong); border: 1px solid var(--ds-glass-border); border-radius: var(--ds-r-2xl); box-shadow: var(--ds-glass-shadow); padding: 20px; margin-bottom: 20px; }
@@ -668,6 +668,21 @@ body.high-contrast {
 .ds-item-contorno path { fill: none; stroke: var(--ds-color-borda-item); stroke-width: var(--ds-borda-forte); stroke-dasharray: 1 1; stroke-dashoffset: 0; }
 .ds-item-contorno.is-animado path { stroke-dashoffset: 1; animation: ds-contorno-desenhar 700ms var(--ds-ease-standard) forwards; }
 @keyframes ds-contorno-desenhar { to { stroke-dashoffset: 0; } }
+/* Reorganizar uma lista arrastando (web: mouse; celular: a alça, com o dedo): .ds-tabela--reorganizando na tabela; .ds-item-alca é a alça; a linha arrastada leva .is-arrastando e a linha sob o ponteiro
+   mostra a zona de soltura (.is-solta-antes, .is-solta-depois ou .is-solta-dentro, que a torna filha); .ds-arraste-fantasma acompanha o dedo no celular */
+.ds-item-alca { cursor: grab; user-select: none; touch-action: none; display: inline-flex; align-items: center; justify-content: center; color: var(--ds-color-text-muted); }
+.ds-item-alca:active { cursor: grabbing; }
+.ds-tabela--reorganizando tbody tr { cursor: grab; }
+.ds-tabela--reorganizando tbody tr:active { cursor: grabbing; }
+.ds-tabela tbody tr.is-arrastando { opacity: .35; background: var(--ds-sidebar-item-hover); }
+.ds-tabela tbody tr.is-solta-antes td { border-top: var(--ds-borda-forte) solid var(--ds-color-action); }
+.ds-tabela tbody tr.is-solta-depois td { border-bottom: var(--ds-borda-forte) solid var(--ds-color-action); }
+.ds-tabela tbody tr.is-solta-dentro td { background: var(--ds-color-info-bg); }
+.ds-arraste-fantasma {
+  position: fixed; z-index: var(--ds-z-toast); pointer-events: none; transform: translate(-50%, calc(-100% - var(--ds-space-3))); max-width: 70vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: var(--ds-space-1) var(--ds-space-3); border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); color: var(--ds-color-text); border: var(--ds-borda) solid var(--ds-color-action);
+  font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold);
+}
 /* Seta de expandir/recolher do item de uma lista em árvore: gira 90° quando aberta (.is-aberto) */
 .ds-item-seta {
   width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
@@ -692,6 +707,12 @@ body.high-contrast {
   .ds-tabela thead th.ds-tabela__ordenar { display: block; flex: 1 1 auto; padding: 2px 0; border: none; }
   .ds-tabela thead th.ds-tabela__cab-acoes { display: block; padding: 0; border: none; }   /* ações da lista (⋮) à direita do cabeçalho, no lugar dos modos de visualização */
   /* com a seleção ligada, o item de ordenação dá lugar a "Selecionar tudo / Desmarcar tudo" (mesma altura: a lista não se move) */
+  .ds-tabela.ds-tabela--reorganizando tbody .ds-tabela__check { display: block; position: absolute; left: var(--ds-space-1); top: 50%; transform: translateY(-50%); width: auto; padding: 0; }
+  .ds-tabela--reorganizando tbody .ds-tabela__expandir { display: none; }
+  .ds-tabela--reorganizando .ds-item-alca { padding: var(--ds-space-3) var(--ds-space-1); }
+  .ds-tabela tbody tr.is-solta-antes { box-shadow: 0 calc(-1 * var(--ds-borda-forte)) 0 var(--ds-color-action); }
+  .ds-tabela tbody tr.is-solta-depois { box-shadow: 0 var(--ds-borda-forte) 0 var(--ds-color-action); }
+  .ds-tabela tbody tr.is-solta-dentro { outline: var(--ds-borda-forte) solid var(--ds-color-action); outline-offset: calc(-1 * var(--ds-borda-forte)); }
   .ds-tabela--selecionando thead th.ds-tabela__ordenar, .ds-tabela--selecionando thead th.ds-tabela__cab-acoes { display: none; }
   .ds-tabela--selecionando thead th.ds-tabela__check { display: flex; align-items: center; gap: var(--ds-space-2); width: auto; padding: 2px 0; border: none; }
   .ds-tabela thead .ds-tabela__card { display: inline; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
