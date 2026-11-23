@@ -52,7 +52,7 @@
 .ind-interp { display: inline-flex; align-items: center; gap: 4px; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
 .ind-interp .material-symbols-outlined { font-size: 16px; }
 
-.ind-tabela .ind-faixa { --ind-celula: 128px; position: relative; display: flex; width: 0; min-width: 100%; box-sizing: border-box; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.ind-faixa { --ind-celula: 128px; position: relative; display: flex; width: 0; min-width: 100%; box-sizing: border-box; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 .ind-ano { display: flex; flex-direction: column; flex: 0 0 auto; border-right: var(--ds-borda) solid var(--ds-color-border); }
 .ind-ano-cab { display: flex; align-items: center; gap: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .ind-ano-cab small { font-size: 11px; font-weight: var(--ds-weight-medium); color: var(--ds-color-action); }
@@ -92,6 +92,15 @@
   .ind-tabela tr.ind-det td { padding-left: 72px; }
 }
 
+/* gaveta de metas (celular): os anos empilhados na vertical, sem rolagem lateral; toque na meta edita (o hover não existe no toque) */
+@media (max-width: 768px) {
+  .ind-faixa { flex-direction: column; width: auto; min-width: 0; overflow: visible; }
+  .ind-ano { border-right: 0; }
+  .ind-ano + .ind-ano { border-top: var(--ds-borda) solid var(--ds-color-border); }
+  .ind-ano-corpo { flex-wrap: wrap; }
+  .ind-meta[data-on-click] { cursor: pointer; }
+  .ind-meta [data-acoes] { display: none; }
+}
 body.high-contrast .ind-ano { border-color: #fff; }
 /* Modal de Indicador: usa o assistente canônico (.ds-wizard) e o formulário do design system; aqui só o que é próprio dele. */
 .indw-qtd-linha { display: flex; gap: 8px; }
@@ -895,8 +904,8 @@ function _indIniciar() {
   _indCarregando = true;
   renderizarSecaoIndicadores();
   var tbody = document.getElementById('ind-tbody');
-  if (tbody && !_indCarregado) {
-    tbody.innerHTML = '<tr class="ds-tabela__msg"><td colspan="7">' + (typeof spinnerListaHTML === 'function' ? spinnerListaHTML() : '<div class="lista-spinner"></div>') + '</td></tr>';
+  if (tbody) {
+    tbody.innerHTML = '<tr class="ds-tabela__msg"><td colspan="7">' + esqueletoListaHTML(_indCarregado ? 'Atualizando indicadores…' : '') + '</td></tr>';
   }
 
   _indicadoresSDK.chamar('apiGetAbaIndicadores', _indCtx.idPlano).then(function(res) {
@@ -1759,7 +1768,7 @@ function _indCoberturaHTML(p, anos) {
 // e Enter/Tab/✓ grava e abre o campo seguinte. Meta gravada vira célula sólida; editar e excluir pelos ícones que aparecem no hover da célula.
 function _indGradeHTML(p, podeEditar) {
   var g = _indGrades[String(p.id)];
-  if (!g || g.carregando) return spinnerListaHTML();
+  if (!g || g.carregando) return esqueletoListaHTML('', 2);
   if (g.erro) return '<div class="wizard-msg-vazio"><span class="material-symbols-outlined">event_busy</span><span>' + escapeHtml(g.erro) + '</span></div>';
   var d = g.dados, anoAtual = new Date().getFullYear(), id = String(p.id);
   var edita = podeEditar && d.podeEditar, editando = _indGradeEdit[id] || '';
@@ -1803,7 +1812,8 @@ function _indGradeCelulaHTML(p, ano, per, rot, livre) {
     + '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.59" data-aclick0="' + idj + '" data-aclick1="' + ini + '" data-title="Editar meta" aria-label="Editar meta"><span class="material-symbols-outlined">edit</span></button>'
     + (per.temResultados ? '' : '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.60" data-aclick0="' + idj + '" data-aclick1="' + ini + '" data-title="Excluir meta" aria-label="Excluir meta"><span class="material-symbols-outlined">delete</span></button>')
     + '</div>';
-  return '<div class="ind-meta" data-title="' + (per.temResultados ? 'Já há resultados neste período: a meta pode ser alterada, não excluída.' : escapeHtml(per.rotulo)) + '">'
+  var toque = livre && _indMobile() ? ' data-on-click="ind.59" data-aclick0="' + idj + '" data-aclick1="' + ini + '"' : '';
+  return '<div class="ind-meta"' + toque + ' data-title="' + (per.temResultados ? 'Já há resultados neste período: a meta pode ser alterada, não excluída.' : escapeHtml(per.rotulo)) + '">'
     + (rot ? '<span class="ind-meta-per">' + escapeHtml(rot) + '</span>' : '')
     + '<span class="ind-meta-val">' + _indValorUnidadeHTML(per.valor, p.unidade) + '</span>' + acoes + '</div>';
 }
@@ -1817,6 +1827,7 @@ function _indGradeCampoHTML(p, ano, per, rot, editando, rascunho, comMais) {
   return '<div data-novo data-ano="' + ano + '" data-inicio="' + escapeHtml(per.inicioISO) + '"' + (editando ? ' data-editando' : '') + (moeda ? ' data-moeda' : '') + (pre ? ' data-preenchido' : '') + (comMais ? ' data-mais' : '') + '>'
     + '<label>' + (_indEhMonetario(p.unidade) ? uni + campo : campo + uni) + '</label>'
     + '<button type="button" class="ds-icon-action ds-icon-action--sm' + (pre || comMais ? '' : ' hidden') + '" data-ok data-on-click="ind.56" data-title="' + (pre ? 'Gravar meta' : 'Adicionar meta') + '" aria-label="Gravar meta"><span class="material-symbols-outlined">' + (pre ? 'check' : 'add') + '</span></button>'
+    + (editando && _indMobile() && !per.temResultados ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.60" data-aclick0="' + escapeHtml(String(p.id)) + '" data-aclick1="' + escapeHtml(per.inicioISO) + '" data-title="Excluir meta" aria-label="Excluir meta"><span class="material-symbols-outlined">delete</span></button>' : '')
     + (editando ? '<button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ind.61" data-aclick0="' + escapeHtml(String(p.id)) + '" data-title="Cancelar" aria-label="Cancelar edição"><span class="material-symbols-outlined">close</span></button>' : '')
     + '</div>';
 }
@@ -1865,13 +1876,13 @@ function _indAlertaBadgeHTML(caso) {
   var a = IND_ALERTA[caso];
   return a ? '<span class="ds-badge ' + a.badge + '" data-title="' + a.dica + '"><span class="material-symbols-outlined">' + a.icone + '</span><span>' + a.rotulo + '</span></span>' : '';
 }
-function _indCoberturaBadgeHTML(p, anos) {
-  if (!p.metas.length) return '';   // sem metas: quem avisa é o badge de alerta
+// 4ª linha do item no celular: os traços por ano (azul = tem meta, cinza = sem) e "anos com meta/anos da vigência"
+function _indCoberturaItemHTML(p, anos) {
   var tem = {}; p.metas.forEach(function(m) { tem[m.ano] = true; });
-  var lac = anos.filter(function(a) { return !tem[a]; }).length;
-  var txt = lac ? lac + (lac === 1 ? ' ano sem meta' : ' anos sem meta') : p.metas.length + (p.metas.length === 1 ? ' meta' : ' metas');
+  var com = anos.filter(function(a) { return tem[a]; }).length;
   var tip = anos.map(function(a) { return a + ': ' + (tem[a] ? 'com meta' : 'sem meta'); }).join(' · ');
-  return '<span class="ds-badge" data-title="' + escapeHtml(tip) + '"><span>' + txt + '</span></span>';
+  return '<div class="ind-cob" data-title="' + escapeHtml(tip) + '"><span class="ind-cob-anos">' + anos.map(function(a) { return '<i class="' + (tem[a] ? 'tem' : '') + '"></i>'; }).join('')
+    + '</span><span class="ind-cob-txt' + (com === anos.length ? '' : ' is-lacuna') + '">' + com + '/' + anos.length + '</span></div>';
 }
 
 function _indLinhaHTML(p, anos, podeEditar) {
@@ -1944,7 +1955,7 @@ function _indLinhaHTML(p, anos, podeEditar) {
     + '<td class="ds-tabela__so-desktop" data-col="form">' + (p.formula ? '<span data-title="' + escapeHtml(p.formula) + '">' + escapeHtml(p.formula) + '</span>' : '—') + '</td>'
     + '<td class="ds-tabela__so-desktop ind-col-resp">' + resp + '</td>'
     + celulaAcoes
-    + '<td class="ds-tabela__card"><div class="ds-tabela__meta"></div></td>'
+    + '<td class="ds-tabela__card"><div class="ds-tabela__meta"></div><div class="ds-tabela__prog">' + _indCoberturaItemHTML(p, anos) + '</div></td>'
     + '</tr>';
 
   if (aberto) {
@@ -1970,7 +1981,7 @@ function _indMetaItens(p, anos) {
     respHtml = '<span class="ds-resp"' + (p.responsavel !== respNome ? ' data-title="' + escapeHtml(p.responsavel) + '"' : '') + '><span class="material-symbols-outlined">'
       + (p.tipoResponsavel === 'USER' ? 'person' : 'apartment') + '</span><span>' + escapeHtml(respNome) + '</span></span>';
   }
-  return [_indAlertaBadgeHTML(caso), respHtml].concat(_indChipsVinculoLista(p)).concat([_indCoberturaBadgeHTML(p, anos)]);
+  return [_indAlertaBadgeHTML(caso), respHtml].concat(_indChipsVinculoLista(p));
 }
 
 function _indRenderCorpo() {
@@ -2056,7 +2067,6 @@ function abrirMenuIndicadoresMais(ev) {
 // Celular: as ferramentas da lista (que na web ficam na última coluna do cabeçalho) abrem numa gaveta
 function indAbrirMenuLista() {
   var lista = [
-    { icone: 'refresh', rotulo: 'Atualizar', onclick: 'atualizarAbaIndicadores()' },
     { icone: 'download', rotulo: 'Exportar', onclick: 'exportarIndicadoresMetasCSV()' }
   ].map(_acoesLinhaNormalizar);
   uiSheetAbrir({ titulo: 'Lista', corpo: '<div role="menu">' + _acoesLinhaItensHTML(lista, 'uiSheetFechar(); ') + '</div>' });
@@ -2257,8 +2267,13 @@ function indAbrirGaveta(id) {
   var idj = escapeHtml(String(p.id));
   uiSheetAbrir({
     titulo: p.nome,
-    corpo: (p.formula ? '<p class="ds-texto-leve" data-title="Fórmula">' + escapeHtml(p.formula) + '</p>' : '')
-      + '<div id="ind-grade-' + idj + '">' + _indGradeHTML(p, _indPermiteEdicao() && !_indSemVinculo(p)) + '</div>'
+    corpo: (p.formula ? '<p class="ds-texto-leve">' + escapeHtml(p.formula) + '</p>' : '')
+      + '<div id="ind-grade-' + idj + '">' + _indGradeHTML(p, _indPermiteMetas(p)) + '</div>'
+      + '<div class="ind-det-rodape">'
+      +   (p.frequencia ? '<span class="ind-interp"><span class="material-symbols-outlined">event_repeat</span>Aferição ' + escapeHtml(_indFreqTxt(p).toLowerCase()) + '</span>' : '')
+      +   (p.interpretacao ? '<span class="ind-interp"><span class="material-symbols-outlined">' + (_indMenorMelhor(p) ? 'trending_down' : 'trending_up') + '</span>' + escapeHtml(p.interpretacao) + '</span>' : '')
+      +   (p.unidade ? '<span class="ind-interp">Meta em ' + escapeHtml(p.unidade) + '</span>' : '')
+      + '</div>'
   });
   _indGradeCarregar(p.id);
 }

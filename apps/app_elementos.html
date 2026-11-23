@@ -2098,7 +2098,13 @@ function elImpConfirmar() {
     showMessage('error', 'Erro', escapeHtml(err.message));
   });
 }
-uiPuxarParaAtualizar('page-plano-detalhe', function() { if (typeof atualizarConteudoPlano === 'function') atualizarConteudoPlano(); });
+// Puxar para atualizar: atualiza a aba aberta do plano
+uiPuxarParaAtualizar('page-plano-detalhe', function() {
+  var aba = typeof _detAbaAtivaId === 'function' ? _detAbaAtivaId() : null;
+  if (aba === 'metas' && typeof atualizarAbaIndicadores === 'function') atualizarAbaIndicadores();
+  else if (aba === 'vinculos' && typeof atualizarAbaVinculos === 'function') atualizarAbaVinculos();
+  else if (typeof atualizarConteudoPlano === 'function') atualizarConteudoPlano();
+});
 function atualizarConteudoPlano() {
   if (!_elCtx) return;
   var tbody = document.getElementById('el-tbody');
