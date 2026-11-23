@@ -918,6 +918,7 @@ body.high-contrast {
 .ds-badge--warning { background: var(--ds-color-warning-bg); color: var(--ds-color-warning-fg); }
 .ds-badge--danger  { background: var(--ds-color-danger-bg);  color: var(--ds-color-danger-fg); }
 .ds-badge--info    { background: var(--ds-color-info-bg);    color: var(--ds-color-info-fg); }
+.ds-badge--pending { background: color-mix(in srgb, var(--ds-color-pending) 18%, var(--ds-color-surface)); color: var(--ds-color-pending); }   /* aguardando OUTRA pessoa */
 
 .ds-chip {
   display: inline-flex; align-items: center; gap: var(--ds-space-1);
@@ -21830,7 +21831,7 @@ function _execARegistrarHTML(n, f) {
   else if (f.prog) b.push('<span class="ds-badge ds-badge--warning" data-title="Há progresso a lançar"><span class="material-symbols-outlined">task_alt</span>Progresso</span>');
   if (f.indPend) b.push(_execChipHTML('speed', (f.inds - f.indPend) + ' de ' + f.inds, f.indPend + ' indicador(es) sem resultado no exercício', 'ds-badge--ico-indicador'));
   if (f.trDev) b.push('<span class="ds-badge ds-badge--warning" data-title="Ações de tratamento de risco devidas"><span class="material-symbols-outlined">shield</span>' + f.trDev + (f.trDev > 1 ? ' devidas' : ' devida') + '</span>');
-  if (f.validar) b.push('<span class="ds-badge ds-badge--info" data-title="Lançamento aguardando validação"><span class="material-symbols-outlined">hourglass_top</span>Em validação</span>');
+  if (f.validar) b.push('<span class="ds-badge ds-badge--pending" data-title="Lançamento aguardando validação"><span class="material-symbols-outlined">hourglass_top</span>Em validação</span>');
   if (!b.length) b.push('<span class="ds-badge ds-badge--success"><span class="material-symbols-outlined">check_circle</span>Em dia</span>');
   return '<div class="el-meta-chips">' + b.join('') + '</div>';
 }
@@ -21905,7 +21906,7 @@ function _execMontarHistorico(id) {
     .apiGetRegistrosExecucaoElemento(id);
 }
 
-var _EXT_SITUACAO_REGISTRO = { Validado: ['ds-badge--success', 'Validado'], Pendente: ['ds-badge--warning', 'Aguardando validação'], Rejeitado: ['ds-badge--danger', 'Rejeitado'] };
+var _EXT_SITUACAO_REGISTRO = { Validado: ['ds-badge--success', 'Validado'], Pendente: ['ds-badge--pending', 'Aguardando validação'], Rejeitado: ['ds-badge--danger', 'Rejeitado'] };
 
 function _execHistoricoHTML(registros) {
   if (!registros.length) return '<span class="ds-help">Nenhum progresso lançado.</span>';

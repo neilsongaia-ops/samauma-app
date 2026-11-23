@@ -3916,7 +3916,7 @@ function criarNoDOM(item) {
         <span class="material-symbols-outlined" style="font-size:12px;vertical-align:middle">link</span>
         Vinculado a ${nomePai}</div>`;
     } else {
-      parentLinkHtml = `<div class="ds-badge ds-badge--warning parent-link-badge"
+      parentLinkHtml = `<div class="ds-badge ds-badge--pending parent-link-badge"
         data-title="O plano superior deste vínculo ainda não foi aprovado, ou o vínculo foi desfeito">
         <span class="material-symbols-outlined" style="font-size:12px;vertical-align:middle">schedule</span>
         Vínculo pendente</div>`;
@@ -4924,18 +4924,18 @@ function renderizarGantt() {
   var headerTodayHtml = '';
   var todayLineHtml = '';
   if (hojeDentroFaixa) {
-    var badgeClass = 'ds-badge ds-badge--danger';
+    var badgeClass = 'ds-badge ds-badge--info';
     var badgeText = hojePassouLimite ? 'Hoje • Encerrado' : 'Hoje';
     var todayTooltip = 'Hoje: ' + _ganttFmtData(hoje) + (hojePassouLimite ? ' (Prazos encerrados em ' + _ganttFmtData(maxDate) + ')' : '');
     headerTodayHtml = '<div class="gantt-scale-today" style="left:' + todayPct.toFixed(2) + '%" data-title="' + escapeHtml(todayTooltip) + '"><span class="' + badgeClass + '">' + badgeText + '</span></div>';
     todayLineHtml = '<div class="gantt-today-line' + (hojePassouLimite ? ' is-overdue' : '') + '" style="left:' + todayPct.toFixed(2) + '%"></div>';
   } else if (hoje > rangeEnd) {
     var todayTooltip = 'A data atual (' + _ganttFmtData(hoje) + ') ultrapassou o período das atividades (encerradas em ' + _ganttFmtData(maxDate) + ')';
-    headerTodayHtml = '<div class="gantt-scale-today at-edge-right" data-title="' + escapeHtml(todayTooltip) + '"><span class="ds-badge ds-badge--danger">Hoje ▶ ' + _ganttFmtData(hoje) + '</span></div>';
+    headerTodayHtml = '<div class="gantt-scale-today at-edge-right" data-title="' + escapeHtml(todayTooltip) + '"><span class="ds-badge ds-badge--info">Hoje ▶ ' + _ganttFmtData(hoje) + '</span></div>';
     todayLineHtml = '<div class="gantt-today-line is-overdue at-edge-right"></div>';
   } else if (hojeAntesInicio) {
     var todayTooltip = 'A data atual (' + _ganttFmtData(hoje) + ') é anterior ao início das atividades (início em ' + _ganttFmtData(minDate) + ')';
-    headerTodayHtml = '<div class="gantt-scale-today at-edge-left" data-title="' + escapeHtml(todayTooltip) + '"><span class="ds-badge ds-badge--danger">◀ Hoje (' + _ganttFmtData(hoje) + ')</span></div>';
+    headerTodayHtml = '<div class="gantt-scale-today at-edge-left" data-title="' + escapeHtml(todayTooltip) + '"><span class="ds-badge ds-badge--info">◀ Hoje (' + _ganttFmtData(hoje) + ')</span></div>';
     todayLineHtml = '<div class="gantt-today-line at-edge-left"></div>';
   }
 
