@@ -665,6 +665,7 @@ body.high-contrast {
 .ds-tabela td.ds-tabela__nowrap { white-space: nowrap; }
 .ds-tabela__card { display: none; }
 .ds-tabela__vig { display: none; }
+.ds-tabela__so-mobile { display: none; }   /* só no celular (≤768px): a 1ª linha do item, a célula de ações do celular… */
 .ds-tabela__ordenar { display: none; }
 .ds-tabela__id { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ds-tabela__nome-wrap { flex: 0 1 auto; min-width: 0; }   /* o nome ocupa só o seu texto: chips e ícones que vêm depois ficam junto dele */
@@ -779,6 +780,7 @@ body.high-contrast {
   .ds-tabela tbody .ds-resp, .ds-tabela tbody .ds-badge--mais, .ds-tabela tbody .ds-badge--neutral, .ds-tabela tbody .ds-badge[class*="ds-badge--ico"], .ds-tabela tbody .ds-badge:not([class*=" ds-badge--"]) { background: var(--ds-color-surface); }   /* badges neutros (sem tom de status) também saem da cor do item */
   .ds-tabela tbody .ds-progresso .ds-kpi-track { flex: 1 1 auto; width: auto; }   /* na linha da lista a barra ocupa a largura disponível */
   .ds-tabela tbody .ds-tabela__so-desktop { display: none; }
+  .ds-tabela tbody .ds-tabela__so-mobile { display: revert; }
   /* linha de aviso ocupa a largura toda, sem virar cartão */
   .ds-tabela tbody tr.ds-tabela__msg { display: block; grid-column: 1 / -1; background: none; border: none; box-shadow: none; padding: 0; }
 }
@@ -1318,6 +1320,8 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-filtros { display: flex; align-items: center; gap: 8px; padding: var(--ds-pagina-filtros-pad) 0; }
 .ds-filtros__normal, .ds-filtros__selecao { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 1 1 auto; min-width: 0; }
 .ds-filtros__normal.hidden, .ds-filtros__selecao.hidden { display: none; }
+/* na faixa de seleção só o primeiro botão (cancelar, ×) leva borda; as ações em lote são botões-ícone sem borda, fundo ou sombra */
+.ds-filtros__selecao > :not(:first-child) .ds-icon-action, .ds-filtros__selecao > .ds-icon-action:not(:first-child) { border: 0; box-shadow: none; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .ds-filtros__selecao-texto { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
 .ds-filtros__divisor { width: var(--ds-borda); align-self: stretch; margin: 2px 4px; background: var(--ds-color-border); }
 .ds-filtros__pag { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
