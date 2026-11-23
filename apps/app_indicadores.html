@@ -2067,7 +2067,8 @@ function abrirMenuIndicadoresMais(ev) {
 // Celular: as ferramentas da lista (que na web ficam na última coluna do cabeçalho) abrem numa gaveta
 function indAbrirMenuLista() {
   var lista = [
-    { icone: 'download', rotulo: 'Exportar', onclick: 'exportarIndicadoresMetasCSV()' }
+    { icone: 'download', rotulo: 'Exportar', onclick: 'exportarIndicadoresMetasCSV()' },
+    { icone: 'print', rotulo: 'Imprimir', desabilitado: true }
   ].map(_acoesLinhaNormalizar);
   uiSheetAbrir({ titulo: 'Lista', corpo: '<div role="menu">' + _acoesLinhaItensHTML(lista, 'uiSheetFechar(); ') + '</div>' });
 }
