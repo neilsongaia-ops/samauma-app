@@ -340,6 +340,13 @@ body.high-contrast .ind-ano { border-color: #fff; }
 var _indicadoresSDK = criarSamaumaSDK();
 
 var _indCtx = null;
+// Ações da aba no botão flutuante do celular (host: detFabAtualizar em pages_plano_detalhe_lista.html)
+if (typeof DET_ACOES_ABA !== 'undefined') DET_ACOES_ABA.metas = function() {
+  return [
+    { icone: 'add', rotulo: 'Novo indicador', onclick: 'abrirModalIndicadorGlobal()', oculto: !_indPermiteEdicao() },
+    { icone: 'upload', rotulo: 'Importar indicadores', onclick: 'importarIndicadoresCSV()', oculto: !_indPermiteEdicao() }
+  ];
+};
 var _indCarregado = false;
 var _indCarregando = false;       // há uma chamada a apiGetAbaIndicadores em andamento
 var _indFilaAposCarga = [];       // callbacks de quem precisa dos dados carregados (indGarantirCarregado)
@@ -870,6 +877,7 @@ function _indAplicarResposta(res) {
     _indConfig = (res && res.configIndicadores) || { vinculoIndicadorLimite: null, elementosLimite: null };
     if (seletorRespInd && seletorRespInd.atualizarLimite) seletorRespInd.atualizarLimite();
     _indCarregado = true;
+    if (typeof detFabAtualizar === 'function') detFabAtualizar();
     _indCarregando = false;
 
     _indicadoresSDK.reportarDados({
@@ -1740,7 +1748,7 @@ function indMudarPagina(dir) {
   var totalPags = Math.max(1, Math.ceil(total / estadoIndicadores.itensPorPagina));
   if (dir === 'prev' && estadoIndicadores.paginaAtual > 1) estadoIndicadores.paginaAtual--;
   if (dir === 'next' && estadoIndicadores.paginaAtual < totalPags) estadoIndicadores.paginaAtual++;
-  if (estadoIndicadores.paginaAtual < 1) estadoIndicadores.paginaAtual = 1; estadoIndicadores.limiteMobile = IND_LOTE_MOBILE;
+  if (estadoIndicadores.paginaAtual < 1) estadoIndicadores.paginaAtual = 1;
   if (estadoIndicadores.paginaAtual > totalPags) estadoIndicadores.paginaAtual = totalPags;
   _indRenderCorpo();
 }
@@ -1992,7 +2000,7 @@ function _indRenderCorpo() {
   var total = listaCompleta.length, itensPag = estadoIndicadores.itensPorPagina;
   var totalPags = Math.max(1, Math.ceil(total / itensPag));
   if (estadoIndicadores.paginaAtual > totalPags) estadoIndicadores.paginaAtual = totalPags;
-  if (estadoIndicadores.paginaAtual < 1) estadoIndicadores.paginaAtual = 1; estadoIndicadores.limiteMobile = IND_LOTE_MOBILE;
+  if (estadoIndicadores.paginaAtual < 1) estadoIndicadores.paginaAtual = 1;
   var mob = _indMobile();
   var start = mob ? 0 : (estadoIndicadores.paginaAtual - 1) * itensPag;
   var lista = mob ? listaCompleta.slice(0, estadoIndicadores.limiteMobile || IND_LOTE_MOBILE) : listaCompleta.slice(start, start + itensPag);
@@ -2268,7 +2276,7 @@ function indAbrirGaveta(id) {
   var idj = escapeHtml(String(p.id));
   uiSheetAbrir({
     titulo: p.nome,
-    corpo: (p.formula ? '<p class="ds-texto-leve">' + escapeHtml(p.formula) + '</p>' : '')
+    corpo: (p.formula ? '<div class="detp-ind-formula"><span class="detp-risco-rot">Fórmula</span><span>' + escapeHtml(p.formula) + '</span></div>' : '')
       + '<div id="ind-grade-' + idj + '">' + _indGradeHTML(p, _indPermiteMetas(p)) + '</div>'
       + '<div class="ind-det-rodape">'
       +   (p.frequencia ? '<span class="ind-interp"><span class="material-symbols-outlined">event_repeat</span>Aferição ' + escapeHtml(_indFreqTxt(p).toLowerCase()) + '</span>' : '')

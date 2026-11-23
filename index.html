@@ -10425,7 +10425,9 @@ function uiToqueLongo(cont, seletor, aoPressionar) {
     if (!el || e.touches.length !== 1 || e.target.closest('input, button, a')) return;
     x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
     timer = setTimeout(function () {
-      timer = null; cont._uiToqueLongoEm = Date.now();
+      timer = null;
+      if (!el.isConnected) return;   // a lista foi redesenhada sob o dedo: o toque é de uma linha que não existe mais
+      cont._uiToqueLongoEm = Date.now();
       if (navigator.vibrate) navigator.vibrate(15);
       aoPressionar(el);
     }, 450);
