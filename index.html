@@ -716,7 +716,7 @@ body.high-contrast {
   .ds-tabela thead th { display: none; }
   .ds-tabela thead th.ds-tabela__ordenar, .ds-tabela thead th.ds-tabela__cab-acoes { position: static; }
   .ds-tabela thead th.ds-tabela__ordenar { display: block; flex: 1 1 auto; padding: 2px 0; border: none; }
-  .ds-tabela thead th.ds-tabela__cab-acoes { display: block; padding: 0; border: none; }   /* ações da lista (⋮) à direita do cabeçalho, no lugar dos modos de visualização */
+  .ds-tabela thead th.ds-tabela__cab-acoes { display: flex; align-items: center; gap: var(--ds-space-2); padding: 0; border: none; }   /* ações da lista (⋮) à direita do cabeçalho, no lugar dos modos de visualização */
   /* com a seleção ligada, o item de ordenação dá lugar a "Selecionar tudo / Desmarcar tudo" (mesma altura: a lista não se move) */
   .ds-tabela.ds-tabela--reorganizando tbody .ds-tabela__check { display: block; position: absolute; left: var(--ds-space-1); top: 50%; transform: translateY(-50%); width: auto; padding: 0; }
   .ds-tabela--reorganizando tbody .ds-tabela__expandir { display: none; }

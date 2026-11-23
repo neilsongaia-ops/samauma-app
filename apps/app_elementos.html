@@ -1330,7 +1330,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
             <thead>
               <tr>
                 <th class="ds-tabela__ordenar"><span class="ds-tabela__rotulo">Lista</span></th>
-                <th class="ds-tabela__cab-acoes"><button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ui.chamar" data-chamada-click="elAbrirMenuLista()" aria-haspopup="menu" data-title="Opções da lista" aria-label="Opções da lista"><span class="material-symbols-outlined">more_vert</span></button></th>
+                <th class="ds-tabela__cab-acoes"><button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ui.chamar" data-chamada-click="elAvisarModosVisualizacao()" data-title="Modo de visualização: lista" aria-label="Modo de visualização: lista"><span class="material-symbols-outlined">view_list</span></button><button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ui.chamar" data-chamada-click="elAbrirMenuLista()" aria-haspopup="menu" data-title="Opções da lista" aria-label="Opções da lista"><span class="material-symbols-outlined">more_vert</span></button></th>
                 <th class="ds-tabela__check">
                   <input type="checkbox" id="chk-select-all-el" data-on-change="el.37" aria-label="Selecionar todos">
                   <label for="chk-select-all-el" class="ds-tabela__card">Selecionar tudo</label>
@@ -4323,6 +4323,10 @@ function _elAtualizarBotaoFiltro(campo) {
 
 /* Celular: as pílulas de filtro só aparecem com a busca do topo aberta ou com filtro aplicado (uiFiltrosMobileSincronizar) */
 function _elMobile() { return window.matchMedia('(max-width: 768px)').matches; }
+// Celular: a lista é o único modo; o botão do modo (ao lado do ⋮ do cabeçalho) avisa onde ver os outros
+function elAvisarModosVisualizacao() {
+  showMessage('info', 'Outros modos de visualização', 'Para ver os elementos como organograma, tabela 5W2H ou Gantt, acesse o Samaúma na versão web.');
+}
 function _elFiltrosMobileSincronizar() {
   uiFiltrosMobileSincronizar(document.getElementById('el-filtros-normal'), _filtrosElementos.tipo || _filtrosElementos.resp);
 }
