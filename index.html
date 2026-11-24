@@ -676,6 +676,13 @@ body.high-contrast {
 .ds-tabela td.ds-tabela__nowrap { white-space: nowrap; }
 .ds-tabela__card { display: none; }
 .ds-tabela__vig { display: none; }
+/* Nome do plano (docs/principios_produto.md §12): nome completo na web, sigla no celular. Marcação por uiNomePlano(nome, sigla). */
+.ds-nome-plano { display: inline; }
+.ds-nome-plano__sigla { display: none; }
+@media (max-width: 768px) {
+  .ds-nome-plano__cheio { display: none; }
+  .ds-nome-plano__sigla { display: inline; }
+}
 .ds-tabela__so-mobile { display: none; }   /* só no celular (≤768px): a 1ª linha do item, a célula de ações do celular… */
 .ds-tabela__ordenar { display: none; }
 .ds-tabela__id { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -10339,9 +10346,16 @@ function uiContadoresAtualizar(raiz) {
 document.addEventListener('input', function (e) { uiContadorAtualizar(e.target); });
 
 // Título de página (.ds-pagina__titulo) com texto dinâmico: ocupa uma linha só (reticências) e o nome completo vai no tooltip. Sem texto, limpa o tooltip.
-function uiTituloPagina(el, texto) {
+// Nome do plano: completo na web, sigla no celular (≤768px). Sem sigla vale o nome. Devolve HTML escapado.
+function uiNomePlano(nome, sigla) {
+  if (!sigla) return escapeHtml(nome || '');
+  return '<span class="ds-nome-plano"><span class="ds-nome-plano__cheio">' + escapeHtml(nome || '') + '</span><span class="ds-nome-plano__sigla">' + escapeHtml(sigla) + '</span></span>';
+}
+
+// Com sigla (3º argumento), o título é o nome do plano: nome completo na web, sigla no celular; o tooltip traz sempre o nome completo.
+function uiTituloPagina(el, texto, sigla) {
   if (!el) return;
-  el.textContent = texto || '';
+  if (sigla) el.innerHTML = uiNomePlano(texto, sigla); else el.textContent = texto || '';
   if (texto) el.setAttribute('data-title', texto); else el.removeAttribute('data-title');
 }
 
@@ -13133,7 +13147,7 @@ function _renderizarTabela(planos) {
       '<td class="ds-tabela__principal"><div class="ds-tabela__id">' +
         '<span class="ds-badge-tipo ds-tabela__tipo">' + escapeHtml(p.tipo || '—') + '</span>' +
         '<div class="ds-tabela__nome-wrap">' +
-          '<div class="ds-tabela__nome" data-title="' + escapeHtml(p.nome) + '">' + (p.sigla ? '<span class="ds-tabela__codigo">' + escapeHtml(p.sigla) + '</span>' : '') + escapeHtml(p.nome) + '</div>' +
+          '<div class="ds-tabela__nome" data-title="' + escapeHtml(p.nome) + '">' + (p.sigla ? '<span class="ds-tabela__codigo ds-nome-plano__cheio">' + escapeHtml(p.sigla) + '</span>' : '') + uiNomePlano(p.nome, p.sigla) + '</div>' +
         '</div></div></td>' +
       '<td class="ds-tabela__vig">' + vigencia + '</td>' +
       '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + respHtml + '</td>' +
@@ -17698,7 +17712,7 @@ function renderizarHeader() {
 
   const p = dadosDetalhados.plano;
   detKpiRenderizar();
-  uiTituloPagina(document.getElementById('det-titulo'), p.nome || 'Sem Nome');
+  uiTituloPagina(document.getElementById('det-titulo'), p.nome || 'Sem Nome', p.sigla);
   if (typeof calPrazosRender === 'function') calPrazosRender('det-prazos', p.id);
   // Tipo/vigência/responsável/visibilidade saíram do cabeçalho — vivem em #detp-panel
   // (aba Detalhes), montado por _detpRenderDetalhes() ao fim desta função.
@@ -19561,7 +19575,7 @@ function carregarDadosExecucao() {
 // --- HEADER E PAINEL LATERAL DE DETALHES ---
 
 function execTarefasRenderizarHeader(p, primeiraCarga) {
-  uiTituloPagina(document.getElementById('ext-titulo'), p.nome || 'Sem Nome');
+  uiTituloPagina(document.getElementById('ext-titulo'), p.nome || 'Sem Nome', p.sigla);
   if (typeof calPrazosRender === 'function') calPrazosRender('ext-prazos', estadoExecTarefas.idPlano);
 
   var elStatus = document.getElementById('ext-status');
