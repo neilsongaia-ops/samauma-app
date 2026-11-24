@@ -4463,9 +4463,11 @@ var SeletorOpcao = (function () {
 
             <div class="ds-field" id="plano-selresp-principal"></div>
 
-            <div class="ds-divisor"></div>
+            <div class="ds-divisor" id="plano-resp-divisor"></div>
 
             <div class="ds-field" id="plano-selresp-adic"></div>
+
+            <div class="ds-field hidden" id="plano-selresp-partes"></div>
           </div>
 
           <!-- ETAPA 4: COMPLEMENTOS -->
@@ -4584,12 +4586,12 @@ let cacheUsuariosPlano = [];
 
 // Espelha TIPO_PLANO_SUPERIOR_ACEITO do backend (Estratégico também aceita Estratégico).
 const PLW_SUP_DE = { 'Estratégico': 'Estratégico', 'Tático': 'Estratégico', 'Operacional': 'Tático' };
-// Situação → categoria gravada pelo servidor (docs/especificacoes/tipos_de_plano.md §7). O nome do tipo não aparece na tela. A Cooperação (fase 2) já aparece, ainda desligada.
+// Situação → categoria gravada pelo servidor (docs/especificacoes/tipos_de_plano.md §7). O nome do tipo não aparece na tela.
 const PLW_SITUACOES = [
   { cat: 'PESSOAL', texto: 'Só eu vou executar', explica: 'Plano seu: você elabora e executa, sem etapa de análise.' },
   { cat: 'DE_UNIDADE', texto: 'A minha unidade', explica: 'Conduzido por uma unidade; passa por análise e segue a hierarquia dela.' },
   { cat: 'NEGOCIADO', texto: 'Alguém que eu supervisiono, ou o meu superior', explica: 'Pactuado entre o servidor e a chefia: cancelar, concluir ou prorrogar exige a concordância dos dois.' },
-  { cat: 'COOPERACAO', texto: 'Várias partes, cada uma com a sua tarefa', explica: 'Em breve.', emBreve: true }
+  { cat: 'COOPERACAO', texto: 'Várias partes, cada uma com a sua tarefa', explica: 'Unidades e pessoas que executam, cada uma a sua parte. Todas precisam aceitar o plano na análise e concordar para cancelar, concluir ou prorrogar.' }
 ];
 const PLW_PASSOS = [
   { titulo: 'Situação', desc: 'Para quem é o plano', campos: ['situacao'] },
@@ -4599,7 +4601,7 @@ const PLW_PASSOS = [
 ];
 
 var _plwEstado = null;
-var _plwSelPrincipal = null, _plwSelAdic = null, _plwSelSup = null;
+var _plwSelPrincipal = null, _plwSelAdic = null, _plwSelPartes = null, _plwSelSup = null;
 var _plwSupDisponiveis = [];
 function _plwEstadoInicial() {
   return { atual: 1, visitadas: {}, transicionando: false, timer: null, edicao: false, bloq: false,
@@ -4648,7 +4650,8 @@ function _plwErros() {
   if (!ini || !fim) e.vig = 'Informe o início e o fim da vigência.';
   else if (fim < ini) e.vig = 'O fim não pode ser anterior ao início.';
   if (!_plwEstado.situacao) e.situacao = 'Escolha a situação do plano.';
-  if (!_plwPrincipal()) e.resp = 'Escolha quem responde pelo plano.';
+  if (_plwEstado.situacao === 'COOPERACAO') { if (!_plwSelPartes || _plwSelPartes.getLista().length < 2) e.resp = 'Escolha ao menos duas partes.'; }
+  else if (!_plwPrincipal()) e.resp = 'Escolha quem responde pelo plano.';
   return e;
 }
 function _plwPassoValido(n) { var e = _plwErros(); return PLW_PASSOS[n - 1].campos.every(function(c) { return !e[c]; }); }
@@ -4788,11 +4791,11 @@ function _plwUsuariosPermitidos(lista, semPrincipal) {
     return !(p && p.tipo === 'USER' && String(p.id) === String(u.id));
   });
 }
-// Visibilidade padrão por categoria (espelha planoVisibilidadePadrao do servidor): Privado no Pessoal e no Negociado, Público no Plano de Unidade.
+// Visibilidade padrão por categoria (espelha planoVisibilidadePadrao do servidor): Privado no Pessoal e no Negociado, Público no Plano de Unidade e na Cooperação.
 // Vale só na criação e até o criador escolher.
 function _plwAplicarVisibilidadePadrao() {
   if (_plwEstado.edicao || _plwEstado.visManual) return;
-  _plwDefinirVisibilidade(_plwEstado.situacao === 'DE_UNIDADE' ? 'Público' : 'Privado');
+  _plwDefinirVisibilidade(_plwEstado.situacao === 'DE_UNIDADE' || _plwEstado.situacao === 'COOPERACAO' ? 'Público' : 'Privado');
 }
 function _plwVisibilidade() { return _plwEl('input-plano-publico').checked ? 'Público' : 'Privado'; }
 function _plwDefinirVisibilidade(v) { _plwEl('input-plano-publico').checked = v !== 'Privado'; }
@@ -4817,7 +4820,7 @@ function _plwRenderSituacoes() {
   var wrap = _plwEl('plw-situacoes'), st = _plwEstado;
   wrap.innerHTML = PLW_SITUACOES.map(function(s) {
     var sel = st.situacao === s.cat;
-    return '<button type="button" role="radio" aria-checked="' + sel + '" class="ds-destaque ds-destaque--opcao' + (sel ? ' is-selecionada' : '') + '"' + ((st.edicao || s.emBreve) ? ' disabled' : '') + ' data-on-click="components_modal_plano.12" data-rclick0="' + s.cat + '">'
+    return '<button type="button" role="radio" aria-checked="' + sel + '" class="ds-destaque ds-destaque--opcao' + (sel ? ' is-selecionada' : '') + '"' + (st.edicao ? ' disabled' : '') + ' data-on-click="components_modal_plano.12" data-rclick0="' + s.cat + '">'
       + '<span class="ds-destaque__titulo">' + escapeHtml(s.texto) + '</span>'
       + '<span class="ds-destaque__texto">' + escapeHtml(s.explica) + '</span></button>';
   }).join('');
@@ -4833,9 +4836,20 @@ function _plwEscolherSituacao(cat) {
     var eu = cacheUsuariosPlano.find(function(u) { return String(u.id) === _plwMeuId(); });
     if (eu) _plwSelPrincipal.setLista([{ id: String(eu.id), tipo: 'USER', nome: eu.nome }]);
   }
+  if (cat === 'COOPERACAO' && !_plwSelPartes.getLista().length && _plwMeuId()) {
+    var eu2 = cacheUsuariosPlano.find(function(u) { return String(u.id) === _plwMeuId(); });
+    if (eu2) _plwSelPartes.setLista([{ id: String(eu2.id), tipo: 'USER', nome: eu2.nome }]); // quem propõe é uma das partes
+  }
+  _plwAplicarEtapaResp();
   _plwAplicarVisibilidadePadrao();
   _plwRenderSituacoes();
   _plwRenderRail();
+}
+// Na Cooperação não há principal nem adicionais: a etapa de responsáveis mostra só as partes.
+function _plwAplicarEtapaResp() {
+  var coop = _plwEstado.situacao === 'COOPERACAO';
+  ['plano-selresp-principal', 'plano-resp-divisor', 'plano-selresp-adic'].forEach(function(id) { _plwEl(id).classList.toggle('hidden', coop); });
+  _plwEl('plano-selresp-partes').classList.toggle('hidden', !coop);
 }
 
 // Cria os campos de seleção na primeira abertura (os containers já estão no DOM; os componentes são carregados antes).
@@ -4856,6 +4870,12 @@ function _plwIniciarSeletores() {
     getUnidades: function() { return cacheUnidadesPlano; }, getUsuarios: function() { return cacheUsuariosPlano; },
     filtroUnidades: function(l) { return _plwUnidadesPermitidas(l, true); },
     filtroUsuarios: function(l) { return _plwUsuariosPermitidos(l, true); },
+    onChange: _plwRenderRail
+  });
+  _plwSelPartes = SeletorResponsaveis.criar({
+    containerId: 'plano-selresp-partes',
+    label: 'Partes', helpText: 'Unidades e pessoas que executam o plano, cada uma a sua parte, todas com o mesmo peso. Quem propõe precisa ser uma delas (ou dirigir uma unidade-parte). Cada parte é convidada quando o plano vai à análise.',
+    getUnidades: function() { return cacheUnidadesPlano; }, getUsuarios: function() { return cacheUsuariosPlano; },
     onChange: _plwRenderRail
   });
   _plwSelSup = SeletorLista.criar({
@@ -4886,6 +4906,10 @@ function _plwResumoPasso(n) {
     var ini = _plwEl('input-plano-ano-inicio').value, fim = _plwEl('input-plano-ano-fim').value, v = '';
     if (ini && fim && fim >= ini) v = ini.slice(0, 4) + (fim.slice(0, 4) !== ini.slice(0, 4) ? '–' + fim.slice(0, 4) : '');
     return [_plwEl('input-tipo-plano').value, v, (_plwEl('input-plano-nome').value || '').trim()].filter(Boolean).join(' · ');
+  }
+  if (n === 3 && _plwEstado.situacao === 'COOPERACAO') {
+    var qp = _plwSelPartes ? _plwSelPartes.getLista().length : 0;
+    return qp ? qp + (qp > 1 ? ' partes' : ' parte') : '';
   }
   if (n === 3) {
     var p = _plwPrincipal(), qtd = _plwSelAdic ? _plwSelAdic.getLista().length : 0;
@@ -4989,6 +5013,8 @@ function _plwResetar(edicao) {
   _plwEl('plano-vis-aviso').classList.add('hidden');
   _plwSelPrincipal.limpar();
   _plwSelAdic.limpar();
+  _plwSelPartes.limpar();
+  _plwAplicarEtapaResp();
   _plwSelSup.limpar();
   _plwLimparErro(_plwEl('input-plano-nome'), 'ds-input--error', 'plano-nome-erro');
   _plwLimparErro(_plwEl('input-tipo-plano'), 'ds-select--error', 'input-tipo-plano-erro');
@@ -5063,6 +5089,10 @@ function abrirModalEdicaoPlano(idPlano) {
       _plwSelAdic.setLista((plano.responsaveisAdicionais || []).map(function(r) {
         return { id: String(r.id), tipo: r.tipo === 'USER' ? 'USER' : 'UNIDADE', nome: r.nome || '' };
       }));
+      _plwSelPartes.setLista((plano.partes || []).map(function(r) {
+        return { id: String(r.id), tipo: r.tipo === 'USER' ? 'USER' : 'UNIDADE', nome: r.nome || '' };
+      }));
+      _plwAplicarEtapaResp();
       _plwCarregarConfigVinculo(String(idPlano)); // interruptor "mesmo nível" deste plano (segundo plano)
 
       // Otimista: mostra o nome que já veio do servidor; quando os caches chegam, o campo se reidrata com sigla/nome completos.
@@ -5093,6 +5123,7 @@ function _plwAplicarBloqueio(v) {
   SeletorOpcao.sincronizar(_plwEl('modal-novo-plano'));
   _plwSelPrincipal.setDisabled(!!v);
   _plwSelAdic.setDisabled(!!v);
+  _plwSelPartes.setDisabled(!!v);
   _plwEl('aviso-edicao-revisao').classList.toggle('hidden', !v);
   _plwRenderPresets();
   _plwAtualizarSup();
@@ -5123,6 +5154,7 @@ function _plwReidratar() {
   if (!_plwSelPrincipal) return;
   _plwSelPrincipal.setLista(_plwSelPrincipal.getLista());
   _plwSelAdic.setLista(_plwSelAdic.getLista());
+  _plwSelPartes.setLista(_plwSelPartes.getLista());
   _plwAplicarVisibilidadePadrao();
   _plwRenderRail();
 }
@@ -5131,7 +5163,7 @@ function _plwReidratar() {
 function _plwSalvar(e) {
   e.preventDefault();
   if (!_plwValidarEtapas([1, 2, 3, 4])) return;
-  const form = e.target, principal = _plwPrincipal();
+  const form = e.target, principal = _plwPrincipal(), coop = _plwEstado.situacao === 'COOPERACAO';
   const dadosPlano = {
     nome: form.nome.value.trim(),
     sigla: form.sigla.value.trim(),
@@ -5139,13 +5171,17 @@ function _plwSalvar(e) {
     anoInicio: _plwEl('input-plano-ano-inicio').value, // "AAAA-MM-DD"
     anoFim: _plwEl('input-plano-ano-fim').value,       // "AAAA-MM-DD"
     categoria: _plwEstado.situacao,
-    idResponsavel: principal.id,
-    tipoResponsavel: principal.tipo,
-    responsaveisAdicionais: _plwSelAdic.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; }),
     idsPlanoSuperior: _plwSelSup.getIds(),
     observacao: form.observacao.value,
     visibilidade: _plwVisibilidade()
   };
+  if (coop) {
+    dadosPlano.partes = _plwSelPartes.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; });
+  } else {
+    dadosPlano.idResponsavel = principal.id;
+    dadosPlano.tipoResponsavel = principal.tipo;
+    dadosPlano.responsaveisAdicionais = _plwSelAdic.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; });
+  }
 
   const idEdicao = _plwEl('input-plano-id-edicao').value;
   mostrarLoader();
@@ -16681,10 +16717,14 @@ function tramitarPlano(acao) {
   if(acao === 'RESTAURAR') msg = 'Restaurar este plano para o status anterior à exclusão/cancelamento?';
   // Administrador cancelando um plano que não é seu: justificativa obrigatória (o servidor confere)
   const pedeJustificativa = acao === 'CANCELAR' && !!(dadosDetalhados.plano.permissoes && dadosDetalhados.plano.permissoes.cancelarPorAdmin);
-  if (pedeJustificativa) msg += '<br><br><textarea id="tramitar-justificativa" class="ds-input" rows="3" maxlength="500" placeholder="Justificativa (mínimo de 10 caracteres)" aria-label="Justificativa do cancelamento" style="width:100%"></textarea>';
+  // Cooperação: recusar o plano na análise é uma decisão da parte e exige o motivo (o servidor confere)
+  const recusaCooperacao = acao === 'DEVOLVER' && dadosDetalhados.plano.categoria === 'COOPERACAO' && !emAnaliseRevisao;
+  const pedeTexto = pedeJustificativa || recusaCooperacao;
+  if (recusaCooperacao) msg = 'Recusar o plano? Ele volta para a elaboração e quem propôs é avisado do motivo.';
+  if (pedeTexto) msg += '<br><br><textarea id="tramitar-justificativa" class="ds-input" rows="3" maxlength="500" placeholder="' + (recusaCooperacao ? 'Motivo da recusa' : 'Justificativa (mínimo de 10 caracteres)') + '" aria-label="' + (recusaCooperacao ? 'Motivo da recusa' : 'Justificativa do cancelamento') + '" style="width:100%"></textarea>';
 
   showConfirm('Atualizar Status', msg, function() {
-    const campoJust = pedeJustificativa ? document.getElementById('tramitar-justificativa') : null;
+    const campoJust = pedeTexto ? document.getElementById('tramitar-justificativa') : null;
     const justificativa = campoJust ? campoJust.value : '';
     mostrarLoader();
     google.script.run
@@ -16692,7 +16732,9 @@ function tramitarPlano(acao) {
         esconderLoader();
         invalidarCacheListaPlanos();
         carregarDetalhesPlano(dadosDetalhados.plano.id, _metaOtimistaDoAtual());
-        if (res && res.status === 'pendente') {
+        if (res && res.status === 'pendente' && res.faltam) {
+          showMessage('success', 'Aceite registrado', 'Seu aceite foi registrado. O plano segue em análise até todas as partes aceitarem.');
+        } else if (res && res.status === 'pendente') {
           showMessage('success', 'Solicitação registrada', 'Solicitação registrada — aguardando confirmação da outra parte.');
         } else {
           showMessage('success', 'Sucesso', 'Status do plano atualizado.');
@@ -17932,8 +17974,11 @@ function _detpRenderDetalhes() {
       (p.planosSuperiores || []).map(function(s) { return escapeHtml(s.nome || ''); }).join(', ')) +
     _detpLinha('Visibilidade', escapeHtml(p.visibilidade || 'Público'));
 
-  const responsaveis = [{ nome: p.nomeUnidade, tipo: p.tipoResponsavel, papel: 'Principal' }]
-    .concat((p.responsaveisAdicionais || []).map(function(a) { return { nome: a.nome, tipo: a.tipo, papel: 'Adicional' }; }));
+  const DECISAO_PARTE = { ACEITOU: 'Aceitou', RECUSOU: 'Recusou' };
+  const responsaveis = p.categoria === 'COOPERACAO'
+    ? (p.partes || []).map(function(a) { return { nome: a.nome, tipo: a.tipo, papel: p.status === 'Em Análise' ? (DECISAO_PARTE[a.decisao] || 'Aguardando') : 'Parte' }; })
+    : [{ nome: p.nomeUnidade, tipo: p.tipoResponsavel, papel: 'Principal' }]
+      .concat((p.responsaveisAdicionais || []).map(function(a) { return { nome: a.nome, tipo: a.tipo, papel: 'Adicional' }; }));
   const htmlResp = responsaveis.map(function(r) {
     const icone = r.tipo === 'USER' ? 'person' : 'apartment';
     return '<div class="detp-resp-item"><span class="material-symbols-outlined">' + icone + '</span>'
