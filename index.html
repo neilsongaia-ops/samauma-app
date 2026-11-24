@@ -12095,8 +12095,8 @@ function _hmAcoesItem(p, i) {
     return '<button class="elem-tb-btn" data-title="Confirmar" aria-label="Confirmar"'
       + ' style="color:var(--ds-color-success)" data-on-click="pages_home.10" data-aclick0="' + escapeJsAttr(p.idItem) + '" data-aclick1="' + escapeJsAttr(p.titulo) + '">'
       + '<span class="material-symbols-outlined">check_circle</span></button>'
-      + '<button class="elem-tb-btn" data-title="Recusar" aria-label="Recusar"'
-      + ' style="color:var(--ds-color-danger)" data-on-click="pages_home.11" data-aclick0="' + escapeJsAttr(p.idItem) + '" data-aclick1="' + escapeJsAttr(p.titulo) + '">'
+      + '<button class="elem-tb-btn" data-title="Abrir o plano para recusar" aria-label="Abrir o plano para recusar"'
+      + ' style="color:var(--ds-color-danger)" data-on-click="pages_home.13" data-aclick0="' + escapeJsAttr(p.idPlano) + '">'
       + '<span class="material-symbols-outlined">cancel</span></button>';
   }
   return '<span class="material-symbols-outlined" style="color:var(--ds-color-text-muted);font-size:20px">chevron_right</span>';
@@ -12139,13 +12139,10 @@ function hmEnviarRespostaColaboracao(idSolicitacao, resposta, ciente) {
     .apiResponderSolicitacaoColaboracao(idSolicitacao, resposta, '', ciente);
 }
 
-function hmResponderSolicitacao(idSolicitacao, resposta, contexto) {
-  const titulo = resposta === 'CONFIRMAR' ? 'Confirmar solicitação?' : 'Recusar solicitação?';
-  const msg = (resposta === 'CONFIRMAR'
-    ? 'A ação combinada será executada no plano.'
-    : 'A solicitação será recusada e nada mudará no plano.')
-    + '<br><br><strong>' + escapeHtml(contexto || '') + '</strong>';
-  showConfirm(titulo, msg, function() {
+// Confirmar é inline; recusar abre o plano, onde o motivo é pedido (a recusa exige motivo)
+function hmConfirmarSolicitacao(idSolicitacao, contexto) {
+  const msg = 'A ação combinada será executada no plano.<br><br><strong>' + escapeHtml(contexto || '') + '</strong>';
+  showConfirm('Confirmar solicitação?', msg, function() {
     mostrarLoader();
     google.script.run
       .withSuccessHandler(function() {
@@ -12156,7 +12153,7 @@ function hmResponderSolicitacao(idSolicitacao, resposta, contexto) {
         esconderLoader();
         showMessage('error', 'Erro', escapeHtml(err.message));
       })
-      .apiResponderSolicitacao(idSolicitacao, resposta, '');
+      .apiResponderSolicitacao(idSolicitacao, 'CONFIRMAR', '');
   });
 }
 
@@ -12297,8 +12294,7 @@ uiRegistrarAcoes('pages_home', {
   '7': function (event) { hmExecutarAcao(uiArgLit(this.dataset.rclick0)); },
   '8': function (event) { hmResponderColaboracao(uiArgJs(this.dataset.aclick0),'ACEITAR', this.dataset.aclick1 === 'true'); },
   '9': function (event) { hmResponderColaboracao(uiArgJs(this.dataset.aclick0),'RECUSAR'); },
-  '10': function (event) { hmResponderSolicitacao(uiArgJs(this.dataset.aclick0),'CONFIRMAR',uiArgJs(this.dataset.aclick1)); },
-  '11': function (event) { hmResponderSolicitacao(uiArgJs(this.dataset.aclick0),'RECUSAR',uiArgJs(this.dataset.aclick1)); },
+  '10': function (event) { hmConfirmarSolicitacao(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
   '12': function (event) { hmAbrirTarefa(uiArgJs(this.dataset.aclick0)); },
   '13': function (event) { carregarDetalhesPlano(uiArgJs(this.dataset.aclick0)); }
 });
