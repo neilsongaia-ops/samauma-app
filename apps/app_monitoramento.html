@@ -1606,7 +1606,7 @@ function _monitRenderCorpo() {
       var id = escapeHtml(String(ind.id)), aberto = !!_perfExpandidos[ind.id];
       var c = _PERF_CORES_CONCEITO[ind.conceito] || { bg: 'var(--ds-color-surface-2)', text: 'var(--ds-color-text-muted)' };
       var tem = _isNum(ind.alcance);
-      var pol = ind.interpretacao === 'Menor Melhor'
+      var pol = ind.interpretacao === 'Quanto menor o valor, melhor'
         ? '<span class="material-symbols-outlined mon-ind-pol" data-title="Quanto menor, melhor">south</span>'
         : '<span class="material-symbols-outlined mon-ind-pol" data-title="Quanto maior, melhor">north</span>';
       var acoes = (typeof acoesLinhaHTML === 'function') ? acoesLinhaHTML('mon-ind-' + id, [
