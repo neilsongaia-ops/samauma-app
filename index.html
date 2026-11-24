@@ -19534,7 +19534,7 @@ function execTarefasCarregar(preservar) {
         setBreadcrumb([
           { label: 'Execução', page: 'execucao' },
           { label: 'Registros de Execução', page: 'execucao-planos' },
-          { label: dados.plano.nome }
+          { label: dados.plano.nomeCurto || dados.plano.nome }
         ]);
       }
       uiTopoPrefixo('page-execucao-tarefas', dados.plano.nomeCurto || '');

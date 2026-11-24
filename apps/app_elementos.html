@@ -1756,7 +1756,7 @@ function abrirModalEdicaoElemento(idElemento) {
       document.getElementById('input-el-id-plano').value    = el.idPlano;
       document.getElementById('input-el-pai-interno').value = el.idPai || '';
       document.getElementById('titulo-modal-elemento').innerText = 'Editar elemento';
-      document.getElementById('elwiz-eyebrow').textContent = (dadosDetalhados && dadosDetalhados.plano && dadosDetalhados.plano.nome || '').toUpperCase();
+      document.getElementById('elwiz-eyebrow').textContent = (dadosDetalhados && dadosDetalhados.plano && (dadosDetalhados.plano.nomeCurto || dadosDetalhados.plano.nome) || '').toUpperCase();
 
       // Colaboração externa: só é possível ABRIR enquanto o plano está antes da
       // execução ou em revisão (mesma janela validada no backend); fechar é sempre permitido.
@@ -2520,7 +2520,7 @@ function obterInfoElementoSuperior(idElementoSuperior) {
   // Modelo N:N (migração 2026-09): sup.nomePlanoOrigem identifica de qual
   // plano superior este elemento vem (pode haver mais de um).
   if (sup.nomePlanoOrigem) {
-    tituloCompleto += ' (' + sup.nomePlanoOrigem + ')';
+    tituloCompleto += ' (' + (sup.nomeCurtoPlanoOrigem || sup.nomePlanoOrigem) + ')'; // sigla do plano; o nome completo está no tooltip do chip
   }
   return {
     id: sup.id,
@@ -3910,8 +3910,8 @@ function criarNoDOM(item) {
   {
     const paiSuperior = (_elElementosSuperiores || []).find(p => (item.idsContribuiPara || []).map(String).indexOf(String(p.id)) > -1);
     if (paiSuperior) {
-      const nomePai = escapeHtml(paiSuperior.nomePlanoOrigem || 'Plano Superior');
-      const tooltip = `${paiSuperior.tipo}: ${paiSuperior.titulo}`;
+      const nomePai = escapeHtml(paiSuperior.nomeCurtoPlanoOrigem || paiSuperior.nomePlanoOrigem || 'Plano Superior');
+      const tooltip = `${paiSuperior.nomePlanoOrigem ? paiSuperior.nomePlanoOrigem + ' · ' : ''}${paiSuperior.tipo}: ${paiSuperior.titulo}`;
       parentLinkHtml = `<div class="ds-badge ds-badge--info parent-link-badge" data-title="${escapeHtml(tooltip)}">
         <span class="material-symbols-outlined" style="font-size:12px;vertical-align:middle">link</span>
         Vinculado a ${nomePai}</div>`;
@@ -4572,7 +4572,7 @@ function exportarElementosCSV() {
       el.justificativa || '', el.comoFazer || ''
     ].map(_csvCell).join(','));
   }
-  var nome = (dadosDetalhados.plano.nome || 'plano').replace(/[^\wÀ-ɏ]/g, '_');
+  var nome = (dadosDetalhados.plano.nomeCurto || dadosDetalhados.plano.nome || 'plano').replace(/[^\wÀ-ɏ]/g, '_');
   _downloadCSV(linhas.join('\n'), 'elementos_' + nome + '.csv');
 }
 
@@ -6107,7 +6107,7 @@ function abrirModalNovoElemento(idPaiInterno = null) {
 
   document.getElementById('input-el-id-edicao').value = '';
   document.getElementById('titulo-modal-elemento').innerText = 'Novo elemento';
-  document.getElementById('elwiz-eyebrow').textContent = (dadosDetalhados.plano.nome || '').toUpperCase();
+  document.getElementById('elwiz-eyebrow').textContent = (dadosDetalhados.plano.nomeCurto || dadosDetalhados.plano.nome || '').toUpperCase();
   document.getElementById('input-el-id-plano').value = dadosDetalhados.plano.id;
   document.getElementById('input-el-pai-interno').value = '';
 

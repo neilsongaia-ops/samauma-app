@@ -1473,7 +1473,7 @@ function exportarVinculosCSV() {
     var prog = (p.progresso == null || isNaN(Number(p.progresso))) ? '' : (Math.round(p.progresso) + '%');
     linhas.push([p.direcaoLabel, p.tipo || '', p.nome || '', vigencia, p.responsavel || '', p.status || '', prog].map(fnCell).join(','));
   });
-  var nomePlano = (_vincCtx && _vincCtx.plano && _vincCtx.plano.nome) || 'plano';
+  var nomePlano = (_vincCtx && _vincCtx.plano && (_vincCtx.plano.nomeCurto || _vincCtx.plano.nome)) || 'plano';
   var nomeLimpo = nomePlano.replace(/[^\wÀ-ɏ]/g, '_');
   if (typeof _downloadCSV === 'function') {
     _downloadCSV(linhas.join('\n'), 'vinculos_' + nomeLimpo + '.csv');

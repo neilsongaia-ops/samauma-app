@@ -1037,7 +1037,7 @@ function monitAbrirMenuOrdenar(ev) {
 function exportarMonitoramento() {
   var modo = estadoMonit.modo;
   var lista = _monitSortLista(_monitFiltrar(_monitListaAtiva()));
-  var pNome = (_monitCtx && _monitCtx.plano && _monitCtx.plano.nome) || 'plano';
+  var pNome = (_monitCtx && _monitCtx.plano && (_monitCtx.plano.nomeCurto || _monitCtx.plano.nome)) || 'plano';
   var nomePlano = pNome.replace(/[^\wÀ-ú]/g, '_');
   var linhas = [];
   var fnCell = typeof _csvCell === 'function' ? _csvCell : function(v) { return '"' + String(v || '').replace(/"/g, '""') + '"'; };

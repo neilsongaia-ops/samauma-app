@@ -2579,7 +2579,7 @@ function _rwizContextoElemento(idElemento) {
 function abrirModalRisco(risco, idElementoFixo) {
   document.getElementById('modal-risco-titulo').innerText = risco ? 'Editar risco' : 'Novo risco';
   var eyebrow = document.getElementById('rwiz-eyebrow');
-  var planoNome = (_rscCtx && _rscCtx.plano && _rscCtx.plano.nome) || '';
+  var planoNome = (_rscCtx && _rscCtx.plano && (_rscCtx.plano.nomeCurto || _rscCtx.plano.nome)) || '';
   if (eyebrow) eyebrow.textContent = planoNome;
   document.getElementById('risco-id-edicao').value    = risco ? risco.id : '';
   document.getElementById('risco-ultima-alteracao').value = risco ? risco.ultimaAlteracao : '';

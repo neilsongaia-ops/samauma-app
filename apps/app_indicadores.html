@@ -1303,7 +1303,7 @@ function _indTodasSuperiores() {
   return sups.map(function(i) {
     var elem = ((i.codigoElemento ? i.codigoElemento + ' ' : '') + (i.nomeElemento || '')).trim();
     return { id: i.id, titulo: i.nome, codigo: i.codigoElemento || '', tipo: '', meta: elem + (i.unidade ? (elem ? ' · ' : '') + i.unidade : ''), cor: '',
-      idPlanoOrigem: i.idPlanoOrigem || '', nomePlanoOrigem: i.nomePlanoOrigem || 'Plano superior',
+      idPlanoOrigem: i.idPlanoOrigem || '', nomePlanoOrigem: i.nomePlanoOrigem || 'Plano superior', nomeCurtoPlanoOrigem: i.nomeCurtoPlanoOrigem || '',
       idsElementos: (i.idsElementos || [i.idElemento]).map(String), aceitaVinculo: i.aceitaVinculo !== false };
   }).concat(_indTodasMesmoPlano());
 }
