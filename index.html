@@ -8001,10 +8001,15 @@ uiRegistrarAcoes('components_modal_pares_avaliacao', {
 
         <div class="ds-switch-linha hidden" id="unidade-wrap-ativa">
           <label class="ds-switch">
-            <input type="checkbox" role="switch" id="unidade-input-ativa" aria-labelledby="unidade-rotulo-ativa" checked>
+            <input type="checkbox" role="switch" id="unidade-input-ativa" aria-labelledby="unidade-rotulo-ativa" checked data-on-change="components_modal_unidade.6">
             <span class="ds-switch__trilho"></span>
           </label>
           <span id="unidade-rotulo-ativa">Unidade ativa</span>
+        </div>
+
+        <div class="ds-field hidden" id="unidade-wrap-sucessora">
+          <label class="ds-label" for="unidade-input-sucessora">Unidade sucessora <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Para uma unidade extinta: a série dos indicadores da sucessora continua a da extinta.">info</span></label>
+          <select id="unidade-input-sucessora" class="ds-select"></select>
         </div>
       </form>
     </div>
@@ -8054,6 +8059,7 @@ function abrirModalUnidade(id) {
   } else {
     wrapAtiva.classList.add('hidden');
   }
+  _unidadePrepararSucessora(unidade);
 
   document.getElementById('modal-unidade').classList.remove('hidden');
   if (typeof bloquearFundo === 'function') bloquearFundo();
@@ -8159,6 +8165,22 @@ document.addEventListener('click', function(e) {
   }
 });
 
+// Unidade sucessora: só aparece para unidade extinta (switch "ativa" desligado) já salva; as opções são as outras unidades ativas.
+let _unidadeSucessoraOriginal = '';
+function _unidadePrepararSucessora(unidade) {
+  const select = document.getElementById('unidade-input-sucessora');
+  _unidadeSucessoraOriginal = unidade ? (unidade.idSucessora || '') : '';
+  select.innerHTML = '<option value="">Nenhuma</option>' + (estadoUnidades.todas || []).filter(function(u) { return u.ativa && (!unidade || String(u.id) !== String(unidade.id)); }).map(function(u) {
+    return '<option value="' + escapeHtml(String(u.id)) + '">' + escapeHtml(u.sigla ? u.sigla + ' - ' + u.nome : u.nome) + '</option>';
+  }).join('');
+  select.value = _unidadeSucessoraOriginal;
+  _unidadeSucessoraMostrar();
+}
+function _unidadeSucessoraMostrar() {
+  const editando = !!document.getElementById('unidade-id-edicao').value;
+  document.getElementById('unidade-wrap-sucessora').classList.toggle('hidden', !editando || document.getElementById('unidade-input-ativa').checked);
+}
+
 function handleSalvarUnidade(event) {
   event.preventDefault();
   const payload = {
@@ -8179,10 +8201,16 @@ function handleSalvarUnidade(event) {
   mostrarLoader();
   google.script.run
     .withSuccessHandler(function() {
-      esconderLoader();
-      fecharModalUnidade();
-      showMessage('success', payload.id ? 'Unidade atualizada' : 'Unidade criada', '');
-      if (typeof carregarUnidades === 'function') carregarUnidades();
+      const sucessora = document.getElementById('unidade-input-sucessora').value;
+      const mudouSucessora = payload.id && payload.ativa === false && sucessora !== _unidadeSucessoraOriginal;
+      const concluir = function() {
+        esconderLoader();
+        fecharModalUnidade();
+        showMessage('success', payload.id ? 'Unidade atualizada' : 'Unidade criada', '');
+        if (typeof carregarUnidades === 'function') carregarUnidades();
+      };
+      if (!mudouSucessora) return concluir();
+      google.script.run.withSuccessHandler(concluir).withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); }).apiDefinirSucessoraUnidade(payload.id, sucessora);
     })
     .withFailureHandler(function(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message)); })
     .apiSalvarUnidade(payload);
@@ -8196,7 +8224,8 @@ uiRegistrarAcoes('components_modal_unidade', {
   '2': function (event) { fecharModalUnidade(); },
   '3': function (event) { handleSalvarUnidade(event); },
   '4': function (event) { _unidadeLimparPai(); },
-  '5': function (event) { _unidadeLimparDirigente(); }
+  '5': function (event) { _unidadeLimparDirigente(); },
+  '6': function (event) { _unidadeSucessoraMostrar(); }
 });
 </script>
 

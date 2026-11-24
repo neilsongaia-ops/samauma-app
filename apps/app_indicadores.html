@@ -182,6 +182,14 @@ body.high-contrast .ind-ano { border-color: #fff; }
               <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="ind.62">Trocar</button>
             </div>
 
+            <div id="indwiz-compartilhar" class="ds-switch-linha hidden">
+              <label class="ds-switch">
+                <input type="checkbox" role="switch" id="ind-compartilhar" aria-labelledby="ind-compartilhar-rotulo">
+                <span class="ds-switch__trilho"></span>
+              </label>
+              <span id="ind-compartilhar-rotulo">Compartilhar com outras unidades <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Ligado, outras unidades podem usar este indicador, com o mesmo nome e a mesma medida. Você continua sendo o único a alterá-lo.">info</span></span>
+            </div>
+
             <div class="ds-field">
               <label class="ds-label" for="ind-nome">Nome do indicador <span class="ds-obrig">obrigatório</span></label>
               <input type="text" name="nome" id="ind-nome" class="ds-input" required minlength="2" maxlength="150" placeholder="Ex: Taxa de Conclusão de Cursos" data-on-input="ind.4">
@@ -334,7 +342,7 @@ body.high-contrast .ind-ano { border-color: #fff; }
   </div>
 </div>
 
-<!-- MODAL "USAR EXISTENTE": os indicadores do dono do plano (aba Meus indicadores; Outras unidades e Consolidados chegam nas próximas fases) -->
+<!-- MODAL "USAR EXISTENTE": os indicadores do dono do plano (aba Meus indicadores) e os que outras unidades compartilharam (aba Outras unidades) -->
 <div id="modal-usar-indicador" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalUsarInd" data-on-click="ind.1">
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-usar-ind">
     <div class="modal-header">
@@ -342,10 +350,27 @@ body.high-contrast .ind-ano { border-color: #fff; }
       <button type="button" class="btn-icon-close" data-on-click="ind.63" data-title="Fechar" aria-label="Fechar"><span class="material-symbols-outlined">close</span></button>
     </div>
     <div class="modal-body">
+      <div class="ds-tabs ds-tabs--segmented" id="ind-usar-abas" role="tablist" aria-label="Origem dos indicadores">
+        <button type="button" role="tab" class="ds-tab-btn active" aria-selected="true" data-on-click="ind.67"><span>Meus indicadores</span></button>
+        <button type="button" role="tab" class="ds-tab-btn" aria-selected="false" data-on-click="ind.68"><span>Outras unidades</span></button>
+      </div>
       <div class="ds-field">
         <input type="search" id="ind-usar-busca" class="ds-input" placeholder="Buscar pelo nome" aria-label="Buscar indicador" data-on-input="ind.64">
       </div>
       <div id="ind-usar-lista" class="ds-stack ds-stack--2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DA DEFINIÇÃO DO INDICADOR (versões, compartilhar, derivar, descontinuar, transferir) e das ofertas de transferência; corpo montado em app_indicadores_definicao -->
+<div id="modal-def-ind" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalDefInd" data-on-click="ind.1">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-def-ind">
+    <div class="modal-header">
+      <h3 id="titulo-modal-def-ind">Definição do indicador</h3>
+      <button type="button" class="btn-icon-close" data-on-click="ind.66" data-title="Fechar" aria-label="Fechar"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="modal-body">
+      <div id="ind-def-corpo" class="ds-stack ds-stack--3"></div>
     </div>
   </div>
 </div>
@@ -676,6 +701,7 @@ function handleSalvarIndicador(e) {
   if (_indUsandoDef) dados.idDefinicao = _indUsandoDef.idDefinicao; // nome, medida e linha de base são da definição; o servidor os impõe
   var idEdicaoEl = document.getElementById('input-ind-id-edicao');
   var idEdicao = idEdicaoEl ? idEdicaoEl.value : '';
+  if (!idEdicao && !_indUsandoDef && !document.getElementById('indwiz-compartilhar').classList.contains('hidden')) dados.compartilhado = document.getElementById('ind-compartilhar').checked;
   var acao = idEdicao ? 'apiAtualizarIndicador' : 'apiSalvarIndicador';
   if (idEdicao) { dados.id = idEdicao; dados.ultimaAlteracao = _indUltimaAlteracao; }
 
@@ -1948,6 +1974,7 @@ function _indLinhaHTML(p, anos, podeEditar) {
     { icone: 'link', rotulo: 'Reconectar a um elemento', onclick: "lxpAbrirReanexar('" + idj + "','" + nomeJs + "')", principal: true, oculto: !temReconectar },
     { icone: 'add_chart', rotulo: 'Definir metas', onclick: "indIrParaGrade('" + idj + "')", principal: true, oculto: !_indPermiteMetas(p) },
     { icone: 'edit', rotulo: 'Editar indicador', onclick: "editarIndicador('" + idj + "')", principal: true, oculto: !podeEditar || semVinc },
+    { icone: 'speed', rotulo: 'Definição do indicador', onclick: "indAbrirDefinicao('" + idj + "')", oculto: !p.definicao },
     { icone: 'download', rotulo: 'Exportar', desabilitado: true },
     { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "indAbrirPainel('" + idj + "')", principal: true },
     { icone: 'delete', rotulo: 'Excluir indicador', onclick: "confirmarExclusaoIndicador('" + idj + "','" + nomeJs + "')", perigo: true, oculto: !podeEditar }
@@ -2090,7 +2117,8 @@ function _indRenderCorpo() {
 function abrirMenuIndicadoresMais(ev) {
   var itens = [
     { icone: 'upload', rotulo: 'Importar indicadores', descricao: 'Carregar indicadores a partir de uma planilha', onclick: 'importarIndicadoresCSV()' },
-    { icone: 'download', rotulo: 'Exportar indicadores e metas', descricao: 'Baixar indicadores e metas do plano (CSV)', onclick: 'exportarIndicadoresMetasCSV()' }
+    { icone: 'download', rotulo: 'Exportar indicadores e metas', descricao: 'Baixar indicadores e metas do plano (CSV)', onclick: 'exportarIndicadoresMetasCSV()' },
+    { icone: 'speed', rotulo: 'Ofertas de indicadores', descricao: 'Indicadores oferecidos à sua unidade e as ofertas que você enviou', onclick: 'indAbrirOfertas()' }
   ];
   if (typeof _acoesLinhaNormalizar === 'function' && typeof acoesLinhaMenu === 'function') {
     var norm = itens.map(_acoesLinhaNormalizar);
@@ -2880,6 +2908,8 @@ function _indwizIniciar(edicao) {
 // ---- "Usar existente": outro modal, com os indicadores do dono do plano (apiGetIndicadoresUsaveis). Escolher um preenche o assistente com
 // nome e medida bloqueados e a linha de base da série; o servidor impõe tudo isso de novo (apiSalvarIndicador com idDefinicao). ----
 var _indUsarLista = [];
+var _indUsarOutras = null; // aba Outras unidades (apiGetIndicadoresCompartilhados), carregada ao abrir a aba
+var _indUsarAba = 'meus';
 var _indUsandoDef = null; // { idDefinicao, nome } enquanto o assistente usa um indicador existente
 var _IND_CAMPOS_DEFINICAO = ['ind-nome', 'ind-formula', 'ind-unidade', 'ind-interpretacao', 'ind-frequencia', 'ind-regra-agregacao', 'ind-intervalo-qtd', 'ind-intervalo-unidade', 'ind-fonte-dados', 'ind-indice-base', 'input-ind-data-referencia'];
 
@@ -2897,6 +2927,18 @@ function _indUsarReiniciar(edicao) {
   if (botao) botao.classList.toggle('hidden', !!edicao);
   var aviso = document.getElementById('indwiz-aviso-uso');
   if (aviso) aviso.classList.add('hidden');
+  _indCompartilharMostrar();
+}
+
+// O interruptor "Compartilhar" só aparece na criação de indicador próprio em plano que não é pessoal (o indicador de pessoa não se compartilha).
+function _indCompartilharMostrar() {
+  var linha = document.getElementById('indwiz-compartilhar');
+  if (!linha) return;
+  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano) || {};
+  var edicao = !!(document.getElementById('input-ind-id-edicao') || {}).value;
+  var mostrar = !edicao && !_indUsandoDef && pl.categoria !== 'PESSOAL';
+  linha.classList.toggle('hidden', !mostrar);
+  if (!mostrar) document.getElementById('ind-compartilhar').checked = false;
 }
 
 function abrirModalUsarInd() {
@@ -2905,6 +2947,8 @@ function abrirModalUsarInd() {
   var elemento = document.getElementById('input-ind-id-elemento');
   var busca = document.getElementById('ind-usar-busca');
   if (busca) busca.value = '';
+  _indUsarOutras = null;
+  _indUsarAbaMarcar('meus');
   var lista = document.getElementById('ind-usar-lista');
   if (lista) lista.innerHTML = '<div class="ds-vazio ds-vazio--compacto"><p class="ds-vazio__texto">Carregando…</p></div>';
   document.getElementById('modal-usar-indicador').classList.remove('hidden');
@@ -2924,28 +2968,47 @@ function fecharModalUsarInd() {
 
 function _indUsarDataBR(iso) { return iso ? String(iso).split('-').reverse().join('/') : ''; }
 
+function _indUsarAbaMarcar(aba) {
+  _indUsarAba = aba;
+  var botoes = document.querySelectorAll('#ind-usar-abas .ds-tab-btn');
+  botoes.forEach(function(b, i) { var ativo = (i === 0) === (aba === 'meus'); b.classList.toggle('active', ativo); b.setAttribute('aria-selected', ativo ? 'true' : 'false'); });
+}
+
+function _indUsarAbaMudar(aba) {
+  _indUsarAbaMarcar(aba);
+  if (aba === 'meus' || _indUsarOutras) return _indUsarRender();
+  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano);
+  var elemento = document.getElementById('input-ind-id-elemento');
+  document.getElementById('ind-usar-lista').innerHTML = '<div class="ds-vazio ds-vazio--compacto"><p class="ds-vazio__texto">Carregando…</p></div>';
+  _indicadoresSDK.chamar('apiGetIndicadoresCompartilhados', pl.id, elemento ? elemento.value : '').then(function(res) {
+    _indUsarOutras = (res && res.indicadores) || [];
+    _indUsarRender();
+  }, function(err) { _indUsarAbaMarcar('meus'); _indUsarRender(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); });
+}
+
 function _indUsarRender() {
   var lista = document.getElementById('ind-usar-lista');
   var busca = document.getElementById('ind-usar-busca');
   if (!lista) return;
   var termo = (busca ? busca.value : '').trim().toLowerCase();
-  var itens = _indUsarLista.filter(function(i) { return !termo || i.nome.toLowerCase().indexOf(termo) > -1; });
+  var base = _indUsarAba === 'outras' ? (_indUsarOutras || []) : _indUsarLista;
+  var itens = base.filter(function(i) { return !termo || i.nome.toLowerCase().indexOf(termo) > -1; });
   if (!itens.length) {
     lista.innerHTML = '<div class="ds-vazio ds-vazio--compacto"><span class="material-symbols-outlined ds-vazio__icone">speed</span>'
-      + '<p class="ds-vazio__titulo">' + (_indUsarLista.length ? 'Nenhum indicador encontrado' : 'Ainda não há indicadores para reaproveitar') + '</p></div>';
+      + '<p class="ds-vazio__titulo">' + (base.length ? 'Nenhum indicador encontrado' : (_indUsarAba === 'outras' ? 'Nenhuma unidade compartilhou indicadores ainda' : 'Ainda não há indicadores para reaproveitar')) + '</p></div>';
     return;
   }
   lista.innerHTML = itens.map(function(i) {
-    var base = i.linhaBase ? 'Linha de base ' + String(i.linhaBase.valor) + ' (' + _indUsarDataBR(i.linhaBase.data) + ')' : '';
+    var linhaBase = i.linhaBase ? 'Linha de base ' + String(i.linhaBase.valor) + ' (' + _indUsarDataBR(i.linhaBase.data) + ')' : '';
     var usado = i.usadoNoPlano ? 'já usado neste plano' : 'usado em ' + i.usos + (i.usos === 1 ? ' plano' : ' planos');
     return '<button type="button" class="ds-destaque ds-destaque--opcao" data-on-click="ind.65" data-aclick0="' + escapeHtml(String(i.idDefinicao)) + '"' + (i.usadoNoPlano ? ' disabled' : '') + '>'
       + '<span class="ds-destaque__titulo">' + escapeHtml(i.nome) + '</span>'
-      + '<span class="ds-destaque__texto">' + [i.formula, i.unidade, i.frequencia, base, usado].filter(Boolean).map(escapeHtml).join(' · ') + '</span></button>';
+      + '<span class="ds-destaque__texto">' + [i.dono ? i.dono.sigla || i.dono.nome : '', i.formula, i.unidade, i.frequencia, linhaBase, usado].filter(Boolean).map(escapeHtml).join(' · ') + '</span></button>';
   }).join('');
 }
 
 function _indUsarEscolher(idDefinicao) {
-  var def = _indUsarLista.find(function(i) { return String(i.idDefinicao) === String(idDefinicao); });
+  var def = _indUsarLista.concat(_indUsarOutras || []).find(function(i) { return String(i.idDefinicao) === String(idDefinicao); });
   if (!def || def.usadoNoPlano) return;
   var form = document.getElementById('form-novo-indicador');
   form.nome.value = def.nome;
@@ -2962,6 +3025,7 @@ function _indUsarEscolher(idDefinicao) {
   form.dataReferencia.value = def.linhaBase ? def.linhaBase.data : '';
   _indUsarTravar(true);
   _indUsandoDef = { idDefinicao: def.idDefinicao, nome: def.nome };
+  _indCompartilharMostrar();
   document.getElementById('indwiz-uso-nome').textContent = def.nome;
   document.getElementById('indwiz-aviso-uso').classList.remove('hidden');
   document.getElementById('indwiz-usar-existente').classList.add('hidden');
@@ -2971,6 +3035,203 @@ function _indUsarEscolher(idDefinicao) {
 }
 
 // Enter avança a etapa (e salva na última), como nos outros wizards
+
+// app_indicadores_definicao — a definição do indicador (versões, compartilhar, derivar, descontinuar, transferir) e as ofertas de transferência.
+// Tudo no modal #modal-def-ind, com o corpo montado aqui; o servidor impõe cada regra de novo (docs/especificacoes/indicadores_entre_planos.md §5, §6).
+
+var _indDefId = null;       // id do indicador (uso) cuja definição está aberta
+var _indDefUnidades = null; // cache de apiGetListaUnidades para o seletor de destino
+
+function _indDefErro(err) { esconderLoader(); showMessage('error', 'Erro', escapeHtml(err.message || String(err))); }
+
+function _indDefAbrirModal(titulo) {
+  document.getElementById('titulo-modal-def-ind').textContent = titulo;
+  document.getElementById('modal-def-ind').classList.remove('hidden');
+}
+
+function fecharModalDefInd() {
+  var modal = document.getElementById('modal-def-ind');
+  if (modal) modal.classList.add('hidden');
+}
+
+// Executa uma rota da definição, recarrega a aba e fecha o modal.
+function _indDefExecutar(rota, args, mensagem) {
+  mostrarLoader();
+  _indicadoresSDK.chamar.apply(_indicadoresSDK, [rota].concat(args)).then(function() {
+    esconderLoader();
+    fecharModalDefInd();
+    carregarAbaIndicadores();
+    showMessage('success', 'Pronto', escapeHtml(mensagem));
+  }, _indDefErro);
+}
+
+function _indDefBotao(rotulo, codigo, classe) {
+  return '<button type="button" class="ds-btn ' + (classe || 'ds-btn--secondary') + ' ds-btn--sm"' + uiAtributosAcao(codigo, 'click') + '>' + escapeHtml(rotulo) + '</button>';
+}
+
+function _indDefInterruptor(id, rotulo, ligado, codigo, info) {
+  return '<div class="ds-switch-linha"><label class="ds-switch"><input type="checkbox" role="switch" id="' + id + '" aria-labelledby="' + id + '-rotulo"' + (ligado ? ' checked' : '') + uiAtributosAcao(codigo, 'change') + '>'
+    + '<span class="ds-switch__trilho"></span></label><span id="' + id + '-rotulo">' + escapeHtml(rotulo)
+    + (info ? ' <span class="material-symbols-outlined ds-info" tabindex="0" data-title="' + escapeHtml(info) + '">info</span>' : '') + '</span></div>';
+}
+
+// ---- definição do indicador
+function indAbrirDefinicao(idIndicador) {
+  var p = _indPorId(idIndicador);
+  if (!p || !p.definicao) return;
+  _indDefId = String(p.id);
+  var d = p.definicao;
+  var podeEditar = _indPermiteEdicao();
+  var versaoAtual = d.versoes.find(function(v) { return String(v.id) === String(p.idVersao); });
+  var html = '<div class="ds-destaque"><span class="ds-destaque__titulo">' + escapeHtml(p.nome) + '</span>'
+    + '<span class="ds-destaque__texto">' + escapeHtml(['Versão ' + (versaoAtual ? versaoAtual.numero : p.numeroVersao), d.origem ? 'derivado de ' + d.origem : '', d.descontinuada ? 'descontinuado' : ''].filter(Boolean).join(' · ')) + '</span></div>';
+
+  var outras = d.versoes.filter(function(v) { return String(v.id) !== String(p.idVersao) && (!v.descontinuada); });
+  if (podeEditar && outras.length) {
+    html += '<div class="ds-field"><label class="ds-label" for="ind-def-versao">Usar a versão <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Só o uso deste plano muda de versão, e só em elaboração, análise ou revisão. A série mostra a quebra quando a versão não é comparável.">info</span></label>'
+      + '<select id="ind-def-versao" class="ds-select">' + outras.map(function(v) { return '<option value="' + escapeHtml(v.id) + '">Versão ' + v.numero + (v.comparavel ? '' : ' (não comparável)') + '</option>'; }).join('') + '</select></div>'
+      + '<div class="ds-cluster">' + _indDefBotao('Migrar este uso', '_indDefMigrar()') + '</div>';
+  }
+  if (podeEditar && !d.ehDono) {
+    html += '<div class="ds-divisor"></div><div class="ds-field"><label class="ds-label" for="ind-def-derivar-nome">Derivar um indicador seu <span class="ds-obrig">obrigatório</span> <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Cria um indicador seu a partir deste, com a mesma medida. A série da sua unidade continua nele.">info</span></label>'
+      + '<input type="text" id="ind-def-derivar-nome" class="ds-input" maxlength="150" placeholder="Nome do novo indicador"></div>'
+      + '<div class="ds-cluster">' + _indDefBotao('Derivar', '_indDefDerivar()') + '</div>';
+  }
+  if (d.ehDono) {
+    html += '<div class="ds-divisor"></div>';
+    if (d.deUnidade) html += _indDefInterruptor('ind-def-comp', 'Compartilhar com outras unidades', d.compartilhado, '_indDefCompartilhar()', 'Ligado, outras unidades podem usar este indicador. Os usos que elas já têm continuam se você desligar.');
+    html += '<div class="ds-cluster">' + _indDefBotao('Criar versão', 'indAbrirNovaVersao()') + '</div>';
+    html += '<div class="ds-divisor"></div>' + _indDefInterruptor('ind-def-desc', 'Descontinuado', d.descontinuada, "_indDefDescontinuar('DEFINICAO', 0)", 'Sai da escolha para usos novos; os usos existentes continuam.');
+    html += d.versoes.map(function(v) {
+      return _indDefInterruptor('ind-def-desc-' + v.numero, 'Versão ' + v.numero + ' descontinuada', v.descontinuada, "_indDefDescontinuar('VERSAO', " + v.numero + ')');
+    }).join('');
+    if (d.deUnidade) {
+      html += '<div class="ds-divisor"></div><div class="ds-field"><label class="ds-label" for="ind-def-destino">Oferecer o indicador a outra unidade <span class="material-symbols-outlined ds-info" tabindex="0" data-title="A unidade escolhida aceita ou recusa. Aceitando, ela passa a poder alterar o indicador; a série de cada unidade continua sua.">info</span></label>'
+        + '<select id="ind-def-destino" class="ds-select"><option value="">Carregando…</option></select></div>'
+        + '<div class="ds-cluster">' + _indDefBotao('Oferecer', '_indDefOferecer()') + '</div>';
+    }
+  }
+  document.getElementById('ind-def-corpo').innerHTML = html;
+  _indDefAbrirModal('Definição do indicador');
+  if (d.ehDono && d.deUnidade) _indDefCarregarUnidades(p);
+}
+
+function _indDefCarregarUnidades(p) {
+  var preencher = function(lista) {
+    var sel = document.getElementById('ind-def-destino');
+    if (!sel) return;
+    var donoNome = '';
+    sel.innerHTML = '<option value="">Escolha a unidade</option>' + lista.filter(function(u) { return u.ativa !== false; }).map(function(u) {
+      return '<option value="' + escapeHtml(String(u.id)) + '">' + escapeHtml(u.sigla ? u.sigla + ' — ' + u.nome : u.nome) + '</option>';
+    }).join('');
+  };
+  if (_indDefUnidades) return preencher(_indDefUnidades);
+  _indicadoresSDK.chamar('apiGetListaUnidades').then(function(lista) { _indDefUnidades = lista || []; preencher(_indDefUnidades); }, _indDefErro);
+}
+
+function _indDefMigrar() {
+  var sel = document.getElementById('ind-def-versao');
+  if (sel && sel.value) _indDefExecutar('apiMigrarVersaoIndicador', [_indDefId, sel.value], 'O indicador foi migrado para a versão escolhida.');
+}
+
+function _indDefDerivar() {
+  var nome = (document.getElementById('ind-def-derivar-nome').value || '').trim();
+  if (nome.length < 2) { showMessage('error', 'Atenção', 'Informe o nome do novo indicador.'); return; }
+  _indDefExecutar('apiDerivarIndicador', [{ idIndicador: _indDefId, nome: nome }], 'O indicador derivado foi criado e a série da sua unidade continua nele.');
+}
+
+function _indDefCompartilhar() {
+  var ligado = document.getElementById('ind-def-comp').checked;
+  _indDefExecutar('apiDefinirCompartilhamentoIndicador', [_indDefId, ligado], ligado ? 'O indicador está compartilhado.' : 'O indicador deixou de ser compartilhado.');
+}
+
+function _indDefDescontinuar(escopo, numero) {
+  var id = escopo === 'DEFINICAO' ? 'ind-def-desc' : 'ind-def-desc-' + numero;
+  var dados = { idIndicador: _indDefId, escopo: escopo, descontinuada: document.getElementById(id).checked };
+  if (escopo === 'VERSAO') dados.numeroVersao = numero;
+  _indDefExecutar('apiDescontinuarIndicador', [dados], dados.descontinuada ? 'Descontinuado: os usos existentes continuam.' : 'Reativado.');
+}
+
+function _indDefOferecer() {
+  var destino = document.getElementById('ind-def-destino').value;
+  if (!destino) { showMessage('error', 'Atenção', 'Escolha a unidade de destino.'); return; }
+  _indDefExecutar('apiOferecerTransferenciaIndicador', [{ idIndicador: _indDefId, idUnidadeDestino: destino }], 'A oferta foi enviada. A outra unidade aceita ou recusa.');
+}
+
+// ---- criar versão: os campos da medida, já com os valores da versão em uso
+function indAbrirNovaVersao() {
+  var p = _indPorId(_indDefId);
+  if (!p) return;
+  var opcao = function(valor, rotulo, atual) { return '<option value="' + escapeHtml(valor) + '"' + (valor === atual ? ' selected' : '') + '>' + escapeHtml(rotulo) + '</option>'; };
+  var freqs = ['Anual', 'Semestral', 'Quadrimestral', 'Trimestral', 'Bimestral', 'Mensal', 'Personalizada'];
+  var html = '<div class="ds-field"><label class="ds-label" for="ind-ver-formula">Fórmula <span class="ds-obrig">obrigatório</span></label><input type="text" id="ind-ver-formula" class="ds-input" maxlength="500" value="' + escapeHtml(p.formula) + '"></div>'
+    + '<div class="ds-field"><label class="ds-label" for="ind-ver-unidade">Unidade de medida <span class="ds-obrig">obrigatório</span></label><input type="text" id="ind-ver-unidade" class="ds-input" maxlength="50" value="' + escapeHtml(p.unidade) + '"></div>'
+    + '<div class="ds-field"><label class="ds-label" for="ind-ver-interpretacao">Interpretação</label><select id="ind-ver-interpretacao" class="ds-select">'
+    + opcao('Quanto maior o valor, melhor', 'Quanto maior, melhor', p.interpretacao) + opcao('Quanto menor o valor, melhor', 'Quanto menor, melhor', p.interpretacao) + opcao('Igual à meta', 'Igual à meta', p.interpretacao) + '</select></div>'
+    + '<div class="ds-field"><label class="ds-label" for="ind-ver-frequencia">Frequência de aferição</label><select id="ind-ver-frequencia" class="ds-select"' + uiAtributosAcao('_indVerFrequencia()', 'change') + '>'
+    + freqs.map(function(f) { return opcao(f, f, p.frequencia); }).join('') + '</select></div>'
+    + '<div id="ind-ver-intervalo" class="ds-form-linha' + (p.frequencia === 'Personalizada' ? '' : ' hidden') + '"><div class="ds-field"><label class="ds-label" for="ind-ver-intervalo-qtd">A cada</label>'
+    + '<input type="number" id="ind-ver-intervalo-qtd" class="ds-input" min="1" max="999" value="' + escapeHtml(String(p.intervaloQtd || '')) + '"></div>'
+    + '<div class="ds-field"><label class="ds-label" for="ind-ver-intervalo-unidade">Unidade do intervalo</label><select id="ind-ver-intervalo-unidade" class="ds-select">'
+    + opcao('Dias', 'Dias', p.intervaloUnidade) + opcao('Semanas', 'Semanas', p.intervaloUnidade) + opcao('Meses', 'Meses', p.intervaloUnidade) + '</select></div></div>'
+    + '<div class="ds-field"><label class="ds-label" for="ind-ver-regra">Regra de agregação</label><select id="ind-ver-regra" class="ds-select">'
+    + opcao('ULTIMO', 'Último valor', p.regraAgregacao) + opcao('SOMA', 'Soma dos lançamentos', p.regraAgregacao) + opcao('MEDIA', 'Média dos lançamentos', p.regraAgregacao) + '</select></div>'
+    + _indDefInterruptor('ind-ver-comparavel', 'Comparável com a versão anterior', true, '_indVerComparavel()', 'Desligado, a série mostra uma quebra aqui e a nota explica por quê.')
+    + '<div id="ind-ver-nota-campo" class="ds-field hidden"><label class="ds-label" for="ind-ver-nota">Nota da quebra <span class="ds-obrig">obrigatório</span></label><input type="text" id="ind-ver-nota" class="ds-input" maxlength="500"></div>'
+    + '<div class="ds-cluster">' + _indDefBotao('Criar versão', '_indVerSalvar()', 'ds-btn--primary') + '</div>';
+  document.getElementById('ind-def-corpo').innerHTML = html;
+  _indDefAbrirModal('Nova versão do indicador');
+}
+
+function _indVerFrequencia() {
+  document.getElementById('ind-ver-intervalo').classList.toggle('hidden', document.getElementById('ind-ver-frequencia').value !== 'Personalizada');
+}
+
+function _indVerComparavel() {
+  document.getElementById('ind-ver-nota-campo').classList.toggle('hidden', document.getElementById('ind-ver-comparavel').checked);
+}
+
+function _indVerSalvar() {
+  var p = _indPorId(_indDefId);
+  var valor = function(id) { return (document.getElementById(id).value || '').trim(); };
+  var comparavel = document.getElementById('ind-ver-comparavel').checked;
+  var dados = {
+    idIndicador: _indDefId, formula: valor('ind-ver-formula'), unidade: valor('ind-ver-unidade'), interpretacao: valor('ind-ver-interpretacao'), frequencia: valor('ind-ver-frequencia'),
+    regraAgregacao: valor('ind-ver-regra'), comparavel: comparavel, nota: comparavel ? '' : valor('ind-ver-nota')
+  };
+  if (dados.frequencia === 'Personalizada') { dados.intervaloQtd = valor('ind-ver-intervalo-qtd'); dados.intervaloUnidade = valor('ind-ver-intervalo-unidade'); dados.inicioContinuo = p ? p.inicioContinuo : ''; }
+  if (!dados.formula || !dados.unidade) { showMessage('error', 'Atenção', 'Informe a fórmula e a unidade de medida.'); return; }
+  if (!comparavel && !dados.nota) { showMessage('error', 'Atenção', 'Escreva a nota que explica a quebra na série.'); return; }
+  _indDefExecutar('apiCriarVersaoIndicador', [dados], 'A nova versão foi criada. Cada plano migra o seu uso quando quiser.');
+}
+
+// ---- ofertas de transferência (recebidas e enviadas)
+function indAbrirOfertas() {
+  _indDefAbrirModal('Ofertas de indicadores');
+  document.getElementById('ind-def-corpo').innerHTML = '<div class="ds-vazio ds-vazio--compacto"><p class="ds-vazio__texto">Carregando…</p></div>';
+  _indicadoresSDK.chamar('apiGetTransferenciasIndicador').then(function(res) {
+    var unidade = function(u) { return escapeHtml(u.sigla || u.nome); };
+    var bloco = function(titulo, lista, botoes) {
+      if (!lista.length) return '';
+      return '<div class="ds-label">' + titulo + '</div>' + lista.map(function(t) {
+        return '<div class="ds-destaque"><span class="ds-destaque__titulo">' + escapeHtml(t.nome) + '</span><span class="ds-destaque__texto">' + unidade(t.origem) + ' → ' + unidade(t.destino) + '</span>'
+          + '<div class="ds-cluster">' + botoes(t) + '</div></div>';
+      }).join('');
+    };
+    var html = bloco('Recebidas', res.recebidas, function(t) {
+      return _indDefBotao('Aceitar', "_indDefResponder('" + escapeJsAttr(t.id) + "', true)", 'ds-btn--primary') + _indDefBotao('Recusar', "_indDefResponder('" + escapeJsAttr(t.id) + "', false)");
+    }) + bloco('Enviadas', res.enviadas, function(t) { return _indDefBotao('Cancelar oferta', "_indDefCancelar('" + escapeJsAttr(t.id) + "')"); });
+    document.getElementById('ind-def-corpo').innerHTML = html || '<div class="ds-vazio ds-vazio--compacto"><span class="material-symbols-outlined ds-vazio__icone">speed</span><p class="ds-vazio__titulo">Nenhuma oferta pendente</p></div>';
+  }, _indDefErro);
+}
+
+function _indDefResponder(idTransferencia, aceitar) {
+  _indDefExecutar('apiResponderTransferenciaIndicador', [idTransferencia, aceitar], aceitar ? 'Você aceitou: a sua unidade passa a ser a dona do indicador.' : 'Você recusou a oferta.');
+}
+
+function _indDefCancelar(idTransferencia) {
+  _indDefExecutar('apiCancelarTransferenciaIndicador', [idTransferencia], 'A oferta foi cancelada.');
+}
 
 // app_indicadores_eventos — registro das ações delegadas (uiRegistrarAcoes)
 uiRegistrarAcoes('ind', {
@@ -3027,7 +3288,10 @@ uiRegistrarAcoes('ind', {
   '62': function (event) { abrirModalUsarInd(); },
   '63': function (event) { fecharModalUsarInd(); },
   '64': function (event) { _indUsarRender(); },
-  '65': function (event) { _indUsarEscolher(uiArgJs(this.dataset.aclick0)); }
+  '65': function (event) { _indUsarEscolher(uiArgJs(this.dataset.aclick0)); },
+  '66': function (event) { fecharModalDefInd(); },
+  '67': function (event) { _indUsarAbaMudar('meus'); },
+  '68': function (event) { _indUsarAbaMudar('outras'); }
 });
 
 
