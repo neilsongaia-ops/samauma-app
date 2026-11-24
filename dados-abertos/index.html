@@ -546,6 +546,17 @@ body.high-contrast {
 .ds-card--interactive:hover { box-shadow: var(--ds-glass-shadow-strong); transform: translateY(-1px); }
 .ds-card--interactive:active { transform: translateY(0); }
 
+/* Destaque: bloco de superfície suave que separa do entorno um dado ou uma escolha (fórmula, situação). --opcao = clicável, uma por linha */
+.ds-destaque { display: flex; flex-direction: column; gap: var(--ds-space-1); padding: var(--ds-space-3) var(--ds-space-4); border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); }
+.ds-destaque__rotulo { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ds-destaque__titulo { font-size: var(--ds-text-base); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ds-destaque__texto { font-size: var(--ds-text-base); line-height: 1.45; color: var(--ds-color-text); overflow-wrap: anywhere; }
+.ds-destaque--opcao { width: 100%; text-align: left; font: inherit; cursor: pointer; border: var(--ds-borda) solid transparent; }
+.ds-destaque--opcao:hover { border-color: var(--ds-color-border); }
+.ds-destaque--opcao.is-selecionada { border-color: var(--ds-color-action); }
+.ds-destaque--opcao.is-selecionada .ds-destaque__titulo { color: var(--ds-color-action); }
+.ds-destaque--opcao:disabled { cursor: not-allowed; opacity: .6; }
+
 .ds-section-title {
   display: flex; align-items: center; gap: var(--ds-space-2);
   font-size: var(--ds-text-md); font-weight: var(--ds-weight-semibold);

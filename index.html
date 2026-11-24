@@ -557,6 +557,17 @@ body.high-contrast {
 .ds-card--interactive:hover { box-shadow: var(--ds-glass-shadow-strong); transform: translateY(-1px); }
 .ds-card--interactive:active { transform: translateY(0); }
 
+/* Destaque: bloco de superfície suave que separa do entorno um dado ou uma escolha (fórmula, situação). --opcao = clicável, uma por linha */
+.ds-destaque { display: flex; flex-direction: column; gap: var(--ds-space-1); padding: var(--ds-space-3) var(--ds-space-4); border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); }
+.ds-destaque__rotulo { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ds-destaque__titulo { font-size: var(--ds-text-base); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ds-destaque__texto { font-size: var(--ds-text-base); line-height: 1.45; color: var(--ds-color-text); overflow-wrap: anywhere; }
+.ds-destaque--opcao { width: 100%; text-align: left; font: inherit; cursor: pointer; border: var(--ds-borda) solid transparent; }
+.ds-destaque--opcao:hover { border-color: var(--ds-color-border); }
+.ds-destaque--opcao.is-selecionada { border-color: var(--ds-color-action); }
+.ds-destaque--opcao.is-selecionada .ds-destaque__titulo { color: var(--ds-color-action); }
+.ds-destaque--opcao:disabled { cursor: not-allowed; opacity: .6; }
+
 .ds-section-title {
   display: flex; align-items: center; gap: var(--ds-space-2);
   font-size: var(--ds-text-md); font-weight: var(--ds-weight-semibold);
@@ -4393,8 +4404,14 @@ var SeletorOpcao = (function () {
           <!-- ID do plano em edição (vazio = modo "novo plano") -->
           <input type="hidden" id="input-plano-id-edicao" value="">
 
-          <!-- ETAPA 1: IDENTIFICAÇÃO -->
+          <!-- ETAPA 1: SITUAÇÃO (só na criação decide a categoria; na edição aparece travada) -->
           <div class="wizard-step" data-step="1" id="plw-step-1">
+            <h2 class="ds-wizard__titulo-etapa">Para quem é o plano?</h2>
+            <div class="ds-field" id="plw-situacoes" role="radiogroup" aria-label="Situação do plano"></div>
+          </div>
+
+          <!-- ETAPA 2: IDENTIFICAÇÃO -->
+          <div class="wizard-step hidden" data-step="2" id="plw-step-2">
             <h2 class="ds-wizard__titulo-etapa">Identificação</h2>
 
             <div class="ds-field">
@@ -4440,20 +4457,19 @@ var SeletorOpcao = (function () {
             <small class="ds-help" id="plano-vig-msg" aria-live="polite"></small>
           </div>
 
-          <!-- ETAPA 2: RESPONSÁVEIS -->
-          <div class="wizard-step hidden" data-step="2" id="plw-step-2">
+          <!-- ETAPA 3: RESPONSÁVEIS -->
+          <div class="wizard-step hidden" data-step="3" id="plw-step-3">
             <h2 class="ds-wizard__titulo-etapa">Responsáveis</h2>
 
             <div class="ds-field" id="plano-selresp-principal"></div>
-            <div id="plano-classif" class="ds-wizard__aviso ds-wizard__aviso--corpo hidden" aria-live="polite"></div>
 
             <div class="ds-divisor"></div>
 
             <div class="ds-field" id="plano-selresp-adic"></div>
           </div>
 
-          <!-- ETAPA 3: COMPLEMENTOS -->
-          <div class="wizard-step hidden" data-step="3" id="plw-step-3">
+          <!-- ETAPA 4: COMPLEMENTOS -->
+          <div class="wizard-step hidden" data-step="4" id="plw-step-4">
             <h2 class="ds-wizard__titulo-etapa">Complementos</h2>
 
             <div class="ds-field" id="plano-selsup"></div>
@@ -4568,7 +4584,15 @@ let cacheUsuariosPlano = [];
 
 // Espelha TIPO_PLANO_SUPERIOR_ACEITO do backend (Estratégico também aceita Estratégico).
 const PLW_SUP_DE = { 'Estratégico': 'Estratégico', 'Tático': 'Estratégico', 'Operacional': 'Tático' };
+// Situação → categoria gravada pelo servidor (docs/especificacoes/tipos_de_plano.md §7). O nome do tipo não aparece na tela. A Cooperação (fase 2) já aparece, ainda desligada.
+const PLW_SITUACOES = [
+  { cat: 'PESSOAL', texto: 'Só eu vou executar', explica: 'Plano seu: você elabora e executa, sem etapa de análise.' },
+  { cat: 'DE_UNIDADE', texto: 'A minha unidade', explica: 'Conduzido por uma unidade; passa por análise e segue a hierarquia dela.' },
+  { cat: 'NEGOCIADO', texto: 'Alguém que eu supervisiono, ou o meu superior', explica: 'Pactuado entre o servidor e a chefia: cancelar, concluir ou prorrogar exige a concordância dos dois.' },
+  { cat: 'COOPERACAO', texto: 'Várias partes, cada uma com a sua tarefa', explica: 'Em breve.', emBreve: true }
+];
 const PLW_PASSOS = [
+  { titulo: 'Situação', desc: 'Para quem é o plano', campos: ['situacao'] },
   { titulo: 'Identificação', desc: 'Nome, nível e vigência', campos: ['nome', 'nivel', 'vig'] },
   { titulo: 'Responsáveis', desc: 'Principal e corresponsáveis', campos: ['resp'] },
   { titulo: 'Complementos', desc: 'Planos superiores e observações', campos: [] }
@@ -4579,7 +4603,7 @@ var _plwSelPrincipal = null, _plwSelAdic = null, _plwSelSup = null;
 var _plwSupDisponiveis = [];
 function _plwEstadoInicial() {
   return { atual: 1, visitadas: {}, transicionando: false, timer: null, edicao: false, bloq: false,
-           nivel: '', supAviso: '', mesmoNivelPermitido: true, ultimaAlteracao: null, visManual: false, visOriginal: '' };
+           situacao: '', nivel: '', supAviso: '', mesmoNivelPermitido: true, ultimaAlteracao: null, visManual: false, visOriginal: '' };
 }
 _plwEstado = _plwEstadoInicial();
 
@@ -4623,6 +4647,7 @@ function _plwErros() {
   var ini = _plwEl('input-plano-ano-inicio').value, fim = _plwEl('input-plano-ano-fim').value;
   if (!ini || !fim) e.vig = 'Informe o início e o fim da vigência.';
   else if (fim < ini) e.vig = 'O fim não pode ser anterior ao início.';
+  if (!_plwEstado.situacao) e.situacao = 'Escolha a situação do plano.';
   if (!_plwPrincipal()) e.resp = 'Escolha quem responde pelo plano.';
   return e;
 }
@@ -4637,6 +4662,7 @@ function _plwMarcarErro(campo, classe, erroId, msg) {
 // Mostra os erros dos campos da etapa n e põe o foco no primeiro com pendência.
 function _plwMostrarErros(n) {
   var e = _plwErros(), campos = PLW_PASSOS[n - 1].campos, foco = null;
+  if (campos.indexOf('situacao') > -1 && e.situacao) foco = _plwEl('plw-situacoes').querySelector('button');
   if (campos.indexOf('nome') > -1) {
     _plwMarcarErro(_plwEl('input-plano-nome'), 'ds-input--error', 'plano-nome-erro', e.nome);
     if (e.nome) foco = foco || _plwEl('input-plano-nome');
@@ -4743,6 +4769,7 @@ function _plwCarregarConfigVinculo(idPlano) {
 
 // ---------------- responsáveis ----------------
 function _plwUnidadesPermitidas(lista, semPrincipal) {
+  if (!semPrincipal && _plwEstado.situacao && _plwEstado.situacao !== 'DE_UNIDADE') return [];
   var comp = _plwCompetencia(), p = semPrincipal ? _plwPrincipal() : null;
   return lista.filter(function(u) {
     if (comp && comp.indexOf(String(u.id)) < 0) return false;
@@ -4751,6 +4778,8 @@ function _plwUnidadesPermitidas(lista, semPrincipal) {
 }
 // Servidor responsável: lotação de quem indica + subunidades, salvo com RESPONSAVEL_PLANO_QUALQUER_SERVIDOR ligada.
 function _plwUsuariosPermitidos(lista, semPrincipal) {
+  if (!semPrincipal && _plwEstado.situacao === 'DE_UNIDADE') return [];
+  if (!semPrincipal && _plwEstado.situacao === 'PESSOAL') return lista.filter(function(u) { return String(u.id) === _plwMeuId(); });
   var comp = _plwCompetencia(), compSet = comp ? new Set(comp) : null, p = semPrincipal ? _plwPrincipal() : null;
   var escopo = uiEscopoRespIdsUnidades(cacheUnidadesPlano, 'RESPONSAVEL_PLANO_QUALQUER_SERVIDOR');
   return lista.filter(function(u) {
@@ -4759,12 +4788,11 @@ function _plwUsuariosPermitidos(lista, semPrincipal) {
     return !(p && p.tipo === 'USER' && String(p.id) === String(u.id));
   });
 }
-// Visibilidade padrão por categoria (espelha planoVisibilidadePadrao do servidor): Privado no plano Pessoal, Público nos demais.
+// Visibilidade padrão por categoria (espelha planoVisibilidadePadrao do servidor): Privado no Pessoal e no Negociado, Público no Plano de Unidade.
 // Vale só na criação e até o criador escolher.
 function _plwAplicarVisibilidadePadrao() {
   if (_plwEstado.edicao || _plwEstado.visManual) return;
-  var p = _plwPrincipal();
-  _plwDefinirVisibilidade((p && p.tipo === 'USER' && _plwMeuId() === String(p.id)) ? 'Privado' : 'Público');
+  _plwDefinirVisibilidade(_plwEstado.situacao === 'DE_UNIDADE' ? 'Público' : 'Privado');
 }
 function _plwVisibilidade() { return _plwEl('input-plano-publico').checked ? 'Público' : 'Privado'; }
 function _plwDefinirVisibilidade(v) { _plwEl('input-plano-publico').checked = v !== 'Privado'; }
@@ -4782,20 +4810,32 @@ function _plwPrincipalMudou() {
   _plwAplicarVisibilidadePadrao();
   // O principal não pode repetir como adicional
   if (p) _plwSelAdic.setLista(_plwSelAdic.getLista().filter(function(a) { return !(a.tipo === p.tipo && String(a.id) === String(p.id)); }));
-  _plwRenderClassif();
   _plwRenderRail();
 }
-// Categoria do plano: só informativa e só na criação (na edição quem criou pode não ser o usuário atual).
-// A regra real continua em permissoesDoPlano, no servidor.
-function _plwRenderClassif() {
-  var box = _plwEl('plano-classif'), r = _plwPrincipal();
-  if (!r || _plwEstado.edicao) { box.classList.add('hidden'); box.innerHTML = ''; return; }
-  var curto = _plwCurtoResp(r), c;
-  if (r.tipo === 'UNIDADE') c = ['apartment', 'Institucional', 'Conduzido pela ' + curto + '; passa por análise e segue a hierarquia da unidade.'];
-  else if (_plwMeuId() === String(r.id)) c = ['person', 'Pessoal', 'Plano seu: você elabora e executa, sem etapa de análise.'];
-  else c = ['handshake', 'Negociado', 'Pactuado entre você e ' + curto + '. Cancelar, concluir ou prorrogar vai exigir a concordância dos dois.'];
-  box.innerHTML = '<span class="material-symbols-outlined">' + c[0] + '</span><span><strong>Plano ' + c[1] + '.</strong> ' + escapeHtml(c[2]) + '</span>';
-  box.classList.remove('hidden');
+// A situação escolhida na etapa 1 decide a categoria; o servidor valida a combinação com o principal.
+function _plwRenderSituacoes() {
+  var wrap = _plwEl('plw-situacoes'), st = _plwEstado;
+  wrap.innerHTML = PLW_SITUACOES.map(function(s) {
+    var sel = st.situacao === s.cat;
+    return '<button type="button" role="radio" aria-checked="' + sel + '" class="ds-destaque ds-destaque--opcao' + (sel ? ' is-selecionada' : '') + '"' + ((st.edicao || s.emBreve) ? ' disabled' : '') + ' data-on-click="components_modal_plano.12" data-rclick0="' + s.cat + '">'
+      + '<span class="ds-destaque__titulo">' + escapeHtml(s.texto) + '</span>'
+      + '<span class="ds-destaque__texto">' + escapeHtml(s.explica) + '</span></button>';
+  }).join('');
+}
+function _plwEscolherSituacao(cat) {
+  var st = _plwEstado;
+  if (st.edicao || st.situacao === cat) return;
+  st.situacao = cat;
+  var p = _plwPrincipal();
+  // o principal já escolhido só vale se combinar com a situação (Pessoal = eu; Unidade = unidade; Negociado = servidor)
+  if (p && ((cat === 'DE_UNIDADE') !== (p.tipo === 'UNIDADE') || (cat === 'PESSOAL' && String(p.id) !== _plwMeuId()))) _plwSelPrincipal.limpar();
+  if (cat === 'PESSOAL' && !_plwPrincipal() && _plwMeuId()) {
+    var eu = cacheUsuariosPlano.find(function(u) { return String(u.id) === _plwMeuId(); });
+    if (eu) _plwSelPrincipal.setLista([{ id: String(eu.id), tipo: 'USER', nome: eu.nome }]);
+  }
+  _plwAplicarVisibilidadePadrao();
+  _plwRenderSituacoes();
+  _plwRenderRail();
 }
 
 // Cria os campos de seleção na primeira abertura (os containers já estão no DOM; os componentes são carregados antes).
@@ -4804,7 +4844,7 @@ function _plwIniciarSeletores() {
   SeletorOpcao.melhorar(_plwEl('input-tipo-plano'));
   _plwSelPrincipal = SeletorResponsaveis.criar({
     containerId: 'plano-selresp-principal', unico: true, obrigatorio: true,
-    label: 'Responsável principal', helpText: 'Unidade ou servidor: é quem define a categoria do plano.',
+    label: 'Responsável principal', helpText: 'Unidade ou servidor.',
     getUnidades: function() { return cacheUnidadesPlano; }, getUsuarios: function() { return cacheUsuariosPlano; },
     filtroUnidades: function(l) { return _plwUnidadesPermitidas(l, false); },
     filtroUsuarios: function(l) { return _plwUsuariosPermitidos(l, false); },
@@ -4812,7 +4852,7 @@ function _plwIniciarSeletores() {
   });
   _plwSelAdic = SeletorResponsaveis.criar({
     containerId: 'plano-selresp-adic',
-    label: 'Responsáveis adicionais', helpText: 'Corresponsáveis com as mesmas permissões operacionais do principal. A categoria do plano continua definida pelo principal.',
+    label: 'Responsáveis adicionais', helpText: 'Corresponsáveis com as mesmas permissões operacionais do principal.',
     getUnidades: function() { return cacheUnidadesPlano; }, getUsuarios: function() { return cacheUsuariosPlano; },
     filtroUnidades: function(l) { return _plwUnidadesPermitidas(l, true); },
     filtroUsuarios: function(l) { return _plwUsuariosPermitidos(l, true); },
@@ -4839,11 +4879,15 @@ function _plwIniciarSeletores() {
 // ---------------- trilha / navegação ----------------
 function _plwResumoPasso(n) {
   if (n === 1) {
+    var sit = PLW_SITUACOES.find(function(s) { return s.cat === _plwEstado.situacao; });
+    return sit ? sit.texto : '';
+  }
+  if (n === 2) {
     var ini = _plwEl('input-plano-ano-inicio').value, fim = _plwEl('input-plano-ano-fim').value, v = '';
     if (ini && fim && fim >= ini) v = ini.slice(0, 4) + (fim.slice(0, 4) !== ini.slice(0, 4) ? '–' + fim.slice(0, 4) : '');
     return [_plwEl('input-tipo-plano').value, v, (_plwEl('input-plano-nome').value || '').trim()].filter(Boolean).join(' · ');
   }
-  if (n === 2) {
+  if (n === 3) {
     var p = _plwPrincipal(), qtd = _plwSelAdic ? _plwSelAdic.getLista().length : 0;
     return [p ? _plwCurtoResp(p) : '', qtd ? '+' + qtd : ''].filter(Boolean).join(' ');
   }
@@ -4949,18 +4993,18 @@ function _plwResetar(edicao) {
   _plwLimparErro(_plwEl('input-plano-nome'), 'ds-input--error', 'plano-nome-erro');
   _plwLimparErro(_plwEl('input-tipo-plano'), 'ds-select--error', 'input-tipo-plano-erro');
   _plwAplicarBloqueio(false);
+  _plwRenderSituacoes();
   _plwAtualizarVig(false);
-  _plwRenderClassif();
 }
 
 function _plwAbrirModal() {
   var modal = _plwEl('modal-novo-plano');
   SeletorOpcao.sincronizar(modal);
   uiContadoresAtualizar(modal);
-  _plwIrPara(1);
+  _plwIrPara(_plwEstado.edicao ? 2 : 1);
   modal.classList.remove('hidden');
   bloquearFundo();
-  setTimeout(function() { var c = _plwEl('input-plano-nome'); if (!c.disabled) c.focus({ preventScroll: true }); }, 0);
+  setTimeout(function() { var c = _plwEl('input-plano-nome'); if (_plwEstado.edicao && !c.disabled) c.focus({ preventScroll: true }); }, 0);
 }
 
 function abrirModalNovoPlano() {
@@ -4997,6 +5041,8 @@ function abrirModalEdicaoPlano(idPlano) {
 
       _plwResetar(true);
       _plwEl('input-plano-id-edicao').value = plano.id;
+      _plwEstado.situacao = plano.categoria || '';
+      _plwRenderSituacoes();
       _plwEstado.ultimaAlteracao = plano.ultimaAlteracao; // o servidor só grava se ninguém alterou o plano depois
       _plwEl('modal-plano-titulo').textContent = 'Editar plano de gestão';
       _plwEl('texto-btn-salvar-plano').textContent = 'Salvar alterações';
@@ -5078,14 +5124,13 @@ function _plwReidratar() {
   _plwSelPrincipal.setLista(_plwSelPrincipal.getLista());
   _plwSelAdic.setLista(_plwSelAdic.getLista());
   _plwAplicarVisibilidadePadrao();
-  _plwRenderClassif();
   _plwRenderRail();
 }
 
 // --- SUBMIT ---
 function _plwSalvar(e) {
   e.preventDefault();
-  if (!_plwValidarEtapas([1, 2, 3])) return;
+  if (!_plwValidarEtapas([1, 2, 3, 4])) return;
   const form = e.target, principal = _plwPrincipal();
   const dadosPlano = {
     nome: form.nome.value.trim(),
@@ -5093,6 +5138,7 @@ function _plwSalvar(e) {
     tipo: _plwEl('input-tipo-plano').value,
     anoInicio: _plwEl('input-plano-ano-inicio').value, // "AAAA-MM-DD"
     anoFim: _plwEl('input-plano-ano-fim').value,       // "AAAA-MM-DD"
+    categoria: _plwEstado.situacao,
     idResponsavel: principal.id,
     tipoResponsavel: principal.tipo,
     responsaveisAdicionais: _plwSelAdic.getLista().map(function(r) { return { id: r.id, tipo: r.tipo }; }),
@@ -5153,7 +5199,8 @@ uiRegistrarAcoes('components_modal_plano', {
   '8': function (event) { _plwVoltar(); },
   '9': function (event) { _plwProximo(); },
   '10': function (event) { _plwIrParaRail(uiArgLit(this.dataset.rclick0)); },
-  '11': function (event) { _plwVisibilidadeMudou(); }
+  '11': function (event) { _plwVisibilidadeMudou(); },
+  '12': function (event) { _plwEscolherSituacao(this.dataset.rclick0); }
 });
 </script>
 
@@ -12555,10 +12602,7 @@ function _montarMetaOtimistaPlano(p) {
     anoFim: p.anoFim,
     status: p.status,
     nomeUnidade: p.nomeResponsavel,
-    // Proxy aproximado de 'categoria' (backend distingue INSTITUCIONAL/
-    // PESSOAL/NEGOCIADO; a lista só sabe se o responsável é Unidade ou USER).
-    // Só afeta o ícone do cabeçalho (cosmético, autocorrige no render real).
-    categoria: p.tipoResponsavel === 'USER' ? 'PESSOAL' : 'INSTITUCIONAL',
+    categoria: p.categoria,
     responsaveisAdicionais: (p.respAdicionaisNomes || []).map(function(nome) { return { nome: nome }; }),
     visibilidade: p.visibilidade,
     criadoPor: p.criadoPor,
@@ -16323,7 +16367,7 @@ const DETP_STATUS_SLUG = {
   'Em Avaliação': 'avaliacao', 'Prorrogado': 'prorrogado', 'Em Revisão': 'revisao',
   'Finalizado': 'finalizado', 'Cancelado': 'cancelado', 'Excluído': 'cancelado'
 };
-const DETP_CATEGORIA_LABEL = { INSTITUCIONAL: 'Institucional', PESSOAL: 'Pessoal', NEGOCIADO: 'Negociado' };
+const DETP_CATEGORIA_LABEL = { DE_UNIDADE: 'Plano de Unidade', PESSOAL: 'Pessoal', NEGOCIADO: 'Negociado' };
 
 // dd/MM/yyyy a partir de "yyyy-MM-dd" (formatarDataISO do backend). Retorna '' quando
 // a coluna de origem não é um objeto Date de verdade — ver _detpVigencia abaixo.
@@ -16605,7 +16649,7 @@ function confirmarRespostaSolicitacao() {
     .apiResponderSolicitacao(sol.id, respostaSolicitacaoAtual, obs, dataFechamento);
 }
 
-// --- SOLICITAR REVISÃO (plano institucional/negociado sem janela aberta; o admin aprova) ---
+// --- SOLICITAR REVISÃO (plano de unidade/negociado sem janela aberta; o admin aprova) ---
 
 function confirmarSolicitarRevisao() {
   const just = document.getElementById('solicitar-revisao-justificativa').value;
@@ -17415,7 +17459,7 @@ function _appResumoPlano(plano) {
     nome: plano.nome, tipo: plano.tipo, categoria: plano.categoria,
     status: plano.status, dataInicio: plano.dataInicio, dataFim: plano.dataFim,
     nomeUnidade: plano.nomeUnidade, visibilidade: plano.visibilidade,
-    // Escopo de Unidade (Institucional): Riscos/Tratamentos filtram responsáveis por ele
+    // Escopo de Unidade (Plano de Unidade): Riscos/Tratamentos filtram responsáveis por ele
     tipoResponsavel: plano.tipoResponsavel, idUnidade: plano.idUnidade
   };
 }
@@ -19564,7 +19608,7 @@ function _extpRenderDetalhes() {
   if (!container || !estadoExecTarefas.dados || !estadoExecTarefas.dados.plano || estadoExecTarefas.painelElemento) return;
   var p = estadoExecTarefas.dados.plano;
 
-  var catLabel = { 'INSTITUCIONAL': 'Institucional', 'PESSOAL': 'Pessoal', 'NEGOCIADO': 'Negociado' }[p.categoria] || p.categoria || '';
+  var catLabel = { 'DE_UNIDADE': 'Plano de Unidade', 'PESSOAL': 'Pessoal', 'NEGOCIADO': 'Negociado' }[p.categoria] || p.categoria || '';
   var vig = (p.anoInicio || p.anoFim) ? ((p.anoInicio || '') + (p.anoFim && p.anoFim !== p.anoInicio ? '–' + p.anoFim : '')) : '–';
   var cor = EXT_CORES_STATUS_PLANO[p.status] || ['var(--ds-color-surface-2)', 'var(--ds-color-text)'];
 
@@ -20742,8 +20786,8 @@ body.high-contrast #page-avaliacao-planos .avl-tabela tbody tr.avl-linha.selecio
 <script>
 // ===================== MÓDULO AVALIAÇÃO DE PLANOS (lista) =====================
 
-const AV_CATEGORIA_LABEL = { INSTITUCIONAL: 'Institucional', PESSOAL: 'Pessoal', NEGOCIADO: 'Negociado' };
-const AV_CATEGORIA_ICONE = { INSTITUCIONAL: 'apartment', PESSOAL: 'person', NEGOCIADO: 'handshake' };
+const AV_CATEGORIA_LABEL = { DE_UNIDADE: 'Plano de Unidade', PESSOAL: 'Pessoal', NEGOCIADO: 'Negociado' };
+const AV_CATEGORIA_ICONE = { DE_UNIDADE: 'apartment', PESSOAL: 'person', NEGOCIADO: 'handshake' };
 
 var ABAS_AV = [
   { key: 'aguardando', label: 'Aguardando avaliação', icon: 'pending_actions' },
@@ -22654,7 +22698,7 @@ function _axpRenderDetalhes() {
   const c = document.getElementById('axp-view-detalhes');
   const d = estadoAxAval.dados;
   if (!c || !d) return;
-  const cat = { INSTITUCIONAL: 'Institucional', PESSOAL: 'Pessoal', NEGOCIADO: 'Negociado' }[d.categoria] || d.categoria || '';
+  const cat = { DE_UNIDADE: 'Plano de Unidade', PESSOAL: 'Pessoal', NEGOCIADO: 'Negociado' }[d.categoria] || d.categoria || '';
   const vig = d.vigencia || ((d.anoInicio || d.anoFim) ? (d.anoInicio || '') + (d.anoFim && d.anoFim !== d.anoInicio ? '–' + d.anoFim : '') : '');
   const cor = AX_CORES_STATUS[d.status];
   const av = d.avaliacaoVigente;
