@@ -172,6 +172,16 @@ body.high-contrast .ind-ano { border-color: #fff; }
               <div id="ind-selelem"></div>
             </div>
 
+            <!-- só na criação: reaproveitar um indicador do dono do plano (docs/especificacoes/indicadores_entre_planos.md §6) -->
+            <div id="indwiz-usar-existente" class="ds-cluster hidden">
+              <button type="button" class="ds-btn ds-btn--secondary ds-btn--sm" data-on-click="ind.62">Usar existente</button>
+            </div>
+            <div id="indwiz-aviso-uso" class="ds-wizard__aviso ds-wizard__aviso--corpo hidden">
+              <span class="material-symbols-outlined">lock</span>
+              <span>Usando <strong id="indwiz-uso-nome"></strong>: nome e medida são do indicador e a linha de base vem da série dele.</span>
+              <button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-on-click="ind.62">Trocar</button>
+            </div>
+
             <div class="ds-field">
               <label class="ds-label" for="ind-nome">Nome do indicador <span class="ds-obrig">obrigatório</span></label>
               <input type="text" name="nome" id="ind-nome" class="ds-input" required minlength="2" maxlength="150" placeholder="Ex: Taxa de Conclusão de Cursos" data-on-input="ind.4">
@@ -320,6 +330,22 @@ body.high-contrast .ind-ano { border-color: #fff; }
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL "USAR EXISTENTE": os indicadores do dono do plano (aba Meus indicadores; Outras unidades e Consolidados chegam nas próximas fases) -->
+<div id="modal-usar-indicador" class="modal-overlay hidden" data-app-portal="1" data-fechar="fecharModalUsarInd" data-on-click="ind.1">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-usar-ind">
+    <div class="modal-header">
+      <h3 id="titulo-modal-usar-ind">Usar existente <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Indicadores da sua unidade (ou seus, nos planos de pessoa) que já existem. O novo uso mantém nome e medida e traz a linha de base da série.">info</span></h3>
+      <button type="button" class="btn-icon-close" data-on-click="ind.63" data-title="Fechar" aria-label="Fechar"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="modal-body">
+      <div class="ds-field">
+        <input type="search" id="ind-usar-busca" class="ds-input" placeholder="Buscar pelo nome" aria-label="Buscar indicador" data-on-input="ind.64">
+      </div>
+      <div id="ind-usar-lista" class="ds-stack ds-stack--2"></div>
     </div>
   </div>
 </div>
@@ -647,6 +673,7 @@ function handleSalvarIndicador(e) {
   var gExtraSalvar = document.getElementById('group-ind-elementos-extra');
   if (seletorElemExtraInd && gExtraSalvar && !gExtraSalvar.classList.contains('hidden')) dados.idsElementosAdicionais = seletorElemExtraInd.getIds();
 
+  if (_indUsandoDef) dados.idDefinicao = _indUsandoDef.idDefinicao; // nome, medida e linha de base são da definição; o servidor os impõe
   var idEdicaoEl = document.getElementById('input-ind-id-edicao');
   var idEdicao = idEdicaoEl ? idEdicaoEl.value : '';
   var acao = idEdicao ? 'apiAtualizarIndicador' : 'apiSalvarIndicador';
@@ -2834,6 +2861,7 @@ function _indwizSalvar() {
 
 function _indwizIniciar(edicao) {
   _indwizEdicao = !!edicao;
+  _indUsarReiniciar(edicao);
   var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano) || {};
   var eyebrow = document.getElementById('indwiz-eyebrow');
   if (eyebrow) eyebrow.textContent = String(pl.nome || '').toUpperCase() || '\u00A0';
@@ -2847,6 +2875,99 @@ function _indwizIniciar(edicao) {
   estadoWizardInd.visitadas = {};
   uiContadoresAtualizar(modalWiz);
   _indwizIrPara(1);
+}
+
+// ---- "Usar existente": outro modal, com os indicadores do dono do plano (apiGetIndicadoresUsaveis). Escolher um preenche o assistente com
+// nome e medida bloqueados e a linha de base da série; o servidor impõe tudo isso de novo (apiSalvarIndicador com idDefinicao). ----
+var _indUsarLista = [];
+var _indUsandoDef = null; // { idDefinicao, nome } enquanto o assistente usa um indicador existente
+var _IND_CAMPOS_DEFINICAO = ['ind-nome', 'ind-formula', 'ind-unidade', 'ind-interpretacao', 'ind-frequencia', 'ind-regra-agregacao', 'ind-intervalo-qtd', 'ind-intervalo-unidade', 'ind-fonte-dados', 'ind-indice-base', 'input-ind-data-referencia'];
+
+function _indUsarTravar(travar) {
+  _IND_CAMPOS_DEFINICAO.forEach(function(id) { var el = document.getElementById(id); if (el) el.disabled = travar; });
+  var modalWiz = document.getElementById('modal-novo-indicador');
+  if (window.SeletorOpcao && modalWiz) SeletorOpcao.sincronizar(modalWiz);
+}
+
+// Ao (re)abrir o assistente: sai do modo "usando existente" e mostra o botão só na criação.
+function _indUsarReiniciar(edicao) {
+  if (_indUsandoDef) _indUsarTravar(false);
+  _indUsandoDef = null;
+  var botao = document.getElementById('indwiz-usar-existente');
+  if (botao) botao.classList.toggle('hidden', !!edicao);
+  var aviso = document.getElementById('indwiz-aviso-uso');
+  if (aviso) aviso.classList.add('hidden');
+}
+
+function abrirModalUsarInd() {
+  var pl = (_indCtx && _indCtx.plano) || (dadosDetalhados && dadosDetalhados.plano);
+  if (!pl) return;
+  var elemento = document.getElementById('input-ind-id-elemento');
+  var busca = document.getElementById('ind-usar-busca');
+  if (busca) busca.value = '';
+  var lista = document.getElementById('ind-usar-lista');
+  if (lista) lista.innerHTML = '<div class="ds-vazio ds-vazio--compacto"><p class="ds-vazio__texto">Carregando…</p></div>';
+  document.getElementById('modal-usar-indicador').classList.remove('hidden');
+  _indicadoresSDK.chamar('apiGetIndicadoresUsaveis', pl.id, elemento ? elemento.value : '').then(function(res) {
+    _indUsarLista = (res && res.indicadores) || [];
+    _indUsarRender();
+  }, function(err) {
+    fecharModalUsarInd();
+    showMessage('error', 'Erro', escapeHtml(err.message || String(err)));
+  });
+}
+
+function fecharModalUsarInd() {
+  var modal = document.getElementById('modal-usar-indicador');
+  if (modal) modal.classList.add('hidden');
+}
+
+function _indUsarDataBR(iso) { return iso ? String(iso).split('-').reverse().join('/') : ''; }
+
+function _indUsarRender() {
+  var lista = document.getElementById('ind-usar-lista');
+  var busca = document.getElementById('ind-usar-busca');
+  if (!lista) return;
+  var termo = (busca ? busca.value : '').trim().toLowerCase();
+  var itens = _indUsarLista.filter(function(i) { return !termo || i.nome.toLowerCase().indexOf(termo) > -1; });
+  if (!itens.length) {
+    lista.innerHTML = '<div class="ds-vazio ds-vazio--compacto"><span class="material-symbols-outlined ds-vazio__icone">speed</span>'
+      + '<p class="ds-vazio__titulo">' + (_indUsarLista.length ? 'Nenhum indicador encontrado' : 'Ainda não há indicadores para reaproveitar') + '</p></div>';
+    return;
+  }
+  lista.innerHTML = itens.map(function(i) {
+    var base = i.linhaBase ? 'Linha de base ' + String(i.linhaBase.valor) + ' (' + _indUsarDataBR(i.linhaBase.data) + ')' : '';
+    var usado = i.usadoNoPlano ? 'já usado neste plano' : 'usado em ' + i.usos + (i.usos === 1 ? ' plano' : ' planos');
+    return '<button type="button" class="ds-destaque ds-destaque--opcao" data-on-click="ind.65" data-aclick0="' + escapeHtml(String(i.idDefinicao)) + '"' + (i.usadoNoPlano ? ' disabled' : '') + '>'
+      + '<span class="ds-destaque__titulo">' + escapeHtml(i.nome) + '</span>'
+      + '<span class="ds-destaque__texto">' + [i.formula, i.unidade, i.frequencia, base, usado].filter(Boolean).map(escapeHtml).join(' · ') + '</span></button>';
+  }).join('');
+}
+
+function _indUsarEscolher(idDefinicao) {
+  var def = _indUsarLista.find(function(i) { return String(i.idDefinicao) === String(idDefinicao); });
+  if (!def || def.usadoNoPlano) return;
+  var form = document.getElementById('form-novo-indicador');
+  form.nome.value = def.nome;
+  form.formula.value = def.formula;
+  form.unidade.value = def.unidade;
+  form.interpretacao.value = def.interpretacao;
+  form.frequencia.value = def.frequencia;
+  onMudarFrequenciaInd();
+  form.intervaloQtd.value = def.intervaloQtd || '';
+  form.intervaloUnidade.value = def.intervaloUnidade || 'Dias';
+  form.regraAgregacao.value = def.regraAgregacao || 'ULTIMO';
+  form.fonteDados.value = def.fonteDados || '';
+  form.indiceBase.value = def.linhaBase ? String(def.linhaBase.valor) : '';
+  form.dataReferencia.value = def.linhaBase ? def.linhaBase.data : '';
+  _indUsarTravar(true);
+  _indUsandoDef = { idDefinicao: def.idDefinicao, nome: def.nome };
+  document.getElementById('indwiz-uso-nome').textContent = def.nome;
+  document.getElementById('indwiz-aviso-uso').classList.remove('hidden');
+  document.getElementById('indwiz-usar-existente').classList.add('hidden');
+  uiContadoresAtualizar(document.getElementById('modal-novo-indicador'));
+  _indwizRenderRail();
+  fecharModalUsarInd();
 }
 
 // Enter avança a etapa (e salva na última), como nos outros wizards
@@ -2902,7 +3023,11 @@ uiRegistrarAcoes('ind', {
   '58': function (event) { indGradeDigitando(this, event); },
   '59': function (event) { indGradeEditar(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
   '60': function (event) { indGradeExcluir(uiArgJs(this.dataset.aclick0), uiArgJs(this.dataset.aclick1)); },
-  '61': function (event) { indGradeCancelar(uiArgJs(this.dataset.aclick0)); }
+  '61': function (event) { indGradeCancelar(uiArgJs(this.dataset.aclick0)); },
+  '62': function (event) { abrirModalUsarInd(); },
+  '63': function (event) { fecharModalUsarInd(); },
+  '64': function (event) { _indUsarRender(); },
+  '65': function (event) { _indUsarEscolher(uiArgJs(this.dataset.aclick0)); }
 });
 
 
