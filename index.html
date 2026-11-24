@@ -4424,9 +4424,10 @@ var SeletorOpcao = (function () {
 
             <div class="ds-form-linha">
               <div class="ds-field">
-                <label class="ds-label" for="input-plano-sigla">Sigla</label>
-                <input type="text" name="sigla" id="input-plano-sigla" class="ds-input" maxlength="12" placeholder="Ex.: PDI 2026">
+                <label class="ds-label" for="input-plano-sigla">Sigla <span class="ds-obrig">obrigatório</span></label>
+                <input type="text" name="sigla" id="input-plano-sigla" class="ds-input" maxlength="12" placeholder="Ex.: PDI 2026" data-on-input="components_modal_plano.13">
                 <small class="ds-contador"></small>
+                <small class="ds-help ds-help--error hidden" id="plano-sigla-erro"></small>
               </div>
               <div class="ds-field">
                 <label class="ds-label" for="input-tipo-plano">Nível de planejamento <span class="ds-obrig">obrigatório</span>
@@ -4595,7 +4596,7 @@ const PLW_SITUACOES = [
 ];
 const PLW_PASSOS = [
   { titulo: 'Situação', desc: 'Para quem é o plano', campos: ['situacao'] },
-  { titulo: 'Identificação', desc: 'Nome, nível e vigência', campos: ['nome', 'nivel', 'vig'] },
+  { titulo: 'Identificação', desc: 'Nome, sigla, nível e vigência', campos: ['nome', 'sigla', 'nivel', 'vig'] },
   { titulo: 'Responsáveis', desc: 'Principal e corresponsáveis', campos: ['resp'] },
   { titulo: 'Complementos', desc: 'Planos superiores e observações', campos: [] }
 ];
@@ -4645,6 +4646,7 @@ function _plwErros() {
   var nome = (_plwEl('input-plano-nome').value || '').trim();
   if (!nome) e.nome = 'Informe o nome do plano.';
   else if (nome.length < 5) e.nome = 'Use pelo menos 5 caracteres.';
+  if (!(_plwEl('input-plano-sigla').value || '').trim()) e.sigla = 'Informe a sigla do plano.';
   if (!_plwEl('input-tipo-plano').value) e.nivel = 'Escolha o nível de planejamento.';
   var ini = _plwEl('input-plano-ano-inicio').value, fim = _plwEl('input-plano-ano-fim').value;
   if (!ini || !fim) e.vig = 'Informe o início e o fim da vigência.';
@@ -4670,6 +4672,10 @@ function _plwMostrarErros(n) {
     _plwMarcarErro(_plwEl('input-plano-nome'), 'ds-input--error', 'plano-nome-erro', e.nome);
     if (e.nome) foco = foco || _plwEl('input-plano-nome');
   }
+  if (campos.indexOf('sigla') > -1) {
+    _plwMarcarErro(_plwEl('input-plano-sigla'), 'ds-input--error', 'plano-sigla-erro', e.sigla);
+    if (e.sigla) foco = foco || _plwEl('input-plano-sigla');
+  }
   if (campos.indexOf('nivel') > -1) {
     _plwMarcarErro(_plwEl('input-tipo-plano'), 'ds-select--error', 'input-tipo-plano-erro', e.nivel);
     if (e.nivel) foco = foco || _plwEl('input-tipo-plano-selop');
@@ -4679,8 +4685,9 @@ function _plwMostrarErros(n) {
     if (e.vig) foco = foco || _plwEl('input-plano-ano-inicio');
   }
   if (campos.indexOf('resp') > -1) {
-    _plwSelPrincipal.setErro(e.resp || '');
-    if (e.resp) foco = foco || document.querySelector('#plano-selresp-principal .selresp-input');
+    var coopResp = _plwEstado.situacao === 'COOPERACAO', selResp = coopResp ? _plwSelPartes : _plwSelPrincipal;
+    selResp.setErro(e.resp || '');
+    if (e.resp) foco = foco || document.querySelector((coopResp ? '#plano-selresp-partes' : '#plano-selresp-principal') + ' .selresp-input');
   }
   if (foco) foco.focus({ preventScroll: true });
 }
@@ -5017,6 +5024,7 @@ function _plwResetar(edicao) {
   _plwAplicarEtapaResp();
   _plwSelSup.limpar();
   _plwLimparErro(_plwEl('input-plano-nome'), 'ds-input--error', 'plano-nome-erro');
+  _plwLimparErro(_plwEl('input-plano-sigla'), 'ds-input--error', 'plano-sigla-erro');
   _plwLimparErro(_plwEl('input-tipo-plano'), 'ds-select--error', 'input-tipo-plano-erro');
   _plwAplicarBloqueio(false);
   _plwRenderSituacoes();
@@ -5236,7 +5244,8 @@ uiRegistrarAcoes('components_modal_plano', {
   '9': function (event) { _plwProximo(); },
   '10': function (event) { _plwIrParaRail(uiArgLit(this.dataset.rclick0)); },
   '11': function (event) { _plwVisibilidadeMudou(); },
-  '12': function (event) { _plwEscolherSituacao(this.dataset.rclick0); }
+  '12': function (event) { _plwEscolherSituacao(this.dataset.rclick0); },
+  '13': function (event) { _plwLimparErro(this, 'ds-input--error', 'plano-sigla-erro'); _plwRenderRail(); }
 });
 </script>
 
