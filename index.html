@@ -11055,6 +11055,7 @@ function uiCardStackAtualizar() {
       + '<span class="material-symbols-outlined" aria-hidden="true">layers</span>'
       + '<span class="ds-fab-stack__selo"><span class="material-symbols-outlined" aria-hidden="true"></span></span></button>';
     fab.insertBefore(stack, fab.querySelector('.ds-fab__principal'));
+    _uiFlipToqueLongo(stack.querySelector('.ds-fab-stack__btn'));
   }
   stack.querySelector('.ds-fab-stack__selo .material-symbols-outlined').textContent = _uiFlipIconeAba(ativa);
   var btn = stack.querySelector('.ds-fab-stack__btn'), nome = _uiTopoRotulo(ativa);
@@ -11112,12 +11113,44 @@ function _uiFlipMover(delta) {
 function _uiFlipEscolher(i) {
   var f = _uiFlip, aba = f && f.abas[i];
   if (!aba) return;
+  if (aba.classList.contains('active')) { uiFlip3DFechar(); return; }   // a carta "Atual" só fecha o seletor, sem recarregar a aba
   f.idx = i;
   _uiFlipPosicionar();
   f.el.classList.add('is-escolhendo');   // as outras cartas somem e a escolhida avança
   setTimeout(function () { uiFlip3DFechar(); aba.click(); }, 240);
 }
+// Toque longo no botão em pilha: a lista simples de abas (atalho de quem já sabe para onde ir); o toque curto abre o seletor 3D.
+var _uiFlipLongoEm = 0;
+function _uiFlipToqueLongo(btn) {
+  var timer = null, x0 = 0, y0 = 0;
+  function cancelar() { clearTimeout(timer); timer = null; }
+  btn.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) return;
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    timer = setTimeout(function () {
+      timer = null;
+      _uiFlipLongoEm = Date.now();
+      if (navigator.vibrate) navigator.vibrate(15);
+      uiAbasLista(btn);
+    }, 450);
+  }, { passive: true });
+  btn.addEventListener('touchmove', function (e) { if (timer && (Math.abs(e.touches[0].clientX - x0) > 10 || Math.abs(e.touches[0].clientY - y0) > 10)) cancelar(); }, { passive: true });
+  btn.addEventListener('touchend', cancelar, { passive: true });
+  btn.addEventListener('touchcancel', cancelar, { passive: true });
+  btn.addEventListener('contextmenu', function (e) { if (window.matchMedia('(pointer: coarse)').matches) e.preventDefault(); });
+}
+function uiAbasLista(gatilho) {
+  abrirMenuSelecao(gatilho, [{ itens: _uiTopoAbasLista().map(function (b, i) {
+    var n = _uiFlipContagem(b);
+    return { label: _uiTopoRotulo(b) + (n ? ' (' + n + ')' : ''), ativo: b.classList.contains('active'), onclick: 'uiAbasIr(' + i + ')' };
+  }) }], { titulo: 'Abas' });
+}
+function uiAbasIr(i) {
+  var b = _uiTopoAbasLista()[i];
+  if (b && !b.classList.contains('active')) b.click();
+}
 function uiFlip3DAbrir() {
+  if (Date.now() - _uiFlipLongoEm < 700) return;   // o toque que terminou um toque longo já abriu a lista
   var p = _uiTopoPagina(), abas = _uiTopoAbasLista();
   if (!p || abas.length < 2) return;
   uiFlip3DFechar();
@@ -13216,6 +13249,12 @@ function _contarPorAba() {
 
 // ---- Abas ----------------------------------------------------------------
 
+// Prévia das cartas do seletor de abas (celular): os três primeiros planos da aba, já em memória
+uiFlip3DPrevia('page-planos', function(chave) {
+  var itens = estadoPlanos.dadosBrutos.filter(function(p) { var k = _classificarPlano(p); return chave === 'todos' ? k !== 'lixeira' : k === chave; });
+  return { itens: itens.slice(0, 3).map(function(p) { return { titulo: p.nome, meta: p.status }; }) };
+});
+
 function _renderizarAbas() {
   var contagem = _contarPorAba();
   var bar = document.getElementById('planos-tabs');
@@ -13223,7 +13262,7 @@ function _renderizarAbas() {
   estadoPlanos.abas.forEach(function(aba) {
     var ativa = aba.key === estadoPlanos.abaAtiva;
     bar.insertAdjacentHTML('beforeend',
-      '<button type="button" role="tab" aria-selected="' + ativa + '" class="ds-tabs-nav__item' + (ativa ? ' active' : '') + '" data-rotulo-mobile="' + escapeHtml(aba.rotuloMobile || aba.label) + '" data-on-click="pages_planos_lista.26" data-aclick0="' + aba.key + '">' +
+      '<button type="button" role="tab" aria-selected="' + ativa + '" class="ds-tabs-nav__item' + (ativa ? ' active' : '') + '" data-aba="' + aba.key + '" data-rotulo-mobile="' + escapeHtml(aba.rotuloMobile || aba.label) + '" data-on-click="pages_planos_lista.26" data-aclick0="' + aba.key + '">' +
         '<span class="material-symbols-outlined">' + aba.icon + '</span>' +
         '<span>' + escapeHtml(aba.label) + '</span>' +
         '<span class="ds-tab-count" id="tab-count-' + aba.key + '">' + (contagem[aba.key] || 0) + '</span>' +
@@ -19447,6 +19486,7 @@ function _appsRenderizarAbas(appsInstalados) {
     btn.setAttribute('role', 'tab');
     btn.setAttribute('aria-selected', 'false');
     btn.setAttribute('data-app-tab', '1');
+    btn.setAttribute('data-aba', app.pageParam);
     btn.onclick = function() { mudarView(app.pageParam); };
 
     const icone = app.icone || 'extension';
@@ -19525,6 +19565,14 @@ function _appRenderizarDescontinuado(pageParam, app, permissoes) {
       botaoSubstituto +
     '</div>';
 }
+
+// Prévia das cartas do seletor de abas (celular): os três primeiros itens já em memória (as demais abas mostram só o critério e a contagem)
+uiFlip3DPrevia('page-plano-detalhe', function(chave) {
+  var d = dadosDetalhados || {};
+  if (chave === 'elementos') return { itens: (d.elementos || []).slice(0, 3).map(function(e) { return { titulo: e.titulo, meta: (e.codigo ? e.codigo + ' · ' : '') + (e.status || '') }; }) };
+  if (chave === 'metas') return { itens: ((typeof _indIndicadores !== 'undefined' && _indIndicadores.length ? _indIndicadores : d.indicadores) || []).slice(0, 3).map(function(i) { return { titulo: i.nome, meta: [i.frequencia, i.unidade].filter(Boolean).join(' · ') }; }) };
+  return null;
+});
 
 // pages_plano_detalhe_modais — modais e wizards (abrir, validar, salvar)
 
