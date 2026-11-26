@@ -11110,6 +11110,16 @@ function _uiFlipMover(delta) {
   f.idx = novo;
   _uiFlipPosicionar();
 }
+// Toque na carta: vale o retângulo da carta em foco (a área toda, esquerda ou direita); toque numa carta de trás a traz para a frente
+function _uiFlipToque(x, y) {
+  var f = _uiFlip;
+  if (!f) return;
+  function dentro(c) { var r = c.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; }
+  if (dentro(f.cartas[f.idx])) { _uiFlipEscolher(f.idx); return; }
+  for (var i = f.idx + 1; i < f.cartas.length && i <= f.idx + 3; i++) {
+    if (dentro(f.cartas[i])) { f.idx = i; _uiFlipPosicionar(); return; }
+  }
+}
 function _uiFlipEscolher(i) {
   var f = _uiFlip, aba = f && f.abas[i];
   if (!aba) return;
@@ -11175,7 +11185,6 @@ function uiFlip3DAbrir() {
       + '<span class="ds-flip3d__carta-nome">' + escapeHtml(_uiTopoRotulo(b)) + '</span>' + (atual ? '<span class="ds-badge ds-badge--info">Atual</span>' : '')
       + (qtd ? '<span class="ds-badge ds-badge--neutral">' + escapeHtml(qtd) + '</span>' : '') + '</div>'
       + '<div class="ds-flip3d__carta-corpo">' + _uiFlipPreviaHTML(p, b) + '</div>';
-    c.addEventListener('click', function () { _uiFlipEscolher(i); });
     pilha.appendChild(c);
     return c;
   });
@@ -11188,18 +11197,25 @@ function uiFlip3DAbrir() {
     _uiFlipMover((e.deltaY || e.deltaX) > 0 ? 1 : -1);
     f.roda = setTimeout(function () { if (_uiFlip) _uiFlip.roda = null; }, 120);
   }, { passive: false });
-  el.addEventListener('pointerdown', function (e) { if (!e.target.closest('button')) { _uiFlip.y0 = e.clientY; _uiFlip.x0 = e.clientX; } });
+  el.addEventListener('pointerdown', function (e) { if (!e.target.closest('button')) { _uiFlip.y0 = e.clientY; _uiFlip.x0 = e.clientX; _uiFlip.toqueX = e.clientX; _uiFlip.toqueY = e.clientY; _uiFlip.moveu = false; } });
   el.addEventListener('pointermove', function (e) {
     var f = _uiFlip;
     if (!f || f.y0 === null || f.trava) return;
     var dy = e.clientY - f.y0, dx = e.clientX - f.x0;
     if (Math.sqrt(dx * dx + dy * dy) < 28) return;
-    f.trava = true;
-    _uiFlipMover((Math.abs(dy) >= Math.abs(dx) ? dy < 0 : dx < 0) ? 1 : -1);
+    f.trava = true; f.moveu = true;
+    // a carta em foco sai para baixo e à direita: o dedo que vai para baixo/direita leva a carta embora (próxima); para cima/esquerda a traz de volta (anterior)
+    _uiFlipMover((Math.abs(dy) >= Math.abs(dx) ? dy > 0 : dx > 0) ? 1 : -1);
     f.y0 = e.clientY; f.x0 = e.clientX;
     setTimeout(function () { if (_uiFlip) _uiFlip.trava = false; }, 140);
   });
-  el.addEventListener('pointerup', function () { if (_uiFlip) { _uiFlip.y0 = null; _uiFlip.x0 = null; } });
+  el.addEventListener('pointerup', function (e) {
+    var f = _uiFlip;
+    if (!f) return;
+    var toque = f.y0 !== null && !f.moveu && Math.abs(e.clientX - f.toqueX) < 10 && Math.abs(e.clientY - f.toqueY) < 10;
+    f.y0 = null; f.x0 = null;
+    if (toque) _uiFlipToque(e.clientX, e.clientY);
+  });
   el.addEventListener('pointercancel', function () { if (_uiFlip) { _uiFlip.y0 = null; _uiFlip.x0 = null; } });
   document.addEventListener('keydown', _uiFlipTecla, true);
   document.body.appendChild(el);
