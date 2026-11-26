@@ -1295,7 +1295,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
           </button>
         </div>
 
-        <div class="ds-filtros__pag">
+        <div class="ds-filtros__acoes">
           <!-- Modos de visualização -->
         <div class="det-modos" role="group" aria-label="Modo de visualização">
           <button type="button" class="det-modo ativo" id="btn-modo-arvore" data-on-click="el.30"
@@ -2179,7 +2179,8 @@ function _initSeletorRespElemento() {
       const idsPessoal = _elIdsRespPlanoPessoal();
       if (idsPessoal) return lista.filter(user => idsPessoal.has(String(user.id)));
       const setUnidadeIds = new Set(unidadesContextoPermitidoEl.map(u => String(u.id)));
-      return lista.filter(user => uiUsuarioEmUnidades(user, setUnidadeIds));
+      const idsPartes = new Set(_elPartesCooperacao().filter(p => p.tipo === 'USER').map(p => String(p.id)));
+      return lista.filter(user => idsPartes.has(String(user.id)) || uiUsuarioEmUnidades(user, setUnidadeIds));
     }
   });
 }
@@ -2241,8 +2242,28 @@ function _elIdsRespPlanoPessoal() {
   (p.responsaveisAdicionais || []).forEach(a => { if (a.tipo === 'USER') ids.add(String(a.id)); });
   return ids;
 }
+// Partes do Plano de Cooperação (vazio nos demais planos).
+function _elPartesCooperacao() {
+  const plano = dadosDetalhados && dadosDetalhados.plano;
+  return plano && plano.categoria === 'COOPERACAO' ? (plano.partes || []) : [];
+}
 function definirContextoPermitidoEl() {
   if (_elIdsRespPlanoPessoal()) { unidadesContextoPermitidoEl = []; return; }
+  // Plano de Cooperação: o escopo é a árvore de cada parte (unidade, ou a unidade de exercício da pessoa que é parte); espelha respRaizesDeEscopo do servidor
+  const partes = _elPartesCooperacao();
+  if (partes.length) {
+    const raizes = new Set();
+    partes.forEach(p => {
+      if (p.tipo === 'UNIDADE') { raizes.add(String(p.id)); return; }
+      const usuario = cacheUsuariosEl.find(u => String(u.id) === String(p.id));
+      ((usuario && usuario.idsUnidades) || []).forEach(id => raizes.add(String(id)));
+    });
+    const { mapa } = processarHierarquiaEl(cacheUnidadesEl);
+    const vistas = new Set();
+    unidadesContextoPermitidoEl = [];
+    raizes.forEach(id => { if (mapa[id]) achatarArvoreEl(mapa[id], 0).forEach(u => { if (!vistas.has(String(u.id))) { vistas.add(String(u.id)); unidadesContextoPermitidoEl.push(u); } }); });
+    return;
+  }
   // Plano NEGOCIADO: responsável do elemento no escopo de quem indica (lotação + subunidades),
   // salvo com NEGOCIADO_RESPONSAVEIS_LIVRES ligada (app_ui_utils: uiEscopoRespIdsUnidades)
   if (dadosDetalhados && dadosDetalhados.plano && dadosDetalhados.plano.categoria === 'NEGOCIADO') {
@@ -3789,9 +3810,8 @@ function elAtualizarGruposArvore() {
   var atuais = {};
   var grupo = [];
   function fechar() {
+    uiItemGrupoMarcar(grupo);
     grupo.forEach(function(tr, i) {
-      var pos = grupo.length === 1 ? '' : (i === 0 ? 'ini' : (i === grupo.length - 1 ? 'fim' : 'meio'));
-      ['ini', 'meio', 'fim'].forEach(function(p) { tr.classList.toggle('ds-item-grupo--' + p, p === pos); });
       // divisória colorida: do 3.º nível em diante, a linha entre dois itens leva a cor do tipo do mais profundo dos dois (abre e fecha cada sequência com a mesma cor)
       var ant = grupo[i - 1], fundo = ant && +ant.dataset.level > +tr.dataset.level ? ant : tr;
       var colore = i > 0 && +fundo.dataset.level >= 2 && fundo.dataset.cor;
@@ -3801,7 +3821,7 @@ function elAtualizarGruposArvore() {
     if (grupo.length > 1 && _elMobile()) {
       var raiz = grupo[0].dataset.id;
       atuais[raiz] = grupo.length;
-      elDesenharContorno(wrap, grupo, anteriores[raiz] === undefined);
+      uiItemContorno(wrap, grupo, anteriores[raiz] === undefined);
     }
     grupo = [];
   }
@@ -3814,30 +3834,6 @@ function elAtualizarGruposArvore() {
   tbody._elContornos = atuais;
 }
 
-/** Desenha o SVG do contorno sobre as linhas do bloco: caminho no sentido anti-horário a partir do canto superior esquerdo. */
-function elDesenharContorno(wrap, grupo, animar) {
-  var NS = 'http://www.w3.org/2000/svg';
-  var w0 = wrap.getBoundingClientRect(), p = grupo[0].getBoundingClientRect(), u = grupo[grupo.length - 1].getBoundingClientRect();
-  var w = p.width, h = u.bottom - p.top, i = 1;
-  var r = parseFloat(getComputedStyle(grupo[0]).borderTopLeftRadius) || 6;
-  var x2 = w - i, y2 = h - i;
-  var svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('class', 'ds-item-contorno' + (animar ? ' is-animado' : ''));
-  svg.setAttribute('width', w);
-  svg.setAttribute('height', h);
-  svg.style.setProperty('left', (p.left - w0.left) + 'px');
-  svg.style.setProperty('top', (p.top - w0.top) + 'px');
-  var cor = grupo[0].dataset.cor;
-  if (cor) svg.style.setProperty('--ds-color-borda-item', cor);
-  var path = document.createElementNS(NS, 'path');
-  path.setAttribute('pathLength', '1');
-  path.setAttribute('d', 'M' + i + ',' + (i + r) + ' L' + i + ',' + (y2 - r) + ' A' + r + ',' + r + ' 0 0 0 ' + (i + r) + ',' + y2
-    + ' L' + (x2 - r) + ',' + y2 + ' A' + r + ',' + r + ' 0 0 0 ' + x2 + ',' + (y2 - r)
-    + ' L' + x2 + ',' + (i + r) + ' A' + r + ',' + r + ' 0 0 0 ' + (x2 - r) + ',' + i
-    + ' L' + (i + r) + ',' + i + ' A' + r + ',' + r + ' 0 0 0 ' + i + ',' + (i + r));
-  svg.appendChild(path);
-  wrap.appendChild(svg);
-}
 if (!window._elContornoResize) {
   window._elContornoResize = true;
   window.addEventListener('resize', function() { if (document.getElementById('el-tbody')) elAtualizarGruposArvore(); });
@@ -4323,23 +4319,17 @@ function _elAtualizarBotaoFiltro(campo) {
   if (valor && campo === 'resp') rotuloExibicao = nomeRespExibicao(valor, 'USER');
   if (label) label.textContent = rotuloExibicao || def.label;
   if (btn) btn.classList.toggle('ds-filtro__btn--ativo', !!valor);
-  _elFiltrosMobileSincronizar();
   if (x) x.classList.toggle('hidden', !valor);
 }
 
-/* Celular: as pílulas de filtro só aparecem com a busca do topo aberta ou com filtro aplicado (uiFiltrosMobileSincronizar) */
 function _elMobile() { return window.matchMedia('(max-width: 768px)').matches; }
 // Celular: a lista é o único modo; o botão do modo (ao lado do ⋮ do cabeçalho) avisa onde ver os outros
 function elAvisarModosVisualizacao() {
   showMessage('info', 'Outros modos de visualização', 'Para ver os elementos como organograma, tabela 5W2H ou Gantt, acesse o Samaúma na versão web.');
 }
-function _elFiltrosMobileSincronizar() {
-  uiFiltrosMobileSincronizar(document.getElementById('el-filtros-normal'), _filtrosElementos.tipo || _filtrosElementos.resp);
-}
 if (!document._elBuscaTopo) {
   document._elBuscaTopo = true;
-  document.addEventListener('ui-busca-topo', _elFiltrosMobileSincronizar);
-  window.matchMedia('(max-width: 768px)').addEventListener('change', function() { _elFiltrosMobileSincronizar(); if (document.getElementById('el-tbody')) _elReRenderizarModoAtivo(); });
+  window.matchMedia('(max-width: 768px)').addEventListener('change', function() { if (document.getElementById('el-tbody')) _elReRenderizarModoAtivo(); });
 }
 
 /* Seleção de elementos */
@@ -5150,7 +5140,6 @@ function renderizarTabelaEstrutura() {
   var tbody = document.getElementById('el-tbody');
   var maisWrap = document.getElementById('el-carregar-mais-wrap');
   if (!tbody) return;
-  _elFiltrosMobileSincronizar();   // antes de qualquer retorno: plano sem elementos também esconde pílulas e modos no celular
   tbody.innerHTML = '';
   if (maisWrap) maisWrap.innerHTML = '';
 

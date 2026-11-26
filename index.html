@@ -134,7 +134,9 @@ main { flex: 1; min-height: 0; padding: var(--ds-main-pad-y) var(--ds-main-pad-x
 }
 /* Ações DENTRO do hero (página sem faixa de abas a cobrir): rolam com o título, à direita dele */
 .ds-pagina__hero > .ds-pagina__acoes { position: static; margin: 0 0 0 auto; height: auto; padding-left: 0; background: none; }
-.ds-pagina__faixa { position: sticky; top: var(--ds-pagina-topo); z-index: 42; padding-right: var(--ds-pagina-acoes-w); }
+/* A faixa de abas usa toda a largura da página; só quando o botão fixo das ações passa por cima dela (.is-acoes-sobre-faixa, posto por uiPaginaMedir ao rolar) ela encolhe, com animação, até onde o botão começa */
+.ds-pagina__faixa { position: sticky; top: var(--ds-pagina-topo); z-index: 42; padding-right: 0; transition: padding-right var(--ds-duration-base) var(--ds-ease-standard); }
+.ds-pagina.is-acoes-sobre-faixa .ds-pagina__faixa { padding-right: var(--ds-pagina-acoes-w); }
 .ds-pagina__filtros {
   position: sticky; top: calc(var(--ds-pagina-topo) + var(--ds-pagina-faixa-h)); z-index: 41;
   background: var(--ds-color-surface);
@@ -580,7 +582,7 @@ body.high-contrast {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--ds-space-2);
   min-height: 40px; padding: 0 var(--ds-space-4);
   font-family: var(--ds-font-sans); font-size: var(--ds-text-base); font-weight: var(--ds-weight-medium);
-  line-height: 1; border: 1px solid transparent; border-radius: var(--ds-r-sm);
+  line-height: 1; border: 1px solid transparent; border-radius: var(--ds-r-lg);   /* raio único de botão: o do .ds-icon-action (--ds-r-lg) */
   background: var(--ds-color-surface); color: var(--ds-color-text);
   cursor: pointer; white-space: nowrap;
   transition: background var(--ds-duration-fast) var(--ds-ease-standard),
@@ -643,7 +645,6 @@ body.high-contrast {
 .ds-vazio__icone { font-size: var(--ds-text-3xl); opacity: 0.35; }
 .ds-vazio__titulo { margin: 0; font-size: var(--ds-text-md); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
 .ds-vazio__texto { margin: 0; max-width: 360px; font-size: var(--ds-text-base); }
-.ds-vazio__acao { margin-top: var(--ds-space-2); }
 
 /* ---- Tabela de lista (desktop: tabela com cabeçalho fixo sob as abas e filtros; ≤768 px: galeria de cartões) ----
    Estrutura: <div class="ds-tabela-wrap"><table class="ds-tabela"> com thead/tbody; tr principal .ds-linha-lista (+ .ds-linha-clicavel quando abre ao clicar; .is-selecionada quando marcada).
@@ -651,7 +652,8 @@ body.high-contrast {
    .ds-col-sobreposta/.ds-col-acoes (ações, à direita), __card (coluna SÓ do mobile: o que o cartão mostra além do título), __so-desktop (some nas linhas do mobile e fica
    no cabeçalho como ordenação), __so-larga (some até 1024 px). Linha de aviso (carregando, vazio): tr.ds-tabela__msg com um só td colspan. Seleção com Ctrl/Shift: --selecao.
    Cartão no mobile, em 3 linhas: caixa + tipo + ⋮ / título sozinho com reticências / detalhes (__card). */
-.ds-tabela-wrap { overflow: visible; margin-bottom: calc(-1 * var(--ds-main-pad-y)); background: var(--ds-color-surface); }
+.ds-tabela-wrap { overflow: visible; margin-bottom: calc(-1 * var(--ds-main-pad-y)); background: var(--ds-color-surface); }   /* sem paginador a tabela vai até a borda de <main> */
+.ds-tabela-wrap:has(+ * .ds-paginador-rodape) { margin-bottom: 0; }   /* com paginador abaixo, ele começa onde a tabela termina: sem sobreposição */
 /* border-collapse: separate: com bordas coladas o th sticky deixaria a borda de baixo para trás ao rolar */
 .ds-tabela { width: 100%; margin: 0; border-collapse: separate; border-spacing: 0; }
 .ds-tabela thead th {
@@ -664,13 +666,39 @@ body.high-contrast {
 .ds-tabela tbody tr { transition: background var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast), border-color var(--ds-duration-fast); }
 .ds-tabela tbody tr:last-child td { border-bottom: none; }
 .ds-tabela tbody tr:hover td { background: var(--ds-sidebar-item-hover); }
+/* Célula de decisão (última coluna do item que pede uma ação): o botão da ação necessária (.ds-btn--pendencia*, .ds-btn--sm, ícone + rótulo) sempre visível, mais o ⋮ das demais ações */
+.ds-decisao { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; white-space: nowrap; }
+.ds-decisao .ds-btn { height: 30px; min-height: 30px; padding: 0 10px; font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); gap: 4px; white-space: nowrap; flex-shrink: 0; }
+.ds-decisao .ds-btn .material-symbols-outlined { font-size: 16px; }
+.ds-decisao .acoes-linha { opacity: 1; }
+/* Linha em alerta: preenchimento semântico da linha inteira (os mesmos cinco tons de estado do sistema: success, warning, danger, info, pending).
+   A ação necessária fica na célula de decisão (.ds-decisao). Seleção (abaixo) prevalece sobre o preenchimento. */
+/* Preenchimento da linha em alerta: só no desktop. No celular o destaque é badge na 3ª linha + a ação na gaveta, sem pintar o item */
+@media (min-width: 769px) {
+  .ds-tabela tbody tr.ds-linha--warning > td { background: var(--ds-color-warning-bg); }
+  .ds-tabela tbody tr.ds-linha--danger > td { background: var(--ds-color-danger-bg); }
+  .ds-tabela tbody tr.ds-linha--info > td { background: var(--ds-color-info-bg); }
+  .ds-tabela tbody tr.ds-linha--success > td { background: var(--ds-color-success-bg); }
+  .ds-tabela tbody tr.ds-linha--pending > td { background: color-mix(in srgb, var(--ds-color-pending) 18%, var(--ds-color-surface)); }
+  /* Foco por teclado (uiAtalhosLista): contorno na linha inteira */
+  .ds-tabela tbody tr.ds-linha-clicavel:focus-visible { outline: 2px solid var(--ds-color-action); outline-offset: -2px; }
+  .ds-tabela tbody tr.ds-linha--warning.ds-linha-clicavel:hover > td { background: color-mix(in srgb, var(--ds-color-warning-bg) 80%, var(--ds-color-warning)); }
+  .ds-tabela tbody tr.ds-linha--danger.ds-linha-clicavel:hover > td { background: color-mix(in srgb, var(--ds-color-danger-bg) 80%, var(--ds-color-danger)); }
+  .ds-tabela tbody tr.ds-linha--success.ds-linha-clicavel:hover > td { background: color-mix(in srgb, var(--ds-color-success-bg) 80%, var(--ds-color-success)); }
+  .ds-tabela tbody tr.ds-linha--pending.ds-linha-clicavel:hover > td { background: color-mix(in srgb, var(--ds-color-pending) 26%, var(--ds-color-surface)); }
+  .ds-tabela tbody tr.ds-linha--info.ds-linha-clicavel:hover > td { background: color-mix(in srgb, var(--ds-color-info-bg) 80%, var(--ds-color-info)); }
+}
+/* Linha de detalhe (item expansível): tr logo abaixo do item com um td colspan; fundo suave, sem hover. Abre e fecha pela seta .ds-item-seta do item. */
+.ds-tabela tbody tr.ds-linha-detalhe > td { background: var(--ds-color-surface-2); padding: var(--ds-space-4) var(--ds-space-5); }
+.ds-tabela tbody tr.ds-linha-detalhe:hover > td { background: var(--ds-color-surface-2); }
 .ds-tabela tbody tr.is-selecionada td { background: var(--ds-sidebar-item-active); }
 .ds-tabela--selecao tbody tr { user-select: none; }
 .ds-tabela tbody tr.ds-tabela__msg:hover td { background: transparent; }
-.ds-tabela .ds-tabela__check { width: 48px; text-align: left; padding: 14px 0 14px 16px; }
+.ds-tabela .ds-tabela__check { width: 48px; min-width: 48px; text-align: left; padding: 14px 0 14px 16px; }   /* min-width: a coluna não encolhe quando o nome é longo */
 .ds-tabela thead .ds-tabela__check { padding-top: 12px; padding-bottom: 12px; }
-.ds-tabela .ds-tabela__expandir { width: 32px; padding-left: 0; padding-right: 0; }   /* coluna da seta de expandir: estreita, o conteúdo fica junto dela */
+.ds-tabela .ds-tabela__expandir { width: 32px; min-width: 32px; padding-left: 0; padding-right: 0; }   /* coluna da seta de expandir: estreita, o conteúdo fica junto dela */
 .ds-tabela input[type="checkbox"] { display: block; margin: 0; width: 16px; height: 16px; }
+input[type="checkbox"] { accent-color: var(--ds-color-action); }   /* checkbox: o azul de ação em todo o sistema, nunca por tela */
 .ds-tabela__principal { width: 46%; min-width: 260px; }
 @media (min-width: 769px) { .ds-tabela td.ds-tabela__principal { max-width: 0; } }
 .ds-tabela td.ds-tabela__nowrap { white-space: nowrap; }
@@ -838,6 +866,67 @@ body.high-contrast {
   .ds-pagina:has(> .ds-fab) > .ds-pagina__acoes, .ds-pagina:has(> .ds-fab) .ds-pagina__hero > .ds-pagina__acoes { display: none; }
 }
 
+/* Abas no celular — botão em pilha (.ds-fab-stack) e seletor 3D (.ds-flip3d). Nunca à mão: uiCardStackAtualizar monta o botão dentro do .ds-fab (acima do botão principal;
+   sem .ds-fab na página ele cria o seu) e uiFlip3DAbrir monta o seletor (app_ui_utils.html). O selo do botão mostra o ícone da aba atual. */
+.ds-fab-stack { display: none; position: relative; align-self: flex-end; pointer-events: auto; margin-bottom: var(--ds-space-1); transition: opacity var(--ds-duration-fast) var(--ds-ease-standard), transform var(--ds-duration-base) var(--ds-ease-emphasized); }
+@media (max-width: 768px) { .ds-fab-stack { display: flex; } }
+.ds-fab.is-aberto .ds-fab-stack { opacity: 0; transform: scale(0.7) translateY(var(--ds-space-4)); pointer-events: none; }
+.ds-fab-stack__btn { position: relative; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; padding: 0; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-2xl); background: var(--ds-color-surface); color: var(--ds-color-action); box-shadow: var(--ds-shadow-3); cursor: pointer; }
+.ds-fab-stack__btn:active { transform: scale(0.95); }
+.ds-fab-stack__btn::before, .ds-fab-stack__btn::after { content: ''; position: absolute; inset: 0; border-radius: var(--ds-r-2xl); border: var(--ds-borda) solid var(--ds-color-border); background: var(--ds-color-surface-2); pointer-events: none; }
+.ds-fab-stack__btn::before { z-index: -1; transform: translateY(-5px) scale(0.88); box-shadow: var(--ds-shadow-1); }
+.ds-fab-stack__btn::after { z-index: -2; opacity: 0.6; transform: translateY(-9px) scale(0.76); }
+.ds-fab-stack__btn .material-symbols-outlined { font-size: var(--ds-icon-xl); }
+.ds-fab-stack__selo { position: absolute; top: calc(-1 * var(--ds-space-2)); right: calc(-1 * var(--ds-space-2)); display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); color: var(--ds-color-action); box-shadow: var(--ds-shadow-1); pointer-events: none; }
+.ds-fab-stack__selo .material-symbols-outlined { font-size: var(--ds-icon-xs); }
+
+.ds-flip3d { position: fixed; inset: 0; z-index: calc(var(--ds-z-modal) + 20); display: flex; flex-direction: column; background: var(--ds-glass-bg-strong); backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate)); color: var(--ds-color-text); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--ds-duration-slow) var(--ds-ease-standard), visibility var(--ds-duration-slow) var(--ds-ease-standard); user-select: none; }
+.ds-flip3d.is-aberto { opacity: 1; visibility: visible; pointer-events: auto; }
+.ds-flip3d__cab { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-3); padding: max(var(--ds-space-3), env(safe-area-inset-top)) var(--ds-space-4) var(--ds-space-1); }
+.ds-flip3d__titulo { margin: 0; min-width: 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-flip3d__palco { position: relative; flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; perspective: 1000px; perspective-origin: 55% 42%; overflow: hidden; touch-action: none; }
+.ds-flip3d__pilha { position: relative; width: min(80vw, 300px); height: min(54vh, 350px); transform-style: preserve-3d; transform: translate(var(--ds-space-2), var(--ds-space-5)); }
+/* a pose da carta vem da distância até a carta em foco (--d): as de trás afundam, sobem e encolhem; a já folheada sai para a frente */
+.ds-flip3d__carta { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-2xl); background: var(--ds-color-surface); box-shadow: var(--ds-shadow-4); cursor: pointer; pointer-events: none; will-change: transform, opacity;
+  transform: translate3d(calc(var(--d) * -16px), calc(var(--d) * -20px), calc(var(--d) * -75px)) rotateY(-13deg) scale(calc(1 - var(--d) * 0.04)); opacity: calc(1 - var(--d) * 0.14); z-index: calc(100 - var(--d));
+  transition: transform 500ms var(--ds-ease-emphasized), opacity var(--ds-duration-slow) var(--ds-ease-standard), border-color var(--ds-duration-slow) var(--ds-ease-standard); }
+.ds-flip3d__carta.is-alcance { pointer-events: auto; }
+.ds-flip3d__carta.is-foco { transform: translate3d(0, 0, 0) rotateY(-8deg) scale(1); opacity: 1; z-index: 100; border-color: var(--ds-color-action); }
+.ds-flip3d__carta.is-antes { transform: translate3d(calc(50px + var(--d) * 30px), calc(100px + var(--d) * 20px), calc(180px + var(--d) * 40px)) rotateY(-30deg) scale(0.9); opacity: 0; pointer-events: none; z-index: calc(50 + var(--d)); }
+.ds-flip3d__carta.is-longe { transform: translate3d(-96px, -120px, -450px) rotateY(-15deg) scale(0.7); opacity: 0; z-index: 1; }
+.ds-flip3d.is-escolhendo .ds-flip3d__carta:not(.is-foco) { opacity: 0; }
+.ds-flip3d.is-escolhendo .ds-flip3d__carta.is-foco { transform: translate3d(0, 0, 60px) rotateY(0) scale(1.04); }
+.ds-flip3d__carta-cab { flex: none; display: flex; align-items: center; gap: var(--ds-space-2); padding: var(--ds-space-3); background: var(--ds-color-surface-2); border-bottom: var(--ds-borda) solid var(--ds-color-border); }
+.ds-flip3d__carta.is-aba-ativa .ds-flip3d__carta-cab { background: var(--ds-color-info-bg); }
+.ds-flip3d__carta-ico { flex: none; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface); color: var(--ds-color-action); }
+.ds-flip3d__carta-ico .material-symbols-outlined { font-size: var(--ds-icon-md); }
+.ds-flip3d__carta-nome { flex: 1 1 auto; min-width: 0; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-flip3d__carta-corpo { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--ds-space-2); padding: var(--ds-space-3); overflow: hidden; }
+.ds-flip3d__criterio { margin: 0; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ds-flip3d__kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ds-space-2); }
+.ds-flip3d__kpi, .ds-flip3d__item { display: flex; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); padding: var(--ds-space-2); }
+.ds-flip3d__kpi { flex-direction: column; gap: var(--ds-space-1); }
+.ds-flip3d__kpi-valor { font-size: var(--ds-text-md); font-weight: var(--ds-weight-bold); }
+.ds-flip3d__kpi-rotulo { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-flip3d__item { align-items: center; gap: var(--ds-space-2); }
+.ds-flip3d__ponto { flex: none; width: 8px; height: 8px; border-radius: var(--ds-r-pill); background: var(--ds-color-action); }
+.ds-flip3d__ponto--danger { background: var(--ds-color-danger); }
+.ds-flip3d__ponto--warning { background: var(--ds-color-warning); }
+.ds-flip3d__ponto--success { background: var(--ds-color-success); }
+.ds-flip3d__ponto--info { background: var(--ds-color-info); }
+.ds-flip3d__item-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.ds-flip3d__item-titulo { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-flip3d__item-meta { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
+.ds-flip3d__vazio { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--ds-space-2); font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); text-align: center; }
+.ds-flip3d__vazio .material-symbols-outlined { font-size: var(--ds-icon-xl); opacity: 0.5; }
+.ds-flip3d__rodape { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-2); padding: var(--ds-space-2) var(--ds-space-4) max(var(--ds-space-3), env(safe-area-inset-bottom)); }
+.ds-flip3d__pontos { display: flex; align-items: center; gap: var(--ds-space-1-5); padding: var(--ds-space-2) var(--ds-space-3); }
+.ds-flip3d__ponto-nav { width: 8px; height: 8px; padding: 0; border: 0; border-radius: var(--ds-r-pill); background: var(--ds-color-border-strong); cursor: pointer; transition: width var(--ds-duration-base) var(--ds-ease-standard), background var(--ds-duration-base) var(--ds-ease-standard); }
+.ds-flip3d__ponto-nav.is-ativo { width: 20px; background: var(--ds-color-action); }
+.ds-flip3d__atual { max-width: 260px; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-flip3d__adicionar { display: inline-flex; align-items: center; gap: var(--ds-space-1); padding: var(--ds-space-2) var(--ds-space-4); border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-pill); background: var(--ds-color-surface); color: var(--ds-color-action); font-family: inherit; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; }
+.ds-flip3d__adicionar .material-symbols-outlined { font-size: var(--ds-icon-md); }
+
 /* Voltar: botão discreto (.ds-icon-action) à esquerda do título; injetado por uiVoltarGarantir (app_ui_utils.html) em todo .ds-pagina__hero. Some quando não há para onde voltar. */
 .ds-pagina__voltar { flex: none; margin-left: calc(-1 * var(--ds-space-2)); background: none; border-color: transparent; box-shadow: none; }
 .ds-pagina__voltar.hidden { display: none; }
@@ -892,9 +981,15 @@ body.high-contrast {
     flex: 1 1 0; min-width: 0; min-height: 56px; display: flex; align-items: center; justify-content: center;
     padding: var(--ds-space-1); border: 0; background: none; cursor: pointer; color: var(--ds-color-text-muted);
   }
+  .ds-navbar__item { position: relative; z-index: 1; }
   .ds-navbar__item .material-symbols-outlined { font-size: var(--ds-icon-xl); padding: var(--ds-space-1) var(--ds-space-5); border-radius: var(--ds-r-pill); }
-  .ds-navbar__item.is-ativo { color: var(--ds-color-text); }
-  .ds-navbar__item.is-ativo .material-symbols-outlined { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); }
+  .ds-navbar__item.is-ativo { color: var(--ds-color-info-fg); }
+  /* a pílula do item ativo é o indicador (uiNavbarIndicador): ao trocar de item a ponta da frente avança primeiro e a de trás espera 90 ms e a segue (efeito elástico) */
+  .ds-navbar__indicador { position: absolute; z-index: 0; top: var(--ind-topo); height: var(--ind-alt); left: var(--ind-esq); right: var(--ind-dir); border-radius: var(--ds-r-pill); background: var(--ds-color-info-bg); pointer-events: none; }
+  .ds-navbar__indicador.hidden { display: none; }
+  .ds-navbar__indicador--dir { transition: right 220ms var(--ds-ease-emphasized), left 280ms var(--ds-ease-emphasized) 90ms; }
+  .ds-navbar__indicador--esq { transition: left 220ms var(--ds-ease-emphasized), right 280ms var(--ds-ease-emphasized) 90ms; }
+  .ds-navbar__indicador--sem-animacao { transition: none; }
   body:has(.ds-navbar) #main-content { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
   body:has(.ds-navbar) .ds-fab { bottom: calc(72px + var(--ds-space-4)); }
   /* rolando a lista para baixo o botão sai de cena (não cobre os itens); o menor arrasto para cima o traz de volta (uiFabRolagem) */
@@ -1070,12 +1165,12 @@ body.high-contrast {
 }
 [data-ds-theme="dark"] .ds-btn--glass-primary { color: var(--ds-color-action); }
 .ds-btn--glass-primary:hover { box-shadow: var(--ds-glass-shadow); }
+/* Botão secundário (e a seta do botão dividido): mesmo fundo da bandeja dos modos de visualização (.ds-modos) */
 .ds-btn--glass-secondary {
-  background: var(--ds-glass-bg);
-  -webkit-backdrop-filter: blur(var(--ds-glass-blur)); backdrop-filter: blur(var(--ds-glass-blur));
+  background: var(--ds-color-surface-2);
   border-color: var(--ds-glass-border); color: var(--ds-color-text);
 }
-.ds-btn--glass-secondary:hover { background: var(--ds-glass-bg-strong); }
+.ds-btn--glass-secondary:hover { background: var(--ds-sidebar-item-hover); }
 /* Ação que resolve uma pendência da linha (nível 3): tom da pendência, sem competir com o azul do plano */
 .ds-btn--pendencia,
 .ds-btn--pendencia-rm { background: var(--ds-color-surface); border-color: var(--ds-color-warning); color: var(--ds-color-warning-fg); }
@@ -1114,8 +1209,8 @@ body.high-contrast {
   display: flex; align-items: flex-start; gap: 4px;
   background: var(--ds-color-surface); border-bottom: 1px solid var(--ds-color-border);
 }
-.ds-tabs-nav__scroll-wrap { position: relative; flex: 1 1 auto; min-width: 0; }
-.ds-tabs-nav__scroll { display: flex; align-items: center; overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth; }
+.ds-tabs-nav__scroll-wrap { position: relative; display: flex; align-items: stretch; flex: 0 1 auto; min-width: 0; }
+.ds-tabs-nav__scroll { display: flex; align-items: center; flex: 0 1 auto; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; scroll-behavior: smooth; }
 .ds-tabs-nav__scroll::-webkit-scrollbar { display: none; }
 .ds-tabs-nav__item {
   display: inline-flex; align-items: center; gap: 6px; position: relative;
@@ -1130,19 +1225,18 @@ body.high-contrast {
 .ds-tabs-nav__item.active { color: var(--ds-color-action); font-weight: var(--ds-weight-semibold); border-bottom-color: var(--ds-color-action); }
 body.high-contrast .ds-tabs-nav__item.active { border-bottom-color: var(--ds-color-text); color: var(--ds-color-text); }
 .ds-tabs-nav__item .material-symbols-outlined { font-size: 18px; }
-/* Botão de configurar as abas (adicionar app, restaurar a ordem): só ícone, no fim da linha */
-.ds-tabs-nav__item--config { margin-left: auto; flex-shrink: 0; padding: 12px 10px; }
+/* Botões de configurar as abas (adicionar app, restaurar a ordem), só ícone: ficam FIXOS depois da faixa rolável (.ds-tabs-nav__acoes), logo após a última aba quando há poucas e sempre à vista quando há muitas */
+.ds-tabs-nav__acoes { display: flex; align-items: center; flex: none; }
+.ds-tabs-nav__item--config { flex-shrink: 0; padding: 12px 10px; }
 .ds-tabs-nav__item--config:hover { color: var(--ds-color-action); }
 /* Aba sendo arrastada para reordenar */
 .ds-tabs-nav__item--arrastando { opacity: .35; }
-/* Setas do carrossel: aparecem só quando as abas não cabem (uiAbasNavAtualizar) */
+/* Setas do carrossel: espaço PRÓPRIO nas pontas da faixa (nunca sobre as abas); aparecem só quando as abas não cabem (uiAbasNavAtualizar) */
 .ds-tabs-nav__seta {
-  position: absolute; top: 0; bottom: 1px; width: 28px; padding: 0; border: none; cursor: pointer; z-index: 1;
+  flex: none; width: 28px; padding: 0; border: none; background: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center; color: var(--ds-color-text-muted);
 }
 .ds-tabs-nav__seta:hover { color: var(--ds-color-action); }
-.ds-tabs-nav__seta--ini { left: 0; background: linear-gradient(to left, transparent, var(--ds-color-surface) 55%); }
-.ds-tabs-nav__seta--fim { right: 0; background: linear-gradient(to right, transparent, var(--ds-color-surface) 55%); }
 @media (max-width: 768px) { .ds-tabs-nav__seta { display: none !important; } }
 /* Contador dentro da aba (navegação ou segmentada); vazio some */
 .ds-tab-count {
@@ -1166,7 +1260,7 @@ body.high-contrast .ds-tabs-nav__item.active { border-bottom-color: var(--ds-col
 .ds-tabs-nav__item.active .ds-tab-count--notificacao { background: var(--ds-color-notificacao); color: var(--ds-color-on-notificacao); }
 
 @media (max-width: 768px) {
-  /* Abas no mobile: saem da página; abrem numa gaveta pelo ícone de abas da barra do topo (uiTopoAbas) */
+  /* Abas no mobile: saem da página; o botão em pilha (.ds-fab-stack) acima do flutuante abre o seletor 3D (.ds-flip3d) */
   .ds-tabs-nav { display: none; }
 }
 }
@@ -1335,7 +1429,7 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
    tela for tocada. Os menus suspensos são de script: abrirMenuSelecao() e acoesLinhaHTML()/acoesLinhaMenu()
    (components_acoes_linha.html) — nunca montar outro popover. */
 
-/* Barra de filtros: [__normal | __selecao] (um ou outro) + __pag à direita. Vai dentro do .ds-pagina__filtros. */
+/* Barra de filtros: [__normal | __selecao] (um ou outro) + __acoes à direita (botão secundário, modos de visualização). Vai dentro do .ds-pagina__filtros. */
 .ds-filtros { display: flex; align-items: center; gap: 8px; padding: var(--ds-pagina-filtros-pad) 0; }
 .ds-filtros__normal, .ds-filtros__selecao { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; flex: 1 1 auto; min-width: 0; }
 .ds-filtros__normal.hidden, .ds-filtros__selecao.hidden { display: none; }
@@ -1343,7 +1437,14 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-filtros__selecao > :not(:first-child) .ds-icon-action, .ds-filtros__selecao > .ds-icon-action:not(:first-child) { border: 0; box-shadow: none; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .ds-filtros__selecao-texto { font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
 .ds-filtros__divisor { width: var(--ds-borda); align-self: stretch; margin: 2px 4px; background: var(--ds-color-border); }
-.ds-filtros__pag { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
+/* Modos de visualização (lista, organograma, quadro…): grupo de botões-ícone em bandeja; o modo ativo leva aria-pressed="true" */
+.ds-modos { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); border: var(--ds-borda) solid var(--ds-glass-border); }
+.ds-modo { position: relative; width: 38px; height: 34px; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; background: none; border: none; border-radius: var(--ds-r-md); color: var(--ds-color-text-muted); }
+.ds-modo:hover { color: var(--ds-color-text); }
+.ds-modo[aria-pressed="true"] { background: var(--ds-color-surface); color: var(--ds-primary-700); box-shadow: var(--ds-shadow-1); }
+[data-ds-theme="dark"] .ds-modo[aria-pressed="true"] { color: var(--ds-color-action); }
+.ds-modo .material-symbols-outlined { font-size: var(--ds-icon-lg); }
+.ds-filtros__acoes { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
 
 /* Busca expansível: .ds-busca > [botão .ds-icon-action] + .ds-busca__caixa(.hidden) > __icone + input.ds-input.ds-busca__input + __limpar */
 .ds-busca { position: relative; display: inline-flex; align-items: center; }
@@ -1374,6 +1475,10 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
   cursor: pointer; white-space: nowrap;
 }
 .ds-filtro__btn:hover { background: var(--ds-sidebar-item-hover); }
+/* Desabilitado: o controle continua visível, só que apagado (nada para filtrar, filtro sem opções) */
+.ds-filtro__btn:disabled, .ds-modo:disabled, .ds-icon-action:disabled { opacity: .45; cursor: not-allowed; }
+.ds-filtro__btn:disabled:hover { background: var(--ds-color-surface); }
+.ds-modo:disabled:hover { color: var(--ds-color-text-muted); }
 .ds-filtro__btn .material-symbols-outlined { font-size: var(--ds-icon-md); color: var(--ds-color-text-muted); }
 .ds-filtro__btn--ativo { background: var(--ds-color-info-bg); color: var(--ds-color-info-fg); border-color: var(--ds-color-info-bg); font-weight: var(--ds-weight-semibold); }
 .ds-filtro__btn--ativo .material-symbols-outlined { color: var(--ds-color-info-fg); }
@@ -1398,12 +1503,6 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-link:hover { text-decoration: underline; }
 .ds-link.hidden { display: none; }
 
-/* Paginador compacto da barra de filtros: __contador "1–20 de 84" + __nav (‹ .ds-icon-action--sm, __atual, ›) */
-.ds-paginador { display: inline-flex; align-items: center; gap: 8px; }
-.ds-paginador__contador { font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); white-space: nowrap; }
-.ds-paginador__nav { display: inline-flex; align-items: center; gap: 2px; }
-.ds-paginador__atual { min-width: 20px; text-align: center; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
-.ds-paginador .ds-icon-action:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Paginador de rodapé (versão 2, base da tabela dentro do plano): esquerda "Exibir N", centro "a–b de n", direita ‹ [página] ›. uiPaginadorRodapeHTML / uiPaginarLista. */
 .ds-paginador-rodape { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--ds-space-3); padding: var(--ds-space-3) var(--ds-space-4); border-top: 1px solid var(--ds-color-border); font-size: var(--ds-text-sm); color: var(--ds-color-text-muted); }
 .ds-paginador-rodape__esq, .ds-paginador-rodape__centro, .ds-paginador-rodape__dir { display: flex; align-items: center; gap: var(--ds-space-2); }
@@ -1431,33 +1530,31 @@ body.high-contrast .ds-info { color: var(--ds-color-text); }
 .ds-progresso__valor { min-width: 34px; font-size: var(--ds-text-xs); font-weight: var(--ds-weight-bold); color: var(--ds-color-text-muted); }
 
 /* Botão dividido (ação principal + seta que abre o menu das demais, via acoesLinhaMenu): .ds-split > .ds-btn.ds-split__principal + .ds-btn.ds-split__seta */
-.ds-split { display: inline-flex; }
+.ds-split { display: inline-flex; border-radius: var(--ds-r-lg); }
+.ds-split:has(.ds-btn--primary) { box-shadow: var(--ds-shadow-2); }   /* a sombra é do conjunto, não de cada metade: a da seta não cobre o botão principal */
+.ds-split .ds-btn:not(:focus-visible) { box-shadow: none; }
 .ds-split .ds-btn { border-radius: 0; min-height: 40px; }
-.ds-split .ds-split__principal { border-radius: var(--ds-r-sm) 0 0 var(--ds-r-sm); padding: 0 18px; white-space: nowrap; }
-.ds-split .ds-split__seta { border-radius: 0 var(--ds-r-sm) var(--ds-r-sm) 0; padding: 0 8px; min-width: 40px; border-left: var(--ds-borda) solid color-mix(in srgb, var(--ds-color-on-action) 35%, transparent); }
-.ds-split .ds-split__principal.hidden + .ds-split__seta { border-radius: var(--ds-r-sm); border-left: 0; }
+.ds-split .ds-split__principal { border-radius: var(--ds-r-lg) 0 0 var(--ds-r-lg); padding: 0 18px; white-space: nowrap; }
+.ds-split .ds-split__seta { border-radius: 0 var(--ds-r-lg) var(--ds-r-lg) 0; padding: 0 8px; min-width: 40px; border-left: var(--ds-borda) solid color-mix(in srgb, var(--ds-color-on-action) 35%, transparent); }
+.ds-split .ds-split__principal.hidden + .ds-split__seta { border-radius: var(--ds-r-lg); border-left: 0; }
 
 /* Mobile (padrão Gmail/Drive): a busca fica sempre aberta e ocupa a linha (uiBuscaAbrir/uiBuscaRecolher, app_ui_utils.html); os filtros são pílulas
    que abrem o bottom sheet do próprio filtro (abrirMenuSelecao no mobile) e mostram o valor escolhido; limpar um filtro é no × da própria pílula (ou no "Limpar" do sheet); sem "Limpar filtros" geral. */
 @media (max-width: 768px) {
   .ds-filtros { flex-wrap: wrap; }
   .ds-filtros__normal, .ds-filtros__selecao { min-height: var(--ds-pagina-filtros-linha); }   /* mesma altura: trocar a busca pela faixa de seleção não move a lista */
-  .ds-filtros__normal { row-gap: var(--ds-space-2); }
+  /* as pílulas ficam lado a lado numa linha só; o que não cabe rola de lado */
+  .ds-filtros__normal { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .ds-filtros__normal::-webkit-scrollbar { display: none; }
+  .ds-filtros__acoes { display: none; }   /* modos e botão secundário não existem como botões no celular: os modos vão para o cabeçalho da lista e o secundário para o botão flutuante */
   .ds-filtros__normal > .ds-busca { flex: 1 1 100%; }
   /* a busca vive na barra do topo (uiTopoBuscar); a barra de filtros só aparece com pílulas à vista ou em seleção, senão some inteira */
   .ds-filtros__normal > .ds-busca { display: none; }
   #topbar[data-buscando] > :not(.ds-topbar-busca) { display: none !important; }
-  /* em página com abas o título é o nome da aba ativa (botão com seta de lista suspensa) e substitui a trilha; os ícones ficam à direita */
+  /* o título da barra é sempre o da página (as abas vivem no botão em pilha .ds-fab-stack); os ícones ficam à direita */
   #topbar-crumbs { flex: 0 3 auto; }
   #topbar > :last-child { margin-left: auto; }
-  #topbar[data-abas] > #topbar-crumbs { display: none; }
   .ds-topbar-status__ponto { display: block; width: 14px; height: 14px; padding: 0; border-radius: var(--ds-r-pill); background: currentColor; }   /* a cor é a da fonte do .ds-badge--<tom> */
-  .ds-topbar-aba { display: flex; align-items: center; gap: var(--ds-space-1); flex: 0 1 auto; min-width: 0; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-family: inherit; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); color: var(--ds-color-text); white-space: nowrap; }
-  .ds-topbar-aba.hidden { display: none; }
-  .ds-topbar-aba .material-symbols-outlined { flex: none; font-size: var(--ds-icon-md); color: var(--ds-color-text-muted); }
-  .ds-topbar-aba__prefixo { flex: 0 1 auto; min-width: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; color: var(--ds-color-text-muted); font-weight: var(--ds-weight-semibold); }
-  .ds-topbar-aba__prefixo:empty { display: none; }
-  .ds-topbar-aba__txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   #tb-buscar[data-ativo] { color: var(--ds-color-action); }
   .ds-topbar-busca { flex: 1 1 auto; min-width: 0; gap: var(--ds-space-1); }
   .ds-topbar-busca .ds-busca__input { flex: 1 1 auto; width: auto; max-width: none; padding-left: var(--ds-space-4); }
@@ -1528,12 +1625,25 @@ tr:hover > td > .ds-celula-sobreposta > .ds-celula-sobreposta__acoes, tr:focus-w
 .ds-subtabela tbody tr:last-child > td { border-bottom: 0; }
 .ds-subtabela tbody tr:not(:hover) > td { background: transparent; }
 .ds-subtabela tbody tr:hover > td { background: var(--ds-sidebar-item-hover); }
+/* Subtabela como <table> dentro de .ds-tabela (linha de detalhe): sem isto o cabeçalho e as células herdam o th sticky, o caixa alta e o preenchimento da tabela principal */
+.ds-tabela .ds-subtabela :is(thead th, tbody td) { position: static; padding: 0 12px; text-transform: none; letter-spacing: normal; border: 0 solid var(--ds-glass-border); border-width: 0 var(--ds-borda) var(--ds-borda) 0; }
+.ds-tabela .ds-subtabela thead th { font-size: var(--ds-subtabela-cab-fonte); background: transparent; }
+.ds-tabela .ds-subtabela tbody td { font-size: var(--ds-text-sm); }
+.ds-tabela .ds-subtabela :is(thead th, tbody td):last-child { border-right: 0; }
+.ds-tabela .ds-subtabela tbody tr:last-child > td { border-bottom: 0; }
 /* Altura mínima de toda linha principal de lista (a da lista de planos); o mobile vira cartão e não usa */
 @media (min-width: 769px) { .ds-linha-lista > td { height: var(--ds-linha-altura); } }
 .ds-linha-clicavel { cursor: pointer; }
 .ds-linha-clicavel:hover > td { background: var(--ds-sidebar-item-hover); }
 .ds-alerta-atraso { display: inline-flex; align-items: center; color: var(--ds-color-danger-fg); cursor: help; vertical-align: middle; }
 .ds-alerta-atraso .material-symbols-outlined { font-size: 16px; }
+/* Aviso do item: texto pequeno sob a linha principal de uma célula (ex.: "apaga em 12 dias", "2 anos sem metas"). Só texto: sem ícone, tooltip ou clique. Tom = a regra de cores de estado do sistema: neutro (cinza) ou --success/--warning/--danger/--info/--pending */
+.ds-aviso-item { margin-top: 2px; font-size: var(--ds-text-xs); line-height: 1.3; color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-aviso-item--success { color: var(--ds-color-success-fg); }
+.ds-aviso-item--warning { color: var(--ds-color-warning-fg); }
+.ds-aviso-item--danger { color: var(--ds-color-danger-fg); }
+.ds-aviso-item--info { color: var(--ds-color-info-fg); }
+.ds-aviso-item--pending { color: var(--ds-color-pending); }
 .ds-valor-alerta { display: inline-flex; align-items: center; gap: 2px; }
 /* Badge do tipo de elemento: pílula (mesma forma do .ds-badge) com a cor do tipo (definida ao criar o elemento) aplicada em linha (texto e fundo a partir do hex); sem cor, neutro. uiBadgeTipoHTML(tipo, cor). */
 .ds-badge-tipo { flex-shrink: 0; max-width: 135px; overflow: hidden; text-overflow: ellipsis; }
@@ -2367,9 +2477,17 @@ if (!window._uiDelegacaoAtiva) {
               <span class="material-symbols-outlined" aria-hidden="true">diversity_3</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Colaboração</span></span>
             </button>
+            <button type="button" class="nav-submenu-item" data-nav-rota="consolidados" data-on-click="components_header.41">
+              <span class="material-symbols-outlined" aria-hidden="true">speed</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Indicadores Consolidados</span></span>
+            </button>
             <button type="button" class="nav-submenu-item" data-nav-rota="calendario" data-on-click="components_header.36">
               <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
               <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Calendário</span></span>
+            </button>
+            <button type="button" class="nav-submenu-item" data-nav-rota="modelo" data-on-click="components_header.92">
+              <span class="material-symbols-outlined" aria-hidden="true">view_list</span>
+              <span class="nav-submenu-item-text"><span class="nav-submenu-item-title">Template modelo</span></span>
             </button>
             <button type="button" class="nav-submenu-item" aria-disabled="true" data-title="Em breve">
               <span class="material-symbols-outlined" aria-hidden="true">account_balance</span>
@@ -2561,8 +2679,6 @@ if (!window._uiDelegacaoAtiva) {
 
     <!-- #breadcrumb-nav (components_breadcrumb.html) é movido para cá em runtime -->
     <div class="tb-crumbs" id="topbar-crumbs"></div>
-    <!-- mobile: em página com abas o título é [sigla do plano, apagada, quando a página tem uma] + o nome da aba ativa, com seta de lista suspensa; tocar abre as abas (uiTopoAtualizar / uiTopoAbas) -->
-    <button type="button" id="tb-aba-atual" class="ds-topbar-aba hidden" data-on-click="ui.chamar" data-chamada-click="uiTopoAbas(this)" aria-haspopup="dialog"><span id="tb-aba-prefixo" class="ds-topbar-aba__prefixo"></span><span id="tb-aba-txt" class="ds-topbar-aba__txt"></span><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></button>
 
     <div class="tb-search" aria-disabled="true" data-title="Busca global — em breve">
       <span class="material-symbols-outlined" aria-hidden="true">search</span>
@@ -3401,6 +3517,8 @@ uiRegistrarAcoes('components_header', {
   '9': function (event) { toggleNavSubmenu('planejamento', event); },
   '10': function (event) { navigate('planos'); navAposEscolherSubmenu(); fecharMenuMobile(); },
   '36': function (event) { navigate('calendario'); navAposEscolherSubmenu(); fecharMenuMobile(); },
+  '92': function (event) { navigate('modelo'); navAposEscolherSubmenu(); fecharMenuMobile(); },
+  '41': function (event) { navigate('consolidados'); navAposEscolherSubmenu(); fecharMenuMobile(); },
   '11': function (event) { toggleNavSubmenu('execucao', event); },
   '12': function (event) { navigate('execucao-planos'); navAposEscolherSubmenu(); fecharMenuMobile(); },
   '13': function (event) { navigate('colaboracao'); navAposEscolherSubmenu(); fecharMenuMobile(); },
@@ -4592,8 +4710,8 @@ var SeletorOpcao = (function () {
 let cacheUnidadesPlano = [];
 let cacheUsuariosPlano = [];
 
-// Espelha TIPO_PLANO_SUPERIOR_ACEITO do backend (Estratégico também aceita Estratégico).
-const PLW_SUP_DE = { 'Estratégico': 'Estratégico', 'Tático': 'Estratégico', 'Operacional': 'Tático' };
+// Espelha TIPOS_PLANO_SUPERIOR_ACEITOS do backend: o mesmo nível e o nível imediatamente acima.
+const PLW_SUP_DE = { 'Estratégico': ['Estratégico'], 'Tático': ['Tático', 'Estratégico'], 'Operacional': ['Operacional', 'Tático'] };
 // Situação → categoria gravada pelo servidor (docs/especificacoes/tipos_de_plano.md §7). O nome do tipo não aparece na tela.
 const PLW_SITUACOES = [
   { cat: 'PESSOAL', texto: 'Só eu vou executar', explica: 'Plano seu: você elabora e executa, sem etapa de análise.' },
@@ -4736,12 +4854,19 @@ function _plwAplicarPreset(fim) {
 
 // ---------------- nível e planos superiores ----------------
 // Planos que podem ser superiores do que está sendo criado: do nível acima, em execução, nunca o próprio plano.
+// Espelha planoImpedimentoDeCategoria do backend: negociado nunca é superior; o pessoal só se liga a outro pessoal seu e fica fora da cadeia da organização.
+function _plwCategoriaCabe(catFilho, p) {
+  if (p.categoria === 'NEGOCIADO') return false;
+  if (catFilho !== 'PESSOAL') return p.categoria !== 'PESSOAL';
+  var email = ((usuarioLogado && usuarioLogado.email) || '').toLowerCase().trim();
+  return p.categoria === 'PESSOAL' && !!email && String(p.criadoPor || '').toLowerCase().trim() === email;
+}
 function _plwRecalcularCandidatosSup() {
-  var tipo = _plwEstado.nivel, tipoPai = PLW_SUP_DE[tipo], idEdicao = _plwEl('input-plano-id-edicao').value;
+  var tipo = _plwEstado.nivel, tiposPai = PLW_SUP_DE[tipo], idEdicao = _plwEl('input-plano-id-edicao').value;
   _plwSupDisponiveis = [];
-  if (tipoPai && typeof estadoPlanos !== 'undefined' && estadoPlanos.dadosBrutos) {
+  if (tiposPai && typeof estadoPlanos !== 'undefined' && estadoPlanos.dadosBrutos) {
     _plwSupDisponiveis = estadoPlanos.dadosBrutos.filter(function(p) {
-      return p.tipo === tipoPai && p.status === 'Em Execução' && String(p.id) !== String(idEdicao)
+      return tiposPai.indexOf(p.tipo) > -1 && _plwCategoriaCabe(_plwEstado.situacao, p) && p.status === 'Em Execução' && String(p.id) !== String(idEdicao)
         && (_plwEstado.mesmoNivelPermitido || p.tipo !== tipo);
     });
   }
@@ -4899,7 +5024,7 @@ function _plwIniciarSeletores() {
     getTodasOpcoes: function() { return ((typeof estadoPlanos !== 'undefined' && estadoPlanos.dadosBrutos) || []).map(_plwOpcaoSup); },
     getLimite: function() { return null; },
     getAviso: function() { return _plwEstado.supAviso; },
-    getVazio: function() { var pai = PLW_SUP_DE[_plwEstado.nivel]; return 'Nenhum plano ' + (pai ? pai.toLowerCase() + ' ' : '') + 'em execução no momento.'; },
+    getVazio: function() { return 'Nenhum plano superior em execução no momento.'; },
     onChange: function() { _plwEstado.supAviso = ''; _plwSelSup.atualizar(); _plwRenderRail(); },
     textos: {
       rotulo: 'Contribui para plano(s) superior(es)', icone: 'north',
@@ -10402,7 +10527,27 @@ function uiPaginaMedir(pagina) {
   if (faixa) pagina.style.setProperty('--ds-pagina-faixa-h', faixa.offsetHeight + 'px');
   pagina.style.setProperty('--ds-pagina-filtros-h', (filtros ? Math.floor(filtros.getBoundingClientRect().height) : 0) + 'px');
   if (window.innerWidth > 768) pagina.style.setProperty('--ds-pagina-acoes-w', (acoes ? acoes.offsetWidth + 16 : 0) + 'px');
+  uiAcoesSobreFaixa(pagina);
 }
+// O botão fixo das ações passa por cima da faixa de abas ao rolar a página: a classe .is-acoes-sobre-faixa (no .ds-pagina) liga a animação que encolhe a faixa até o botão.
+function uiAcoesSobreFaixa(pagina) {
+  if (!pagina || !pagina.offsetHeight) return;
+  var faixa = pagina.querySelector(':scope > .ds-pagina__faixa'), acoes = pagina.querySelector(':scope > .ds-pagina__acoes');
+  var sobre = !!(faixa && acoes && window.innerWidth > 768 && acoes.getBoundingClientRect().bottom > faixa.getBoundingClientRect().top + 1);
+  pagina.classList.toggle('is-acoes-sobre-faixa', sobre);
+}
+(function () {
+  var pendente = false;
+  function agendar() {
+    if (pendente) return; pendente = true;
+    requestAnimationFrame(function () {
+      pendente = false;
+      Array.prototype.forEach.call(document.querySelectorAll('.ds-pagina:not(.hidden)'), uiAcoesSobreFaixa);
+    });
+  }
+  document.addEventListener('scroll', agendar, { passive: true, capture: true });
+  window.addEventListener('resize', agendar);
+})();
 function _uiPaginaMedirTodas() {
   Array.prototype.forEach.call(document.querySelectorAll('.ds-pagina'), uiPaginaMedir);
 }
@@ -10413,7 +10558,7 @@ if (document.fonts && document.fonts.ready) document.fonts.ready.then(_uiPaginaM
 // alimenta os dois jeitos de ver a mesma coisa: no desktop, o botão dividido (.ds-split) dentro do espaço [data-ui-acoes-principal] das ações da página (a ação principal à
 // esquerda; a seta abre as acessórias); no celular (≤768 px), o botão flutuante (.ds-fab). O principal é o item marcado `principal` (ou o primeiro). Lista vazia remove os dois.
 // Com um item só: no desktop é o botão simples, no celular o FAB executa a ação direto (sem abrir). `pagina` = o .ds-pagina; `id` = chave única do menu da seta.
-function uiAcoesPaginaMontar(pagina, id, itens) {
+function uiAcoesPaginaMontar(pagina, id, itens, extrasFab) {
   if (!pagina) return;
   var lista = (itens || []).map(_acoesLinhaNormalizar).filter(function (a) { return !a.oculto && a.rotulo; });
   var antigo = pagina.querySelector(':scope > .ds-fab');
@@ -10423,6 +10568,8 @@ function uiAcoesPaginaMontar(pagina, id, itens) {
   if (!lista.length) return;
   var principal = lista.filter(function (a) { return a.principal; })[0] || lista[0];
   var demais = lista.filter(function (a) { return a !== principal; });
+  // O botão flutuante também traz o botão secundário e as opções dele (extrasFab); o botão dividido do desktop não
+  var demaisFab = demais.concat((extrasFab || []).map(_acoesLinhaNormalizar).filter(function (a) { return !a.oculto && a.rotulo; }));
   var acao = function (a) { return a.desabilitado ? ' aria-disabled="true" data-title="Em breve"' : uiAtributosAcao(a.onclick, 'click'); };
   var icone = function (a) { return '<span class="material-symbols-outlined" aria-hidden="true">' + a.icone + '</span>'; };
 
@@ -10440,7 +10587,7 @@ function uiAcoesPaginaMontar(pagina, id, itens) {
 
   var fab = document.createElement('div');
   fab.className = 'ds-fab';
-  if (!demais.length) {
+  if (!demaisFab.length) {
     fab.innerHTML = '<button type="button" class="ds-fab__principal"' + acao(principal) + ' aria-label="' + escapeHtml(principal.rotulo) + '">' + icone(principal) + '</button>';
   } else {
     var item = function (a, extra) {
@@ -10448,7 +10595,7 @@ function uiAcoesPaginaMontar(pagina, id, itens) {
         + '<span class="ds-fab__rotulo">' + escapeHtml(a.rotulo) + '</span><span class="ds-fab__mini">' + icone(a) + '</span></button>';
     };
     fab.innerHTML = '<div class="ds-fab__fundo"' + uiAtributosAcao('uiFabFechar(this)', 'click') + '></div>'
-      + '<div class="ds-fab__opcoes">' + demais.map(function (a) { return item(a, ''); }).join('') + item(principal, ' ds-fab__item--principal') + '</div>'
+      + '<div class="ds-fab__opcoes">' + demaisFab.map(function (a) { return item(a, ''); }).join('') + item(principal, ' ds-fab__item--principal') + '</div>'
       + '<button type="button" class="ds-fab__principal"' + uiAtributosAcao('uiFabAlternar(this)', 'click') + ' aria-label="Ações" aria-haspopup="true" aria-expanded="false"><span class="material-symbols-outlined" aria-hidden="true">add</span></button>';
   }
   pagina.appendChild(fab);
@@ -10515,7 +10662,14 @@ function uiVoltarGarantir(pagina) {
   // sem para onde voltar, ou a tela anterior é o Início (que tem item próprio na barra de navegação): sem botão
   var anterior = _uiNavPilha[_uiNavPilha.length - 2];
   var some = !anterior || anterior.pagina === 'home';
-  Array.prototype.forEach.call(document.querySelectorAll('.ds-pagina__voltar'), function (b) { b.classList.toggle('hidden', some); });
+  Array.prototype.forEach.call(document.querySelectorAll('.ds-pagina__voltar:not([data-voltar-fixo])'), function (b) { b.classList.toggle('hidden', some); });   // o Voltar de rota fixa (data-voltar-fixo) nunca é calculado
+  // no mobile o hero some e o Voltar vive no topo (#tb-voltar): na página visível com rota fixa, ele assume a rota dela; sem ela, volta ao cálculo pela pilha
+  var topoVoltar = document.getElementById('tb-voltar');
+  if (topoVoltar) {
+    var fixo = Array.prototype.filter.call(document.querySelectorAll('[data-voltar-fixo]'), function (b) { return !b.closest('.hidden'); })[0];
+    topoVoltar.setAttribute('data-chamada-click', fixo ? fixo.getAttribute('data-chamada-click') : 'uiVoltar()');
+    if (fixo) topoVoltar.classList.remove('hidden');
+  }
 }
 
 // Bottom sheet (.ds-sheet): uiSheetAbrir({ titulo, corpo, rodape, acaoCab, aoFechar }) — corpo, rodape e acaoCab (canto direito do cabeçalho, ex. "Limpar") são HTML. uiSheetAtualizar(corpo, rodape) redesenha o conteúdo sem fechar
@@ -10593,6 +10747,90 @@ function uiToqueLongo(cont, seletor, aoPressionar) {
 }
 function uiToqueLongoRecente(cont) { return !!cont && Date.now() - (cont._uiToqueLongoEm || 0) < 700; }
 
+// Ferramentas da tabela: o ⋮ da última coluna revela/recolhe, ao lado, as ferramentas da lista (ordenar, atualizar, baixar, imprimir…). Uma só regra no sistema.
+function uiFerramentasAlternar(gatilho) {
+  var f = gatilho && gatilho.closest('.ds-th-ferramentas');
+  if (f) f.classList.toggle('is-aberto');
+}
+
+// Seleção de itens da lista (comportamento único): a faixa de seleção ocupa o lugar dos filtros, mostra a contagem e as ações de lote; a tabela ganha
+// .ds-tabela--selecionando; cada linha marcada leva .is-selecionada; "Selecionar tudo" tem os estados marcado/parcial/vazio; no celular o toque longo liga a seleção.
+// cfg = { tabela, corpo, filtros, selecao, texto, acoes?, todos, rotuloTodos?, caixas (seletor das caixas das linhas, cada uma com data-id), aoMudar(qtd, ids)? }
+// Todos os elementos são DOM. A tela desenha as linhas (caixa com data-id) e chama sel.atualizar() depois de cada desenho. Devolve
+// { tem(id), alternar(id, marcado?), todosNaPagina(marcado), limpar(), ids(), quantidade(), atualizar(), cliqueMobile(id, aoAbrir) }.
+function uiSelecaoLista(cfg) {
+  var sel = new Set();
+  function caixas() { return Array.prototype.slice.call(cfg.corpo.querySelectorAll(cfg.caixas)); }
+  function atualizar() {
+    var qtd = sel.size, lista = caixas(), marcadas = 0;
+    lista.forEach(function (c) {
+      var m = sel.has(String(c.dataset.id)); c.checked = m; if (m) marcadas++;
+      var tr = c.closest('tr'); if (tr) tr.classList.toggle('is-selecionada', m);
+    });
+    cfg.filtros.classList.toggle('hidden', qtd > 0);
+    cfg.selecao.classList.toggle('hidden', qtd === 0);
+    cfg.texto.textContent = String(qtd);
+    cfg.texto.setAttribute('aria-label', qtd + (qtd === 1 ? ' item selecionado' : ' itens selecionados'));
+    cfg.tabela.classList.toggle('ds-tabela--selecionando', qtd > 0);
+    if (cfg.todos) { cfg.todos.checked = lista.length > 0 && marcadas === lista.length; cfg.todos.indeterminate = marcadas > 0 && marcadas < lista.length; }
+    if (cfg.rotuloTodos) cfg.rotuloTodos.textContent = lista.length > 0 && marcadas === lista.length ? 'Desmarcar tudo' : 'Selecionar tudo';
+    if (cfg.aoMudar) cfg.aoMudar(qtd, Array.from(sel));
+  }
+  var api = {
+    tem: function (id) { return sel.has(String(id)); },
+    alternar: function (id, marcado) {
+      id = String(id); var m = marcado === undefined ? !sel.has(id) : !!marcado;
+      if (m) sel.add(id); else sel.delete(id);
+      atualizar();
+    },
+    todosNaPagina: function (marcado) { caixas().forEach(function (c) { if (marcado) sel.add(String(c.dataset.id)); else sel.delete(String(c.dataset.id)); }); atualizar(); },
+    limpar: function () { sel.clear(); atualizar(); },
+    ids: function () { return Array.from(sel); },
+    quantidade: function () { return sel.size; },
+    atualizar: atualizar,
+    // Toque na linha no celular: sem seleção ligada abre o item; com ela, marca/desmarca. Ignora o clique que vem logo depois do toque longo.
+    cliqueMobile: function (id, aoAbrir) {
+      if (uiToqueLongoRecente(cfg.corpo)) return;
+      if (!sel.size) { aoAbrir(id); return; }
+      api.alternar(id);
+    }
+  };
+  uiToqueLongo(cfg.corpo, 'tr.ds-linha-clicavel', function (tr) {
+    var c = tr.querySelector(cfg.caixas);
+    if (c && !sel.has(String(c.dataset.id))) api.alternar(c.dataset.id, true);
+  });
+  return api;
+}
+
+// Atalhos de teclado da lista (um só lugar, cada tela liga só o que usa). cfg = { pagina, corpo (tbody), busca? (.ds-busca), sel? (retorno de uiSelecaoLista),
+// aoAbrir?(id), aoExpandir?(id, abrir) }; as linhas (tr.ds-linha-clicavel) levam data-id, tabindex="0" e aria-expanded quando expansíveis.
+// Ctrl/Cmd+A seleciona tudo da página · Esc limpa a seleção · ↑/↓ movem o foco entre as linhas · Enter abre a linha focada · → expande · ← recolhe · / vai à busca.
+// Só age com a página visível, sem diálogo aberto e fora de campo de texto (nele só o Esc, que sai do campo).
+function uiAtalhosLista(cfg) {
+  function linhas() { return Array.prototype.slice.call(cfg.corpo.querySelectorAll('tr.ds-linha-clicavel[data-id]')); }
+  function focar(id) { var tr = cfg.corpo.querySelector('tr[data-id="' + id + '"]'); if (tr) tr.focus(); }
+  document.addEventListener('keydown', function (ev) {
+    if (!cfg.pagina.offsetHeight || cfg.pagina.closest('[inert]') || ev.altKey) return;
+    var alvo = ev.target, emCampo = /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName) || alvo.isContentEditable;
+    var tecla = ev.key, ctrl = ev.ctrlKey || ev.metaKey;
+    if (emCampo) { if (tecla === 'Escape' && alvo.type !== 'checkbox') alvo.blur(); return; }
+    var lista = linhas(), atual = alvo.closest && alvo.closest('tr.ds-linha-clicavel[data-id]');
+    if (ctrl && (tecla === 'a' || tecla === 'A') && cfg.sel) { ev.preventDefault(); cfg.sel.todosNaPagina(true); }
+    else if (tecla === 'Escape' && cfg.sel && cfg.sel.quantidade()) { cfg.sel.limpar(); }
+    else if ((tecla === 'ArrowDown' || tecla === 'ArrowUp') && lista.length && !ctrl) {
+      ev.preventDefault();
+      var i = atual ? lista.indexOf(atual) + (tecla === 'ArrowDown' ? 1 : -1) : 0;
+      lista[Math.max(0, Math.min(lista.length - 1, i))].focus();
+    }
+    else if (tecla === 'Enter' && atual && cfg.aoAbrir && alvo === atual) { ev.preventDefault(); cfg.aoAbrir(atual.dataset.id); }
+    else if ((tecla === 'ArrowRight' || tecla === 'ArrowLeft') && atual && cfg.aoExpandir && alvo === atual && atual.hasAttribute('aria-expanded')) {
+      var abrir = tecla === 'ArrowRight';
+      if ((atual.getAttribute('aria-expanded') === 'true') !== abrir) { ev.preventDefault(); var id = atual.dataset.id; cfg.aoExpandir(id, abrir); focar(id); }
+    }
+    else if (tecla === '/' && cfg.busca && !ctrl) { ev.preventDefault(); uiBuscaAbrir(cfg.busca, true); }
+  });
+}
+
 // Busca expansível (.ds-busca): no desktop é o ícone que expande ao clicar; no celular (padrão Gmail/Drive) fica sempre aberta.
 // Telas abrem e recolhem só por aqui; uiPaginaMedir sincroniza as buscas da página (a largura pode ter cruzado os 768px).
 function _uiBuscaMobile() { return window.matchMedia('(max-width: 768px)').matches; }
@@ -10618,14 +10856,55 @@ function _uiBuscaSincronizar(raiz) {
   });
 }
 
-// Filtros no celular: as pílulas (.ds-filtro) só aparecem com a busca do topo aberta, com a gaveta de filtro aberta ou com algum filtro aplicado;
-// o paginador/ferramentas da direita (.ds-filtros__pag) somem. `normal` = .ds-filtros__normal; `aplicado` = há filtro ativo.
-function uiFiltrosMobileSincronizar(normal, aplicado) {
-  if (!normal) return;
-  var mob = _uiBuscaMobile(), mostrar = !mob || document.getElementById('topbar').hasAttribute('data-buscando') || _menuSelecaoNoSheet || !!aplicado;
+// Filtros no celular, AUTOMÁTICO (nenhuma tela chama): as pílulas (.ds-filtro) de todo .ds-filtros__normal só aparecem com a busca do topo aberta, com a gaveta de filtro
+// aberta ou com algum filtro aplicado (pílula .ds-filtro__btn--ativo ou × visível). Um observador único refaz a conta a cada mudança de classe, de DOM ou de largura.
+function _uiFiltrosMobileSincronizar(normal) {
+  var mob = _uiBuscaMobile(), aplicado = !!normal.querySelector('.ds-filtro__btn--ativo, .ds-filtro__x:not(.hidden)');
+  var topo = document.getElementById('topbar');
+  var mostrar = !mob || (topo && topo.hasAttribute('data-buscando')) || _menuSelecaoNoSheet || aplicado;
   Array.prototype.forEach.call(normal.querySelectorAll(':scope > .ds-filtro'), function (el) { el.classList.toggle('hidden', !mostrar); });
-  var pag = normal.parentNode.querySelector(':scope > .ds-filtros__pag');
-  if (pag) pag.classList.toggle('hidden', mob);
+}
+(function () {
+  var agendado = false;
+  function sincronizar() {
+    agendado = false;
+    Array.prototype.forEach.call(document.querySelectorAll('.ds-filtros__normal'), _uiFiltrosMobileSincronizar);
+  }
+  function agendar() { if (!agendado) { agendado = true; requestAnimationFrame(sincronizar); } }
+  new MutationObserver(agendar).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'data-buscando'] });
+  window.addEventListener('resize', agendar);
+})();
+
+// Item expansível no celular: o item aberto e o que ele revela (sub-itens ou área de detalhe) formam UM bloco. uiItemGrupoMarcar(grupo) cola as linhas (--ini/--meio/--fim);
+// uiItemContorno(wrap, grupo, animar) desenha o contorno colorido por cima (cor em --ds-color-borda-item; animar só na primeira abertura). Só para item expansível.
+function uiItemGrupoMarcar(grupo) {
+  grupo.forEach(function (tr, i) {
+    var pos = grupo.length === 1 ? '' : (i === 0 ? 'ini' : (i === grupo.length - 1 ? 'fim' : 'meio'));
+    ['ini', 'meio', 'fim'].forEach(function (p) { tr.classList.toggle('ds-item-grupo--' + p, p === pos); });
+  });
+}
+function uiItemContorno(wrap, grupo, animar) {
+  var NS = 'http://www.w3.org/2000/svg';
+  var w0 = wrap.getBoundingClientRect(), p = grupo[0].getBoundingClientRect(), u = grupo[grupo.length - 1].getBoundingClientRect();
+  var w = p.width, h = u.bottom - p.top, i = 1;
+  var r = parseFloat(getComputedStyle(grupo[0]).borderTopLeftRadius) || 6;
+  var x2 = w - i, y2 = h - i;
+  var svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'ds-item-contorno' + (animar ? ' is-animado' : ''));
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.style.setProperty('left', (p.left - w0.left) + 'px');
+  svg.style.setProperty('top', (p.top - w0.top) + 'px');
+  var cor = grupo[0].dataset.cor;
+  if (cor) svg.style.setProperty('--ds-color-borda-item', cor);
+  var path = document.createElementNS(NS, 'path');
+  path.setAttribute('pathLength', '1');
+  path.setAttribute('d', 'M' + i + ',' + (i + r) + ' L' + i + ',' + (y2 - r) + ' A' + r + ',' + r + ' 0 0 0 ' + (i + r) + ',' + y2
+    + ' L' + (x2 - r) + ',' + y2 + ' A' + r + ',' + r + ' 0 0 0 ' + x2 + ',' + (y2 - r)
+    + ' L' + x2 + ',' + (i + r) + ' A' + r + ',' + r + ' 0 0 0 ' + (x2 - r) + ',' + i
+    + ' L' + (i + r) + ',' + i + ' A' + r + ',' + r + ' 0 0 0 ' + i + ',' + (i + r));
+  svg.appendChild(path);
+  wrap.appendChild(svg);
 }
 
 // Rolagem infinita: observa um sentinela logo depois de `depoisDe` (dentro de #main-content, que é quem rola) e chama aoChegar() quando ele
@@ -10667,11 +10946,11 @@ function uiRolagemInfinita(depoisDe, aoChegar) {
 // Barra do topo no mobile: o ícone de busca expande um campo que toma a barra inteira e repassa o texto ao campo da página (.ds-filtros__normal > .ds-busca, escondido no mobile) e o ícone de abas abre
 // as abas da página (.ds-tabs-nav, escondidas no mobile) numa gaveta. O sino só existe no Início. uiTopoAtualizar roda ao fim do navigate() e quando o
 // conteúdo muda (as abas costumam chegar depois, com os dados).
-function _uiTopoPagina() { return document.querySelector('#main-content > .page-content:not(.hidden)'); }
+function _uiTopoPagina() { return document.querySelector('#main-content > .js-pagina:not(.hidden)'); }
 function _uiTopoBusca() { var p = _uiTopoPagina(); return p && p.querySelector('.ds-filtros__normal > .ds-busca'); }
 function _uiTopoAbasLista() {
   var p = _uiTopoPagina(), barra = p && p.querySelector('.ds-tabs-nav');
-  return barra ? Array.prototype.slice.call(barra.querySelectorAll('.ds-tabs-nav__item')).filter(function (b) { return !b.classList.contains('hidden'); }) : [];
+  return barra ? Array.prototype.slice.call(barra.querySelectorAll('.ds-tabs-nav__item')).filter(function (b) { return !b.classList.contains('hidden') && !b.classList.contains('ds-tabs-nav__item--config'); }) : [];
 }
 function _uiTopoRotulo(el) {
   if (el.dataset.rotuloMobile) return el.dataset.rotuloMobile;   // nome pensado para o celular, onde a aba vira o título
@@ -10696,15 +10975,7 @@ function uiTopoAtualizar() {
     if (stat) { var pt = st.querySelector('.ds-topbar-status__ponto'); pt.className = 'ds-badge ds-topbar-status__ponto ds-badge--' + uiStatusPlanoTom(stat); st.setAttribute('aria-label', 'Status: ' + stat); st.setAttribute('data-title', stat); }
   }
   if (sino) sino.classList.toggle('tb-hide-mobile', id !== 'home');
-  var abas = _uiTopoAbasLista(), ativa = abas.filter(function (x) { return x.classList.contains('active'); })[0], tab = document.getElementById('tb-aba-atual');
-  var comAbas = !!(mob && ativa && abas.length >= 2);
-  if (tab) {   // com abas, o título da página é o nome da aba ativa (tocar nele abre as abas)
-    tab.classList.toggle('hidden', !comAbas);
-    var pref = (p && p.dataset.tituloPrefixo) || '';   // ex.: sigla do plano, no detalhe do plano
-    document.getElementById('tb-aba-prefixo').textContent = pref;
-    if (ativa) { var nome = _uiTopoRotulo(ativa); document.getElementById('tb-aba-txt').textContent = nome; tab.setAttribute('aria-label', (pref ? pref + ' ' : '') + nome + ' — trocar de aba'); }
-  }
-  if (comAbas) document.getElementById('topbar').setAttribute('data-abas', ''); else document.getElementById('topbar').removeAttribute('data-abas');
+  uiCardStackAtualizar();
   if (!busca && document.getElementById('topbar').hasAttribute('data-buscando')) uiTopoBuscaFechar();
 }
 function _uiTopoBuscaRepassar(valor) {
@@ -10717,11 +10988,6 @@ function _uiTopoBuscaRepassar(valor) {
 var _uiTopoToque = 0;
 function _uiTopoBuscaMantem() {
   return document.activeElement === document.getElementById('tb-busca-input') || Date.now() - _uiTopoToque < 1500 || !!document.querySelector('.ds-sheet.is-aberto, #menu-selecao-aberto');
-}
-// Texto de contexto que antecede o nome da aba no título do celular (apagado). Fica na própria página: uiTopoPrefixo('page-plano-detalhe', 'SIGLA').
-function uiTopoPrefixo(idPagina, texto) {
-  var p = document.getElementById(idPagina);
-  if (p) { p.dataset.tituloPrefixo = texto || ''; uiTopoAtualizar(); }
 }
 function uiTopoBuscar() {
   var w = _uiTopoBusca(), pag = w && w.querySelector('input'), inp = document.getElementById('tb-busca-input');
@@ -10741,7 +11007,6 @@ function uiTopoBuscar() {
   document.getElementById('tb-busca-limpar').classList.toggle('hidden', !inp.value);
   document.getElementById('topbar').setAttribute('data-buscando', '');
   document.getElementById('tb-busca-campo').classList.remove('hidden');
-  document.dispatchEvent(new Event('ui-busca-topo'));
   inp.focus();
 }
 function uiTopoBuscaLimpar() {
@@ -10751,21 +11016,187 @@ function uiTopoBuscaLimpar() {
 function uiTopoBuscaFechar(devolverFoco) {
   document.getElementById('topbar').removeAttribute('data-buscando');
   document.getElementById('tb-busca-campo').classList.add('hidden');
-  document.dispatchEvent(new Event('ui-busca-topo'));
   uiTopoAtualizar();
   if (devolverFoco) { var lupa = document.getElementById('tb-buscar'); if (lupa) lupa.focus(); }   // fechou pelo teclado: o foco volta à lupa
 }
-function uiTopoAbas(gatilho) {
-  var abas = _uiTopoAbasLista();
-  abrirMenuSelecao(gatilho, [{ itens: abas.map(function (b, i) {
-    var n = b.querySelector('.ds-tab-count');
-    return { label: _uiTopoRotulo(b) + (n && n.textContent ? ' (' + n.textContent + ')' : ''), ativo: b.classList.contains('active'), onclick: 'uiTopoIrAba(' + i + ')' };
-  }) }], { titulo: 'Abas' });
+// Abas no celular: o botão em pilha (.ds-fab-stack) acima do flutuante abre o seletor 3D (.ds-flip3d): cartas em perspectiva, uma por aba, que se folheiam
+// (deslizar, roda, setas, pontos) e, ao tocar, ativam a aba (clique no botão da aba da página, escondida no celular). Sem botão flutuante na página
+// (quem não pode criar nada) o stack cria o seu .ds-fab. A prévia de cada carta vem de uiFlip3DPrevia(idPagina, function (chaveDaAba) → { criterio, itens[{titulo, meta, tom}], metricas[{valor, label, pct}] });
+// sem provedor a carta mostra só o critério (data-criterio da aba) e a contagem.
+var _uiFlip = null;
+var _uiFlipPrevias = {};
+function uiFlip3DPrevia(idPagina, fn) { if (idPagina && typeof fn === 'function') _uiFlipPrevias[idPagina] = fn; }
+function _uiFlipIconeAba(el) { var i = el.querySelector('.material-symbols-outlined'); return i ? i.textContent.trim() : 'tab'; }
+function _uiFlipContagem(el) { var n = el.querySelector('.ds-tab-count'); return n ? n.textContent.trim() : ''; }
+function _uiFlipAdicionar(p) {
+  var add = p && p.querySelector('.ds-tabs-nav__item--config[aria-label^="Adicionar"]');
+  return add && !add.classList.contains('hidden') ? add : null;
 }
-function uiTopoIrAba(i) {
-  var b = _uiTopoAbasLista()[i];
-  if (typeof fecharMenuSelecao === 'function') fecharMenuSelecao();
-  if (b) b.click();
+function uiCardStackAtualizar() {
+  var p = _uiTopoPagina(), abas = _uiTopoAbasLista();
+  if (!p) return;
+  var fab = p.querySelector(':scope > .ds-fab'), stack = fab && fab.querySelector('.ds-fab-stack');
+  if (abas.length < 2) {
+    if (stack) stack.remove();
+    if (fab && fab.hasAttribute('data-fab-abas')) fab.remove();
+    return;
+  }
+  if (!fab) {   // página com abas e sem ação principal: o stack traz o próprio flutuante
+    fab = document.createElement('div');
+    fab.className = 'ds-fab';
+    fab.setAttribute('data-fab-abas', '');
+    p.appendChild(fab);
+  }
+  var ativa = abas.filter(function (b) { return b.classList.contains('active'); })[0] || abas[0];
+  if (!stack) {
+    stack = document.createElement('div');
+    stack.className = 'ds-fab-stack';
+    stack.innerHTML = '<button type="button" class="ds-fab-stack__btn" aria-haspopup="dialog"' + uiAtributosAcao('uiFlip3DAbrir()', 'click') + '>'
+      + '<span class="material-symbols-outlined" aria-hidden="true">layers</span>'
+      + '<span class="ds-fab-stack__selo"><span class="material-symbols-outlined" aria-hidden="true"></span></span></button>';
+    fab.insertBefore(stack, fab.querySelector('.ds-fab__principal'));
+  }
+  stack.querySelector('.ds-fab-stack__selo .material-symbols-outlined').textContent = _uiFlipIconeAba(ativa);
+  var btn = stack.querySelector('.ds-fab-stack__btn'), nome = _uiTopoRotulo(ativa);
+  btn.setAttribute('aria-label', 'Abas — atual: ' + nome);
+  btn.setAttribute('data-title', 'Abas — atual: ' + nome);
+}
+function _uiFlipPreviaHTML(p, aba) {
+  var chave = aba.dataset.aba || aba.id || _uiTopoRotulo(aba), qtd = _uiFlipContagem(aba);
+  var dados = null, prov = _uiFlipPrevias[p.id];
+  if (prov) { try { dados = prov(chave, aba); } catch (e) { dados = null; } }
+  var crit = (dados && dados.criterio) || aba.dataset.criterio || '';
+  var corpo = crit ? '<p class="ds-flip3d__criterio">' + escapeHtml(crit) + '</p>' : '';
+  var temMetricas = !!(dados && dados.metricas && dados.metricas.length), temItens = !!(dados && dados.itens && dados.itens.length);
+  if (temMetricas) {
+    corpo += '<div class="ds-flip3d__kpis">' + dados.metricas.slice(0, 4).map(function (m) {
+      var pct = typeof m.pct === 'number' ? Math.max(0, Math.min(100, m.pct)) : null;
+      return '<div class="ds-flip3d__kpi"><span class="ds-flip3d__kpi-valor">' + escapeHtml(m.valor) + '</span><span class="ds-flip3d__kpi-rotulo">' + escapeHtml(m.label) + '</span>'
+        + (pct === null ? '' : '<span class="ds-kpi-track"><span class="ds-kpi-fill" style="width:' + pct + '%"></span></span>') + '</div>';
+    }).join('') + '</div>';
+  }
+  if (temItens) {
+    corpo += dados.itens.slice(0, 3).map(function (it) {
+      return '<div class="ds-flip3d__item"><span class="ds-flip3d__ponto' + (it.tom ? ' ds-flip3d__ponto--' + escapeHtml(it.tom) : '') + '"></span><span class="ds-flip3d__item-txt"><span class="ds-flip3d__item-titulo">'
+        + escapeHtml(it.titulo) + '</span>' + (it.meta ? '<span class="ds-flip3d__item-meta">' + escapeHtml(it.meta) + '</span>' : '') + '</span></div>';
+    }).join('');
+  }
+  if (!temMetricas && !temItens) {
+    corpo += '<div class="ds-flip3d__vazio"><span class="material-symbols-outlined" aria-hidden="true">' + (qtd === '0' ? 'inbox' : escapeHtml(_uiFlipIconeAba(aba))) + '</span>'
+      + '<span>' + (qtd === '0' ? 'Nenhum item nesta aba' : (qtd ? escapeHtml(qtd) + ' itens' : '')) + '</span></div>';
+  }
+  return corpo;
+}
+// A posição de cada carta é só CSS: --d = distância até a carta em foco (negativa = já folheada); is-antes / is-depois / is-longe escolhem a pose.
+function _uiFlipPosicionar() {
+  var f = _uiFlip;
+  if (!f) return;
+  f.cartas.forEach(function (c, i) {
+    var d = i - f.idx;
+    c.style.setProperty('--d', String(Math.abs(d)));
+    c.classList.toggle('is-foco', d === 0);
+    c.classList.toggle('is-antes', d < 0);
+    c.classList.toggle('is-depois', d > 0 && d <= 6);
+    c.classList.toggle('is-longe', d > 6);
+    c.classList.toggle('is-alcance', d >= 0 && d <= 3);
+  });
+  Array.prototype.forEach.call(f.el.querySelectorAll('.ds-flip3d__ponto-nav'), function (b, i) { b.classList.toggle('is-ativo', i === f.idx); });
+  f.el.querySelector('.ds-flip3d__atual').textContent = (f.idx + 1) + ' de ' + f.cartas.length + ' · ' + _uiTopoRotulo(f.abas[f.idx]);
+}
+function _uiFlipMover(delta) {
+  var f = _uiFlip, novo = f ? Math.max(0, Math.min(f.cartas.length - 1, f.idx + delta)) : 0;
+  if (!f || novo === f.idx) return;
+  f.idx = novo;
+  _uiFlipPosicionar();
+}
+function _uiFlipEscolher(i) {
+  var f = _uiFlip, aba = f && f.abas[i];
+  if (!aba) return;
+  f.idx = i;
+  _uiFlipPosicionar();
+  f.el.classList.add('is-escolhendo');   // as outras cartas somem e a escolhida avança
+  setTimeout(function () { uiFlip3DFechar(); aba.click(); }, 240);
+}
+function uiFlip3DAbrir() {
+  var p = _uiTopoPagina(), abas = _uiTopoAbasLista();
+  if (!p || abas.length < 2) return;
+  uiFlip3DFechar();
+  var ativa = abas.findIndex(function (b) { return b.classList.contains('active'); });
+  var el = document.createElement('div');
+  el.className = 'ds-flip3d';
+  el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Abas da página');
+  var atual = document.querySelector('#topbar-crumbs .bc-current'), add = _uiFlipAdicionar(p);
+  el.innerHTML = '<div class="ds-flip3d__cab"><h2 class="ds-flip3d__titulo">' + escapeHtml(atual ? atual.textContent.trim() : '') + '</h2>'   // o mesmo título da barra do topo
+    + '<button type="button" class="ds-icon-action" aria-label="Fechar"' + uiAtributosAcao('uiFlip3DFechar()', 'click') + '><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div>'
+    + '<div class="ds-flip3d__palco"><div class="ds-flip3d__pilha"></div></div>'
+    + '<div class="ds-flip3d__rodape"><div class="ds-flip3d__pontos">' + abas.map(function (b, i) {
+      return '<button type="button" class="ds-flip3d__ponto-nav" aria-label="' + escapeHtml(_uiTopoRotulo(b)) + '" data-i="' + i + '"></button>';
+    }).join('') + '</div><div class="ds-flip3d__atual"></div>'
+    + (add ? '<button type="button" class="ds-flip3d__adicionar"' + uiAtributosAcao('uiFlip3DAdicionarAba()', 'click') + '><span class="material-symbols-outlined" aria-hidden="true">add</span>Adicionar aba</button>' : '')
+    + '</div>';
+  var pilha = el.querySelector('.ds-flip3d__pilha');
+  var cartas = abas.map(function (b, i) {
+    var atual = b.classList.contains('active'), qtd = _uiFlipContagem(b), c = document.createElement('div');
+    c.className = 'ds-flip3d__carta' + (atual ? ' is-aba-ativa' : '');
+    c.innerHTML = '<div class="ds-flip3d__carta-cab"><span class="ds-flip3d__carta-ico"><span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(_uiFlipIconeAba(b)) + '</span></span>'
+      + '<span class="ds-flip3d__carta-nome">' + escapeHtml(_uiTopoRotulo(b)) + '</span>' + (atual ? '<span class="ds-badge ds-badge--info">Atual</span>' : '')
+      + (qtd ? '<span class="ds-badge ds-badge--neutral">' + escapeHtml(qtd) + '</span>' : '') + '</div>'
+      + '<div class="ds-flip3d__carta-corpo">' + _uiFlipPreviaHTML(p, b) + '</div>';
+    c.addEventListener('click', function () { _uiFlipEscolher(i); });
+    pilha.appendChild(c);
+    return c;
+  });
+  _uiFlip = { el: el, cartas: cartas, abas: abas, idx: ativa >= 0 ? ativa : 0, y0: null, x0: null, trava: false, roda: null };
+  el.addEventListener('click', function (e) { var d = e.target.closest('.ds-flip3d__ponto-nav'); if (d) { _uiFlip.idx = Number(d.dataset.i); _uiFlipPosicionar(); } });
+  el.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    var f = _uiFlip;
+    if (!f || f.roda || Math.abs(e.deltaY || e.deltaX) < 2) return;
+    _uiFlipMover((e.deltaY || e.deltaX) > 0 ? 1 : -1);
+    f.roda = setTimeout(function () { if (_uiFlip) _uiFlip.roda = null; }, 120);
+  }, { passive: false });
+  el.addEventListener('pointerdown', function (e) { if (!e.target.closest('button')) { _uiFlip.y0 = e.clientY; _uiFlip.x0 = e.clientX; } });
+  el.addEventListener('pointermove', function (e) {
+    var f = _uiFlip;
+    if (!f || f.y0 === null || f.trava) return;
+    var dy = e.clientY - f.y0, dx = e.clientX - f.x0;
+    if (Math.sqrt(dx * dx + dy * dy) < 28) return;
+    f.trava = true;
+    _uiFlipMover((Math.abs(dy) >= Math.abs(dx) ? dy < 0 : dx < 0) ? 1 : -1);
+    f.y0 = e.clientY; f.x0 = e.clientX;
+    setTimeout(function () { if (_uiFlip) _uiFlip.trava = false; }, 140);
+  });
+  el.addEventListener('pointerup', function () { if (_uiFlip) { _uiFlip.y0 = null; _uiFlip.x0 = null; } });
+  el.addEventListener('pointercancel', function () { if (_uiFlip) { _uiFlip.y0 = null; _uiFlip.x0 = null; } });
+  document.addEventListener('keydown', _uiFlipTecla, true);
+  document.body.appendChild(el);
+  bloquearFundo();
+  _uiFlipPosicionar();
+  requestAnimationFrame(function () { el.classList.add('is-aberto'); });
+}
+function _uiFlipTecla(e) {
+  var k = e.key;
+  if (k === 'Escape') uiFlip3DFechar();
+  else if (k === 'ArrowDown' || k === 'ArrowRight') _uiFlipMover(1);
+  else if (k === 'ArrowUp' || k === 'ArrowLeft') _uiFlipMover(-1);
+  else if (k === 'Enter' && _uiFlip) _uiFlipEscolher(_uiFlip.idx);
+  else return;
+  e.preventDefault(); e.stopPropagation();   // enquanto o seletor está aberto, as teclas são dele
+}
+function uiFlip3DAdicionarAba() {
+  var add = _uiFlipAdicionar(_uiTopoPagina());
+  uiFlip3DFechar();
+  if (add) add.click();
+}
+function uiFlip3DFechar() {
+  if (!_uiFlip) return;
+  var el = _uiFlip.el;
+  document.removeEventListener('keydown', _uiFlipTecla, true);
+  clearTimeout(_uiFlip.roda);
+  _uiFlip = null;
+  desbloquearFundo();
+  el.classList.remove('is-aberto');
+  setTimeout(function () { el.remove(); }, 300);
 }
 (function () {
   var t = null;
@@ -10814,18 +11245,40 @@ function uiPuxarParaAtualizar(idPagina, fn) { UI_PUXAR[idPagina] = fn; }
 
 // Barra de navegação do mobile (.ds-navbar, index.html): só ícones, um por módulo do ciclo (Início, Planejamento, Execução, Avaliação).
 // uiNavbarAtualizar marca o item do módulo da página visível; roda ao fim do navigate().
-var UI_NAVBAR_PAGINAS = { inicio: ['home'], planejamento: ['planos', 'plano-detalhe', 'calendario', 'colaboracao'], execucao: ['execucao-planos', 'execucao-tarefas'], avaliacao: ['avaliacao-planos', 'avaliacao-executar'] };
+var UI_NAVBAR_PAGINAS = { inicio: ['home'], planejamento: ['planos', 'plano-detalhe', 'calendario', 'colaboracao', 'modelo'], execucao: ['execucao-planos', 'execucao-tarefas'], avaliacao: ['avaliacao-planos', 'avaliacao-executar'] };
 function uiNavbarAtualizar() {
   var nav = document.getElementById('ui-navbar');
   if (!nav) return;
-  var pag = document.querySelector('#main-content > .page-content:not(.hidden)');
+  var pag = document.querySelector('#main-content > .js-pagina:not(.hidden)');
   var id = pag ? pag.id.replace(/^page-/, '') : '';
   Array.prototype.forEach.call(nav.querySelectorAll('[data-navbar]'), function (b) {
     var ativo = (UI_NAVBAR_PAGINAS[b.dataset.navbar] || []).indexOf(id) >= 0;
     b.classList.toggle('is-ativo', ativo);
     if (ativo) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
+  uiNavbarIndicador(false);
 }
+// Pílula elástica (.ds-navbar__indicador, no HTML da barra): acompanha o ícone do item ativo. imediato = sem animação (primeira medida, mudança de largura).
+var _uiNavbarEsq = null;
+function uiNavbarIndicador(imediato) {
+  var nav = document.getElementById('ui-navbar'), ind = nav && nav.querySelector('.ds-navbar__indicador');
+  if (!ind) return;
+  var ativo = nav.querySelector('.ds-navbar__item.is-ativo'), ico = ativo && ativo.querySelector('.material-symbols-outlined');
+  var n = nav.getBoundingClientRect(), r = ico && ico.getBoundingClientRect();
+  if (!r || !n.width || !r.width) { ind.classList.add('hidden'); _uiNavbarEsq = null; return; }   // sem item ativo, ou barra escondida (desktop)
+  var esq = Math.round(r.left - n.left);
+  ind.classList.remove('hidden');
+  ind.classList.toggle('ds-navbar__indicador--sem-animacao', !!imediato || _uiNavbarEsq === null);
+  ind.classList.toggle('ds-navbar__indicador--dir', _uiNavbarEsq !== null && esq > _uiNavbarEsq);
+  ind.classList.toggle('ds-navbar__indicador--esq', _uiNavbarEsq !== null && esq < _uiNavbarEsq);
+  ind.style.setProperty('--ind-esq', esq + 'px');
+  ind.style.setProperty('--ind-dir', Math.round(n.right - r.right) + 'px');
+  ind.style.setProperty('--ind-topo', Math.round(r.top - n.top) + 'px');
+  ind.style.setProperty('--ind-alt', Math.round(r.height) + 'px');
+  _uiNavbarEsq = esq;
+}
+window.addEventListener('resize', function () { uiNavbarIndicador(true); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { uiNavbarIndicador(true); });
 
 // Abas de navegação (.ds-tabs-nav, styles_design_system.html). A tela escreve só .ds-tabs-nav > .ds-tabs-nav__scroll > abas; esta
 // função monta, na primeira chamada, o invólucro e as setas ‹ › do carrossel, e mostra cada seta só quando as abas não cabem e
@@ -10848,7 +11301,8 @@ function uiAbasNavAtualizar(barra) {
     var seta = function (lado, rotulo, icone, direcao) {
       var b = document.createElement('button');
       b.type = 'button';
-      b.className = 'ds-tabs-nav__seta ds-tabs-nav__seta--' + lado + ' hidden';
+      b.className = 'ds-tabs-nav__seta hidden';
+      b.dataset.seta = lado;
       b.setAttribute('data-title', rotulo);
       b.setAttribute('aria-label', rotulo);
       b.innerHTML = '<span class="material-symbols-outlined">' + icone + '</span>';
@@ -10859,8 +11313,19 @@ function uiAbasNavAtualizar(barra) {
     wrap.appendChild(scroll);
     wrap.appendChild(seta('fim', 'Ver mais abas', 'chevron_right', 1));
     scroll.addEventListener('scroll', function () { uiAbasNavAtualizar(barra); });
+    if (window.ResizeObserver) new ResizeObserver(function () { uiAbasNavAtualizar(barra); }).observe(scroll);
   }
-  var ini = barra.querySelector('.ds-tabs-nav__seta--ini'), fim = barra.querySelector('.ds-tabs-nav__seta--fim');
+  // A aba ativa nunca fica escondida na faixa rolável: quando a ativa muda (e só então), ela é trazida para a área visível
+  var ativa = scroll.querySelector('.active, [aria-selected="true"]');
+  var chaveAtiva = ativa ? String(Array.prototype.indexOf.call(scroll.children, ativa)) : '';
+  if (ativa && barra.dataset.uiAbaAtiva !== chaveAtiva) {
+    barra.dataset.uiAbaAtiva = chaveAtiva;
+    var posAtiva = ativa.getBoundingClientRect().left - scroll.getBoundingClientRect().left + scroll.scrollLeft;
+    if (posAtiva < scroll.scrollLeft || posAtiva + ativa.offsetWidth > scroll.scrollLeft + scroll.clientWidth) {
+      scroll.scrollTo({ left: Math.max(0, posAtiva - (scroll.clientWidth - ativa.offsetWidth) / 2), behavior: 'smooth' });
+    }
+  }
+  var ini = barra.querySelector('[data-seta="ini"]'), fim = barra.querySelector('[data-seta="fim"]');
   var podeRolar = scroll.scrollWidth > scroll.clientWidth + 1;
   ini.classList.toggle('hidden', !podeRolar || scroll.scrollLeft <= 1);
   fim.classList.toggle('hidden', !podeRolar || scroll.scrollLeft + scroll.clientWidth >= scroll.scrollWidth - 1);
@@ -11047,16 +11512,37 @@ function uiPaginarLista(lista, estado) {
   var ini = (estado.paginaAtual - 1) * estado.itensPorPagina;
   return lista.slice(ini, ini + estado.itensPorPagina);
 }
+// Seleção do paginador: botão com a lista rica do sistema (abrirMenuSelecao), nunca o <select> do navegador. O botão guarda o valor (.value) e, ao escolher,
+// dispara "change" nele mesmo: os ids de ação { tamanho, pagina } recebem o valor em this.value, como antes.
+function _uiPaginadorGatilho(id, campo, acao, rotulo) {
+  return '<button type="button" class="ds-filtro__btn" id="' + id + '-' + campo + '" value="" data-on-change="' + acao + '" data-on-click="ui.chamar" data-chamada-click="uiPaginadorMenu(\'' + id + '\', \'' + campo + '\')" aria-haspopup="menu" aria-label="' + rotulo + '" data-title="' + rotulo + '">' +
+    '<span id="' + id + '-' + campo + '-rotulo"></span><span class="material-symbols-outlined">expand_more</span></button>';
+}
+function uiPaginadorMenu(id, campo) {
+  var g = document.getElementById(id + '-' + campo);
+  if (!g || g.disabled) return;
+  var valores = [];
+  if (campo === 'tamanho') valores = [10, 20, 50];
+  else for (var i = 1; i <= Number(g.dataset.total || 1); i++) valores.push(i);
+  abrirMenuSelecao(g, [{ itens: valores.map(function(v) { return { label: String(v), ativo: String(v) === g.value, onclick: "uiPaginadorEscolher('" + id + "', '" + campo + "', '" + v + "')" }; }) }],
+    { titulo: campo === 'tamanho' ? 'Itens por página' : 'Ir para a página' });
+}
+function uiPaginadorEscolher(id, campo, valor) {
+  var g = document.getElementById(id + '-' + campo);
+  fecharMenuSelecao();
+  if (!g || g.value === valor) return;
+  g.value = valor;
+  g.dispatchEvent(new Event('change', { bubbles: true }));
+}
 function uiPaginadorRodapeHTML(id, acoes) {
   var seta = function(sufixo, acao, icone, rotulo) {
     return '<button type="button" class="ds-icon-action ds-icon-action--sm" id="' + id + '-' + sufixo + '" data-on-click="' + acao + '" data-title="' + rotulo + '" aria-label="' + rotulo + '"><span class="material-symbols-outlined">' + icone + '</span></button>';
   };
   return '<div class="ds-paginador-rodape" id="' + id + '">' +
-    '<div class="ds-paginador-rodape__esq"><span>Exibir:</span><select class="ds-select" id="' + id + '-tamanho" data-on-change="' + acoes.tamanho + '" aria-label="Itens por página">' +
-    '<option value="10">10</option><option value="20">20</option><option value="50">50</option></select></div>' +
+    '<div class="ds-paginador-rodape__esq"><span>Exibir:</span>' + _uiPaginadorGatilho(id, 'tamanho', acoes.tamanho, 'Itens por página') + '</div>' +
     '<div class="ds-paginador-rodape__centro"><span id="' + id + '-contador">0–0 de 0</span></div>' +
     '<div class="ds-paginador-rodape__dir">' + seta('anterior', acoes.anterior, 'chevron_left', 'Página anterior') +
-    '<select class="ds-select" id="' + id + '-pagina" data-on-change="' + acoes.pagina + '" aria-label="Ir para a página"></select>' +
+    _uiPaginadorGatilho(id, 'pagina', acoes.pagina, 'Ir para a página') +
     seta('proximo', acoes.proximo, 'chevron_right', 'Próxima página') + '</div></div>';
 }
 function uiPaginadorRodapeAtualizar(id, estado, total) {
@@ -11064,12 +11550,11 @@ function uiPaginadorRodapeAtualizar(id, estado, total) {
   var pag = estado.paginaAtual, ini = (pag - 1) * estado.itensPorPagina;
   var el = function(s) { return document.getElementById(id + '-' + s); };
   if (el('contador')) el('contador').textContent = total === 0 ? '0 de 0' : (ini + 1) + '–' + Math.min(ini + estado.itensPorPagina, total) + ' de ' + total;
-  if (el('tamanho')) el('tamanho').value = String(estado.itensPorPagina);
+  if (el('tamanho')) { el('tamanho').value = String(estado.itensPorPagina); el('tamanho-rotulo').textContent = String(estado.itensPorPagina); }
   if (el('pagina')) {
-    var ops = '';
-    for (var i = 1; i <= totalPags; i++) ops += '<option value="' + i + '">' + i + '</option>';
-    el('pagina').innerHTML = ops;
     el('pagina').value = String(pag);
+    el('pagina').dataset.total = String(totalPags);
+    el('pagina-rotulo').textContent = String(pag);
     el('pagina').disabled = totalPags <= 1;
   }
   if (el('anterior')) el('anterior').disabled = pag <= 1;
@@ -11577,7 +12062,7 @@ uiRegistrarAcoes('components_breadcrumb', {
      é pintada na hora (esqueleto shimmer) e duas chamadas EM PARALELO
      preenchem os blocos conforme chegam — nunca mostrarLoader() de tela
      cheia. Ver docs/design_system.md ("Página de painel/dashboard"). -->
-<div id="page-home" class="page-content hidden">
+<div id="page-home" class="js-pagina hidden">
 
   <!-- Cabeçalho (padrão de 1º nível: sem botão voltar, toolbar só-ícone à direita) -->
   <header class="hm-header">
@@ -12389,7 +12874,7 @@ uiRegistrarAcoes('pages_home', {
 </script>
 
        <!-- ARQUIVO: pages_planos_lista.html -->
-<div id="page-planos" class="page-content ds-pagina hidden">
+<div id="page-planos" class="js-pagina ds-pagina hidden">
 
   <!-- Layout de página do design system (.ds-pagina): hero → ações → abas → filtros → tabela. As ações são irmãs do hero
        (não filhas): o sticky só gruda dentro do próprio pai. -->
@@ -12483,22 +12968,6 @@ uiRegistrarAcoes('pages_home', {
       <div id="pll-selecao-acoes"></div>
     </div>
 
-    <!-- Contador + paginação: sempre visível (nem os filtros nem a seleção em lote a
-       escondem — ver comentário acima). Sem "Exibir": tamanho de página fixo, sem
-       seletor; as ferramentas da tabela (ordenar, atualizar, baixar, imprimir) vivem no
-       cabeçalho da última coluna (.ds-th-ferramentas). -->
-    <div class="ds-filtros__pag ds-paginador">
-      <span id="planos-pag-counter" class="ds-paginador__contador">0 de 0</span>
-      <div class="ds-paginador__nav">
-        <button type="button" id="planos-pag-prev" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_planos_lista.15" data-title="Página anterior" aria-label="Página anterior">
-          <span class="material-symbols-outlined">chevron_left</span>
-        </button>
-        <span id="planos-pag-atual" class="ds-paginador__atual">1</span>
-        <button type="button" id="planos-pag-next" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_planos_lista.16" data-title="Próxima página" aria-label="Próxima página">
-          <span class="material-symbols-outlined">chevron_right</span>
-        </button>
-      </div>
-    </div>
   </div>
 
   <!-- Cartão da tabela -->
@@ -12550,6 +13019,9 @@ uiRegistrarAcoes('pages_home', {
         </tbody>
     </table>
   </div><!-- fim tabela -->
+
+  <!-- Paginador único do sistema (.ds-paginador-rodape), na base da tabela; no celular a lista carrega ao rolar e ele some -->
+  <div id="pll-paginador"></div>
 
 </div>
 
@@ -12827,34 +13299,14 @@ document.addEventListener('click', function(e) {
 });
 
 // ---- Mobile (padrão Gmail/Drive) -------------------------------------------
-// As pílulas de filtro só aparecem com a busca em foco ou com algum filtro aplicado; a lista não tem paginador,
+// A lista não tem paginador (as pílulas de filtro são do design system),
 // carrega mais ao rolar (uiRolagemInfinita). No desktop nada disso muda.
 var PLL_LOTE_MOBILE = 20;
 function _pllMobile() { return window.matchMedia('(max-width: 768px)').matches; }
 
-function _pllMobileSincronizar() {
-  var f = estadoPlanos.filtros;
-  uiFiltrosMobileSincronizar(document.getElementById('pll-filtros-normal'), f.tipo || f.ano || f.status);
-}
-window.matchMedia('(max-width: 768px)').addEventListener('change', function() { _pllMobileSincronizar(); if (estadoPlanos._planosVisiveis) _renderizarPagina(); });
+window.matchMedia('(max-width: 768px)').addEventListener('change', function() { if (estadoPlanos._planosVisiveis) _renderizarPagina(); });
 
 function _pllMobilePreparar() {
-  var inp = document.getElementById('filtro-busca');
-  if (inp && !inp.dataset.pllMobile) {
-    inp.dataset.pllMobile = '1';
-    inp.addEventListener('focus', function() { estadoPlanos._buscaEmFoco = true; _pllMobileSincronizar(); });
-    // espera o toque numa pílula chegar antes de escondê-las
-    inp.addEventListener('blur', function() {
-      setTimeout(function() {
-        // tocar numa pílula tira o foco do campo: enquanto o toque está na barra (ou o sheet aberto) as pílulas ficam
-        if (Date.now() - (estadoPlanos._toqueBarra || 0) < 1500) return;
-        estadoPlanos._buscaEmFoco = false; _pllMobileSincronizar();
-      }, 250);
-    });
-    var barra = document.getElementById('pll-filtros-normal');
-    ['touchstart', 'mousedown'].forEach(function(t) { barra.addEventListener(t, function() { estadoPlanos._toqueBarra = Date.now(); }, { passive: true }); });
-  }
-  if (!document._pllBuscaTopo) { document._pllBuscaTopo = true; document.addEventListener('ui-busca-topo', _pllMobileSincronizar); }
   uiToqueLongo(document.getElementById('tbody-planos'), 'tr.ds-linha-clicavel', function(tr) {
     var chk = tr.querySelector('.plano-select-checkbox');
     if (!chk || estadoPlanos.selecionados.has(chk.dataset.id)) return;
@@ -12866,7 +13318,6 @@ function _pllMobilePreparar() {
     estadoPlanos._qtdMobile += PLL_LOTE_MOBILE;
     _renderizarPagina();
   });
-  _pllMobileSincronizar();
 }
 
 // ---- Filtros -------------------------------------------------------------
@@ -12925,7 +13376,6 @@ function _pllAtualizarBotaoFiltro(campo) {
   label.textContent = valor || def.label;
   btn.classList.toggle('ds-filtro__btn--ativo', !!valor);
   x.classList.toggle('hidden', !valor);
-  _pllMobileSincronizar();
 }
 
 function limparTodosFiltros() {
@@ -13059,26 +13509,17 @@ function _renderizarPagina() {
     end = Math.min(estadoPlanos._qtdMobile || PLL_LOTE_MOBILE, total);
   }
   _renderizarTabela(estadoPlanos._planosVisiveis.slice(start, end));
-  _pllAtualizarBarraPaginacao(total, start, end, totalPags);
+  _pllAtualizarBarraPaginacao(total);
   if (estadoPlanos._rolagem) estadoPlanos._rolagem.verificar();
-  _pllMobileSincronizar();
 }
 
-// Contador + navegação de página agora vivem na própria barra de filtros (sem seletor de
-// "Exibir" — tamanho de página fixo em estadoPlanos.itensPorPagina — e sem "ir para
-// página": só < N > mesmo, ver docs/design_system.md).
-function _pllAtualizarBarraPaginacao(total, start, end, totalPags) {
-  var contador = document.getElementById('planos-pag-counter');
-  if (contador) contador.innerText = (total === 0 ? '0' : (start + 1) + '–' + end) + ' de ' + total;
-
-  var atual = document.getElementById('planos-pag-atual');
-  if (atual) atual.innerText = String(estadoPlanos.paginaAtual);
-
-  var pag = estadoPlanos.paginaAtual;
-  var btnPrev = document.getElementById('planos-pag-prev');
-  var btnNext = document.getElementById('planos-pag-next');
-  if (btnPrev) btnPrev.disabled = (pag === 1);
-  if (btnNext) btnNext.disabled = (pag === totalPags);
+// Paginador único do sistema (.ds-paginador-rodape): Exibir, contador e seletor de página. No celular a lista carrega ao rolar e ele some.
+function _pllAtualizarBarraPaginacao(total) {
+  var caixa = document.getElementById('pll-paginador');
+  if (!caixa) return;
+  if (!document.getElementById('pll-pag')) caixa.innerHTML = uiPaginadorRodapeHTML('pll-pag', { tamanho: 'pages_planos_lista.15', anterior: 'pages_planos_lista.16', pagina: 'pages_planos_lista.33', proximo: 'pages_planos_lista.34' });
+  caixa.classList.toggle('hidden', _pllMobile());
+  uiPaginadorRodapeAtualizar('pll-pag', estadoPlanos, total);
 }
 
 function mudarPaginaPlanos(dir) {
@@ -13364,7 +13805,6 @@ function atualizarBarraSelecaoPlanos() {
   var caixasLista = document.querySelectorAll('#tbody-planos .plano-select-checkbox');
   var todasMarcadas = caixasLista.length > 0 && estadoPlanos.selecionados.size >= caixasLista.length;
   document.getElementById('pll-selall-rotulo').textContent = todasMarcadas ? 'Desmarcar tudo' : 'Selecionar tudo';
-  _pllMobileSincronizar();
   uiPaginaMedir(document.getElementById('page-planos'));
   pllAtualizarAlturaMinTabela();
 }
@@ -13599,8 +14039,10 @@ uiRegistrarAcoes('pages_planos_lista', {
   '12': function (event) { pllLimparUmFiltro('status'); },
   '13': function (event) { limparTodosFiltros(); },
   '14': function (event) { limparSelecaoPlanos(); },
-  '15': function (event) { mudarPaginaPlanos('prev'); },
-  '16': function (event) { mudarPaginaPlanos('next'); },
+  '15': function (event) { estadoPlanos.itensPorPagina = Number(this.value); estadoPlanos.paginaAtual = 1; _renderizarPagina(); },
+  '16': function (event) { mudarPaginaPlanos('prev'); },
+  '33': function (event) { estadoPlanos.paginaAtual = Number(this.value); _renderizarPagina(); },
+  '34': function (event) { mudarPaginaPlanos('next'); },
   '17': function (event) { toggleSelecaoTodosPlanos(this.checked); },
   '18': function (event) { ordenarPorColuna('nome'); },
   '19': function (event) { ordenarPorColuna('vigencia'); },
@@ -13982,7 +14424,7 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
 .calm-escolha { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 768px) { .calm-linha { grid-template-columns: minmax(0, 1fr); } }
 </style>
-<div id="page-calendario" class="page-content ds-pagina hidden">
+<div id="page-calendario" class="js-pagina ds-pagina hidden">
   <section class="ds-pagina__hero">
     <h1 class="ds-pagina__titulo">Calendário</h1>
   </section>
@@ -14178,8 +14620,6 @@ body.high-contrast .table-full tbody tr.selecionada td { background-color: #1a1a
   </div>
 </div>
 <script>
-// Os modais saem de #main-content: bloquearFundo() deixa o conteúdo inert, e o que estiver dentro dele deixaria de responder.
-['cal-modal', 'cal-modal-serie'].forEach(function (id) { var el = document.getElementById(id); if (el) document.body.appendChild(el); });
 var _CAL_TONS = ['execucao', 'analise', 'avaliacao', 'revisao', 'prorrogado', 'elaboracao', 'finalizado'];
 var _CAL_SITUACOES = { PROGRAMADO: ['Programado', 'info'], ABERTO: ['Aberto', 'success'], ENCERRADO: ['Encerrado', 'neutral'], CANCELADO: ['Cancelado', 'danger'] };
 var _CAL_ALCANCES = { TODOS: 'Todos os planos', TIPO_PLANO: 'Tipo de plano', UNIDADE: 'Unidade', PLANO: 'Plano' };
@@ -14583,9 +15023,852 @@ uiRegistrarAcoes('pages_calendario', {
 });
 </script>
 
+       <!-- ARQUIVO: pages_modelo.html
+     TEMPLATE MODELO de página de lista do design system, no menu Planejamento → "Template modelo" (rota 'modelo'; localmente também em /_modelo). Dados de exemplo, nenhuma chamada ao servidor.
+     Para criar uma página nova: copie este arquivo para src/frontend/pages_<nome>.html, troque o prefixo "mdl"/"modelo" pelo da tela,
+     apague o que a tela não usa (cada bloco OPCIONAL está marcado) e ligue o roteador (index.html, menu em components_header.html).
+     Estrutura (de cima para baixo), tudo do design system — nada de classe, token ou ícone fora do catálogo:
+       1. HERO ............ título (+ selo de situação; sem (i) no título) — o botão Voltar entra sozinho (uiVoltarGarantir)
+       2. AÇÕES ........... botão principal dividido (uiAcoesPaginaMontar; no celular vira FAB) e, ao lado, o botão que abre o painel de detalhes
+       3. ABAS ............ .ds-tabs-nav (sublinhado no desktop; no celular somem e o botão em pilha acima do flutuante abre o seletor 3D — o título do topo segue sendo o da página)
+       4. FILTROS ......... busca expansível, filtros em lista suspensa, "Limpar filtros", barra de seleção em lote e, à direita, o botão secundário e os modos de visualização
+       5. TABELA .......... seleção, cabeçalho ordenável, linha com ações sobrepostas no hover, estados de carregando e vazio
+       6. PAGINADOR ....... o único do sistema (.ds-paginador-rodape), na base da tabela
+     Todo modal que a página tiver vai para o body sozinho (index.html); modal novo nunca precisa ser movido à mão. -->
+<div id="page-modelo" class="js-pagina ds-pagina hidden">
+
+  <!-- 1. HERO -->
+  <section class="ds-pagina__hero">
+    <div class="ds-pagina__titulo-linha">
+      <!-- Voltar de ROTA FIXA: leva sempre ao pai desta página na árvore do menu (aqui, Planos), qualquer que seja o caminho de entrada. Nunca é calculado. OPCIONAL: página raiz do menu não tem -->
+      <button type="button" class="ds-icon-action ds-pagina__voltar" data-voltar-fixo data-on-click="ui.chamar" data-chamada-click="navigate('planos')" data-title="Voltar" aria-label="Voltar"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span></button>
+      <h1 class="ds-pagina__titulo">Título da página</h1>
+      <!-- OPCIONAL: selo de situação do que a página descreve (em lista de itens não se usa; em página de um item sim) -->
+      <span class="ds-badge ds-badge--execucao">Em Execução</span>
+    </div>
+  </section>
+
+  <!-- 2. AÇÕES (irmãs do hero: o sticky só gruda dentro do próprio pai) -->
+  <div class="ds-pagina__acoes" id="mdl-hero-acoes">
+    <!-- Botão principal (dividido: ação + seta com as demais ações). Montado por uiAcoesPaginaMontar em initModelo -->
+    <span data-ui-acoes-principal></span>
+    <!-- OPCIONAL: abre o painel lateral de detalhes (fora do botão dividido, sempre visível; mesmo botão do detalhe do plano) -->
+    <button type="button" class="ds-icon-action" data-on-click="pages_modelo.24" data-title="Detalhes" aria-label="Detalhes"><span class="material-symbols-outlined">right_panel_open</span></button>
+  </div>
+
+  <!-- 3. ABAS -->
+  <div class="ds-tabs-nav ds-pagina__faixa" id="mdl-tabs-row">
+    <div class="ds-tabs-nav__scroll" id="mdl-tabs" role="tablist" aria-label="Escopo da lista"></div>
+    <!-- Configurar as abas (só nas páginas que aceitam adicionar app / reordenar): fixos, fora da faixa rolável -->
+    <div class="ds-tabs-nav__acoes">
+      <button type="button" class="ds-tabs-nav__item ds-tabs-nav__item--config" data-title="Adicionar aba à página" aria-label="Adicionar aba"><span class="material-symbols-outlined">add</span></button>
+      <button type="button" class="ds-tabs-nav__item ds-tabs-nav__item--config" data-title="Arraste as abas para reordená-las · Clique para restaurar a ordem padrão" aria-label="Restaurar ordem das abas"><span class="material-symbols-outlined">restart_alt</span></button>
+    </div>
+  </div>
+
+  <!-- 4. FILTROS: normal OU seleção em lote (nunca os dois); o paginador fica sempre visível -->
+  <div class="ds-filtros ds-pagina__filtros" id="mdl-filtros-card">
+
+    <div class="ds-filtros__normal" id="mdl-filtros-normal">
+      <div class="ds-busca" id="mdl-search-wrap">
+        <button type="button" class="ds-icon-action" data-on-click="pages_modelo.3" data-title="Buscar" aria-label="Buscar">
+          <span class="material-symbols-outlined">search</span>
+        </button>
+        <div class="ds-busca__caixa hidden" id="mdl-search-caixa">
+          <span class="material-symbols-outlined ds-busca__icone" aria-hidden="true">search</span>
+          <input type="text" id="mdl-busca" class="ds-input ds-busca__input" placeholder="Buscar pelo nome…" data-on-input="pages_modelo.4" aria-label="Buscar pelo nome">
+          <button type="button" id="mdl-busca-limpar" class="ds-busca__limpar hidden" data-on-click="pages_modelo.5" data-title="Limpar busca" aria-label="Limpar busca">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros em lista suspensa: rótulo + seta; ativo vira o valor escolhido + "x" colado -->
+      <div class="ds-filtro" data-filtro="tipo">
+        <button type="button" class="ds-filtro__btn" id="mdl-filtro-btn-tipo" data-on-click="pages_modelo.6" aria-haspopup="menu" aria-expanded="false">
+          <span id="mdl-filtro-label-tipo">Tipo</span><span class="material-symbols-outlined">expand_more</span>
+        </button>
+        <button type="button" class="ds-filtro__x hidden" id="mdl-filtro-x-tipo" data-on-click="pages_modelo.7" data-title="Remover filtro de tipo" aria-label="Remover filtro de tipo">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="ds-filtro" data-filtro="status">
+        <button type="button" class="ds-filtro__btn" id="mdl-filtro-btn-status" data-on-click="pages_modelo.8" aria-haspopup="menu" aria-expanded="false">
+          <span id="mdl-filtro-label-status">Situação</span><span class="material-symbols-outlined">expand_more</span>
+        </button>
+        <button type="button" class="ds-filtro__x hidden" id="mdl-filtro-x-status" data-on-click="pages_modelo.9" data-title="Remover filtro de situação" aria-label="Remover filtro de situação">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <button type="button" id="mdl-limpar-filtros" class="ds-link hidden" data-on-click="pages_modelo.10">Limpar filtros</button>
+    </div>
+
+    <!-- Seleção em lote: substitui os filtros; as ações são as da linha (uma) ou só as que valem para todos (várias) -->
+    <div class="ds-filtros__selecao hidden" id="mdl-filtros-selecao">
+      <button type="button" class="ds-icon-action" data-on-click="pages_modelo.11" data-title="Cancelar seleção" aria-label="Cancelar seleção"><span class="material-symbols-outlined">close</span></button>
+      <span class="ds-filtros__selecao-texto" id="mdl-selecao-texto">0</span>
+      <div class="ds-filtros__divisor"></div>
+      <button type="button" class="ds-icon-action ds-icon-action--perigo" data-on-click="pages_modelo.12" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>
+    </div>
+
+    <!-- À direita (OPCIONAL, some no celular): modos de visualização e botão secundário dividido (ação alternativa à principal da página + menu) -->
+    <div class="ds-filtros__acoes">
+      <div class="ds-modos" role="group" aria-label="Modo de visualização">
+        <button type="button" class="ds-modo" aria-pressed="true" data-on-click="pages_modelo.23" data-title="Lista" aria-label="Lista"><span class="material-symbols-outlined">view_list</span></button>
+        <button type="button" class="ds-modo" aria-pressed="false" data-on-click="pages_modelo.23" data-title="Quadro" aria-label="Quadro"><span class="material-symbols-outlined">list_alt</span></button>
+      </div>
+      <div class="ds-split">
+        <button type="button" class="ds-btn ds-btn--glass-secondary ds-split__principal" data-on-click="pages_modelo.1"><span class="material-symbols-outlined" aria-hidden="true">add</span>Botão secundário</button>
+        <button type="button" class="ds-btn ds-btn--glass-secondary ds-split__seta" data-on-click="pages_modelo.22" data-title="Mais opções" aria-label="Mais opções" aria-haspopup="menu"><span class="material-symbols-outlined" aria-hidden="true">expand_more</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. TABELA -->
+  <div class="ds-tabela-wrap" id="mdl-tabela-card">
+    <table class="ds-tabela ds-tabela--selecao ds-tabela--arvore" id="mdl-tabela">
+      <thead>
+        <tr>
+          <!-- Celular: o botão de ordenar e "Selecionar tudo" substituem o cabeçalho -->
+          <th class="ds-tabela__ordenar">
+            <button type="button" class="ds-tabela__ordenar-btn" data-on-click="pages_modelo.15" aria-haspopup="menu" aria-label="Ordenar">
+              <span id="mdl-ord-rotulo">Nome</span><span class="material-symbols-outlined" id="mdl-ord-seta" aria-hidden="true">arrow_upward</span>
+            </button>
+          </th>
+          <!-- Celular: modo de visualização (botão circular que abre os modos; mostra o ícone do modo atual) e ⋮ das opções da lista -->
+          <th class="ds-tabela__cab-acoes">
+            <button type="button" id="mdl-modo-btn" class="ds-icon-action ds-icon-action--sm" data-on-click="ui.chamar" data-chamada-click="mdlModoMenu()" aria-haspopup="menu" data-title="Modo de visualização" aria-label="Modo de visualização"><span class="material-symbols-outlined" id="mdl-modo-icone">view_list</span></button>
+            <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="ui.chamar" data-chamada-click="mdlListaMenu()" aria-haspopup="menu" data-title="Opções da lista" aria-label="Opções da lista"><span class="material-symbols-outlined">more_vert</span></button>
+          </th>
+          <th class="ds-tabela__check">
+            <input type="checkbox" id="mdl-chk-todos" data-on-change="pages_modelo.16" aria-label="Selecionar todos">
+            <label for="mdl-chk-todos" class="ds-tabela__card" id="mdl-rotulo-todos">Selecionar tudo</label>
+          </th>
+          <th class="ds-tabela__expandir ds-tabela__so-desktop"></th>
+          <th class="ds-th-ord ds-tabela__principal" data-on-click="pages_modelo.17" data-achave="nome">Nome<span class="material-symbols-outlined ds-th-ord__icone" id="mdl-sort-nome"></span></th>
+          <th class="ds-th-ord" data-on-click="pages_modelo.17" data-achave="resp">Responsável<span class="material-symbols-outlined ds-th-ord__icone" id="mdl-sort-resp"></span></th>
+          <th class="ds-th-ord" data-on-click="pages_modelo.17" data-achave="status">Situação<span class="material-symbols-outlined ds-th-ord__icone" id="mdl-sort-status"></span></th>
+          <th class="ds-th-ord ds-tabela__so-larga" data-on-click="pages_modelo.17" data-achave="prog">Progresso<span class="material-symbols-outlined ds-th-ord__icone" id="mdl-sort-prog"></span></th>
+          <!-- Última coluna: ordenável + ferramentas da tabela; as ações da linha aparecem sobrepostas no hover -->
+          <th class="ds-col-sobreposta">
+            <div class="ds-th-ferramentas">
+              <span class="ds-th-ferramentas__rotulo ds-th-ord" data-on-click="pages_modelo.17" data-achave="prazo">Prazo<span class="material-symbols-outlined ds-th-ord__icone" id="mdl-sort-prazo"></span></span>
+              <span class="ds-th-ferramentas__extras">
+                <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_modelo.15" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu"><span class="material-symbols-outlined">sort</span></button>
+                <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_modelo.2" data-title="Atualizar" aria-label="Atualizar lista"><span class="material-symbols-outlined">refresh</span></button>
+                <button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Baixar"><span class="material-symbols-outlined">download</span></button>
+                <button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>
+              </span>
+              <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_modelo.28" data-title="Opções da lista" aria-label="Opções da lista" aria-haspopup="true"><span class="material-symbols-outlined">more_vert</span></button>
+            </div>
+          </th>
+        </tr>
+      </thead>
+      <tbody id="mdl-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- 6. PAGINADOR único do sistema: Exibir (10/20/50) à esquerda, "a–b de n" no centro, ‹ seletor de página › à direita. No celular a lista carrega ao rolar e ele some. -->
+  <div id="mdl-paginador"></div>
+</div>
+
+<script>
+// ===================== TEMPLATE MODELO: dados de exemplo e lógica mínima (troque pelas chamadas apiX da tela) =====================
+// classe de cada tom de estado (success, warning, danger, info, pending)
+var MDL_AVISO = { success: 'ds-aviso-item--success', warning: 'ds-aviso-item--warning', danger: 'ds-aviso-item--danger', info: 'ds-aviso-item--info', pending: 'ds-aviso-item--pending' };
+var MDL_BADGE = { success: 'ds-badge--success', warning: 'ds-badge--warning', danger: 'ds-badge--danger', info: 'ds-badge--info', pending: 'ds-badge--pending' };
+var estadoModelo = { itens: [], aba: 'todos', busca: '', tipo: '', status: '', ordem: 'nome', dir: 'asc', paginaAtual: 1, itensPorPagina: 10, qtdMobile: 20 };
+var mdlCenarioVazio = false; // só a demonstração: liga o estado "nada cadastrado" (lista sem itens)
+var mdlAbertos = {};
+var mdlSel = null; // seleção de itens: comportamento único do design system (uiSelecaoLista)
+var MDL_TIPOS = ['Estratégico', 'Tático', 'Operacional'];
+var MDL_STATUS = ['Em Elaboração', 'Em Análise', 'Em Execução', 'Em Avaliação', 'Prorrogado', 'Finalizado', 'Cancelado'];
+var MDL_ABAS = [{ key: 'todos', label: 'Todos', icon: 'list' }, { key: 'meus', label: 'Meus', icon: 'person', criterio: 'Itens em que você é responsável.' }, { key: 'unidade', label: 'Da minha unidade', icon: 'apartment', criterio: 'Itens da sua unidade e das subunidades.' },
+  { key: 'x1', label: 'Em elaboração', icon: 'edit_note' }, { key: 'x2', label: 'Aguardando análise', icon: 'hourglass_top' }, { key: 'x3', label: 'Em execução', icon: 'play_circle' },
+  { key: 'x4', label: 'Em avaliação', icon: 'fact_check' }, { key: 'x5', label: 'Prorrogados', icon: 'update' }, { key: 'x6', label: 'Finalizados', icon: 'check_circle' },
+  { key: 'x7', label: 'Cancelados', icon: 'cancel' }, { key: 'x8', label: 'Arquivados', icon: 'inventory_2' }];
+
+function _mdlDados() {
+  var lista = [], resp = [['Maria da Silva Souza', 'USER'], ['PROPLAN', 'UNIDADE'], ['João Pereira Lima', 'USER'], ['Pró-Reitoria de Administração', 'UNIDADE']];
+  for (var i = 1; i <= 27; i++) {
+    var r = resp[i % resp.length];
+    lista.push({ id: String(i), nome: 'Item de exemplo número ' + i + (i % 5 === 0 ? ' com um nome bem longo para testar as reticências na coluna principal' : ''), codigo: i % 3 ? 'IT-' + (100 + i) : '',
+      tipo: MDL_TIPOS[i % 3], status: MDL_STATUS[i % MDL_STATUS.length], resp: r[0], respTipo: r[1], progresso: (i * 13) % 101, prazo: String(1 + (i * 3) % 28).padStart(2, '0') + '/12/2026',
+      atrasado: i % 4 === 0, extra: 'x' + (1 + i % 8), avisoNome: i === 6 ? '2 anos sem metas' : i === 9 ? 'Apaga em 12 dias' : '', alerta: i === 2 ? { tom: 'danger', texto: 'Prazo vencido sem registro', acao: 'Registrar', icone: 'edit_note' } : i === 3 ? { tom: 'warning', texto: 'Aguardando sua análise', acao: 'Analisar', icone: 'fact_check' } : i === 5 ? { tom: 'info', texto: 'Novo comentário', acao: 'Ver', icone: 'visibility' } : null, aba: i % 3 === 0 ? 'meus' : (i % 3 === 1 ? 'unidade' : '') });
+  }
+  return lista;
+}
+
+function initModelo() {
+  uiAcoesPaginaMontar(document.getElementById('page-modelo'), 'pagina-modelo', [
+    { icone: 'add', rotulo: 'Novo item', onclick: "showMessage('info', 'Modelo', 'Ação principal')", principal: true },
+    { icone: 'content_copy', rotulo: 'Duplicar', onclick: "showMessage('info', 'Modelo', 'Ação da seta')" },
+    { icone: 'inbox', rotulo: 'Simular: nada cadastrado', onclick: "mdlCenario(0)" },
+    { icone: 'check', rotulo: 'Simular: só 1 item', onclick: "mdlCenario(1)" },
+    { icone: 'done_all', rotulo: 'Simular: só 2 itens', onclick: "mdlCenario(2)" },
+    { icone: 'list', rotulo: 'Simular: lista com itens', onclick: "mdlCenario(null)" },
+    { icone: 'download', rotulo: 'Importar', desabilitado: true }
+  ], [
+    // No celular o botão secundário não existe como botão: a ação dele e as opções do menu dele vêm para o botão flutuante
+    { icone: 'add', rotulo: 'Botão secundário', onclick: "showMessage('info', 'Modelo', 'Ação do botão secundário')" },
+    { icone: 'upload', rotulo: 'Opção do menu secundário', onclick: "showMessage('info', 'Modelo', 'Opção do menu secundário')" }
+  ]);
+  estadoModelo._rolagem = uiRolagemInfinita(document.getElementById('mdl-tabela-card'), function() {
+    if (window.innerWidth > 768 || estadoModelo.qtdMobile >= _mdlFiltrados().length) return;
+    estadoModelo.qtdMobile += 20;
+    mdlRender();
+  });
+  if (!estadoModelo.itens.length && !mdlCenarioVazio) estadoModelo.itens = _mdlDados();
+  if (!mdlSel) mdlSel = uiSelecaoLista({ tabela: document.getElementById('mdl-tabela'), corpo: document.getElementById('mdl-tbody'), filtros: document.getElementById('mdl-filtros-normal'), selecao: document.getElementById('mdl-filtros-selecao'),
+    texto: document.getElementById('mdl-selecao-texto'), todos: document.getElementById('mdl-chk-todos'), rotuloTodos: document.getElementById('mdl-rotulo-todos'), caixas: '.js-mdl-chk' });
+  uiAtalhosLista({ pagina: document.getElementById('page-modelo'), corpo: document.getElementById('mdl-tbody'), busca: document.getElementById('mdl-search-wrap'), sel: mdlSel,
+    aoAbrir: function(id) { showMessage('info', 'Modelo', 'Abrir o item ' + id); },
+    aoExpandir: function(id, abrir) { mdlAbertos[id] = abrir; mdlRender(); } });
+  mdlRenderAbas();
+  mdlRender();
+}
+uiPuxarParaAtualizar('page-modelo', function() { mdlRender(); });
+
+function _mdlNaAba(i) { return estadoModelo.aba === 'todos' || i.aba === estadoModelo.aba || i.extra === estadoModelo.aba; }
+function _mdlFiltrados() {
+  var e = estadoModelo, termo = e.busca.trim().toLowerCase();
+  var l = e.itens.filter(function(i) { return _mdlNaAba(i) && (!termo || i.nome.toLowerCase().indexOf(termo) > -1) && (!e.tipo || i.tipo === e.tipo) && (!e.status || i.status === e.status); });
+  var k = e.ordem, f = e.dir === 'asc' ? 1 : -1;
+  return l.sort(function(a, b) { var x = a[k], y = b[k]; return (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'pt-BR')) * f; });
+}
+
+// ---- Abas ----
+// Prévia das cartas do seletor 3D (celular): os três primeiros itens da aba, já em memória (sem pedir nada ao servidor)
+uiFlip3DPrevia('page-modelo', function(chave) {
+  var itens = estadoModelo.itens.filter(function(i) { return chave === 'todos' || i.aba === chave || i.extra === chave; });
+  return { itens: itens.slice(0, 3).map(function(i) { return { titulo: i.nome, meta: (i.codigo ? i.codigo + ' · ' : '') + i.status, tom: i.alerta ? i.alerta.tom : '' }; }) };
+});
+function mdlRenderAbas() {
+  document.getElementById('mdl-tabs').innerHTML = MDL_ABAS.map(function(a) {
+    var ativa = a.key === estadoModelo.aba, n = estadoModelo.itens.filter(function(i) { return a.key === 'todos' || i.aba === a.key || i.extra === a.key; }).length;
+    return '<button type="button" role="tab" aria-selected="' + ativa + '" class="ds-tabs-nav__item' + (ativa ? ' active' : '') + '" data-aba="' + a.key + '" data-rotulo-mobile="' + escapeHtml(a.label) + '"' + (a.criterio ? ' data-criterio="' + escapeHtml(a.criterio) + '"' : '') + ' data-on-click="pages_modelo.18" data-aclick0="' + a.key + '">' +
+      '<span class="material-symbols-outlined">' + a.icon + '</span><span>' + escapeHtml(a.label) + '</span><span class="ds-tab-count">' + n + '</span></button>';
+  }).join('');
+  uiPaginaMedir(document.getElementById('page-modelo'));
+  uiAbasNavAtualizar(document.getElementById('mdl-tabs-row'));
+}
+
+// ---- Lista ----
+function mdlRender() {
+  var e = estadoModelo, tbody = document.getElementById('mdl-tbody');
+  var todos = _mdlFiltrados(), total = todos.length;
+  // Celular: sem paginador, carrega ao rolar (uiRolagemInfinita); desktop: página a página
+  var mobile = window.innerWidth <= 768;
+  var pag = mobile ? todos.slice(0, e.qtdMobile) : uiPaginarLista(todos, e);
+  if (!document.getElementById('mdl-pag')) document.getElementById('mdl-paginador').innerHTML = uiPaginadorRodapeHTML('mdl-pag', { tamanho: 'pages_modelo.13', anterior: 'pages_modelo.14', pagina: 'pages_modelo.20', proximo: 'pages_modelo.21' });
+  uiPaginadorRodapeAtualizar('mdl-pag', e, total);
+  ['nome', 'resp', 'status', 'prog', 'prazo'].forEach(function(k) { var s = document.getElementById('mdl-sort-' + k); if (s) s.textContent = e.ordem === (k === 'prog' ? 'progresso' : k) ? (e.dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : ''; });
+  document.getElementById('mdl-limpar-filtros').classList.toggle('hidden', !(e.tipo || e.status || e.busca));
+  document.getElementById('mdl-filtro-btn-tipo').classList.toggle('ds-filtro__btn--ativo', !!e.tipo);
+  document.getElementById('mdl-filtro-btn-status').classList.toggle('ds-filtro__btn--ativo', !!e.status);
+  document.getElementById('mdl-filtro-label-tipo').textContent = e.tipo || 'Tipo';
+  document.getElementById('mdl-filtro-x-tipo').classList.toggle('hidden', !e.tipo);
+  document.getElementById('mdl-filtro-label-status').textContent = e.status || 'Situação';
+  document.getElementById('mdl-filtro-x-status').classList.toggle('hidden', !e.status);
+  var nada = !estadoModelo.itens.length;
+  // A barra de filtros NUNCA some: sem o que filtrar, busca/filtros/modos ficam desabilitados (apagados) e o botão secundário segue habilitado.
+  // Um controle com valor aplicado continua habilitado, para o usuário poder limpá-lo.
+  var base = estadoModelo.itens.filter(_mdlNaAba);
+  var opcoes = function(k) { return base.filter(function(i) { return i[k]; }).length; };
+  var desab = function(el, v) { el.disabled = v; };
+  desab(document.querySelector('#mdl-search-wrap > .ds-icon-action'), !base.length && !e.busca);
+  desab(document.getElementById('mdl-busca'), !base.length && !e.busca);
+  desab(document.getElementById('mdl-filtro-btn-tipo'), !opcoes('tipo') && !e.tipo);
+  desab(document.getElementById('mdl-filtro-btn-status'), !opcoes('status') && !e.status);
+  Array.prototype.forEach.call(document.querySelectorAll('.ds-filtros__acoes .ds-modo'), function(b) { desab(b, nada); });
+  // Paginador: só quando há o que paginar (total acima do menor tamanho de página) e fora do celular
+  document.getElementById('mdl-paginador').classList.toggle('hidden', nada || total <= 10 || window.innerWidth <= 768);
+  if (nada || !pag.length) {
+    // Estado vazio (ícone + mensagem + linha secundária, sem botão), sempre com o cabeçalho da tabela. Três mensagens, escolhidas pela causa:
+    // nada cadastrado / aba sem itens / busca ou filtro sem resultado
+    var aba = MDL_ABAS.filter(function(x) { return x.key === e.aba; })[0];
+    var vz = nada ? { icone: 'inbox', titulo: 'Nenhum item cadastrado', texto: 'Uma frase do que é o item e para que serve.' }
+      : (e.busca || e.tipo || e.status) ? { icone: 'search_off', titulo: 'Nenhum item encontrado', texto: 'Tente outros termos ou limpe os filtros.' }
+      : { icone: 'inbox', titulo: 'Nenhum item em ' + aba.label, texto: aba.criterio || 'Nenhum item nesta aba.' };
+    tbody.innerHTML = '<tr class="ds-tabela__msg"><td colspan="8"><div class="ds-vazio"><span class="material-symbols-outlined ds-vazio__icone">' + vz.icone + '</span><p class="ds-vazio__titulo">' + escapeHtml(vz.titulo) + '</p><p class="ds-vazio__texto">' + escapeHtml(vz.texto) + '</p></div></td></tr>';
+    mdlSel.atualizar();
+    return;
+  }
+  tbody.innerHTML = '';
+  pag.forEach(function(i) {
+    var sel = mdlSel.tem(i.id);
+    var acoes = acoesLinhaHTML('mdl-' + i.id, [
+      { icone: 'open_in_new', rotulo: 'Abrir', onclick: "showMessage('info', 'Modelo', 'Abrir')", principal: true },
+      { icone: 'edit', rotulo: 'Editar', onclick: "showMessage('info', 'Modelo', 'Editar')", principal: true },
+      { icone: 'content_copy', rotulo: 'Duplicar', onclick: "showMessage('info', 'Modelo', 'Duplicar')" },
+      { icone: 'delete', rotulo: 'Excluir', onclick: "showMessage('info', 'Modelo', 'Excluir')", perigo: true }
+    ], { titulo: i.nome });
+    // Atraso: ícone solto ao lado do valor que está atrasado
+    var venceu = 'Venceu há ' + (i.id % 5 + 1) + (i.id % 5 ? ' dias' : ' dia');
+    var prazo = '<div class="ds-texto-leve">' + i.prazo + '</div>' + (i.atrasado ? '<div class="ds-aviso-item ds-aviso-item--danger">' + venceu + '</div>' : '');
+    // Celular: a 1ª linha tem DUAS informações (tipo à esquerda, prazo à direita). Se o item tem aviso (atraso, "apaga em N dias"…), o aviso TOMA o lugar do prazo: nunca os dois
+    var avisoMob = i.atrasado ? { tom: 'danger', t: venceu } : i.avisoNome ? { tom: 'warning', t: i.avisoNome } : null;
+    var vigMob = avisoMob ? '<span class="ds-aviso-item ' + MDL_AVISO[avisoMob.tom] + '">' + escapeHtml(avisoMob.t) + '</span>' : escapeHtml(i.prazo);
+    var progresso = uiProgressoHTML(i.progresso, 'Média do % de conclusão');
+    var resp = uiRespHTML(i.resp, i.respTipo, i.id % 7 === 0 ? ['Ana Beatriz Costa'] : []);
+    // Item que pede uma ação: a última coluna vira célula de decisão (botão de pendência sempre visível + ⋮); o motivo vai no tooltip do botão
+    var TOM_BTN = { danger: 'ds-btn--pendencia-re', warning: 'ds-btn--pendencia', info: 'ds-btn--glass-secondary', success: 'ds-btn--pendencia-rb', pending: 'ds-btn--glass-secondary' };
+    var celulaAcoes = i.alerta
+      ? '<td class="ds-col-sobreposta"><div class="ds-decisao ds-tabela__so-desktop"><button type="button" class="ds-btn ' + TOM_BTN[i.alerta.tom] + ' ds-btn--sm" data-on-click="pages_modelo.27" data-aclick0="' + escapeHtml(i.alerta.acao) + '" data-title="' + escapeHtml(i.alerta.texto) + '" aria-label="' + escapeHtml(i.alerta.acao) + '"><span class="material-symbols-outlined">' + i.alerta.icone + '</span><span>' + escapeHtml(i.alerta.acao) + '</span></button>' + acoesLinhaHTML('mdl-' + i.id, [
+          { icone: 'open_in_new', rotulo: 'Abrir', onclick: "showMessage('info', 'Modelo', 'Abrir')" },
+          { icone: 'edit', rotulo: 'Editar', onclick: "showMessage('info', 'Modelo', 'Editar')" },
+          { icone: 'delete', rotulo: 'Excluir', onclick: "showMessage('info', 'Modelo', 'Excluir')", perigo: true }
+        ], { maxDireto: 0 }) + '</div>'
+        + '<div class="ds-tabela__so-mobile"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__acoes">' + acoesLinhaHTML('mdl-m-' + i.id, [
+          { icone: i.alerta.icone, rotulo: i.alerta.acao, onclick: "showMessage('info', 'Modelo', 'Ação necessária: " + i.alerta.acao.replace(/'/g, '') + "')", principal: true },
+          { icone: 'open_in_new', rotulo: 'Abrir', onclick: "showMessage('info', 'Modelo', 'Abrir')" },
+          { icone: 'edit', rotulo: 'Editar', onclick: "showMessage('info', 'Modelo', 'Editar')" },
+          { icone: 'delete', rotulo: 'Excluir', onclick: "showMessage('info', 'Modelo', 'Excluir')", perigo: true }
+        ], { maxDireto: 0, titulo: i.nome }) + '</div></div></div></td>'
+      : '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info ds-tabela__so-desktop">' + prazo + '</div><div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>';
+    var tr = document.createElement('tr');
+    tr.classList.add('ds-linha-lista', 'ds-linha-clicavel');
+    tr.dataset.id = i.id; tr.tabIndex = 0;
+    if (sel) tr.classList.add('is-selecionada');
+    if (i.alerta) tr.classList.add('ds-linha--' + i.alerta.tom);
+    var aberto = !!mdlAbertos[i.id];
+    tr.setAttribute('aria-expanded', String(aberto));
+    tr.setAttribute('data-on-click', 'ui.chamar'); tr.setAttribute('data-chamada-click', "mdlCliqueLinha(event, '" + i.id + "')");
+    tr.innerHTML =
+      '<td class="ds-tabela__check"><input type="checkbox" class="js-mdl-chk" data-id="' + i.id + '" data-on-change="pages_modelo.19" data-achange0="' + i.id + '" aria-label="Selecionar item"' + (sel ? ' checked' : '') + '></td>' +
+      '<td class="ds-tabela__expandir"><button type="button" class="ds-item-seta' + (aberto ? ' is-aberto' : '') + '" data-on-click="pages_modelo.26" data-aclick0="' + i.id + '" aria-label="Expandir"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button></td>' +
+      '<td class="ds-tabela__principal"><div class="ds-tabela__id">' +
+        '<span class="ds-badge-tipo ds-tabela__tipo">' + escapeHtml(i.tipo) + '</span>' +
+        '<div class="ds-tabela__nome-wrap"><div class="ds-tabela__nome" data-title="' + escapeHtml(i.nome) + '">' + (i.codigo ? '<span class="ds-tabela__codigo">' + escapeHtml(i.codigo) + '</span>' : '') + escapeHtml(i.nome) + '</div></div></div>' + (i.avisoNome ? '<div class="ds-aviso-item ds-aviso-item--warning ds-tabela__so-desktop">' + i.avisoNome + '</div>' : '') + '</td>' +
+      '<td class="ds-tabela__vig">' + vigMob + '</td>' +
+      '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + resp + '</td>' +
+      '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + uiStatusPlanoHTML(i.status) + '</td>' +
+      '<td class="ds-tabela__so-larga ds-tabela__so-desktop">' + progresso + '</td>' +
+      celulaAcoes +
+      '<td class="ds-tabela__card"><div class="ds-tabela__meta"></div><div class="ds-tabela__prog">' + progresso + '</div></td>';
+    tbody.appendChild(tr);
+    if (aberto) {
+      var det = document.createElement('tr');
+      det.className = 'ds-linha-detalhe';
+      det.innerHTML = '<td colspan="8"></td>';   // área de detalhe vazia: cada página decide o que mostrar aqui
+      tbody.appendChild(det);
+    }
+    // 3ª linha do celular: badges em ordem de importância (situação colorida, cinza neutro, tons de estado, responsável)
+    uiMetaPreencher(tr, (i.alerta ? ['<span class="ds-badge ' + MDL_BADGE[i.alerta.tom] + '">' + escapeHtml(i.alerta.texto) + '</span>'] : []).concat([uiStatusPlanoHTML(i.status), '<span class="ds-badge ds-badge--neutral">Categoria</span>', '<span class="ds-badge ds-badge--success">Aprovado</span>', resp]));
+  });
+  mdlSel.atualizar();
+  mdlContornos();
+}
+
+// Celular: o item expansível aberto e a área de detalhe viram um bloco com contorno colorido (só item expansível)
+function mdlContornos() {
+  var tbody = document.getElementById('mdl-tbody'), wrap = document.getElementById('mdl-tabela-card');
+  Array.prototype.forEach.call(wrap.querySelectorAll('.ds-item-contorno'), function(n) { n.remove(); });
+  Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function(tr) { ['ini', 'meio', 'fim'].forEach(function(p) { tr.classList.remove('ds-item-grupo--' + p); }); });
+  var antes = tbody._mdlContornos || {}, agora = {};
+  if (window.innerWidth <= 768) {
+    Array.prototype.forEach.call(tbody.querySelectorAll('tr.ds-linha-lista[aria-expanded="true"]'), function(tr) {
+      var det = tr.nextElementSibling;
+      if (!det || !det.classList.contains('ds-linha-detalhe')) return;
+      var grupo = [tr, det];
+      uiItemGrupoMarcar(grupo);
+      agora[tr.dataset.id] = 1;
+      uiItemContorno(wrap, grupo, antes[tr.dataset.id] === undefined);
+    });
+  }
+  tbody._mdlContornos = agora;
+}
+
+function mdlCliqueLinha(ev, id) {
+  if (ev.target.closest('input, button, a')) return;
+  if (window.innerWidth <= 768) { mdlSel.cliqueMobile(id, function() { showMessage('info', 'Modelo', 'Abrir o item ' + id); }); return; }
+  // Desktop: linha expansível → o clique expande/recolhe; linha comum → o clique abre o item. Selecionar é pela caixa (ou Ctrl+A).
+  var tr = ev.currentTarget.closest ? ev.currentTarget : null;
+  if (tr && tr.hasAttribute('aria-expanded')) { mdlAbertos[id] = !mdlAbertos[id]; mdlRender(); return; }
+  showMessage('info', 'Modelo', 'Abrir o item ' + id);
+}
+
+// ---- Filtros e ordenação (menu suspenso único do sistema: abrirMenuSelecao) ----
+function mdlMenuFiltro(gatilho, campo, opcoes, titulo) {
+  abrirMenuSelecao(gatilho, [{ itens: opcoes.map(function(o) { return { label: o, ativo: estadoModelo[campo] === o, onclick: "mdlFiltrar('" + campo + "', '" + o + "')" }; }) }],
+    { titulo: titulo, limpar: estadoModelo[campo] ? "mdlFiltrar('" + campo + "', '')" : '' });
+}
+// Cenário de demonstração: qtd = 0 (nada cadastrado), 1, 2… ou null (lista completa de 27)
+function mdlCenario(qtd) { mdlCenarioVazio = qtd === 0; estadoModelo.itens = qtd === null ? _mdlDados() : _mdlDados().slice(0, qtd); estadoModelo.aba = 'todos'; estadoModelo.paginaAtual = 1; estadoModelo.qtdMobile = 20; mdlSel.limpar(); mdlRenderAbas(); mdlRender(); }
+function mdlFiltrar(campo, valor) { estadoModelo[campo] = valor; estadoModelo.paginaAtual = 1; estadoModelo.qtdMobile = 20; mdlRender(); }
+function mdlMenuOrdenar(gatilho) {
+  var cols = [['nome', 'Nome'], ['resp', 'Responsável'], ['status', 'Situação'], ['progresso', 'Progresso'], ['prazo', 'Prazo']];
+  abrirMenuSelecao(gatilho, [
+    { label: 'Ordenar por', itens: cols.map(function(c) { return { label: c[1], ativo: estadoModelo.ordem === c[0], onclick: "mdlOrdenarPor('" + c[0] + "')" }; }) },
+    { label: 'Ordem', itens: [
+      { label: 'Crescente', ativo: estadoModelo.dir === 'asc', onclick: "mdlDirecao('asc')" },
+      { label: 'Decrescente', ativo: estadoModelo.dir === 'desc', onclick: "mdlDirecao('desc')" }
+    ] }
+  ], { titulo: 'Ordenar' });
+}
+var MDL_ROTULOS = { nome: 'Nome', resp: 'Responsável', status: 'Situação', progresso: 'Progresso', prazo: 'Prazo' };
+function mdlOrdenarPor(col) { estadoModelo.ordem = col; document.getElementById('mdl-ord-rotulo').textContent = MDL_ROTULOS[col]; mdlRender(); }
+function mdlDirecao(dir) { estadoModelo.dir = dir; mdlRender(); }
+
+// Modos de visualização (celular): o botão circular do cabeçalho abre os modos na gaveta e passa a mostrar o ícone do modo escolhido
+var MDL_MODOS = [{ rotulo: 'Lista', icone: 'view_list' }, { rotulo: 'Quadro', icone: 'list_alt' }];
+function mdlModoMenu() {
+  var atual = Number((document.querySelector('#page-modelo .ds-modo[aria-pressed="true"]') || {}).dataset && document.querySelector('#page-modelo .ds-modo[aria-pressed="true"]').dataset.modo || 0);
+  abrirMenuSelecao(document.getElementById('mdl-modo-btn'), [{ itens: MDL_MODOS.map(function(m, k) { return { label: m.rotulo, ativo: k === atual, onclick: 'mdlModo(' + k + ')' }; }) }], { titulo: 'Modo de visualização' });
+}
+function mdlModo(k) {
+  document.querySelectorAll('#page-modelo .ds-modo').forEach(function(b, j) { b.setAttribute('aria-pressed', String(j === k)); });
+  document.getElementById('mdl-modo-icone').textContent = MDL_MODOS[k].icone;
+}
+function mdlListaMenu() {
+  var lista = [
+    { icone: 'refresh', rotulo: 'Atualizar', onclick: 'mdlRender()' },
+    { icone: 'download', rotulo: 'Baixar', desabilitado: true },
+    { icone: 'print', rotulo: 'Imprimir', desabilitado: true }
+  ].map(_acoesLinhaNormalizar);
+  uiSheetAbrir({ titulo: 'Lista', corpo: '<div role="menu">' + _acoesLinhaItensHTML(lista, 'uiSheetFechar(); ') + '</div>' });
+}
+
+function mdlOrdenar(chave) {
+  var e = estadoModelo; if (chave === 'prog') chave = 'progresso';
+  if (e.ordem === chave) e.dir = e.dir === 'asc' ? 'desc' : 'asc'; else { e.ordem = chave; e.dir = 'asc'; }
+  document.getElementById('mdl-ord-rotulo').textContent = { nome: 'Nome', resp: 'Responsável', status: 'Situação', progresso: 'Progresso', prazo: 'Prazo' }[e.ordem];
+  mdlRender();
+}
+
+uiRegistrarAcoes('pages_modelo', {
+  '1': function () { showMessage('info', 'Modelo', 'Ação do botão secundário'); },
+  '22': function () { showMessage('info', 'Modelo', 'Menu da seta do botão secundário'); },
+  '23': function () { mdlModo(Array.prototype.indexOf.call(this.parentNode.children, this)); },
+  '28': function () { uiFerramentasAlternar(this); },
+  '26': function () { var id = this.dataset.aclick0; mdlAbertos[id] = !mdlAbertos[id]; mdlRender(); },
+  '27': function () { showMessage('info', 'Modelo', 'Ação necessária: ' + this.dataset.aclick0); },
+  '24': function () { showMessage('info', 'Modelo', 'Abriria o painel lateral de detalhes'); },
+  '2': function () { mdlRender(); },
+  '3': function () { uiBuscaAbrir(document.getElementById('mdl-search-wrap'), true); },
+  '4': function () { estadoModelo.busca = this.value; estadoModelo.paginaAtual = 1; estadoModelo.qtdMobile = 20; document.getElementById('mdl-busca-limpar').classList.toggle('hidden', !this.value); mdlRender(); },
+  '5': function () { var i = document.getElementById('mdl-busca'); i.value = ''; estadoModelo.busca = ''; this.classList.add('hidden'); mdlRender(); i.focus(); },
+  '6': function () { mdlMenuFiltro(this, 'tipo', MDL_TIPOS, 'Tipo'); },
+  '7': function () { mdlFiltrar('tipo', ''); },
+  '8': function () { mdlMenuFiltro(this, 'status', MDL_STATUS, 'Situação'); },
+  '9': function () { mdlFiltrar('status', ''); },
+  '10': function () { var e = estadoModelo; e.tipo = e.status = e.busca = ''; document.getElementById('mdl-busca').value = ''; e.paginaAtual = 1; estadoModelo.qtdMobile = 20; mdlRender(); },
+  '11': function () { mdlSel.limpar(); },
+  '12': function () { showConfirm('Excluir selecionados', 'Esta ação é só um exemplo do modelo.', function() {}); },
+  '13': function () { estadoModelo.itensPorPagina = Number(this.value); estadoModelo.paginaAtual = 1; estadoModelo.qtdMobile = 20; mdlRender(); },
+  '14': function () { estadoModelo.paginaAtual--; mdlRender(); },
+  '20': function () { estadoModelo.paginaAtual = Number(this.value); mdlRender(); },
+  '21': function () { estadoModelo.paginaAtual++; mdlRender(); },
+  '15': function () { mdlMenuOrdenar(this); },
+  '16': function () { mdlSel.todosNaPagina(this.checked); },
+  '17': function () { mdlOrdenar(this.dataset.achave); },
+  '18': function () { estadoModelo.aba = this.dataset.aclick0; estadoModelo.paginaAtual = 1; estadoModelo.qtdMobile = 20; mdlRenderAbas(); mdlRender(); },
+  '19': function () { mdlSel.alternar(this.dataset.achange0, this.checked); }
+});
+</script>
+
+       <!-- ARQUIVO: pages_consolidados.html -->
+<!-- Planejamento › Indicadores Consolidados (spec docs/especificacoes/indicadores_entre_planos.md §8.1): o módulo só configura; o uso entra no plano pelo "Usar existente". -->
+<div id="page-consolidados" class="js-pagina ds-pagina hidden">
+
+  <section class="ds-pagina__hero">
+    <h1 class="ds-pagina__titulo">Indicadores Consolidados<span class="material-symbols-outlined ds-info" tabindex="0" data-title="Indicadores calculados a partir de variáveis lançadas por várias unidades. Aqui você define a fórmula e quem é obrigado a lançar; o uso entra no plano pelo “Usar existente”.">info</span></h1>
+  </section>
+  <div class="ds-pagina__acoes" id="cons-hero-acoes">
+    <span data-ui-acoes-principal></span>
+  </div>
+
+  <div class="ds-tabs-nav ds-pagina__faixa" id="cons-tabs-row">
+    <div class="ds-tabs-nav__scroll" id="cons-tabs" role="tablist" aria-label="Escopo dos indicadores consolidados"></div>
+  </div>
+
+  <div class="ds-filtros ds-pagina__filtros">
+    <div class="ds-filtros__normal">
+      <div class="ds-busca" id="cons-search-wrap">
+        <button type="button" class="ds-icon-action" data-on-click="pages_consolidados.1" data-title="Buscar indicador" aria-label="Buscar indicador">
+          <span class="material-symbols-outlined">search</span>
+        </button>
+        <div class="ds-busca__caixa hidden" id="cons-search-caixa">
+          <span class="material-symbols-outlined ds-busca__icone" aria-hidden="true">search</span>
+          <input type="text" id="cons-busca" class="ds-input ds-busca__input" placeholder="Buscar indicador pelo nome…" data-on-input="pages_consolidados.2" aria-label="Buscar indicador pelo nome">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-tabela-wrap">
+    <table class="ds-tabela" id="cons-tabela">
+      <thead>
+        <tr>
+          <th class="ds-tabela__principal">Indicador</th>
+          <th>Frequência</th>
+          <th>Obrigados</th>
+          <th class="ds-col-sobreposta">
+            <div class="ds-th-ferramentas">
+              <span class="ds-th-ferramentas__rotulo">Situação</span>
+              <span class="ds-th-ferramentas__extras">
+                <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_consolidados.3" data-title="Atualizar" aria-label="Atualizar lista">
+                  <span class="material-symbols-outlined">refresh</span>
+                </button>
+              </span>
+            </div>
+          </th>
+        </tr>
+      </thead>
+      <tbody id="cons-tbody">
+        <tr class="ds-tabela__msg"><td colspan="4"><div class="lista-spinner-wrap"><div class="lista-spinner"></div><span>Carregando indicadores consolidados…</span></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- DETALHE: fórmula, variáveis e obrigados com a situação de cada um -->
+<div id="modal-cons-detalhe" class="modal-overlay hidden" data-fechar="consFecharDetalhe" data-on-click="pages_consolidados.4">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cons-det-titulo">
+    <div class="modal-header">
+      <h3 id="cons-det-titulo">Indicador consolidado</h3>
+      <button type="button" class="btn-icon-close" data-on-click="pages_consolidados.5" data-title="Fechar" aria-label="Fechar"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="modal-body"><div id="cons-det-corpo" class="ds-stack ds-stack--3"></div></div>
+    <div class="modal-footer" id="cons-det-rodape"></div>
+  </div>
+</div>
+
+<!-- CRIAR / NOVA VERSÃO / ALTERAR OBRIGADOS: o mesmo modal, com os blocos que cada modo usa -->
+<div id="modal-cons-form" class="modal-overlay hidden" data-fechar="consFecharForm" data-on-click="pages_consolidados.4">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cons-form-titulo">
+    <div class="modal-header">
+      <h3 id="cons-form-titulo">Novo indicador consolidado</h3>
+      <button type="button" class="btn-icon-close" data-on-click="pages_consolidados.6" data-title="Fechar" aria-label="Fechar"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="modal-body">
+      <form id="cons-form" class="ds-stack ds-stack--3" novalidate>
+        <div class="ds-field" id="cons-f-unidade-wrap">
+          <label class="ds-label" for="cons-f-unidade">Unidade criadora <span class="ds-obrig">obrigatório</span></label>
+          <select id="cons-f-unidade" class="ds-select"></select>
+        </div>
+        <div class="ds-field" id="cons-f-nome-wrap">
+          <label class="ds-label" for="cons-f-nome">Nome <span class="ds-obrig">obrigatório</span></label>
+          <input type="text" id="cons-f-nome" class="ds-input" maxlength="200">
+          <small class="ds-contador"></small>
+        </div>
+        <div id="cons-f-medida">
+          <div class="ds-field">
+            <label class="ds-label" for="cons-f-variaveis">Variáveis <span class="ds-obrig">obrigatório</span> <span class="material-symbols-outlined ds-info" tabindex="0" data-title="Os nomes que cada unidade lança, separados por vírgula. Ex.: FORMADOS, INGRESSANTES. A fórmula usa esses nomes.">info</span></label>
+            <input type="text" id="cons-f-variaveis" class="ds-input" maxlength="300">
+          </div>
+          <div class="ds-field">
+            <label class="ds-label" for="cons-f-formula">Fórmula <span class="ds-obrig">obrigatório</span></label>
+            <input type="text" id="cons-f-formula" class="ds-input" maxlength="500" placeholder="Ex.: (FORMADOS / INGRESSANTES) * 100">
+            <small class="ds-contador"></small>
+          </div>
+          <div class="ds-form-linha">
+            <div class="ds-field">
+              <label class="ds-label" for="cons-f-medida-un">Unidade de medida <span class="ds-obrig">obrigatório</span></label>
+              <select id="cons-f-medida-un" class="ds-select">
+                <option value="%">% (Percentual)</option>
+                <option value="Qtd">Qtd (Absoluto)</option>
+                <option value="R$">R$ (Monetário)</option>
+                <option value="Dias">Dias</option>
+                <option value="Meses">Meses</option>
+                <option value="Horas">Horas</option>
+                <option value="Nota">Nota (Escala)</option>
+                <option value="Índice">Índice</option>
+              </select>
+            </div>
+            <div class="ds-field">
+              <label class="ds-label" for="cons-f-interpretacao">Interpretação <span class="ds-obrig">obrigatório</span></label>
+              <select id="cons-f-interpretacao" class="ds-select">
+                <option value="Quanto maior o valor, melhor">Quanto maior, melhor</option>
+                <option value="Quanto menor o valor, melhor">Quanto menor, melhor</option>
+                <option value="Igual à meta">Igual à meta</option>
+              </select>
+            </div>
+          </div>
+          <div class="ds-form-linha">
+            <div class="ds-field" id="cons-f-freq-wrap">
+              <label class="ds-label" for="cons-f-frequencia">Frequência de aferição <span class="ds-obrig">obrigatório</span></label>
+              <select id="cons-f-frequencia" class="ds-select">
+                <option value="Anual">Anual</option>
+                <option value="Semestral">Semestral</option>
+                <option value="Quadrimestral">Quadrimestral</option>
+                <option value="Trimestral">Trimestral</option>
+                <option value="Bimestral">Bimestral</option>
+                <option value="Mensal">Mensal</option>
+              </select>
+            </div>
+            <div class="ds-field">
+              <label class="ds-label" for="cons-f-agregacao">Regra de agregação <span class="ds-obrig">obrigatório</span></label>
+              <select id="cons-f-agregacao" class="ds-select">
+                <option value="ULTIMO">Último valor</option>
+                <option value="SOMA">Soma dos lançamentos</option>
+                <option value="MEDIA">Média dos lançamentos</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="cons-f-obrigados"></div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_consolidados.6">Cancelar</button>
+      <button type="button" class="ds-btn ds-btn--primary" id="cons-f-salvar" data-on-click="pages_consolidados.7">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRMAR DIVERGÊNCIA entre o valor oficial e o total calculado -->
+<div id="modal-cons-diverg" class="modal-overlay hidden" data-fechar="consFecharDiverg" data-on-click="pages_consolidados.4">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="cons-dv-titulo">
+    <div class="modal-header">
+      <h3 id="cons-dv-titulo">Confirmar divergência</h3>
+      <button type="button" class="btn-icon-close" data-on-click="pages_consolidados.8" data-title="Fechar" aria-label="Fechar"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="modal-body ds-stack ds-stack--3">
+      <div id="cons-dv-resumo"></div>
+      <div class="ds-field">
+        <label class="ds-label" for="cons-dv-escolha">Qual valor vale <span class="ds-obrig">obrigatório</span></label>
+        <select id="cons-dv-escolha" class="ds-select">
+          <option value="OFICIAL">O valor oficial lançado</option>
+          <option value="CALCULADO">O total calculado das partes</option>
+        </select>
+      </div>
+      <div class="ds-field">
+        <label class="ds-label" for="cons-dv-motivo">Motivo <span class="ds-obrig">obrigatório</span></label>
+        <textarea id="cons-dv-motivo" class="ds-textarea" rows="3" maxlength="500"></textarea>
+        <small class="ds-contador"></small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="ds-btn ds-btn--secondary" data-on-click="pages_consolidados.8">Cancelar</button>
+      <button type="button" class="ds-btn ds-btn--primary" data-on-click="pages_consolidados.9">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== INDICADORES CONSOLIDADOS (C5) =====================
+var estadoConsolidados = { criados: [], atribuidos: [], aba: 'criados', busca: '', unidades: [], usuarios: [], selResp: null, modo: 'criar', idDefinicao: null, diverg: null };
+
+function _consSit(sit) {
+  var tom = { CUMPRIDA: 'ds-badge--success', PENDENTE: 'ds-badge--warning', AGUARDANDO: 'ds-badge--neutral', CADUCADA: 'ds-badge--danger' }[sit] || 'ds-badge--neutral';
+  var rot = { CUMPRIDA: 'Cumprida', PENDENTE: 'Pendente', AGUARDANDO: 'Aguardando', CADUCADA: 'Caducada' }[sit] || sit;
+  return '<span class="ds-badge ' + tom + '">' + rot + '</span>';
+}
+
+function initConsolidados() {
+  uiAcoesPaginaMontar(document.getElementById('page-consolidados'), 'pagina-consolidados', [
+    { icone: 'add', rotulo: 'Novo indicador consolidado', onclick: 'consAbrirForm(\'criar\')', principal: true }
+  ]);
+  consCarregar();
+  if (!estadoConsolidados.unidades.length) {
+    google.script.run.withSuccessHandler(function(l) { estadoConsolidados.unidades = l || []; }).withFailureHandler(function() {}).apiGetListaUnidades();
+    google.script.run.withSuccessHandler(function(l) { estadoConsolidados.usuarios = l || []; }).withFailureHandler(function() {}).apiGetListaUsuarios();
+  }
+}
+uiPuxarParaAtualizar('page-consolidados', function() { consCarregar(); });
+
+function consCarregar() {
+  document.getElementById('cons-tbody').innerHTML = '<tr class="ds-tabela__msg"><td colspan="4">' + esqueletoListaHTML('Carregando indicadores consolidados…') + '</td></tr>';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      estadoConsolidados.criados = (r && r.criados) || [];
+      estadoConsolidados.atribuidos = (r && r.atribuidos) || [];
+      consRenderAbas();
+      consRenderLista();
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('cons-tbody').innerHTML = '<tr class="ds-tabela__msg"><td colspan="4"><div class="ds-vazio"><span class="material-symbols-outlined ds-vazio__icone">error</span><p class="ds-vazio__titulo">' + escapeHtml(err.message) + '</p></div></td></tr>';
+    })
+    .apiGetIndicadoresConsolidados();
+}
+
+function consRenderAbas() {
+  var abas = [{ key: 'criados', label: 'Criados pela minha unidade', icon: 'edit_note' }, { key: 'atribuidos', label: 'Atribuídos a mim', icon: 'badge' }];
+  var bar = document.getElementById('cons-tabs');
+  bar.innerHTML = abas.map(function(a) {
+    var ativa = a.key === estadoConsolidados.aba;
+    return '<button type="button" role="tab" aria-selected="' + ativa + '" class="ds-tabs-nav__item' + (ativa ? ' active' : '') + '" data-on-click="pages_consolidados.10" data-aclick0="' + a.key + '">' +
+      '<span class="material-symbols-outlined">' + a.icon + '</span><span>' + a.label + '</span>' +
+      '<span class="ds-tab-count">' + estadoConsolidados[a.key].length + '</span></button>';
+  }).join('');
+  uiPaginaMedir(document.getElementById('page-consolidados'));
+  uiAbasNavAtualizar(document.getElementById('cons-tabs-row'));
+}
+
+function _consResumoObrigados(i) {
+  if (estadoConsolidados.aba === 'criados') {
+    var tot = i.obrigadas.length, ok = i.obrigadas.filter(function(o) { return o.situacao === 'CUMPRIDA'; }).length;
+    return tot ? ok + ' de ' + tot + ' cumpridas' : 'Nenhum';
+  }
+  return i.meusAlvos.map(function(a) { return a.sigla || a.nome; }).join(', ');
+}
+
+function _consSituacaoGeral(i) {
+  var alvos = estadoConsolidados.aba === 'criados' ? i.obrigadas : i.meusAlvos;
+  if (alvos.some(function(a) { return a.situacao === 'PENDENTE'; })) return 'PENDENTE';
+  if (alvos.length && alvos.every(function(a) { return a.situacao === 'CUMPRIDA'; })) return 'CUMPRIDA';
+  if (alvos.some(function(a) { return a.situacao === 'CADUCADA'; })) return 'CADUCADA';
+  return 'AGUARDANDO';
+}
+
+function consRenderLista() {
+  var tbody = document.getElementById('cons-tbody');
+  var termo = estadoConsolidados.busca.trim().toLowerCase();
+  var itens = estadoConsolidados[estadoConsolidados.aba].filter(function(i) { return !termo || i.nome.toLowerCase().indexOf(termo) > -1; });
+  if (!itens.length) {
+    var vazia = estadoConsolidados[estadoConsolidados.aba].length === 0;
+    tbody.innerHTML = '<tr class="ds-tabela__msg"><td colspan="4"><div class="ds-vazio"><span class="material-symbols-outlined ds-vazio__icone">hub</span>' +
+      '<p class="ds-vazio__titulo">' + (vazia ? (estadoConsolidados.aba === 'criados' ? 'Nenhum indicador consolidado criado' : 'Nenhum indicador consolidado atribuído a você') : 'Nenhum indicador encontrado') + '</p></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = '';
+  itens.forEach(function(i) {
+    var sit = _consSituacaoGeral(i);
+    var acoes = acoesLinhaHTML('cons-' + i.idDefinicao, [
+      { icone: 'open_in_new', rotulo: 'Abrir', onclick: "consAbrirDetalhe('" + i.idDefinicao + "')", principal: true },
+      { icone: 'group', rotulo: 'Alterar obrigados', onclick: "consAbrirForm('obrigados', '" + i.idDefinicao + "')", oculto: estadoConsolidados.aba !== 'criados' },
+      { icone: 'playlist_add', rotulo: 'Nova versão', onclick: "consAbrirForm('versao', '" + i.idDefinicao + "')", oculto: estadoConsolidados.aba !== 'criados' }
+    ], { titulo: i.nome });
+    var tr = document.createElement('tr');
+    tr.classList.add('ds-linha-lista', 'ds-linha-clicavel');
+    tr.setAttribute('data-on-click', 'ui.chamar'); tr.setAttribute('data-chamada-click', "consCliqueLinha(event, '" + i.idDefinicao + "')");
+    tr.innerHTML =
+      '<td class="ds-tabela__principal"><div class="ds-tabela__id">' +
+        '<span class="ds-badge-tipo ds-tabela__tipo">v' + i.numeroVersao + '</span>' +
+        '<div class="ds-tabela__nome-wrap"><div class="ds-tabela__nome" data-title="' + escapeHtml(i.nome) + '">' + escapeHtml(i.nome) + '</div></div></div></td>' +
+      '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + escapeHtml(i.frequencia) + '</td>' +
+      '<td class="ds-tabela__nowrap ds-tabela__so-desktop">' + escapeHtml(_consResumoObrigados(i)) + '</td>' +
+      '<td class="ds-col-sobreposta"><div class="ds-celula-sobreposta"><div class="ds-celula-sobreposta__info">' + _consSit(sit) + '</div>' +
+        '<div class="ds-celula-sobreposta__acoes">' + acoes + '</div></div></td>' +
+      '<td class="ds-tabela__card"><div class="ds-tabela__meta"></div></td>';
+    tbody.appendChild(tr);
+    uiMetaPreencher(tr, [_consSit(sit), escapeHtml(i.frequencia)]);
+  });
+}
+
+function consCliqueLinha(ev, id) { if (ev.target.closest('input')) return; consAbrirDetalhe(id); }
+
+function _consAchar(id) {
+  return estadoConsolidados.criados.concat(estadoConsolidados.atribuidos).find(function(i) { return i.idDefinicao === String(id); });
+}
+
+// ---- Detalhe ----
+function consAbrirDetalhe(id) {
+  var i = _consAchar(id); if (!i) return;
+  var criada = estadoConsolidados.criados.indexOf(i) > -1;
+  document.getElementById('cons-det-titulo').textContent = i.nome;
+  var alvos = criada ? i.obrigadas : i.meusAlvos;
+  var h = '<div class="ds-destaque"><span class="ds-destaque__rotulo">Fórmula (versão ' + i.numeroVersao + ')</span><span class="ds-destaque__titulo">' + escapeHtml(i.formula) + '</span>' +
+    '<span class="ds-destaque__texto">' + [i.unidade, i.interpretacao, i.frequencia, i.criadora ? 'Criado por ' + (i.criadora.sigla || i.criadora.nome) : ''].filter(Boolean).map(escapeHtml).join(' · ') + '</span></div>';
+  h += '<div><p class="ds-label">Variáveis</p><div>' + i.variaveis.map(function(v) { return '<span class="ds-chip">' + escapeHtml(v.rotulo ? v.nome + ' — ' + v.rotulo : v.nome) + '</span>'; }).join(' ') + '</div></div>';
+  h += '<div><p class="ds-label">' + (criada ? 'Obrigados' : 'Minhas obrigações') + '</p>';
+  h += alvos.length ? alvos.map(function(a) {
+    return '<div class="ds-linha-lista"><span class="material-symbols-outlined">' + (a.tipo === 'USER' ? 'person' : 'apartment') + '</span> ' +
+      escapeHtml(a.sigla ? a.sigla + ' — ' + a.nome : a.nome) + ' ' + _consSit(a.situacao) +
+      (a.motivo ? ' <span class="ds-help">' + escapeHtml(a.motivo) + '</span>' : '') + '</div>';
+  }).join('') : '<div class="ds-vazio ds-vazio--compacto"><p class="ds-vazio__texto">Nenhum obrigado.</p></div>';
+  h += '</div>';
+  document.getElementById('cons-det-corpo').innerHTML = h;
+  document.getElementById('cons-det-rodape').innerHTML = '';
+  document.getElementById('modal-cons-detalhe').classList.remove('hidden');
+  bloquearFundo();
+}
+function consFecharDetalhe() { document.getElementById('modal-cons-detalhe').classList.add('hidden'); desbloquearFundo(); }
+
+// ---- Formulário (criar, nova versão, alterar obrigados) ----
+function consAbrirForm(modo, id) {
+  var e = estadoConsolidados;
+  e.modo = modo; e.idDefinicao = id || null;
+  var def = id ? _consAchar(id) : null;
+  document.getElementById('cons-form-titulo').textContent = { criar: 'Novo indicador consolidado', versao: 'Nova versão', obrigados: 'Alterar obrigados' }[modo];
+  document.getElementById('cons-f-unidade-wrap').classList.toggle('hidden', modo !== 'criar');
+  document.getElementById('cons-f-nome-wrap').classList.toggle('hidden', modo !== 'criar');
+  document.getElementById('cons-f-medida').classList.toggle('hidden', modo === 'obrigados');
+  document.getElementById('cons-f-freq-wrap').classList.toggle('hidden', modo === 'versao');
+  var selUn = document.getElementById('cons-f-unidade');
+  selUn.innerHTML = e.unidades.filter(function(u) { return u.ativa !== false; }).map(function(u) { return '<option value="' + escapeHtml(String(u.id)) + '">' + escapeHtml((u.sigla ? u.sigla + ' — ' : '') + u.nome) + '</option>'; }).join('');
+  ['cons-f-nome', 'cons-f-formula', 'cons-f-variaveis'].forEach(function(k) { document.getElementById(k).value = ''; });
+  if (def) {
+    document.getElementById('cons-f-nome').value = def.nome;
+    document.getElementById('cons-f-formula').value = def.formula;
+    document.getElementById('cons-f-variaveis').value = def.variaveis.map(function(v) { return v.rotulo ? v.nome + ':' + v.rotulo : v.nome; }).join(', ');
+    document.getElementById('cons-f-medida-un').value = def.unidade;
+    document.getElementById('cons-f-interpretacao').value = def.interpretacao;
+    document.getElementById('cons-f-frequencia').value = def.frequencia;
+    document.getElementById('cons-f-agregacao').value = def.regraAgregacao;
+  }
+  document.getElementById('cons-f-obrigados').innerHTML = '<div id="cons-selresp"></div>';
+  e.selResp = SeletorResponsaveis.criar({
+    containerId: 'cons-selresp', label: 'Obrigados a lançar', obrigatorio: true,
+    helpText: 'Unidades e servidores que precisam lançar as variáveis. Servidor só cumpre pelo seu plano Negociado.',
+    getUnidades: function() { return estadoConsolidados.unidades; },
+    getUsuarios: function() { return estadoConsolidados.usuarios; }
+  });
+  if (def && def.obrigadas) e.selResp.setLista(def.obrigadas.map(function(a) { return { id: a.id, tipo: a.tipo, nome: a.sigla ? a.sigla + ' - ' + a.nome : a.nome }; }));
+  document.getElementById('cons-f-obrigados').classList.toggle('hidden', modo === 'versao');
+  uiContadoresAtualizar(document.getElementById('modal-cons-form'));
+  document.getElementById('modal-cons-form').classList.remove('hidden');
+  bloquearFundo();
+}
+function consFecharForm() { document.getElementById('modal-cons-form').classList.add('hidden'); desbloquearFundo(); }
+
+function _consVariaveisDoCampo() {
+  return document.getElementById('cons-f-variaveis').value.split(',').map(function(t) { return t.trim(); }).filter(Boolean).map(function(t) {
+    var p = t.split(':'); return { nome: p[0].trim(), rotulo: (p[1] || '').trim() };
+  });
+}
+
+function consSalvar() {
+  var e = estadoConsolidados, v = function(k) { return document.getElementById(k).value; };
+  var lista = e.selResp ? e.selResp.getLista() : [];
+  var medida = { formula: v('cons-f-formula'), unidade: v('cons-f-medida-un'), interpretacao: v('cons-f-interpretacao'), regraAgregacao: v('cons-f-agregacao'), variaveis: _consVariaveisDoCampo() };
+  var rota, dados;
+  if (e.modo === 'criar') {
+    rota = 'apiCriarIndicadorConsolidado';
+    dados = Object.assign({ idUnidade: v('cons-f-unidade'), nome: v('cons-f-nome'), frequencia: v('cons-f-frequencia') }, medida,
+      { idsUnidadesObrigadas: lista.filter(function(r) { return r.tipo === 'UNIDADE'; }).map(function(r) { return r.id; }), idsUsuariosObrigados: lista.filter(function(r) { return r.tipo === 'USER'; }).map(function(r) { return r.id; }) });
+  } else if (e.modo === 'versao') {
+    rota = 'apiNovaVersaoConsolidado';
+    dados = Object.assign({ idDefinicao: e.idDefinicao }, medida);
+  } else {
+    rota = 'apiSalvarObrigadasConsolidado';
+    dados = { idDefinicao: e.idDefinicao, idsUnidadesObrigadas: lista.filter(function(r) { return r.tipo === 'UNIDADE'; }).map(function(r) { return r.id; }), idsUsuariosObrigados: lista.filter(function(r) { return r.tipo === 'USER'; }).map(function(r) { return r.id; }) };
+  }
+  google.script.run
+    .withSuccessHandler(function() { consFecharForm(); consCarregar(); })
+    .withFailureHandler(function(err) { showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+    [rota](dados);
+}
+
+// ---- Divergência ----
+function consFecharDiverg() { document.getElementById('modal-cons-diverg').classList.add('hidden'); desbloquearFundo(); }
+function consConfirmarDiverg() {
+  var d = estadoConsolidados.diverg; if (!d) return;
+  google.script.run
+    .withSuccessHandler(function() { consFecharDiverg(); consCarregar(); })
+    .withFailureHandler(function(err) { showMessage('error', 'Erro', escapeHtml(err.message || String(err))); })
+    .apiConfirmarDivergenciaConsolidado(d.idIndicador, d.periodoInicio, document.getElementById('cons-dv-escolha').value, document.getElementById('cons-dv-motivo').value);
+}
+
+uiRegistrarAcoes('pages_consolidados', {
+  '1': function () { uiBuscaAbrir(document.getElementById('cons-search-wrap'), true); },
+  '2': function () { estadoConsolidados.busca = this.value; consRenderLista(); },
+  '3': function () { consCarregar(); },
+  '4': function (event) { if (event.target === this) window[this.dataset.fechar](); },
+  '5': function () { consFecharDetalhe(); },
+  '6': function () { consFecharForm(); },
+  '7': function () { consSalvar(); },
+  '8': function () { consFecharDiverg(); },
+  '9': function () { consConfirmarDiverg(); },
+  '10': function () { estadoConsolidados.aba = this.dataset.aclick0; consRenderAbas(); consRenderLista(); }
+});
+</script>
+
        <!-- ARQUIVO: pages_plano_detalhe.html -->
 
-<div id="page-plano-detalhe" class="page-content ds-pagina hidden">
+<div id="page-plano-detalhe" class="js-pagina ds-pagina hidden">
   
   <!-- Banner: solicitação pendente de concordância mútua (plano negociado) -->
   <div id="solicitacao-banner" class="hidden" style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; background: var(--ds-color-warning-bg); border:1px solid var(--ds-color-warning); border-radius:8px; padding:10px 14px; margin:0 0 16px">
@@ -14646,7 +15929,7 @@ uiRegistrarAcoes('pages_calendario', {
   <div class="ds-tabs-nav ds-pagina__faixa" id="det-tabs-row">
     <div class="ds-tabs-nav__scroll" id="det-tabs-scroll" role="tablist">
       <button class="ds-tabs-nav__item ds-tabs-nav__item--config hidden" id="btn-abas-add" data-on-click="plano.6"
-              data-title="Adicionar app ao plano" aria-label="Adicionar app ao plano">
+              data-title="Adicionar aba ao plano" aria-label="Adicionar aba ao plano">
         <span class="material-symbols-outlined">add</span>
       </button>
       <button class="ds-tabs-nav__item ds-tabs-nav__item--config" id="btn-abas-restaurar" data-on-click="plano.7"
@@ -16590,7 +17873,6 @@ function carregarDetalhesPlano(idPlano, metaOtimista) {
       metas: null, coresTipo: [],
       _otimista: true
     };
-    uiTopoPrefixo('page-plano-detalhe', metaOtimista.nomeCurto || metaOtimista.sigla || '');
     uiTopoStatus('page-plano-detalhe', metaOtimista.status || '');
     if (metaOtimista.nome) {
       setBreadcrumb([
@@ -16622,7 +17904,6 @@ function carregarDetalhesPlano(idPlano, metaOtimista) {
         { label: 'Planos', page: 'planos' },
         { label: res.plano.nome }
       ]);
-      uiTopoPrefixo('page-plano-detalhe', res.plano.nomeCurto || res.plano.sigla || '');
       uiTopoStatus('page-plano-detalhe', res.plano.status || '');
 
       // _appsRenderizarAbas recria os botões das abas: guarda a aba ativa antes
@@ -18339,7 +19620,7 @@ uiRegistrarAcoes('plano', {
      com dropdown via abrirMenuSelecao, paginação integrada à direita, tabela sem moldura com
      cabeçalho sticky e ações de linha que aparecem no hover; galeria de cards no mobile).
      O layout (hero, abas e filtros fixos) é o .ds-pagina do design system. -->
-<div id="page-execucao-planos" class="page-content ds-pagina hidden">
+<div id="page-execucao-planos" class="js-pagina ds-pagina hidden">
 
   <section class="ds-pagina__hero">
     <h1 class="ds-pagina__titulo">Registros de Execução</h1>
@@ -19384,7 +20665,7 @@ uiRegistrarAcoes('pages_execucao_planos', {
        a linha mostra de relance o que falta em cada frente; "Registrar execução" abre abrirRegistroExecucao (components_modal_registro_execucao.html);
      - Painel lateral (#extp-panel) com abas Detalhes e Atividade;
      - Seletor de exercício só aparece se a vigência do plano cruza mais de um ano. -->
-<div id="page-execucao-tarefas" class="page-content ds-pagina hidden">
+<div id="page-execucao-tarefas" class="js-pagina ds-pagina hidden">
 
   <section class="ds-pagina__hero" id="ext-hero">
     <div class="ds-pagina__titulo-linha">
@@ -19580,7 +20861,6 @@ function execTarefasCarregar(preservar) {
           { label: dados.plano.nomeCurto || dados.plano.nome }
         ]);
       }
-      uiTopoPrefixo('page-execucao-tarefas', dados.plano.nomeCurto || '');
       _extFiltrosAtualizarUI();
       execTarefasRenderizar();
       // riscos do plano: cada risco pertence a um elemento; entram na linha (ações devidas) e na etapa Riscos do modal
@@ -20228,7 +21508,7 @@ uiRegistrarAcoes('pages_execucao_tarefas', {
 <!-- Colaboração Externa em Elementos: descobrir elementos abertos por outros
      planos (fora do escopo de Unidade do usuário) e solicitar participação,
      sujeita a aceite de quem já é responsável pelo elemento. -->
-<div id="page-colaboracao" class="page-content ds-pagina hidden">
+<div id="page-colaboracao" class="js-pagina ds-pagina hidden">
 
   <section class="ds-pagina__hero">
     <h1 class="ds-pagina__titulo">Colaboração<span class="material-symbols-outlined ds-info" tabindex="0" data-title="Solicite participar de elementos abertos por outros planos, mesmo fora do seu escopo de Unidade — sujeito a aceite de quem já é responsável.">info</span></h1>
@@ -20532,7 +21812,7 @@ uiRegistrarAcoes('pages_colaboracao', {
      barra de filtros estilo Drive com paginação à direita, tabela sem moldura com
      cabeçalho sticky e ações que aparecem no hover; galeria de cards no mobile).
      O layout (hero, abas e filtros fixos) é o .ds-pagina do design system. -->
-<div id="page-avaliacao-planos" class="page-content ds-pagina hidden">
+<div id="page-avaliacao-planos" class="js-pagina ds-pagina hidden">
 
   <section class="ds-pagina__hero">
     <h1 class="ds-pagina__titulo">Avaliação de planos</h1>
@@ -21541,7 +22821,7 @@ uiRegistrarAcoes('pages_avaliacao_planos', {
      principal + seta com as demais opções) e ícone "Detalhes do plano" que abre o painel
      lateral (#axp-panel, mesmas classes .detp-* do painel do detalhe). O layout (hero,
      ações e abas fixas) é o .ds-pagina do design system. -->
-<div id="page-avaliacao-executar" class="page-content ds-pagina hidden">
+<div id="page-avaliacao-executar" class="js-pagina ds-pagina hidden">
 
   <section class="ds-pagina__hero" id="ax-hero">
     <div class="ds-pagina__titulo-linha">
@@ -22906,8 +24186,6 @@ uiRegistrarAcoes('pages_avaliacao_executar', {
 </div>
 
 <script>
-// O modal sai de #main-content: bloquearFundo() deixa o conteúdo inert, e o que estiver dentro dele deixaria de responder.
-(function () { var el = document.getElementById('modal-gestao-revisoes'); if (el) document.body.appendChild(el); })();
 function abrirGestaoRevisoes() {
   document.getElementById('modal-gestao-revisoes').classList.remove('hidden');
   bloquearFundo();
@@ -23001,7 +24279,7 @@ uiRegistrarAcoes('pages_config', {
      Prefixo de globais: csis. Depende de: abrirMenuSelecao (components_acoes_linha.html), ntfSwitchHtml (components_notificacoes.html),
      escapeHtml, escapeJsAttr, showMessage, setBreadcrumb. Contrato completo no LEIAME. -->
 
-<div id="page-config-sistema" class="page-content hidden">
+<div id="page-config-sistema" class="js-pagina hidden">
   <div id="csis-raiz"></div>
 </div>
 
@@ -23547,7 +24825,7 @@ uiRegistrarAcoes('pages_config_sistema', {
      abas, busca expansível, paginação, ações ao passar o mouse e leitura com barra de ferramentas (estilo Gmail). Escrever/editar: pages_mensagens_enviadas.html.
      Notificações do sistema ficam no sino e em pages_notificacoes.html. Prefixo de globais: cxa. Helpers em components_notificacoes.html (ntf). -->
 
-<div id="page-mensagens" class="page-content hidden">
+<div id="page-mensagens" class="js-pagina hidden">
   <div id="cxa-raiz"></div>
 </div>
 
@@ -24077,7 +25355,7 @@ uiRegistrarAcoes('pages_mensagens', {
      Página "Todas as notificações" (acessada pelo sino): lista com abas, filtros de grupo, período e busca, ações em lote e preferências.
      Só notificações do sistema; as mensagens da administração ficam em pages_mensagens.html. Prefixo de globais: ntp. Helpers em components_notificacoes.html (ntf). -->
 
-<div id="page-notificacoes" class="page-content hidden">
+<div id="page-notificacoes" class="js-pagina hidden">
   <div id="ntp-raiz"></div>
 </div>
 
@@ -24355,7 +25633,7 @@ uiRegistrarAcoes('pages_notificacoes', {
      Anexos: chips .ds-chip abaixo do corpo (envio de arquivos por bilhete, um arquivo por vez); limites de apiGetOpcoesMensagem().limites.
      Prefixo de globais: mse. Helpers compartilhados (chamadas, switch, erros) em components_notificacoes.html (ntf). -->
 
-<div id="page-mensagens-enviadas" class="page-content hidden">
+<div id="page-mensagens-enviadas" class="js-pagina hidden">
   <div id="mse-raiz"></div>
 </div>
 
@@ -25010,7 +26288,7 @@ uiRegistrarAcoes('pages_mensagens_enviadas', {
 
        <!-- ARQUIVO: pages_usuarios.html -->
 
-<div id="page-usuarios" class="page-content ds-pagina hidden">
+<div id="page-usuarios" class="js-pagina ds-pagina hidden">
 
   <section class="ds-pagina__hero">
     <h1 class="ds-pagina__titulo">Gerenciar Usuários</h1>
@@ -26520,7 +27798,7 @@ uiRegistrarAcoes('pages_servidores_carga', {
      é escondida no frontend e barrada no backend (_exigirAdminOuDev()) pra
      quem não é ADMIN/DEV — ver _unidadeAdminDev(). Sem exclusão física: "Excluir"
      é sempre inativar (coluna Ativa). -->
-<div id="page-unidades" class="page-content ds-pagina hidden">
+<div id="page-unidades" class="js-pagina ds-pagina hidden">
 
   <section class="ds-pagina__hero">
     <div class="ds-pagina__titulo-linha">
@@ -26799,7 +28077,7 @@ uiRegistrarAcoes('pages_unidades', {
 
        <!-- ARQUIVO: pages_logs.html -->
 
-<div id="page-logs" class="page-content ds-pagina hidden">
+<div id="page-logs" class="js-pagina ds-pagina hidden">
 
   <section class="ds-pagina__hero">
     <h1 class="ds-pagina__titulo">Auditoria e Logs</h1>
@@ -27281,9 +28559,14 @@ uiRegistrarAcoes('pages_logs', {
 });
 </script>
     </main>
+    <script>
+    // Modal dentro de #main-content fica inert quando bloquearFundo() o trava (travado, sem clique): todo .modal-overlay declarado numa página vai para o body.
+    document.querySelectorAll('#main-content .modal-overlay').forEach(function (m) { document.body.appendChild(m); });
+    </script>
 
     <!-- Barra de navegação do mobile (.ds-navbar): só ícones, um por módulo do ciclo do plano. uiNavbarAtualizar() em app_ui_utils.html -->
     <nav class="ds-navbar" id="ui-navbar" aria-label="Navegação principal">
+      <span class="ds-navbar__indicador hidden" aria-hidden="true"></span>
       <button type="button" class="ds-navbar__item" data-navbar="inicio" data-on-click="ui.chamar" data-chamada-click="navigate('home')" aria-label="Início" data-title="Início">
         <span class="material-symbols-outlined" aria-hidden="true">home</span>
       </button>
@@ -27324,7 +28607,7 @@ function navigate(pageName, extra) {
   const mainEl = document.getElementById('main-content');
   if (mainEl) mainEl.scrollTop = 0;
   // 1. Esconde todas as áreas de conteúdo
-  const pages = document.querySelectorAll('.page-content');
+  const pages = document.querySelectorAll('.js-pagina');
   pages.forEach(p => p.classList.add('hidden'));
 
   // 3. Lógica específica para cada rota
@@ -27357,6 +28640,24 @@ function navigate(pageName, extra) {
         { label: 'Calendário' }
       ]);
       if (typeof initCalendario === 'function') initCalendario();
+      break;
+
+    case 'modelo':
+      document.getElementById('page-modelo').classList.remove('hidden');
+      setBreadcrumb([
+        { label: 'Planejamento' },
+        { label: 'Template modelo' }
+      ]);
+      if (typeof initModelo === 'function') initModelo();
+      break;
+
+    case 'consolidados':
+      document.getElementById('page-consolidados').classList.remove('hidden');
+      setBreadcrumb([
+        { label: 'Planejamento' },
+        { label: 'Indicadores Consolidados' }
+      ]);
+      if (typeof initConsolidados === 'function') initConsolidados();
       break;
 
     case 'detalhe':

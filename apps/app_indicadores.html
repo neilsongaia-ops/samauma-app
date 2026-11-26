@@ -1151,7 +1151,6 @@ function _indSyncBarra() {
     var x = document.getElementById('ind-filtro-x-' + c); if (x) x.classList.toggle('hidden', !v);
   });
   var bl = document.getElementById('ind-btn-limpar'); if (bl) bl.classList.toggle('hidden', !_indTemFiltro());
-  _indFiltrosMobileSincronizar();
 }
 
 function indMudarTamanho(val) {
@@ -2135,13 +2134,9 @@ function indAbrirMenuLista() {
   ].map(_acoesLinhaNormalizar);
   uiSheetAbrir({ titulo: 'Lista', corpo: '<div role="menu">' + _acoesLinhaItensHTML(lista, 'uiSheetFechar(); ') + '</div>' });
 }
-function _indFiltrosMobileSincronizar() {
-  uiFiltrosMobileSincronizar(document.getElementById('ind-filtros-normal'), estadoIndicadores.filtroResp || estadoIndicadores.filtroElem);
-}
 if (!document._indBuscaTopo) {
   document._indBuscaTopo = true;
-  document.addEventListener('ui-busca-topo', _indFiltrosMobileSincronizar);
-  window.matchMedia('(max-width: 768px)').addEventListener('change', function() { _indFiltrosMobileSincronizar(); if (document.getElementById('ind-tbody')) _indRenderCorpo(); });
+  window.matchMedia('(max-width: 768px)').addEventListener('change', function() { if (document.getElementById('ind-tbody')) _indRenderCorpo(); });
 }
 
 function renderizarSecaoIndicadores() {
@@ -2183,7 +2178,7 @@ function renderizarSecaoIndicadores() {
     +   '<div id="ind-selecao-acoes"></div>'
     + '</div>'
 
-    + '<div class="ds-filtros__pag">'
+    + '<div class="ds-filtros__acoes">'
     +   '<div class="det-split">'
     +     (podeEditar
             ? '<button type="button" class="ds-btn ds-btn--glass-secondary det-split-main" id="btn-novo-indicador" data-on-click="ind.35">'
