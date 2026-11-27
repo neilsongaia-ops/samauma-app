@@ -701,6 +701,14 @@ body.high-contrast {
 input[type="checkbox"] { accent-color: var(--ds-color-action); }   /* checkbox: o azul de ação em todo o sistema, nunca por tela */
 .ds-tabela__principal { width: 46%; min-width: 260px; }
 @media (min-width: 769px) { .ds-tabela td.ds-tabela__principal { max-width: 0; } }
+/* Lista em árvore na web: cada nível recua o conteúdo da linha em 24px (no celular não há recuo: o bloco aberto ganha contorno) */
+@media (min-width: 769px) {
+  .ds-tabela--arvore tbody tr[data-level="1"] .ds-tabela__id { padding-left: var(--ds-space-6); }
+  .ds-tabela--arvore tbody tr[data-level="2"] .ds-tabela__id { padding-left: calc(2 * var(--ds-space-6)); }
+  .ds-tabela--arvore tbody tr[data-level="3"] .ds-tabela__id { padding-left: calc(3 * var(--ds-space-6)); }
+  .ds-tabela--arvore tbody tr[data-level="4"] .ds-tabela__id { padding-left: calc(4 * var(--ds-space-6)); }
+  .ds-tabela--arvore tbody tr[data-level="5"] .ds-tabela__id { padding-left: calc(5 * var(--ds-space-6)); }
+}
 .ds-tabela td.ds-tabela__nowrap { white-space: nowrap; }
 .ds-tabela__card { display: none; }
 .ds-tabela__vig { display: none; }
@@ -728,7 +736,7 @@ input[type="checkbox"] { accent-color: var(--ds-color-action); }   /* checkbox: 
 @keyframes ds-contorno-desenhar { to { stroke-dashoffset: 0; } }
 /* Reorganizar uma lista arrastando (web: mouse; celular: a alça, com o dedo): .ds-tabela--reorganizando na tabela; .ds-item-alca é a alça; a linha arrastada leva .is-arrastando e a linha sob o ponteiro
    mostra a zona de soltura (.is-solta-antes, .is-solta-depois ou .is-solta-dentro, que a torna filha); .ds-arraste-fantasma acompanha o dedo no celular */
-.ds-item-alca { cursor: grab; user-select: none; touch-action: none; display: inline-flex; align-items: center; justify-content: center; color: var(--ds-color-text-muted); }
+.ds-item-alca { cursor: grab; user-select: none; touch-action: none; display: inline-flex; align-items: center; justify-content: center; color: var(--ds-color-text-muted); font-size: var(--ds-icon-lg); }
 .ds-item-alca:active { cursor: grabbing; }
 .ds-tabela--reorganizando tbody tr { cursor: grab; }
 .ds-tabela--reorganizando tbody tr:active { cursor: grabbing; }
@@ -768,6 +776,8 @@ input[type="checkbox"] { accent-color: var(--ds-color-action); }   /* checkbox: 
   .ds-tabela.ds-tabela--reorganizando tbody .ds-tabela__check { display: block; position: absolute; left: var(--ds-space-1); top: 50%; transform: translateY(-50%); width: auto; padding: 0; }
   .ds-tabela--reorganizando tbody .ds-tabela__expandir { display: none; }
   .ds-tabela--reorganizando .ds-item-alca { padding: var(--ds-space-3) var(--ds-space-1); }
+  /* a linha reserva sempre o espaço da alça (esquerda + alça + folga), com ou sem seta na lista: o conteúdo nunca encosta nela */
+  .ds-tabela.ds-tabela--reorganizando tbody tr { padding-left: calc(var(--ds-space-1) + var(--ds-icon-lg) + 2 * var(--ds-space-1) + var(--ds-space-2)); }
   .ds-tabela tbody tr.is-solta-antes { box-shadow: 0 calc(-1 * var(--ds-borda-forte)) 0 var(--ds-color-action); }
   .ds-tabela tbody tr.is-solta-depois { box-shadow: 0 var(--ds-borda-forte) 0 var(--ds-color-action); }
   .ds-tabela tbody tr.is-solta-dentro { outline: var(--ds-borda-forte) solid var(--ds-color-action); outline-offset: calc(-1 * var(--ds-borda-forte)); }
@@ -960,7 +970,7 @@ input[type="checkbox"] { accent-color: var(--ds-color-action); }   /* checkbox: 
 .ds-sheet.is-aberto .ds-sheet__painel { transform: none; }
 .ds-sheet__alca { flex: none; width: 40px; height: 4px; margin: var(--ds-space-2) auto 0; border-radius: var(--ds-r-pill); background: var(--ds-color-border); touch-action: none; }
 .ds-sheet__cab { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-3); padding: var(--ds-space-2) var(--ds-space-4) var(--ds-space-2); touch-action: none; }
-.ds-sheet__titulo { flex: 1 1 auto; min-width: 0; margin: 0; font-size: var(--ds-text-md); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
+.ds-sheet__titulo { flex: 1 1 auto; min-width: 0; margin: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; font-size: var(--ds-text-md); font-weight: var(--ds-weight-semibold); color: var(--ds-color-text); }
 .ds-sheet__corpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--ds-space-5); padding: var(--ds-space-2) var(--ds-space-4) var(--ds-space-4); }
 .ds-sheet__rodape { flex: none; display: flex; gap: var(--ds-space-2); padding: var(--ds-space-3) var(--ds-space-4); padding-bottom: max(var(--ds-space-3), env(safe-area-inset-bottom)); border-top: var(--ds-borda) solid var(--ds-color-border); }
 .ds-sheet__rodape > .ds-btn { flex: 1; }
@@ -10747,6 +10757,180 @@ function uiToqueLongo(cont, seletor, aoPressionar) {
 }
 function uiToqueLongoRecente(cont) { return !!cont && Date.now() - (cont._uiToqueLongoEm || 0) < 700; }
 
+// ---- Reorganizar uma lista arrastando (web: arrastar com o mouse; celular: a alça .ds-item-alca, com o dedo) ----
+// uiReordenarAtivar(corpo, op) liga o arraste nas linhas do <tbody>; uiReordenarDesativar(corpo) desliga. Quem chama só decide o que fazer depois da soltura (aoSoltar).
+//   op.linhas  seletor das linhas arrastáveis e alvos de soltura (padrão 'tr')
+//   op.familia (tr) => linhas que se movem junto com a linha (padrão uiLinhaFamilia: a linha e os descendentes por data-level)
+//   op.aninhar o meio da linha vira "soltar dentro" (a arrastada vira filha); desligado = só antes/depois
+//   op.rotulo  (tr) => texto do fantasma que acompanha o dedo; op.rolagem seletor do que rola sozinho perto das bordas (padrão '#main-content')
+//   op.aoSoltar({ origem, familia, alvo, pos, corpo }) depois que as linhas já foram movidas no DOM; pos = 'before' | 'after' | 'inside'
+function uiLinhaFamilia(tr) {
+  var linhas = [tr], nivel = parseInt(tr.dataset.level || '0', 10), prox = tr.nextElementSibling;
+  while (prox && parseInt(prox.dataset.level || '0', 10) > nivel) { linhas.push(prox); prox = prox.nextElementSibling; }
+  return linhas;
+}
+function uiEhCelular() { return window.matchMedia('(max-width: 768px)').matches; }   // largura de celular (≤768px), a mesma do CSS
+function _uiReordRotulo(tr) { var n = tr.querySelector('.ds-tabela__nome'); return n ? (n.dataset.title || n.textContent).trim() : ''; }
+function uiReordenarAtivar(corpo, op) {
+  if (!corpo) return;
+  var novo = !corpo._uiReord;
+  corpo._uiReord = { linhas: op.linhas || 'tr', familia: op.familia || uiLinhaFamilia, aninhar: !!op.aninhar, rotulo: op.rotulo || _uiReordRotulo,
+    rolagem: op.rolagem || '#main-content', aoSoltar: op.aoSoltar, origem: null, grupo: [], alvo: null, pos: null, toque: null };
+  if (novo) {
+    corpo.addEventListener('dragstart', _uiReordDragInicio);
+    corpo.addEventListener('dragover', _uiReordDragSobre);
+    corpo.addEventListener('dragleave', _uiReordDragSai);
+    corpo.addEventListener('drop', _uiReordDragSolta);
+    corpo.addEventListener('dragend', _uiReordDragFim);
+    corpo.addEventListener('pointerdown', _uiReordToqueInicio);
+  }
+  var c = corpo._uiReord;
+  if (!uiEhCelular()) Array.prototype.forEach.call(corpo.querySelectorAll(c.linhas), function (tr) { tr.setAttribute('draggable', 'true'); });
+}
+function uiReordenarDesativar(corpo) {
+  if (!corpo || !corpo._uiReord) return;
+  var c = corpo._uiReord;
+  corpo.removeEventListener('dragstart', _uiReordDragInicio);
+  corpo.removeEventListener('dragover', _uiReordDragSobre);
+  corpo.removeEventListener('dragleave', _uiReordDragSai);
+  corpo.removeEventListener('drop', _uiReordDragSolta);
+  corpo.removeEventListener('dragend', _uiReordDragFim);
+  corpo.removeEventListener('pointerdown', _uiReordToqueInicio);
+  Array.prototype.forEach.call(corpo.querySelectorAll(c.linhas), function (tr) { tr.removeAttribute('draggable'); });
+  _uiReordLimpar(corpo);
+  delete corpo._uiReord;
+}
+function _uiReordLimpar(corpo) {
+  Array.prototype.forEach.call(corpo.querySelectorAll('.is-solta-antes, .is-solta-depois, .is-solta-dentro'), function (tr) { tr.classList.remove('is-solta-antes', 'is-solta-depois', 'is-solta-dentro'); });
+}
+function _uiReordFim(corpo) {
+  var c = corpo._uiReord;
+  if (!c) return;
+  if (c.origem) c.origem.classList.remove('is-arrastando');
+  _uiReordLimpar(corpo);
+  c.origem = null; c.grupo = []; c.alvo = null; c.pos = null;
+}
+function _uiReordComecar(corpo, tr) {
+  var c = corpo._uiReord;
+  c.origem = tr; c.grupo = c.familia(tr); c.alvo = null; c.pos = null;
+  tr.classList.add('is-arrastando');
+}
+// Zona sob o ponteiro: com aninhar, 25% de cima = antes, 25% de baixo = depois e o meio = dentro; sem aninhar, metade de cima = antes e a de baixo = depois
+function _uiReordMarcar(corpo, tr, y) {
+  var c = corpo._uiReord;
+  if (!tr || tr === c.origem || c.grupo.indexOf(tr) >= 0) { _uiReordLimpar(corpo); c.alvo = null; c.pos = null; return; }
+  var r = tr.getBoundingClientRect(), dy = y - r.top, h = r.height;
+  var pos = c.aninhar ? (dy < h * 0.25 ? 'before' : dy > h * 0.75 ? 'after' : 'inside') : (dy < h / 2 ? 'before' : 'after');
+  if (c.alvo === tr && c.pos === pos) return;
+  _uiReordLimpar(corpo);
+  c.alvo = tr; c.pos = pos;
+  tr.classList.add(pos === 'before' ? 'is-solta-antes' : pos === 'after' ? 'is-solta-depois' : 'is-solta-dentro');
+}
+// Move as linhas no DOM e avisa quem chamou
+function _uiReordSoltar(corpo) {
+  var c = corpo._uiReord, alvo = c && c.alvo, pos = c && c.pos;
+  if (!c || !c.origem || !alvo || c.grupo.indexOf(alvo) >= 0) { _uiReordFim(corpo); return; }
+  var origem = c.origem, grupo = c.grupo;
+  _uiReordLimpar(corpo);
+  if (pos === 'before') {
+    grupo.forEach(function (r) { corpo.insertBefore(r, alvo); });
+  } else {
+    var filhos = c.familia(alvo), ref = filhos[filhos.length - 1].nextElementSibling;
+    grupo.forEach(function (r) { if (ref) corpo.insertBefore(r, ref); else corpo.appendChild(r); });
+  }
+  origem.classList.remove('is-arrastando');
+  c.origem = null; c.grupo = []; c.alvo = null; c.pos = null;
+  if (c.aoSoltar) c.aoSoltar({ origem: origem, familia: grupo, alvo: alvo, pos: pos, corpo: corpo });
+}
+function _uiReordLinha(corpo, e) {
+  var tr = e.target.closest && e.target.closest(corpo._uiReord.linhas);
+  return tr && corpo.contains(tr) ? tr : null;
+}
+function _uiReordDragInicio(e) {
+  var tr = _uiReordLinha(this, e);
+  if (!tr) return;
+  _uiReordComecar(this, tr);
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', tr.dataset.id || '');
+  e.stopPropagation();
+}
+function _uiReordDragSobre(e) {
+  var c = this._uiReord, tr = _uiReordLinha(this, e);
+  if (!c.origem || !tr || tr === c.origem || c.grupo.indexOf(tr) >= 0) return;
+  e.preventDefault(); e.stopPropagation();
+  e.dataTransfer.dropEffect = 'move';
+  _uiReordMarcar(this, tr, e.clientY);
+}
+function _uiReordDragSai(e) {
+  var c = this._uiReord, tr = _uiReordLinha(this, e);
+  if (tr && !tr.contains(e.relatedTarget)) {
+    tr.classList.remove('is-solta-antes', 'is-solta-depois', 'is-solta-dentro');
+    if (c.alvo === tr) { c.alvo = null; c.pos = null; }
+  }
+}
+function _uiReordDragSolta(e) { e.preventDefault(); e.stopPropagation(); _uiReordSoltar(this); }
+function _uiReordDragFim() { _uiReordFim(this); }
+// Celular: arrastar pela alça, com o dedo (o arrastar nativo não funciona por toque)
+function _uiReordToqueInicio(ev) {
+  var corpo = this, c = corpo._uiReord, alca = ev.target.closest('.ds-item-alca');
+  if (!uiEhCelular() || !alca || c.toque) return;
+  var tr = alca.closest(c.linhas);
+  if (!tr) return;
+  ev.preventDefault();
+  _uiReordComecar(corpo, tr);
+  var fantasma = document.createElement('div');
+  fantasma.className = 'ds-arraste-fantasma';
+  fantasma.textContent = c.rotulo(tr);
+  document.body.appendChild(fantasma);
+  c.toque = { corpo: corpo, alca: alca, id: ev.pointerId, fantasma: fantasma, y: ev.clientY, rolagem: document.querySelector(c.rolagem), raf: 0 };
+  alca.setPointerCapture(ev.pointerId);
+  alca.addEventListener('pointermove', _uiReordToqueMove);
+  alca.addEventListener('pointerup', _uiReordToqueFim);
+  alca.addEventListener('pointercancel', _uiReordToqueFim);
+  _uiReordToqueQuadro(c.toque, ev.clientX, ev.clientY);
+}
+function _uiReordToqueDe(alca) {
+  var corpo = alca.closest('tbody');
+  return corpo && corpo._uiReord && corpo._uiReord.toque;
+}
+function _uiReordToqueMove(ev) {
+  var t = _uiReordToqueDe(this);
+  if (!t || ev.pointerId !== t.id) return;
+  t.y = ev.clientY;
+  _uiReordToqueQuadro(t, ev.clientX, ev.clientY);
+}
+// Atualiza o fantasma e a zona de soltura sob o dedo; rola a lista quando o dedo encosta na borda de cima ou de baixo
+function _uiReordToqueQuadro(t, x, y) {
+  t.fantasma.style.setProperty('left', x + 'px');
+  t.fantasma.style.setProperty('top', y + 'px');
+  var alvo = document.elementFromPoint(x, y), c = t.corpo._uiReord;
+  var tr = alvo && alvo.closest ? alvo.closest(c.linhas) : null;
+  _uiReordMarcar(t.corpo, tr && t.corpo.contains(tr) ? tr : null, y);
+  if (!t.raf && t.rolagem) t.raf = requestAnimationFrame(function () { _uiReordRolar(t); });
+}
+function _uiReordRolar(t) {
+  t.raf = 0;
+  if (!t.corpo._uiReord || t.corpo._uiReord.toque !== t) return;
+  var sc = t.rolagem, r = sc.getBoundingClientRect(), borda = 64, passo = 0;
+  if (t.y < r.top + borda) passo = -Math.ceil((r.top + borda - t.y) / 6);
+  else if (t.y > r.bottom - borda) passo = Math.ceil((t.y - (r.bottom - borda)) / 6);
+  if (!passo) return;
+  sc.scrollTop += passo;
+  t.raf = requestAnimationFrame(function () { _uiReordRolar(t); });
+}
+function _uiReordToqueFim(ev) {
+  var t = _uiReordToqueDe(this);
+  if (!t || ev.pointerId !== t.id) return;
+  this.removeEventListener('pointermove', _uiReordToqueMove);
+  this.removeEventListener('pointerup', _uiReordToqueFim);
+  this.removeEventListener('pointercancel', _uiReordToqueFim);
+  if (t.raf) cancelAnimationFrame(t.raf);
+  t.fantasma.remove();
+  var corpo = t.corpo;
+  corpo._uiReord.toque = null;
+  if (ev.type === 'pointerup') _uiReordSoltar(corpo); else _uiReordFim(corpo);
+}
+
 // Ferramentas da tabela: o ⋮ da última coluna revela/recolhe, ao lado, as ferramentas da lista (ordenar, atualizar, baixar, imprimir…). Uma só regra no sistema.
 function uiFerramentasAlternar(gatilho) {
   var f = gatilho && gatilho.closest('.ds-th-ferramentas');
@@ -10882,6 +11066,42 @@ function uiItemGrupoMarcar(grupo) {
     var pos = grupo.length === 1 ? '' : (i === 0 ? 'ini' : (i === grupo.length - 1 ? 'fim' : 'meio'));
     ['ini', 'meio', 'fim'].forEach(function (p) { tr.classList.toggle('ds-item-grupo--' + p, p === pos); });
   });
+}
+// Lista em árvore: linhas com data-level (0 = raiz); filha = .ds-linha-filha, visível com .is-aberta; seta = .ds-item-seta. uiArvoreAtualizar(tabela) depois de cada redesenho:
+// marca a tabela como árvore (.ds-tabela--arvore: faixa da seta), tira a faixa da raiz sem filhos (.ds-item-sem-seta; no modo Reorganizar a alça ocupa o lugar, então nada fica sem),
+// pinta a divisória colorida do 3.º nível em diante (data-cor opcional na linha) e, no celular, cola o bloco aberto num grupo com contorno (SVG que se desenha ao abrir).
+function uiArvoreAtualizar(tabela, op) {
+  var tbody = tabela && tabela.querySelector('tbody');
+  if (!tbody) return;
+  var reorg = !!(op && op.reorganizando), wrap = tabela.parentNode;
+  Array.prototype.forEach.call(wrap.querySelectorAll('.ds-item-contorno'), function (n) { n.remove(); });
+  var linhas = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-id]'));
+  tabela.classList.toggle('ds-tabela--arvore', linhas.some(function (tr) { return tr.querySelector('.ds-item-seta'); }));
+  linhas.forEach(function (tr) { tr.classList.toggle('ds-item-sem-seta', !reorg && tr.dataset.level === '0' && !tr.querySelector('.ds-item-seta')); });
+  var anteriores = tbody._uiContornos || {}, atuais = {}, grupo = [];
+  function fechar() {
+    uiItemGrupoMarcar(grupo);
+    grupo.forEach(function (tr, i) {
+      // divisória colorida: do 3.º nível em diante, a linha entre dois itens leva a cor do mais profundo dos dois (abre e fecha cada sequência com a mesma)
+      var ant = grupo[i - 1], fundo = ant && +ant.dataset.level > +tr.dataset.level ? ant : tr;
+      var colore = i > 0 && +fundo.dataset.level >= 2 && fundo.dataset.cor;
+      tr.classList.toggle('ds-item-cor', !!colore);
+      if (colore) tr.style.setProperty('--ds-color-borda-item', fundo.dataset.cor); else tr.style.removeProperty('--ds-color-borda-item');
+    });
+    if (grupo.length > 1 && uiEhCelular()) {
+      var raiz = grupo[0].dataset.id;
+      atuais[raiz] = grupo.length;
+      uiItemContorno(wrap, grupo, anteriores[raiz] === undefined);
+    }
+    grupo = [];
+  }
+  linhas.forEach(function (tr) {
+    if (tr.classList.contains('ds-linha-filha') && !tr.classList.contains('is-aberta')) return;
+    if (tr.dataset.level === '0') fechar();
+    grupo.push(tr);
+  });
+  fechar();
+  tbody._uiContornos = atuais;
 }
 function uiItemContorno(wrap, grupo, animar) {
   var NS = 'http://www.w3.org/2000/svg';
@@ -15081,7 +15301,7 @@ uiRegistrarAcoes('pages_calendario', {
        <!-- ARQUIVO: pages_modelo.html
      TEMPLATE MODELO de página de lista do design system, no menu Planejamento → "Template modelo" (rota 'modelo'; localmente também em /_modelo). Dados de exemplo, nenhuma chamada ao servidor.
      Para criar uma página nova: copie este arquivo para src/frontend/pages_<nome>.html, troque o prefixo "mdl"/"modelo" pelo da tela,
-     apague o que a tela não usa (cada bloco OPCIONAL está marcado) e ligue o roteador (index.html, menu em components_header.html).
+     apague o que a tela não usa (inclui o bloco OPCIONAL "lista em árvore": nivel nos itens, data-level, uiArvoreAtualizar e aninhar no Reorganizar) (cada bloco OPCIONAL está marcado) e ligue o roteador (index.html, menu em components_header.html).
      Estrutura (de cima para baixo), tudo do design system — nada de classe, token ou ícone fora do catálogo:
        1. HERO ............ título (+ selo de situação; sem (i) no título) — o botão Voltar entra sozinho (uiVoltarGarantir)
        2. AÇÕES ........... botão principal dividido (uiAcoesPaginaMontar; no celular vira FAB) e, ao lado, o botão que abre o painel de detalhes
@@ -15167,6 +15387,15 @@ uiRegistrarAcoes('pages_calendario', {
       <button type="button" class="ds-icon-action ds-icon-action--perigo" data-on-click="pages_modelo.12" data-title="Excluir selecionados" aria-label="Excluir selecionados"><span class="material-symbols-outlined">delete</span></button>
     </div>
 
+    <!-- OPCIONAL (lista reorganizável): faixa do modo Reorganizar, no lugar dos filtros. Confirmar e restaurar só depois da primeira soltura -->
+    <div class="ds-filtros__selecao hidden" id="mdl-filtros-reorganizar">
+      <button type="button" class="ds-icon-action" data-on-click="pages_modelo.30" data-title="Sair da reorganização" aria-label="Sair da reorganização"><span class="material-symbols-outlined">close</span></button>
+      <span class="ds-filtros__selecao-texto" id="mdl-reorg-texto">Arraste os itens para reorganizar</span>
+      <div class="ds-filtros__divisor hidden" id="mdl-reorg-divisor"></div>
+      <button type="button" class="acoes-btn hidden" id="mdl-reorg-confirmar" data-on-click="pages_modelo.31" data-title="Confirmar e salvar nova ordem" aria-label="Confirmar e salvar nova ordem"><span class="material-symbols-outlined">check</span></button>
+      <button type="button" class="acoes-btn hidden" id="mdl-reorg-restaurar" data-on-click="pages_modelo.32" data-title="Restaurar ordem que estava antes" aria-label="Restaurar ordem que estava antes"><span class="material-symbols-outlined">restart_alt</span></button>
+    </div>
+
     <!-- À direita (OPCIONAL, some no celular): modos de visualização e botão secundário dividido (ação alternativa à principal da página + menu) -->
     <div class="ds-filtros__acoes">
       <div class="ds-modos" role="group" aria-label="Modo de visualização">
@@ -15212,6 +15441,7 @@ uiRegistrarAcoes('pages_calendario', {
               <span class="ds-th-ferramentas__extras">
                 <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_modelo.15" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu"><span class="material-symbols-outlined">sort</span></button>
                 <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_modelo.2" data-title="Atualizar" aria-label="Atualizar lista"><span class="material-symbols-outlined">refresh</span></button>
+                <button type="button" class="ds-icon-action ds-icon-action--sm" id="mdl-btn-reorg" data-on-click="pages_modelo.29" data-title="Reorganizar" aria-label="Reorganizar"><span class="material-symbols-outlined">low_priority</span></button>
                 <button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Baixar"><span class="material-symbols-outlined">download</span></button>
                 <button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>
               </span>
@@ -15236,8 +15466,12 @@ var MDL_BADGE = { success: 'ds-badge--success', warning: 'ds-badge--warning', da
 var estadoModelo = { itens: [], aba: 'todos', busca: '', tipo: '', status: '', ordem: 'nome', dir: 'asc', paginaAtual: 1, itensPorPagina: 10, qtdMobile: 20 };
 var mdlCenarioVazio = false; // só a demonstração: liga o estado "nada cadastrado" (lista sem itens)
 var mdlAbertos = {};
+var mdlReorg = false, mdlReorgAlterado = false, mdlReorgOriginal = null; // modo Reorganizar (OPCIONAL): arrastar as linhas; a ordem original guarda o "restaurar"
+var mdlArvore = false; // só a demonstração: itens com nível (hierarquia) em vez de área de detalhe — bloco OPCIONAL "lista em árvore"
 var mdlSel = null; // seleção de itens: comportamento único do design system (uiSelecaoLista)
 var MDL_TIPOS = ['Estratégico', 'Tático', 'Operacional'];
+// Cor do tipo na árvore (OPCIONAL, só de tela cujo tipo tem cor): vira data-cor na linha; uiArvoreAtualizar pinta o contorno do bloco e, do 3.º nível em diante, a divisória entre os itens
+var MDL_COR_TIPO = { 'Estratégico': 'var(--ds-color-info)', 'Tático': 'var(--ds-color-warning)', 'Operacional': 'var(--ds-color-success)' };
 var MDL_STATUS = ['Em Elaboração', 'Em Análise', 'Em Execução', 'Em Avaliação', 'Prorrogado', 'Finalizado', 'Cancelado'];
 var MDL_ABAS = [{ key: 'todos', label: 'Todos', icon: 'list' }, { key: 'meus', label: 'Meus', icon: 'person', criterio: 'Itens em que você é responsável.' }, { key: 'unidade', label: 'Da minha unidade', icon: 'apartment', criterio: 'Itens da sua unidade e das subunidades.' },
   { key: 'x1', label: 'Em elaboração', icon: 'edit_note' }, { key: 'x2', label: 'Aguardando análise', icon: 'hourglass_top' }, { key: 'x3', label: 'Em execução', icon: 'play_circle' },
@@ -15255,6 +15489,12 @@ function _mdlDados() {
   return lista;
 }
 
+// Lista em árvore (OPCIONAL): os itens vêm na ordem da árvore, cada um com nível (0 = raiz); filho = item logo abaixo com nível maior. Ex.: 1 > (2 > (3, 4), 5), 6 > 7 > 8
+function _mdlArvoreDados() {
+  var niveis = [0, 1, 2, 2, 1, 0, 1, 2];
+  return _mdlDados().slice(0, niveis.length).map(function(i, k) { i.nivel = niveis[k]; i.pai = ''; return i; });
+}
+
 function initModelo() {
   uiAcoesPaginaMontar(document.getElementById('page-modelo'), 'pagina-modelo', [
     { icone: 'add', rotulo: 'Novo item', onclick: "showMessage('info', 'Modelo', 'Ação principal')", principal: true },
@@ -15263,6 +15503,7 @@ function initModelo() {
     { icone: 'check', rotulo: 'Simular: só 1 item', onclick: "mdlCenario(1)" },
     { icone: 'done_all', rotulo: 'Simular: só 2 itens', onclick: "mdlCenario(2)" },
     { icone: 'list', rotulo: 'Simular: lista com itens', onclick: "mdlCenario(null)" },
+    { icone: 'account_tree', rotulo: 'Simular: lista em árvore', onclick: "mdlCenario('arvore')" },
     { icone: 'download', rotulo: 'Importar', desabilitado: true }
   ], [
     // No celular o botão secundário não existe como botão: a ação dele e as opções do menu dele vêm para o botão flutuante
@@ -15312,10 +15553,10 @@ function mdlRenderAbas() {
 // ---- Lista ----
 function mdlRender() {
   var e = estadoModelo, tbody = document.getElementById('mdl-tbody');
-  var todos = _mdlFiltrados(), total = todos.length;
+  var todos = mdlReorg || mdlArvore ? e.itens.slice() : _mdlFiltrados(), total = todos.length;
   // Celular: sem paginador, carrega ao rolar (uiRolagemInfinita); desktop: página a página
   var mobile = window.innerWidth <= 768;
-  var pag = mobile ? todos.slice(0, e.qtdMobile) : uiPaginarLista(todos, e);
+  var pag = mdlReorg || mdlArvore ? todos : mobile ? todos.slice(0, e.qtdMobile) : uiPaginarLista(todos, e);
   if (!document.getElementById('mdl-pag')) document.getElementById('mdl-paginador').innerHTML = uiPaginadorRodapeHTML('mdl-pag', { tamanho: 'pages_modelo.13', anterior: 'pages_modelo.14', pagina: 'pages_modelo.20', proximo: 'pages_modelo.21' });
   uiPaginadorRodapeAtualizar('mdl-pag', e, total);
   ['nome', 'resp', 'status', 'prog', 'prazo'].forEach(function(k) { var s = document.getElementById('mdl-sort-' + k); if (s) s.textContent = e.ordem === (k === 'prog' ? 'progresso' : k) ? (e.dir === 'asc' ? 'arrow_upward' : 'arrow_downward') : ''; });
@@ -15338,7 +15579,9 @@ function mdlRender() {
   desab(document.getElementById('mdl-filtro-btn-status'), !opcoes('status') && !e.status);
   Array.prototype.forEach.call(document.querySelectorAll('.ds-filtros__acoes .ds-modo'), function(b) { desab(b, nada); });
   // Paginador: só quando há o que paginar (total acima do menor tamanho de página) e fora do celular
-  document.getElementById('mdl-paginador').classList.toggle('hidden', nada || total <= 10 || window.innerWidth <= 768);
+  document.getElementById('mdl-paginador').classList.toggle('hidden', mdlReorg || mdlArvore || nada || total <= 10 || window.innerWidth <= 768);
+  // Reorganizar só com a lista inteira à vista: com busca ou filtro ativo o botão fica desabilitado
+  document.getElementById('mdl-btn-reorg').disabled = nada || !!(e.tipo || e.status || e.busca);
   if (nada || !pag.length) {
     // Estado vazio (ícone + mensagem + linha secundária, sem botão), sempre com o cabeçalho da tabela. Três mensagens, escolhidas pela causa:
     // nada cadastrado / aba sem itens / busca ou filtro sem resultado
@@ -15346,12 +15589,17 @@ function mdlRender() {
     var vz = nada ? { icone: 'inbox', titulo: 'Nenhum item cadastrado', texto: 'Uma frase do que é o item e para que serve.' }
       : (e.busca || e.tipo || e.status) ? { icone: 'search_off', titulo: 'Nenhum item encontrado', texto: 'Tente outros termos ou limpe os filtros.' }
       : { icone: 'inbox', titulo: 'Nenhum item em ' + aba.label, texto: aba.criterio || 'Nenhum item nesta aba.' };
+    Array.prototype.forEach.call(document.getElementById('mdl-tabela-card').querySelectorAll('.ds-item-contorno'), function(n) { n.remove(); });   // sem itens, sem contorno de grupo sobrando
+    tbody._mdlContornos = {};
     tbody.innerHTML = '<tr class="ds-tabela__msg"><td colspan="8"><div class="ds-vazio"><span class="material-symbols-outlined ds-vazio__icone">' + vz.icone + '</span><p class="ds-vazio__titulo">' + escapeHtml(vz.titulo) + '</p><p class="ds-vazio__texto">' + escapeHtml(vz.texto) + '</p></div></td></tr>';
     mdlSel.atualizar();
     return;
   }
   tbody.innerHTML = '';
-  pag.forEach(function(i) {
+  var pilha = [];   // árvore: pilha[n] = o ancestral de nível n está aberto e visível
+  pag.forEach(function(i, k) {
+    var nivel = mdlArvore ? i.nivel : 0, temFilhos = mdlArvore && !!pag[k + 1] && pag[k + 1].nivel > nivel;
+    var visivel = nivel === 0 || !!pilha[nivel - 1];
     var sel = mdlSel.tem(i.id);
     var acoes = acoesLinhaHTML('mdl-' + i.id, [
       { icone: 'open_in_new', rotulo: 'Abrir', onclick: "showMessage('info', 'Modelo', 'Abrir')", principal: true },
@@ -15385,14 +15633,20 @@ function mdlRender() {
     var tr = document.createElement('tr');
     tr.classList.add('ds-linha-lista', 'ds-linha-clicavel');
     tr.dataset.id = i.id; tr.tabIndex = 0;
+    if (mdlArvore) {
+      tr.dataset.level = String(nivel); tr.dataset.pai = i.pai || ''; tr.dataset.cor = MDL_COR_TIPO[i.tipo];
+      if (nivel > 0) { tr.classList.add('ds-linha-filha'); if (visivel) tr.classList.add('is-aberta'); }
+    }
     if (sel) tr.classList.add('is-selecionada');
     if (i.alerta) tr.classList.add('ds-linha--' + i.alerta.tom);
-    var aberto = !!mdlAbertos[i.id];
-    tr.setAttribute('aria-expanded', String(aberto));
-    tr.setAttribute('data-on-click', 'ui.chamar'); tr.setAttribute('data-chamada-click', "mdlCliqueLinha(event, '" + i.id + "')");
+    var aberto = mdlArvore ? temFilhos && (mdlReorg || !!mdlAbertos[i.id]) : !mdlReorg && !!mdlAbertos[i.id];
+    pilha[nivel] = visivel && aberto;
+    if (!mdlArvore || temFilhos) tr.setAttribute('aria-expanded', String(aberto));
+    if (!mdlReorg) { tr.setAttribute('data-on-click', 'ui.chamar'); tr.setAttribute('data-chamada-click', "mdlCliqueLinha(event, '" + i.id + "')"); }
     tr.innerHTML =
-      '<td class="ds-tabela__check"><input type="checkbox" class="js-mdl-chk" data-id="' + i.id + '" data-on-change="pages_modelo.19" data-achange0="' + i.id + '" aria-label="Selecionar item"' + (sel ? ' checked' : '') + '></td>' +
-      '<td class="ds-tabela__expandir"><button type="button" class="ds-item-seta' + (aberto ? ' is-aberto' : '') + '" data-on-click="pages_modelo.26" data-aclick0="' + i.id + '" aria-label="Expandir"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button></td>' +
+      (mdlReorg ? '<td class="ds-tabela__check"><span class="material-symbols-outlined ds-item-alca" data-title="Arrastar para reorganizar">drag_indicator</span></td>'
+        : '<td class="ds-tabela__check"><input type="checkbox" class="js-mdl-chk" data-id="' + i.id + '" data-on-change="pages_modelo.19" data-achange0="' + i.id + '" aria-label="Selecionar item"' + (sel ? ' checked' : '') + '></td>') +
+      '<td class="ds-tabela__expandir">' + (!mdlArvore || temFilhos ? '<button type="button" class="ds-item-seta' + (aberto ? ' is-aberto' : '') + '" data-on-click="pages_modelo.26" data-aclick0="' + i.id + '" aria-label="Expandir"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button>' : '') + '</td>' +
       '<td class="ds-tabela__principal"><div class="ds-tabela__id">' +
         '<span class="ds-badge-tipo ds-tabela__tipo">' + escapeHtml(i.tipo) + '</span>' +
         '<div class="ds-tabela__nome-wrap"><div class="ds-tabela__nome" data-title="' + escapeHtml(i.nome) + '">' + (i.codigo ? '<span class="ds-tabela__codigo">' + escapeHtml(i.codigo) + '</span>' : '') + escapeHtml(i.nome) + '</div></div></div>' + (i.avisoNome ? '<div class="ds-aviso-item ds-aviso-item--warning ds-tabela__so-desktop">' + i.avisoNome + '</div>' : '') + '</td>' +
@@ -15402,8 +15656,10 @@ function mdlRender() {
       '<td class="ds-tabela__so-larga ds-tabela__so-desktop">' + progresso + '</td>' +
       celulaAcoes +
       '<td class="ds-tabela__card"><div class="ds-tabela__meta"></div><div class="ds-tabela__prog">' + progresso + '</div></td>';
+    var codigo = tr.querySelector('.ds-tabela__codigo');
+    if (mdlArvore && nivel >= 2 && codigo) codigo.style.setProperty('color', tr.dataset.cor);   // do 3.º nível em diante o código também leva a cor do tipo
     tbody.appendChild(tr);
-    if (aberto) {
+    if (aberto && !mdlArvore) {
       var det = document.createElement('tr');
       det.className = 'ds-linha-detalhe';
       det.innerHTML = '<td colspan="8"></td>';   // área de detalhe vazia: cada página decide o que mostrar aqui
@@ -15414,11 +15670,63 @@ function mdlRender() {
   });
   mdlSel.atualizar();
   mdlContornos();
+  mdlReorgUI();
+}
+
+// ---- Reorganizar (OPCIONAL): o arrastar é do design system (uiReordenarAtivar); a tela só guarda a ordem. Lista plana: sem aninhar ----
+function mdlReorgUI() {
+  var tbody = document.getElementById('mdl-tbody');
+  document.getElementById('mdl-tabela').classList.toggle('ds-tabela--reorganizando', mdlReorg);
+  document.getElementById('mdl-filtros-reorganizar').classList.toggle('hidden', !mdlReorg);
+  ['mdl-chk-todos', 'mdl-rotulo-todos'].forEach(function(id) { document.getElementById(id).classList.toggle('hidden', mdlReorg); });
+  if (!mdlReorg) { uiReordenarDesativar(tbody); return; }   // os filtros voltam por mdlSel.atualizar(), que roda antes na mesma renderização
+  document.getElementById('mdl-filtros-normal').classList.add('hidden');
+  document.getElementById('mdl-filtros-selecao').classList.add('hidden');
+  document.getElementById('mdl-reorg-texto').textContent = mdlReorgAlterado ? 'Ordem alterada' : 'Arraste os itens para reorganizar';
+  ['mdl-reorg-divisor', 'mdl-reorg-confirmar', 'mdl-reorg-restaurar'].forEach(function(id) { document.getElementById(id).classList.toggle('hidden', !mdlReorgAlterado); });
+  uiReordenarAtivar(tbody, { linhas: 'tr.ds-linha-lista', aninhar: mdlArvore, aoSoltar: mdlAoSoltar });
+}
+function mdlReorganizar() {
+  if (mdlReorg) return;
+  mdlSel.limpar();
+  estadoModelo.aba = 'todos';
+  mdlReorgOriginal = estadoModelo.itens.map(function(i) { return Object.assign({}, i); });   // cópia dos itens: nível e pai também voltam
+  mdlReorg = true; mdlReorgAlterado = false;
+  mdlRenderAbas(); mdlRender();
+}
+function mdlAoSoltar(info) {
+  if (mdlArvore) {
+    // soltar dentro = vira filho do alvo; antes/depois = irmão do alvo (a família toda muda de nível junto)
+    var dentro = info.pos === 'inside', nivelAlvo = Number(info.alvo.dataset.level);
+    var delta = (dentro ? nivelAlvo + 1 : nivelAlvo) - Number(info.origem.dataset.level);
+    var porId = {};
+    estadoModelo.itens.forEach(function(it) { porId[it.id] = it; });
+    porId[info.origem.dataset.id].pai = dentro ? info.alvo.dataset.id : (porId[info.alvo.dataset.id].pai || '');
+    info.familia.forEach(function(r) { var it = porId[r.dataset.id]; it.nivel = Math.max(0, it.nivel + delta); });
+  }
+  var ids = Array.prototype.map.call(document.querySelectorAll('#mdl-tbody tr.ds-linha-lista'), function(tr) { return tr.dataset.id; });
+  estadoModelo.itens.sort(function(a, b) { return ids.indexOf(String(a.id)) - ids.indexOf(String(b.id)); });
+  mdlReorgAlterado = true;
+  mdlRender();
+}
+function mdlReorgSair(salvar) {
+  if (!salvar) estadoModelo.itens = mdlReorgOriginal;   // a cópia guarda também nível e pai
+  mdlReorg = false; mdlReorgAlterado = false; mdlReorgOriginal = null;
+  mdlRender();
+  if (salvar) showMessage('success', 'Modelo', 'Nova ordem salva. A tela real grava a ordem pelo servidor.');
+}
+function mdlReorgRestaurar() {
+  estadoModelo.itens = mdlReorgOriginal.map(function(i) { return Object.assign({}, i); });
+  mdlReorgAlterado = false;
+  mdlRender();
 }
 
 // Celular: o item expansível aberto e a área de detalhe viram um bloco com contorno colorido (só item expansível)
 function mdlContornos() {
   var tbody = document.getElementById('mdl-tbody'), wrap = document.getElementById('mdl-tabela-card');
+  if (mdlArvore) { uiArvoreAtualizar(document.getElementById('mdl-tabela'), { reorganizando: mdlReorg }); return; }
+  document.getElementById('mdl-tabela').classList.add('ds-tabela--arvore');
+  Array.prototype.forEach.call(tbody.querySelectorAll('.ds-item-sem-seta'), function(tr) { tr.classList.remove('ds-item-sem-seta'); });
   Array.prototype.forEach.call(wrap.querySelectorAll('.ds-item-contorno'), function(n) { n.remove(); });
   Array.prototype.forEach.call(tbody.querySelectorAll('tr'), function(tr) { ['ini', 'meio', 'fim'].forEach(function(p) { tr.classList.remove('ds-item-grupo--' + p); }); });
   var antes = tbody._mdlContornos || {}, agora = {};
@@ -15437,10 +15745,11 @@ function mdlContornos() {
 
 function mdlCliqueLinha(ev, id) {
   if (ev.target.closest('input, button, a')) return;
-  if (window.innerWidth <= 768) { mdlSel.cliqueMobile(id, function() { showMessage('info', 'Modelo', 'Abrir o item ' + id); }); return; }
-  // Desktop: linha expansível → o clique expande/recolhe; linha comum → o clique abre o item. Selecionar é pela caixa (ou Ctrl+A).
+  // Linha expansível (em qualquer largura): o toque expande/recolhe; só a linha comum abre o item
   var tr = ev.currentTarget.closest ? ev.currentTarget : null;
   if (tr && tr.hasAttribute('aria-expanded')) { mdlAbertos[id] = !mdlAbertos[id]; mdlRender(); return; }
+  if (window.innerWidth <= 768) { mdlSel.cliqueMobile(id, function() { showMessage('info', 'Modelo', 'Abrir o item ' + id); }); return; }
+  // Desktop: linha comum → o clique abre o item. Selecionar é pela caixa (ou Ctrl+A).
   showMessage('info', 'Modelo', 'Abrir o item ' + id);
 }
 
@@ -15450,7 +15759,7 @@ function mdlMenuFiltro(gatilho, campo, opcoes, titulo) {
     { titulo: titulo, limpar: estadoModelo[campo] ? "mdlFiltrar('" + campo + "', '')" : '' });
 }
 // Cenário de demonstração: qtd = 0 (nada cadastrado), 1, 2… ou null (lista completa de 27)
-function mdlCenario(qtd) { mdlCenarioVazio = qtd === 0; estadoModelo.itens = qtd === null ? _mdlDados() : _mdlDados().slice(0, qtd); estadoModelo.aba = 'todos'; estadoModelo.paginaAtual = 1; estadoModelo.qtdMobile = 20; mdlSel.limpar(); mdlRenderAbas(); mdlRender(); }
+function mdlCenario(qtd) { mdlCenarioVazio = qtd === 0; mdlArvore = qtd === 'arvore'; mdlReorg = false; estadoModelo.itens = qtd === 'arvore' ? _mdlArvoreDados() : qtd === null ? _mdlDados() : _mdlDados().slice(0, qtd); estadoModelo.aba = 'todos'; estadoModelo.paginaAtual = 1; estadoModelo.qtdMobile = 20; mdlSel.limpar(); mdlRenderAbas(); mdlRender(); }
 function mdlFiltrar(campo, valor) { estadoModelo[campo] = valor; estadoModelo.paginaAtual = 1; estadoModelo.qtdMobile = 20; mdlRender(); }
 function mdlMenuOrdenar(gatilho) {
   var cols = [['nome', 'Nome'], ['resp', 'Responsável'], ['status', 'Situação'], ['progresso', 'Progresso'], ['prazo', 'Prazo']];
@@ -15479,6 +15788,7 @@ function mdlModo(k) {
 function mdlListaMenu() {
   var lista = [
     { icone: 'refresh', rotulo: 'Atualizar', onclick: 'mdlRender()' },
+    { icone: 'low_priority', rotulo: 'Reorganizar', onclick: 'mdlReorganizar()', desabilitado: document.getElementById('mdl-btn-reorg').disabled },
     { icone: 'download', rotulo: 'Baixar', desabilitado: true },
     { icone: 'print', rotulo: 'Imprimir', desabilitado: true }
   ].map(_acoesLinhaNormalizar);
@@ -15497,6 +15807,10 @@ uiRegistrarAcoes('pages_modelo', {
   '22': function () { showMessage('info', 'Modelo', 'Menu da seta do botão secundário'); },
   '23': function () { mdlModo(Array.prototype.indexOf.call(this.parentNode.children, this)); },
   '28': function () { uiFerramentasAlternar(this); },
+  '29': function () { mdlReorganizar(); },
+  '30': function () { mdlReorgSair(false); },
+  '31': function () { mdlReorgSair(true); },
+  '32': function () { mdlReorgRestaurar(); },
   '26': function () { var id = this.dataset.aclick0; mdlAbertos[id] = !mdlAbertos[id]; mdlRender(); },
   '27': function () { showMessage('info', 'Modelo', 'Ação necessária: ' + this.dataset.aclick0); },
   '24': function () { showMessage('info', 'Modelo', 'Abriria o painel lateral de detalhes'); },

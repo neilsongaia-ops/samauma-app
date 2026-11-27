@@ -1025,6 +1025,7 @@ body.high-contrast .org-canvas.org-rel-foco .org-rel:not(.ativo) { opacity: .15;
                 </label>
                 <input type="color" name="cor" id="input-el-cor" class="ds-input" value="#1967d2"
                        style="width:48px; height:40px; padding:2px; cursor:pointer" data-on-change="el.10">
+                <small class="ds-help ds-help--error hidden" id="input-el-cor-erro"></small>
               </div>
             </div>
 
@@ -1659,10 +1660,6 @@ let _modoReorganizar = false;
 let _elOrdPrazo = ''; // ordem dos irmãos na lista e no 5W2H: '' (por código) | 'asc' | 'desc' por prazo
 let _reorgAlterado = false; // vira true no primeiro drop: X (cancelar) -> check (confirmar)
 let _elementosSnapshotReorg = null; // guarda a ordem original antes de qualquer alteração
-let _draggingTr = null;
-let _draggingFamily = [];
-let _dragOverTr = null;
-let _dragPos = null;
 var _ganttZoomPxMes = Number(localStorage.getItem('sgp_gantt_zoom')) || 75;
 var _ganttUltimoDiffMonths = 12;
 
@@ -2432,10 +2429,42 @@ function _tiposDoPlanoAtual() {
 
 // Monta as tags clicáveis abaixo do campo (escondidas se o plano ainda não tem tipos)
 function _atualizarCorPeloTipo() {
-  if (_elwizCorManual) return;
-  const tipo = String(document.getElementById('input-el-tipo').value || '').trim();
+  if (!_elwizCorManual) {
+    const tipo = String(document.getElementById('input-el-tipo').value || '').trim();
+    const cores = (dadosDetalhados && dadosDetalhados.coresTipo) || {};
+    document.getElementById('input-el-cor').value = cores[tipo] || _elCorLivre();
+  }
+  _elValidarCor();
+}
+
+// Tipos diferentes não repetem a cor no plano (o servidor recusa por conta própria; aqui a tela avisa e barra o Salvar pelo campo inválido)
+function _elCorEmConflito(tipo, cor) {
+  const t = String(tipo || '').trim(), c = String(cor || '').toLowerCase();
+  if (!t || !c) return '';
   const cores = (dadosDetalhados && dadosDetalhados.coresTipo) || {};
-  document.getElementById('input-el-cor').value = cores[tipo] || COR_TIPO_PADRAO;
+  return Object.keys(cores).find(function(k) { return k !== t && String(cores[k] || '').toLowerCase() === c; }) || '';
+}
+function _elValidarCor() {
+  const campo = document.getElementById('input-el-cor');
+  const outro = _elCorEmConflito(document.getElementById('input-el-tipo').value, campo.value);
+  campo.setCustomValidity(outro ? 'Esta cor já é usada pelo tipo "' + outro + '". Escolha outra.' : '');
+  if (outro) _elwizExibirErro(campo); else _elwizLimparErro(campo);
+}
+// Primeira cor ainda não usada por nenhum tipo do plano: a padrão e, se ocupada, matizes espaçados (HSL → #rrggbb)
+function _elHslHex(h, s, l) {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = function(n) { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))).toString(16).padStart(2, '0'); };
+  return '#' + f(0) + f(8) + f(4);
+}
+function _elCorLivre() {
+  const usadas = Object.values((dadosDetalhados && dadosDetalhados.coresTipo) || {}).map(function(c) { return String(c).toLowerCase(); });
+  if (usadas.indexOf(COR_TIPO_PADRAO.toLowerCase()) < 0) return COR_TIPO_PADRAO;
+  for (let k = 1; k < 72; k++) {
+    const hex = _elHslHex((k * 47) % 360, 65, 45);
+    if (usadas.indexOf(hex) < 0) return hex;
+  }
+  return COR_TIPO_PADRAO;
 }
 
 // Escolha do pai pelo seletor de vínculo interno (criação pela opção principal)
@@ -2766,17 +2795,6 @@ function _restaurarOrdemOriginal() {
 function _marcarReorgAlterado() {
   _reorgAlterado = true;
   _atualizarCabecalhoReorganizar();
-}
-
-function _getTrComDescendentes(tr) {
-  var rows = [tr];
-  var level = parseInt(tr.dataset.level || '0', 10);
-  var next = tr.nextElementSibling;
-  while (next && parseInt(next.dataset.level || '0', 10) > level) {
-    rows.push(next);
-    next = next.nextElementSibling;
-  }
-  return rows;
 }
 
 
@@ -3798,40 +3816,7 @@ function elToggleFilhos(ev, parentId) {
 /** Celular: cola o item raiz e seus descendentes abertos num só bloco e desenha o contorno colorido (cor do tipo do raiz) quando há itens abertos; liga a faixa da seta quando há hierarquia.
  *  O contorno anima só na primeira abertura do raiz; abrir um filho, rolar ou redimensionar o redesenham parado. */
 function elAtualizarGruposArvore() {
-  var tbody = document.getElementById('el-tbody');
-  var tabela = document.getElementById('el-tabela');
-  if (!tbody || !tabela) return;
-  var wrap = tabela.parentNode;
-  Array.prototype.forEach.call(wrap.querySelectorAll('.ds-item-contorno'), function(n) { n.remove(); });
-  var linhas = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-id]'));
-  tabela.classList.toggle('ds-tabela--arvore', linhas.some(function(tr) { return tr.querySelector('.ds-item-seta'); }));
-  linhas.forEach(function(tr) { tr.classList.toggle('ds-item-sem-seta', !_modoReorganizar && tr.dataset.level === '0' && !tr.querySelector('.ds-item-seta')); });
-  var anteriores = tbody._elContornos || {};
-  var atuais = {};
-  var grupo = [];
-  function fechar() {
-    uiItemGrupoMarcar(grupo);
-    grupo.forEach(function(tr, i) {
-      // divisória colorida: do 3.º nível em diante, a linha entre dois itens leva a cor do tipo do mais profundo dos dois (abre e fecha cada sequência com a mesma cor)
-      var ant = grupo[i - 1], fundo = ant && +ant.dataset.level > +tr.dataset.level ? ant : tr;
-      var colore = i > 0 && +fundo.dataset.level >= 2 && fundo.dataset.cor;
-      tr.classList.toggle('ds-item-cor', !!colore);
-      if (colore) tr.style.setProperty('--ds-color-borda-item', fundo.dataset.cor); else tr.style.removeProperty('--ds-color-borda-item');
-    });
-    if (grupo.length > 1 && _elMobile()) {
-      var raiz = grupo[0].dataset.id;
-      atuais[raiz] = grupo.length;
-      uiItemContorno(wrap, grupo, anteriores[raiz] === undefined);
-    }
-    grupo = [];
-  }
-  linhas.forEach(function(tr) {
-    if (tr.classList.contains('ds-linha-filha') && !tr.classList.contains('is-aberta')) return;
-    if (tr.dataset.level === '0') fechar();
-    grupo.push(tr);
-  });
-  fechar();
-  tbody._elContornos = atuais;
+  uiArvoreAtualizar(document.getElementById('el-tabela'), { reorganizando: _modoReorganizar });
 }
 
 if (!window._elContornoResize) {
@@ -4573,232 +4558,38 @@ function exportarElementosCSV() {
 // original) — removida pra não redefinir o global duas vezes.
 
 // --- REORGANIZAR ELEMENTOS (DRAG-AND-DROP) ---
+// O arrastar é do design system (uiReordenarAtivar, app_ui_utils.html); aqui só o que é da árvore de elementos: nível, pai e código depois da soltura.
 
 function _ativarDragTabela() {
-  const tbody = document.getElementById('el-tbody');
-  if (!tbody) return;
-  if (_elMobile()) {
-    tbody.addEventListener('pointerdown', _elAlcaPressionada);
-    return;
-  }
-  tbody.querySelectorAll('tr').forEach(tr => {
-    tr.setAttribute('draggable', 'true');
-    tr.addEventListener('dragstart', _onDragStartTabela);
-    tr.addEventListener('dragover',  _onDragOverTabela);
-    tr.addEventListener('dragleave', _onDragLeaveTabela);
-    tr.addEventListener('drop',      _onDropTabela);
-    tr.addEventListener('dragend',   _onDragEndTabela);
+  uiReordenarAtivar(document.getElementById('el-tbody'), {
+    aninhar: true,
+    rotulo: function(tr) { return ((tr.querySelector('.ds-tabela__codigo') || {}).textContent || '') + ' ' + ((tr.querySelector('.ds-tabela__nome') || {}).dataset || {}).title; },
+    aoSoltar: _elAoSoltar
   });
 }
 
 function _desativarDragTabela() {
-  const tbody = document.getElementById('el-tbody');
-  if (!tbody) return;
-  tbody.removeEventListener('pointerdown', _elAlcaPressionada);
-  tbody.querySelectorAll('tr').forEach(tr => {
-    tr.removeAttribute('draggable');
-    tr.removeEventListener('dragstart', _onDragStartTabela);
-    tr.removeEventListener('dragover',  _onDragOverTabela);
-    tr.removeEventListener('dragleave', _onDragLeaveTabela);
-    tr.removeEventListener('drop',      _onDropTabela);
-    tr.removeEventListener('dragend',   _onDragEndTabela);
-  });
+  uiReordenarDesativar(document.getElementById('el-tbody'));
 }
 
-function _onDragStartTabela(e) {
-  _draggingTr = this;
-  _draggingFamily = _getTrComDescendentes(this);
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', this.dataset.id);
-  this.classList.add('is-arrastando');
-  e.stopPropagation();
-}
-
-function _onDragOverTabela(e) {
-  if (!_draggingTr || _draggingTr === this || _draggingFamily.includes(this)) return;
-  e.preventDefault();
-  e.stopPropagation();
-  e.dataTransfer.dropEffect = 'move';
-
-  const rect = this.getBoundingClientRect();
-  const y = e.clientY - rect.top;
-  const h = rect.height;
-  // Zona superior 25% = antes; zona inferior 25% = depois; meio = dentro (filho)
-  const pos = y < h * 0.25 ? 'before' : y > h * 0.75 ? 'after' : 'inside';
-
-  if (_dragOverTr !== this || _dragPos !== pos) {
-    _clearDragIndicatorsTabela();
-    _dragOverTr = this;
-    _dragPos = pos;
-    if (pos === 'before') this.classList.add('is-solta-antes');
-    else if (pos === 'after') this.classList.add('is-solta-depois');
-    else this.classList.add('is-solta-dentro');
-  }
-}
-
-function _onDragLeaveTabela(e) {
-  if (!this.contains(e.relatedTarget)) {
-    this.classList.remove('is-solta-antes', 'is-solta-depois', 'is-solta-dentro');
-    if (_dragOverTr === this) { _dragOverTr = null; _dragPos = null; }
-  }
-}
-
-function _clearDragIndicatorsTabela() {
-  document.querySelectorAll('.is-solta-antes,.is-solta-depois,.is-solta-dentro').forEach(el =>
-    el.classList.remove('is-solta-antes', 'is-solta-depois', 'is-solta-dentro'));
-}
-
-function _onDropTabela(e) {
-  e.preventDefault();
-  e.stopPropagation();
-  _soltarTabela(this, _dragPos);
-}
-
-function _soltarTabela(alvo, pos) {
-  if (!_draggingTr || _draggingTr === alvo || _draggingFamily.includes(alvo)) return;
-  _clearDragIndicatorsTabela();
-
-  const tbody = document.getElementById('el-tbody');
-  const targetLevel = parseInt(alvo.dataset.level || '0', 10);
-  const oldLevel = parseInt(_draggingTr.dataset.level || '0', 10);
-  let newLevel = targetLevel;
-  let newPai = alvo.dataset.pai || '';
-
-  if (pos === 'before') {
-    newLevel = targetLevel;
-    newPai = alvo.dataset.pai || '';
-    _draggingFamily.forEach(r => tbody.insertBefore(r, alvo));
-  } else if (pos === 'after') {
-    newLevel = targetLevel;
-    newPai = alvo.dataset.pai || '';
-    const targetDesc = _getTrComDescendentes(alvo);
-    const lastTarget = targetDesc[targetDesc.length - 1];
-    const nextRef = lastTarget.nextElementSibling;
-    _draggingFamily.forEach(r => {
-      if (nextRef) tbody.insertBefore(r, nextRef);
-      else tbody.appendChild(r);
-    });
-  } else {
-    // inside: torna-se filho de target
-    newLevel = targetLevel + 1;
-    newPai = alvo.dataset.id;
-    const targetDesc = _getTrComDescendentes(alvo);
-    const lastTarget = targetDesc[targetDesc.length - 1];
-    const nextRef = lastTarget.nextElementSibling;
-    _draggingFamily.forEach(r => {
-      if (nextRef) tbody.insertBefore(r, nextRef);
-      else tbody.appendChild(r);
-    });
-  }
-
-  // Atualizar levels e indentação
-  const deltaLevel = newLevel - oldLevel;
-  _draggingTr.dataset.pai = newPai;
-  _draggingFamily.forEach(r => {
-    const l = parseInt(r.dataset.level || '0', 10);
-    const nl = Math.max(0, l + deltaLevel);
+function _elAoSoltar(i) {
+  const nivelAlvo = parseInt(i.alvo.dataset.level || '0', 10);
+  const nivelAntigo = parseInt(i.origem.dataset.level || '0', 10);
+  const dentro = i.pos === 'inside';
+  const novoNivel = dentro ? nivelAlvo + 1 : nivelAlvo;
+  i.origem.dataset.pai = dentro ? i.alvo.dataset.id : (i.alvo.dataset.pai || '');
+  const delta = novoNivel - nivelAntigo;
+  i.familia.forEach(r => {
+    const nl = Math.max(0, parseInt(r.dataset.level || '0', 10) + delta);
     r.dataset.level = String(nl);
     const content = r.querySelector('.el-elem-content');
     if (content) content.style.paddingLeft = (nl * 24) + 'px';
     r.classList.toggle('ds-linha-filha', nl > 0);
     r.classList.toggle('is-aberta', nl > 0);
   });
-
   _marcarReorgAlterado();
   _recalcularCodigosTabela();
   if (_elMobile()) elAtualizarGruposArvore();
-
-  _draggingTr = null;
-  _draggingFamily = [];
-  _dragOverTr = null;
-  _dragPos = null;
-}
-
-// Celular: arrastar pela alça, com o dedo (o arrastar nativo não funciona por toque). A soltura reaproveita as zonas da web: borda de cima = antes, de baixo = depois, meio = vira filho.
-var _elArraste = null;
-function _elAlcaPressionada(ev) {
-  var alca = ev.target.closest('.ds-item-alca');
-  if (!alca || _elArraste) return;
-  var tr = alca.closest('tr');
-  if (!tr) return;
-  ev.preventDefault();
-  _draggingTr = tr;
-  _draggingFamily = _getTrComDescendentes(tr);
-  tr.classList.add('is-arrastando');
-  var fantasma = document.createElement('div');
-  fantasma.className = 'ds-arraste-fantasma';
-  fantasma.textContent = ((tr.querySelector('.ds-tabela__codigo') || {}).textContent || '') + ' ' + ((tr.querySelector('.ds-tabela__nome') || {}).dataset || {}).title;
-  document.body.appendChild(fantasma);
-  var rolagem = document.getElementById('main-content');
-  _elArraste = { alca: alca, id: ev.pointerId, fantasma: fantasma, y: ev.clientY, rolagem: rolagem, raf: 0 };
-  alca.setPointerCapture(ev.pointerId);
-  alca.addEventListener('pointermove', _elAlcaMovida);
-  alca.addEventListener('pointerup', _elAlcaSolta);
-  alca.addEventListener('pointercancel', _elAlcaSolta);
-  _elArrasteQuadro(ev.clientX, ev.clientY);
-}
-function _elAlcaMovida(ev) {
-  if (!_elArraste || ev.pointerId !== _elArraste.id) return;
-  _elArraste.y = ev.clientY;
-  _elArrasteQuadro(ev.clientX, ev.clientY);
-}
-// Atualiza o fantasma e a zona de soltura sob o dedo; rola a lista quando o dedo encosta na borda de cima ou de baixo
-function _elArrasteQuadro(x, y) {
-  var f = _elArraste.fantasma;
-  f.style.setProperty('left', x + 'px');
-  f.style.setProperty('top', y + 'px');
-  var alvo = document.elementFromPoint(x, y);
-  var tr = alvo && alvo.closest ? alvo.closest('#el-tbody tr') : null;
-  if (!tr || tr === _draggingTr || _draggingFamily.indexOf(tr) >= 0) {
-    _clearDragIndicatorsTabela();
-    _dragOverTr = null;
-    _dragPos = null;
-  } else {
-    var r = tr.getBoundingClientRect(), dy = y - r.top;
-    var pos = dy < r.height * 0.25 ? 'before' : dy > r.height * 0.75 ? 'after' : 'inside';
-    if (_dragOverTr !== tr || _dragPos !== pos) {
-      _clearDragIndicatorsTabela();
-      _dragOverTr = tr;
-      _dragPos = pos;
-      tr.classList.add('is-solta-' + ({ before: 'antes', after: 'depois', inside: 'dentro' })[pos]);
-    }
-  }
-  if (!_elArraste.raf && _elArraste.rolagem) _elArraste.raf = requestAnimationFrame(_elArrasteRolar);
-}
-function _elArrasteRolar() {
-  if (!_elArraste) return;
-  _elArraste.raf = 0;
-  var sc = _elArraste.rolagem, r = sc.getBoundingClientRect(), y = _elArraste.y, borda = 64, passo = 0;
-  if (y < r.top + borda) passo = -Math.ceil((r.top + borda - y) / 6);
-  else if (y > r.bottom - borda) passo = Math.ceil((y - (r.bottom - borda)) / 6);
-  if (!passo) return;
-  sc.scrollTop += passo;
-  _elArraste.raf = requestAnimationFrame(_elArrasteRolar);
-}
-function _elAlcaSolta(ev) {
-  if (!_elArraste || ev.pointerId !== _elArraste.id) return;
-  var a = _elArraste;
-  a.alca.removeEventListener('pointermove', _elAlcaMovida);
-  a.alca.removeEventListener('pointerup', _elAlcaSolta);
-  a.alca.removeEventListener('pointercancel', _elAlcaSolta);
-  if (a.raf) cancelAnimationFrame(a.raf);
-  a.fantasma.remove();
-  _elArraste = null;
-  var origem = _draggingTr;
-  if (origem) origem.classList.remove('is-arrastando');
-  if (ev.type === 'pointerup' && _dragOverTr && _dragPos) _soltarTabela(_dragOverTr, _dragPos);
-  _clearDragIndicatorsTabela();
-  _draggingTr = null;
-  _draggingFamily = [];
-  _dragOverTr = null;
-  _dragPos = null;
-}
-
-function _onDragEndTabela() {
-  this.classList.remove('is-arrastando');
-  _clearDragIndicatorsTabela();
-  _draggingTr = null;
-  _draggingFamily = [];
 }
 
 function _recalcularCodigosTabela() {
@@ -5193,7 +4984,7 @@ function renderizarTabelaEstrutura() {
     // Checkbox ou Ícone de Reorganização
     var tdCheck = '';
     if (_modoReorganizar) {
-      tdCheck = '<td class="ds-tabela__check"><span class="material-symbols-outlined ds-item-alca" style="color:var(--ds-color-text-muted);font-size:20px" data-title="Arrastar para reorganizar">drag_indicator</span></td>';
+      tdCheck = '<td class="ds-tabela__check"><span class="material-symbols-outlined ds-item-alca" data-title="Arrastar para reorganizar">drag_indicator</span></td>';
     } else {
       tdCheck = '<td class="ds-tabela__check"><input type="checkbox" data-on-change="el.69" data-achange0="' + id + '"' + (sel ? ' checked' : '') + ' aria-label="Selecionar"></td>';
     }
@@ -6214,7 +6005,7 @@ uiRegistrarAcoes('el', {
   '7': function (event) { _autocompleteTipo(this.value); _elwizLimparErro(this); },
   '8': function (event) { _autocompleteTipo(this.value); },
   '9': function (event) { _atualizarCorPeloTipo(); },
-  '10': function (event) { _elwizCorManual=true; },
+  '10': function (event) { _elwizCorManual=true; _elValidarCor(); },
   '11': function (event) { _elwizContador(this); _elwizLimparErro(this); },
   '12': function (event) { toggleHerdarDatas(); },
   '13': function (event) { mascaraMoeda(this); },
