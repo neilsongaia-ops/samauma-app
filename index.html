@@ -744,6 +744,14 @@ input[type="checkbox"] { accent-color: var(--ds-color-action); }   /* checkbox: 
 .ds-tabela tbody tr.is-solta-antes td { border-top: var(--ds-borda-forte) solid var(--ds-color-action); }
 .ds-tabela tbody tr.is-solta-depois td { border-bottom: var(--ds-borda-forte) solid var(--ds-color-action); }
 .ds-tabela tbody tr.is-solta-dentro td { background: var(--ds-color-info-bg); }
+/* entre itens: os dois vizinhos do ponto de soltura se afastam de leve (uiReordenarAtivar marca is-afasta-cima/baixo) */
+.ds-tabela--reorganizando tbody tr { transition: transform var(--ds-duration-base) var(--ds-ease-emphasized); }
+.ds-tabela--reorganizando tbody tr.is-afasta-cima { transform: translateY(calc(-1 * var(--ds-space-1))); }
+.ds-tabela--reorganizando tbody tr.is-afasta-baixo { transform: translateY(var(--ds-space-1)); }
+/* cascata ao expandir (uiCascata): as linhas novas entram em sequência, subindo de leve */
+@keyframes ds-cascata-entrar { from { opacity: 0; transform: translateY(calc(-1 * var(--ds-space-3))) scale(0.97); } to { opacity: 1; transform: none; } }
+.ds-tabela tbody tr.is-cascata { --ds-cascata-i: 0; transform-origin: top center; animation: ds-cascata-entrar var(--ds-duration-slow) var(--ds-ease-emphasized) backwards; animation-delay: calc(var(--ds-cascata-i) * var(--ds-duration-fast) / 3); }
+@media (prefers-reduced-motion: reduce) { .ds-tabela--reorganizando tbody tr { transition: none; } .ds-tabela tbody tr.is-cascata { animation: none; } }
 .ds-arraste-fantasma {
   position: fixed; z-index: var(--ds-z-toast); pointer-events: none; transform: translate(-50%, calc(-100% - var(--ds-space-3))); max-width: 70vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   padding: var(--ds-space-1) var(--ds-space-3); border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); color: var(--ds-color-text); border: var(--ds-borda) solid var(--ds-color-action);
@@ -778,9 +786,12 @@ input[type="checkbox"] { accent-color: var(--ds-color-action); }   /* checkbox: 
   .ds-tabela--reorganizando .ds-item-alca { padding: var(--ds-space-3) var(--ds-space-1); }
   /* a linha reserva sempre o espaço da alça (esquerda + alça + folga), com ou sem seta na lista: o conteúdo nunca encosta nela */
   .ds-tabela.ds-tabela--reorganizando tbody tr { padding-left: calc(var(--ds-space-1) + var(--ds-icon-lg) + 2 * var(--ds-space-1) + var(--ds-space-2)); }
-  .ds-tabela tbody tr.is-solta-antes { box-shadow: 0 calc(-1 * var(--ds-borda-forte)) 0 var(--ds-color-action); }
-  .ds-tabela tbody tr.is-solta-depois { box-shadow: 0 var(--ds-borda-forte) 0 var(--ds-color-action); }
-  .ds-tabela tbody tr.is-solta-dentro { outline: var(--ds-borda-forte) solid var(--ds-color-action); outline-offset: calc(-1 * var(--ds-borda-forte)); }
+  .ds-tabela tbody tr.is-solta-antes td, .ds-tabela tbody tr.is-solta-depois td { border-top-width: 0; border-bottom-width: 0; }   /* a linha azul é da linha inteira: a borda por célula (web) viraria um sublinhado em cada faixa do item */
+  .ds-tabela tbody tr.is-solta-antes { box-shadow: inset 0 var(--ds-borda-forte) 0 var(--ds-color-action); }
+  .ds-tabela tbody tr.is-solta-depois { box-shadow: inset 0 calc(-1 * var(--ds-borda-forte)) 0 var(--ds-color-action); }
+  /* receptor: a linha inteira fica marcada (fundo + anel recuado das bordas, que o contorno do grupo esconderia), sem linha só embaixo; a linha azul é só do entre-itens (is-solta-antes/depois) */
+  .ds-tabela tbody tr.is-solta-dentro { background: var(--ds-color-info-bg); outline: var(--ds-borda-forte) solid var(--ds-color-action); outline-offset: calc(-1 * var(--ds-space-2)); border-radius: var(--ds-r-lg); }
+  .ds-tabela tbody tr.is-solta-dentro td { background: none; }
   .ds-tabela--selecionando thead th.ds-tabela__ordenar, .ds-tabela--selecionando thead th.ds-tabela__cab-acoes { display: none; }
   .ds-tabela--selecionando thead th.ds-tabela__check { display: flex; align-items: center; gap: var(--ds-space-2); width: auto; padding: 2px 0; border: none; }
   .ds-tabela thead .ds-tabela__card { display: inline; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
@@ -876,66 +887,35 @@ input[type="checkbox"] { accent-color: var(--ds-color-action); }   /* checkbox: 
   .ds-pagina:has(> .ds-fab) > .ds-pagina__acoes, .ds-pagina:has(> .ds-fab) .ds-pagina__hero > .ds-pagina__acoes { display: none; }
 }
 
-/* Abas no celular — botão em pilha (.ds-fab-stack) e seletor 3D (.ds-flip3d). Nunca à mão: uiCardStackAtualizar monta o botão dentro do .ds-fab (acima do botão principal;
-   sem .ds-fab na página ele cria o seu) e uiFlip3DAbrir monta o seletor (app_ui_utils.html). O selo do botão mostra o ícone da aba atual. */
+/* Abas no celular — botão em pilha (.ds-fab-stack) e grade de abas (.ds-abas-grade). Nunca à mão: uiCardStackAtualizar monta o botão dentro do .ds-fab (acima do botão principal;
+   sem .ds-fab na página ele cria o seu) e uiAbasGradeAbrir monta a grade (app_ui_utils.html). O selo do botão mostra o ícone da aba atual. */
 .ds-fab-stack { display: none; position: relative; align-self: flex-end; pointer-events: auto; margin-bottom: var(--ds-space-1); transition: opacity var(--ds-duration-fast) var(--ds-ease-standard), transform var(--ds-duration-base) var(--ds-ease-emphasized); }
 @media (max-width: 768px) { .ds-fab-stack { display: flex; } }
-.ds-fab.is-aberto .ds-fab-stack { opacity: 0; transform: scale(0.7) translateY(var(--ds-space-4)); pointer-events: none; }
-.ds-fab-stack__btn { position: relative; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; padding: 0; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-2xl); background: var(--ds-color-surface); color: var(--ds-color-action); box-shadow: var(--ds-shadow-3); cursor: pointer; }
+.ds-fab.is-aberto .ds-fab-stack { position: absolute; opacity: 0; transform: scale(0.7) translateY(var(--ds-space-4)); pointer-events: none; }
+.ds-fab-stack__btn { position: relative; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; padding: 0; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-pill); background: var(--ds-color-surface); color: var(--ds-color-action); box-shadow: var(--ds-shadow-3); cursor: pointer; }
 .ds-fab-stack__btn:active { transform: scale(0.95); }
-.ds-fab-stack__btn::before, .ds-fab-stack__btn::after { content: ''; position: absolute; inset: 0; border-radius: var(--ds-r-2xl); border: var(--ds-borda) solid var(--ds-color-border); background: var(--ds-color-surface-2); pointer-events: none; }
-.ds-fab-stack__btn::before { z-index: -1; transform: translateY(-5px) scale(0.88); box-shadow: var(--ds-shadow-1); }
-.ds-fab-stack__btn::after { z-index: -2; opacity: 0.6; transform: translateY(-9px) scale(0.76); }
 .ds-fab-stack__btn .material-symbols-outlined { font-size: var(--ds-icon-xl); }
 .ds-fab-stack__selo { position: absolute; top: calc(-1 * var(--ds-space-2)); right: calc(-1 * var(--ds-space-2)); display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); color: var(--ds-color-action); box-shadow: var(--ds-shadow-1); pointer-events: none; }
 .ds-fab-stack__selo .material-symbols-outlined { font-size: var(--ds-icon-xs); }
 
-.ds-flip3d { position: fixed; inset: 0; z-index: calc(var(--ds-z-modal) + 20); display: flex; flex-direction: column; background: var(--ds-glass-bg-strong); backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate)); color: var(--ds-color-text); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--ds-duration-slow) var(--ds-ease-standard), visibility var(--ds-duration-slow) var(--ds-ease-standard); user-select: none; }
-.ds-flip3d.is-aberto { opacity: 1; visibility: visible; pointer-events: auto; }
-.ds-flip3d__cab { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-3); padding: max(var(--ds-space-3), env(safe-area-inset-top)) var(--ds-space-4) var(--ds-space-1); }
-.ds-flip3d__titulo { margin: 0; min-width: 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-flip3d__palco { position: relative; flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; perspective: 1000px; perspective-origin: 55% 42%; overflow: hidden; touch-action: none; }
-.ds-flip3d__pilha { position: relative; width: min(80vw, 300px); height: min(54vh, 350px); transform-style: preserve-3d; transform: translate(var(--ds-space-2), var(--ds-space-5)); }
-/* a pose da carta vem da distância até a carta em foco (--d): as de trás afundam, sobem e encolhem; a já folheada sai para a frente */
-.ds-flip3d__carta { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-2xl); background: var(--ds-color-surface); box-shadow: var(--ds-shadow-4); cursor: pointer; pointer-events: none; will-change: transform, opacity;
-  transform: translate3d(calc(var(--d) * -16px), calc(var(--d) * -20px), calc(var(--d) * -75px)) rotateY(-13deg) scale(calc(1 - var(--d) * 0.04)); opacity: calc(1 - var(--d) * 0.14); z-index: calc(100 - var(--d));
-  transition: transform 500ms var(--ds-ease-emphasized), opacity var(--ds-duration-slow) var(--ds-ease-standard), border-color var(--ds-duration-slow) var(--ds-ease-standard); }
-.ds-flip3d__carta.is-alcance { pointer-events: auto; }
-.ds-flip3d__carta.is-foco { transform: translate3d(0, 0, 0) rotateY(-8deg) scale(1); opacity: 1; z-index: 100; border-color: var(--ds-color-action); }
-.ds-flip3d__carta.is-antes { transform: translate3d(calc(50px + var(--d) * 30px), calc(100px + var(--d) * 20px), calc(180px + var(--d) * 40px)) rotateY(-30deg) scale(0.9); opacity: 0; pointer-events: none; z-index: calc(50 + var(--d)); }
-.ds-flip3d__carta.is-longe { transform: translate3d(-96px, -120px, -450px) rotateY(-15deg) scale(0.7); opacity: 0; z-index: 1; }
-.ds-flip3d.is-escolhendo .ds-flip3d__carta:not(.is-foco) { opacity: 0; }
-.ds-flip3d.is-escolhendo .ds-flip3d__carta.is-foco { transform: translate3d(0, 0, 60px) rotateY(0) scale(1.04); }
-.ds-flip3d__carta-cab { flex: none; display: flex; align-items: center; gap: var(--ds-space-2); padding: var(--ds-space-3); background: var(--ds-color-surface-2); border-bottom: var(--ds-borda) solid var(--ds-color-border); }
-.ds-flip3d__carta.is-aba-ativa .ds-flip3d__carta-cab { background: var(--ds-color-info-bg); }
-.ds-flip3d__carta-ico { flex: none; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface); color: var(--ds-color-action); }
-.ds-flip3d__carta-ico .material-symbols-outlined { font-size: var(--ds-icon-md); }
-.ds-flip3d__carta-nome { flex: 1 1 auto; min-width: 0; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-flip3d__carta-corpo { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--ds-space-2); padding: var(--ds-space-3); overflow: hidden; }
-.ds-flip3d__criterio { margin: 0; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.ds-flip3d__kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ds-space-2); }
-.ds-flip3d__kpi, .ds-flip3d__item { display: flex; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); padding: var(--ds-space-2); }
-.ds-flip3d__kpi { flex-direction: column; gap: var(--ds-space-1); }
-.ds-flip3d__kpi-valor { font-size: var(--ds-text-md); font-weight: var(--ds-weight-bold); }
-.ds-flip3d__kpi-rotulo { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-flip3d__item { align-items: center; gap: var(--ds-space-2); }
-.ds-flip3d__ponto { flex: none; width: 8px; height: 8px; border-radius: var(--ds-r-pill); background: var(--ds-color-action); }
-.ds-flip3d__ponto--danger { background: var(--ds-color-danger); }
-.ds-flip3d__ponto--warning { background: var(--ds-color-warning); }
-.ds-flip3d__ponto--success { background: var(--ds-color-success); }
-.ds-flip3d__ponto--info { background: var(--ds-color-info); }
-.ds-flip3d__item-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-.ds-flip3d__item-titulo { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-flip3d__item-meta { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.ds-flip3d__vazio { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--ds-space-2); font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); text-align: center; }
-.ds-flip3d__vazio .material-symbols-outlined { font-size: var(--ds-icon-xl); opacity: 0.5; }
-.ds-flip3d__rodape { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-2); padding: var(--ds-space-2) var(--ds-space-4) max(var(--ds-space-3), env(safe-area-inset-bottom)); }
-.ds-flip3d__pontos { display: flex; align-items: center; gap: var(--ds-space-1-5); padding: var(--ds-space-2) var(--ds-space-3); }
-.ds-flip3d__ponto-nav { width: 8px; height: 8px; padding: 0; border: 0; border-radius: var(--ds-r-pill); background: var(--ds-color-border-strong); cursor: pointer; transition: width var(--ds-duration-base) var(--ds-ease-standard), background var(--ds-duration-base) var(--ds-ease-standard); }
-.ds-flip3d__ponto-nav.is-ativo { width: 20px; background: var(--ds-color-action); }
-.ds-flip3d__atual { max-width: 260px; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-flip3d__adicionar { display: inline-flex; align-items: center; gap: var(--ds-space-1); padding: var(--ds-space-2) var(--ds-space-4); border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-pill); background: var(--ds-color-surface); color: var(--ds-color-action); font-family: inherit; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; }
-.ds-flip3d__adicionar .material-symbols-outlined { font-size: var(--ds-icon-md); }
+/* Grade de abas no celular (.ds-abas-grade): tela cheia de vidro com um quadrado por aba, duas colunas (como as abas do Chrome no celular). Nunca à mão: uiAbasGradeAbrir (app_ui_utils.html). */
+.ds-abas-grade { position: fixed; inset: 0; z-index: calc(var(--ds-z-modal) + 20); display: flex; flex-direction: column; background: var(--ds-glass-bg-strong); backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate)); color: var(--ds-color-text); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--ds-duration-base) var(--ds-ease-standard), visibility var(--ds-duration-base) var(--ds-ease-standard); }
+.ds-abas-grade.is-aberto { opacity: 1; visibility: visible; pointer-events: auto; }
+.ds-abas-grade__cab { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-3); padding: max(var(--ds-space-3), env(safe-area-inset-top)) var(--ds-space-4) var(--ds-space-2); }
+.ds-abas-grade__titulo { margin: 0; min-width: 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-abas-grade__fechar { flex: none; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; background: none; color: var(--ds-color-text); cursor: pointer; }
+.ds-abas-grade__fechar .material-symbols-outlined { font-size: var(--ds-icon-xl); }
+.ds-abas-grade__grade { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: min-content; gap: var(--ds-space-3); padding: var(--ds-space-2) var(--ds-space-4) var(--ds-space-4); }
+.ds-abas-grade__quadro { position: relative; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--ds-space-2); padding: var(--ds-space-3); border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-2xl); background: var(--ds-color-surface); color: var(--ds-color-text); font-family: inherit; cursor: pointer; box-shadow: var(--ds-shadow-2); }
+.ds-abas-grade__quadro:active { transform: scale(0.97); }
+.ds-abas-grade__quadro.is-ativa { border-color: var(--ds-color-action); }
+.ds-abas-grade__ico { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: var(--ds-r-xl); background: var(--ds-color-surface-2); color: var(--ds-color-action); }
+.ds-abas-grade__ico .material-symbols-outlined { font-size: var(--ds-icon-xl); }
+.ds-abas-grade__nome { max-width: 100%; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-bold); text-align: center; overflow-wrap: anywhere; }
+.ds-abas-grade__quadro .ds-badge { position: absolute; top: var(--ds-space-2); right: var(--ds-space-2); }
+.ds-abas-grade__rodape { flex: none; display: flex; justify-content: center; padding: var(--ds-space-2) var(--ds-space-4) max(var(--ds-space-3), env(safe-area-inset-bottom)); }
+.ds-abas-grade__adicionar { display: inline-flex; align-items: center; gap: var(--ds-space-1); padding: var(--ds-space-2) var(--ds-space-4); border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-pill); background: var(--ds-color-surface); color: var(--ds-color-action); font-family: inherit; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; }
+.ds-abas-grade__adicionar .material-symbols-outlined { font-size: var(--ds-icon-md); }
 
 /* Voltar: botão discreto (.ds-icon-action) à esquerda do título; injetado por uiVoltarGarantir (app_ui_utils.html) em todo .ds-pagina__hero. Some quando não há para onde voltar. */
 .ds-pagina__voltar { flex: none; margin-left: calc(-1 * var(--ds-space-2)); background: none; border-color: transparent; box-shadow: none; }
@@ -1270,7 +1250,7 @@ body.high-contrast .ds-tabs-nav__item.active { border-bottom-color: var(--ds-col
 .ds-tabs-nav__item.active .ds-tab-count--notificacao { background: var(--ds-color-notificacao); color: var(--ds-color-on-notificacao); }
 
 @media (max-width: 768px) {
-  /* Abas no mobile: saem da página; o botão em pilha (.ds-fab-stack) acima do flutuante abre o seletor 3D (.ds-flip3d) */
+  /* Abas no mobile: saem da página; o botão em pilha (.ds-fab-stack) acima do flutuante abre a grade de abas (.ds-abas-grade) */
   .ds-tabs-nav { display: none; }
 }
 }
@@ -2708,6 +2688,10 @@ if (!window._uiDelegacaoAtiva) {
       <button type="button" class="tb-icon-btn hidden" id="tb-status" data-on-click="ui.chamar" data-chamada-click="uiTopoStatusAbrir()" aria-haspopup="dialog"><span class="ds-badge ds-topbar-status__ponto"></span></button>
       <button type="button" class="tb-icon-btn hidden" id="tb-buscar" data-on-click="ui.chamar" data-chamada-click="uiTopoBuscar()" data-title="Buscar" aria-label="Buscar" aria-expanded="false">
         <span class="material-symbols-outlined" aria-hidden="true">search</span>
+      </button>
+      <!-- só no mobile e só em página que registrou o menu (uiTopoMenuRegistrar): as opções da página inteira (no plano: trâmite, detalhes, atividade, configurações…) -->
+      <button type="button" class="tb-icon-btn hidden" id="tb-menu" data-on-click="ui.chamar" data-chamada-click="uiTopoMenuAbrir()" data-title="Opções" aria-label="Opções" aria-haspopup="dialog">
+        <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
       </button>
       <button type="button" class="tb-icon-btn tb-hide-mobile" id="ntf-sino-btn" data-title="Notificações" aria-label="Notificações" aria-haspopup="dialog" data-on-click="components_header.32">
         <span class="material-symbols-outlined">notifications</span>
@@ -10763,6 +10747,7 @@ function uiToqueLongoRecente(cont) { return !!cont && Date.now() - (cont._uiToqu
 //   op.familia (tr) => linhas que se movem junto com a linha (padrão uiLinhaFamilia: a linha e os descendentes por data-level)
 //   op.aninhar o meio da linha vira "soltar dentro" (a arrastada vira filha); desligado = só antes/depois
 //   op.rotulo  (tr) => texto do fantasma que acompanha o dedo; op.rolagem seletor do que rola sozinho perto das bordas (padrão '#main-content')
+//   op.aoCancelar() chamado pelo Esc (fora de um arraste em curso): a tela desfaz a reorganização
 //   op.aoSoltar({ origem, familia, alvo, pos, corpo }) depois que as linhas já foram movidas no DOM; pos = 'before' | 'after' | 'inside'
 function uiLinhaFamilia(tr) {
   var linhas = [tr], nivel = parseInt(tr.dataset.level || '0', 10), prox = tr.nextElementSibling;
@@ -10771,12 +10756,22 @@ function uiLinhaFamilia(tr) {
 }
 function uiEhCelular() { return window.matchMedia('(max-width: 768px)').matches; }   // largura de celular (≤768px), a mesma do CSS
 function _uiReordRotulo(tr) { var n = tr.querySelector('.ds-tabela__nome'); return n ? (n.dataset.title || n.textContent).trim() : ''; }
+var _uiReordCorpo = null;
+function _uiReordTecla(e) {
+  var corpo = _uiReordCorpo, c = corpo && corpo._uiReord;
+  if (e.key !== 'Escape' || e.defaultPrevented || !c || c.origem || !c.aoCancelar) return;
+  if (document.querySelector('.ds-sheet.is-aberto, .ds-abas-grade.is-aberto, .modal-overlay:not(.hidden)')) return;   // Esc de quem está por cima
+  e.preventDefault();
+  c.aoCancelar();
+}
 function uiReordenarAtivar(corpo, op) {
   if (!corpo) return;
   var novo = !corpo._uiReord;
-  corpo._uiReord = { linhas: op.linhas || 'tr', familia: op.familia || uiLinhaFamilia, aninhar: !!op.aninhar, rotulo: op.rotulo || _uiReordRotulo,
+  corpo._uiReord = { aoCancelar: op.aoCancelar, linhas: op.linhas || 'tr', familia: op.familia || uiLinhaFamilia, aninhar: !!op.aninhar, rotulo: op.rotulo || _uiReordRotulo,
     rolagem: op.rolagem || '#main-content', aoSoltar: op.aoSoltar, origem: null, grupo: [], alvo: null, pos: null, toque: null };
   if (novo) {
+    _uiReordCorpo = corpo;
+    document.addEventListener('keydown', _uiReordTecla);
     corpo.addEventListener('dragstart', _uiReordDragInicio);
     corpo.addEventListener('dragover', _uiReordDragSobre);
     corpo.addEventListener('dragleave', _uiReordDragSai);
@@ -10799,9 +10794,10 @@ function uiReordenarDesativar(corpo) {
   Array.prototype.forEach.call(corpo.querySelectorAll(c.linhas), function (tr) { tr.removeAttribute('draggable'); });
   _uiReordLimpar(corpo);
   delete corpo._uiReord;
+  if (_uiReordCorpo === corpo) { _uiReordCorpo = null; document.removeEventListener('keydown', _uiReordTecla); }
 }
 function _uiReordLimpar(corpo) {
-  Array.prototype.forEach.call(corpo.querySelectorAll('.is-solta-antes, .is-solta-depois, .is-solta-dentro'), function (tr) { tr.classList.remove('is-solta-antes', 'is-solta-depois', 'is-solta-dentro'); });
+  Array.prototype.forEach.call(corpo.querySelectorAll('.is-solta-antes, .is-solta-depois, .is-solta-dentro, .is-afasta-cima, .is-afasta-baixo'), function (tr) { tr.classList.remove('is-solta-antes', 'is-solta-depois', 'is-solta-dentro', 'is-afasta-cima', 'is-afasta-baixo'); });
 }
 function _uiReordFim(corpo) {
   var c = corpo._uiReord;
@@ -10824,7 +10820,36 @@ function _uiReordMarcar(corpo, tr, y) {
   if (c.alvo === tr && c.pos === pos) return;
   _uiReordLimpar(corpo);
   c.alvo = tr; c.pos = pos;
-  tr.classList.add(pos === 'before' ? 'is-solta-antes' : pos === 'after' ? 'is-solta-depois' : 'is-solta-dentro');
+  if (pos === 'inside') { tr.classList.add('is-solta-dentro'); return; }
+  // entre itens: a linha azul fica na borda do ponto de soltura e os dois vizinhos se afastam um pouco para abrir espaço
+  var cima, baixo;
+  if (pos === 'before') { cima = _uiReordVizinho(c, tr, -1); baixo = tr; }
+  else {
+    cima = c.familia(tr).filter(_uiLinhaVisivel).pop() || tr;   // depois do item é depois da família dele
+    baixo = _uiReordVizinho(c, cima, 1);
+  }
+  // soltar onde o item já está não muda nada: sem indicador (e a soltura nesse ponto é ignorada)
+  if (cima === c.grupo.filter(_uiLinhaVisivel).pop() || baixo === c.origem) { c.alvo = null; c.pos = null; return; }
+  (pos === 'before' ? tr : cima).classList.add(pos === 'before' ? 'is-solta-antes' : 'is-solta-depois');
+  cima && cima.classList.add('is-afasta-cima');
+  baixo && baixo.classList.add('is-afasta-baixo');
+}
+function _uiLinhaVisivel(tr) { return !(tr.classList.contains('ds-linha-filha') && !tr.classList.contains('is-aberta')); }
+function _uiReordVizinho(c, tr, dir) {
+  var v = dir < 0 ? tr.previousElementSibling : tr.nextElementSibling;
+  while (v && !(v.matches(c.linhas) && _uiLinhaVisivel(v))) v = dir < 0 ? v.previousElementSibling : v.nextElementSibling;
+  return v;
+}
+
+// Cascata ao expandir: as linhas que acabaram de aparecer entram uma depois da outra (sobem de leve, como cartas abrindo em leque). Chame com as linhas novas, na ordem.
+function uiCascata(linhas) {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  Array.prototype.forEach.call(linhas || [], function (tr, i) {
+    tr.style.setProperty('--ds-cascata-i', String(Math.min(i, 12)));
+    tr.classList.remove('is-cascata'); void tr.offsetWidth; tr.classList.add('is-cascata');
+    var fim = function () { tr.classList.remove('is-cascata'); tr.style.removeProperty('--ds-cascata-i'); tr.removeEventListener('animationend', fim); };
+    tr.addEventListener('animationend', fim);
+  });
 }
 // Move as linhas no DOM e avisa quem chamou
 function _uiReordSoltar(corpo) {
@@ -11178,6 +11203,12 @@ function _uiTopoRotulo(el) {
   Array.prototype.forEach.call(c.querySelectorAll('.material-symbols-outlined, .ds-tab-count'), function (x) { x.remove(); });
   return (c.textContent || '').replace(/\s+/g, ' ').trim();
 }
+// Menu da página no topo (⋮, só celular, ao lado da lupa): a página registra uma função que abre as opções dela (o botão flutuante fica só com as ações da aba/tela).
+var _uiTopoMenus = {};
+function uiTopoMenuRegistrar(paginaId, abrir) { _uiTopoMenus[paginaId] = abrir; }
+// Título da página na barra do topo: é o título das gavetas abertas pelo ⋮ (uiTopoMenuAbrir)
+function uiTopoTitulo() { var t = document.querySelector('#topbar-crumbs .bc-current'); return t ? t.textContent.trim() : ''; }
+function uiTopoMenuAbrir() { var p = _uiTopoPagina(), f = p && _uiTopoMenus[p.id.replace(/^page-/, '')]; if (f) f(); }
 function uiTopoAtualizar() {
   var mob = window.matchMedia('(max-width: 768px)').matches, p = _uiTopoPagina(), id = p ? p.id.replace(/^page-/, '') : '';
   var busca = _uiTopoBusca(), b = document.getElementById('tb-buscar'), sino = document.getElementById('ntf-sino-btn');
@@ -11188,6 +11219,8 @@ function uiTopoAtualizar() {
     b.setAttribute('aria-label', aplicada ? 'Buscar (há busca aplicada)' : 'Buscar');
     b.setAttribute('aria-expanded', String(document.getElementById('topbar').hasAttribute('data-buscando')));
   }
+  var mn = document.getElementById('tb-menu');
+  if (mn) mn.classList.toggle('hidden', !(mob && p && _uiTopoMenus[id]));
   var st = document.getElementById('tb-status');
   if (st) {   // círculo da cor do status do plano (só no celular, onde a página o declarou)
     var stat = p && p.dataset.status;
@@ -11239,16 +11272,11 @@ function uiTopoBuscaFechar(devolverFoco) {
   uiTopoAtualizar();
   if (devolverFoco) { var lupa = document.getElementById('tb-buscar'); if (lupa) lupa.focus(); }   // fechou pelo teclado: o foco volta à lupa
 }
-// Abas no celular: o botão em pilha (.ds-fab-stack) acima do flutuante abre o seletor 3D (.ds-flip3d): cartas em perspectiva, uma por aba, que se folheiam
-// (deslizar, roda, setas, pontos) e, ao tocar, ativam a aba (clique no botão da aba da página, escondida no celular). Sem botão flutuante na página
-// (quem não pode criar nada) o stack cria o seu .ds-fab. A prévia de cada carta vem de uiFlip3DPrevia(idPagina, function (chaveDaAba) → { criterio, itens[{titulo, meta, tom}], metricas[{valor, label, pct}] });
-// sem provedor a carta mostra só o critério (data-criterio da aba) e a contagem.
-var _uiFlip = null;
-var _uiFlipPrevias = {};
-function uiFlip3DPrevia(idPagina, fn) { if (idPagina && typeof fn === 'function') _uiFlipPrevias[idPagina] = fn; }
-function _uiFlipIconeAba(el) { var i = el.querySelector('.material-symbols-outlined'); return i ? i.textContent.trim() : 'tab'; }
-function _uiFlipContagem(el) { var n = el.querySelector('.ds-tab-count'); return n ? n.textContent.trim() : ''; }
-function _uiFlipAdicionar(p) {
+// Abas no celular: o botão em pilha (.ds-fab-stack) acima do flutuante abre a grade de abas (.ds-abas-grade, mais abaixo). Sem botão flutuante na página (quem não pode criar nada)
+// o stack cria o seu .ds-fab (data-fab-abas).
+function _uiAbasIcone(el) { var i = el.querySelector('.material-symbols-outlined'); return i ? i.textContent.trim() : 'tab'; }
+function _uiAbasContagem(el) { var n = el.querySelector('.ds-tab-count'); return n ? n.textContent.trim() : ''; }
+function _uiAbasAdicionar(p) {
   var add = p && p.querySelector('.ds-tabs-nav__item--config[aria-label^="Adicionar"]');
   return add && !add.classList.contains('hidden') ? add : null;
 }
@@ -11271,198 +11299,58 @@ function uiCardStackAtualizar() {
   if (!stack) {
     stack = document.createElement('div');
     stack.className = 'ds-fab-stack';
-    stack.innerHTML = '<button type="button" class="ds-fab-stack__btn" aria-haspopup="dialog"' + uiAtributosAcao('uiFlip3DAbrir()', 'click') + '>'
-      + '<span class="material-symbols-outlined" aria-hidden="true">layers</span>'
+    stack.innerHTML = '<button type="button" class="ds-fab-stack__btn" aria-haspopup="dialog"' + uiAtributosAcao('uiAbasGradeAbrir()', 'click') + '>'
+      + '<span class="material-symbols-outlined" aria-hidden="true">grid_view</span>'
       + '<span class="ds-fab-stack__selo"><span class="material-symbols-outlined" aria-hidden="true"></span></span></button>';
     fab.insertBefore(stack, fab.querySelector('.ds-fab__principal'));
-    _uiFlipToqueLongo(stack.querySelector('.ds-fab-stack__btn'));
   }
-  stack.querySelector('.ds-fab-stack__selo .material-symbols-outlined').textContent = _uiFlipIconeAba(ativa);
+  stack.querySelector('.ds-fab-stack__selo .material-symbols-outlined').textContent = _uiAbasIcone(ativa);
   var btn = stack.querySelector('.ds-fab-stack__btn'), nome = _uiTopoRotulo(ativa);
   btn.setAttribute('aria-label', 'Abas — atual: ' + nome);
   btn.setAttribute('data-title', 'Abas — atual: ' + nome);
 }
-function _uiFlipPreviaHTML(p, aba) {
-  var chave = aba.dataset.aba || aba.id || _uiTopoRotulo(aba), qtd = _uiFlipContagem(aba);
-  var dados = null, prov = _uiFlipPrevias[p.id];
-  if (prov) { try { dados = prov(chave, aba); } catch (e) { dados = null; } }
-  var crit = (dados && dados.criterio) || aba.dataset.criterio || '';
-  var corpo = crit ? '<p class="ds-flip3d__criterio">' + escapeHtml(crit) + '</p>' : '';
-  var temMetricas = !!(dados && dados.metricas && dados.metricas.length), temItens = !!(dados && dados.itens && dados.itens.length);
-  if (temMetricas) {
-    corpo += '<div class="ds-flip3d__kpis">' + dados.metricas.slice(0, 4).map(function (m) {
-      var pct = typeof m.pct === 'number' ? Math.max(0, Math.min(100, m.pct)) : null;
-      return '<div class="ds-flip3d__kpi"><span class="ds-flip3d__kpi-valor">' + escapeHtml(m.valor) + '</span><span class="ds-flip3d__kpi-rotulo">' + escapeHtml(m.label) + '</span>'
-        + (pct === null ? '' : '<span class="ds-kpi-track"><span class="ds-kpi-fill" style="width:' + pct + '%"></span></span>') + '</div>';
-    }).join('') + '</div>';
-  }
-  if (temItens) {
-    corpo += dados.itens.slice(0, 3).map(function (it) {
-      return '<div class="ds-flip3d__item"><span class="ds-flip3d__ponto' + (it.tom ? ' ds-flip3d__ponto--' + escapeHtml(it.tom) : '') + '"></span><span class="ds-flip3d__item-txt"><span class="ds-flip3d__item-titulo">'
-        + escapeHtml(it.titulo) + '</span>' + (it.meta ? '<span class="ds-flip3d__item-meta">' + escapeHtml(it.meta) + '</span>' : '') + '</span></div>';
-    }).join('');
-  }
-  if (!temMetricas && !temItens) {
-    corpo += '<div class="ds-flip3d__vazio"><span class="material-symbols-outlined" aria-hidden="true">' + (qtd === '0' ? 'inbox' : escapeHtml(_uiFlipIconeAba(aba))) + '</span>'
-      + '<span>' + (qtd === '0' ? 'Nenhum item nesta aba' : (qtd ? escapeHtml(qtd) + ' itens' : '')) + '</span></div>';
-  }
-  return corpo;
-}
-// A posição de cada carta é só CSS: --d = distância até a carta em foco (negativa = já folheada); is-antes / is-depois / is-longe escolhem a pose.
-function _uiFlipPosicionar() {
-  var f = _uiFlip;
-  if (!f) return;
-  f.cartas.forEach(function (c, i) {
-    var d = i - f.idx;
-    c.style.setProperty('--d', String(Math.abs(d)));
-    c.classList.toggle('is-foco', d === 0);
-    c.classList.toggle('is-antes', d < 0);
-    c.classList.toggle('is-depois', d > 0 && d <= 6);
-    c.classList.toggle('is-longe', d > 6);
-    c.classList.toggle('is-alcance', d >= 0 && d <= 3);
-  });
-  Array.prototype.forEach.call(f.el.querySelectorAll('.ds-flip3d__ponto-nav'), function (b, i) { b.classList.toggle('is-ativo', i === f.idx); });
-  f.el.querySelector('.ds-flip3d__atual').textContent = (f.idx + 1) + ' de ' + f.cartas.length + ' · ' + _uiTopoRotulo(f.abas[f.idx]);
-}
-function _uiFlipMover(delta) {
-  var f = _uiFlip, novo = f ? Math.max(0, Math.min(f.cartas.length - 1, f.idx + delta)) : 0;
-  if (!f || novo === f.idx) return;
-  f.idx = novo;
-  _uiFlipPosicionar();
-}
-// Toque na carta: vale o retângulo da carta em foco (a área toda, esquerda ou direita); toque numa carta de trás a traz para a frente
-function _uiFlipToque(x, y) {
-  var f = _uiFlip;
-  if (!f) return;
-  function dentro(c) { var r = c.getBoundingClientRect(); return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom; }
-  if (dentro(f.cartas[f.idx])) { _uiFlipEscolher(f.idx); return; }
-  for (var i = f.idx + 1; i < f.cartas.length && i <= f.idx + 3; i++) {
-    if (dentro(f.cartas[i])) { f.idx = i; _uiFlipPosicionar(); return; }
-  }
-}
-function _uiFlipEscolher(i) {
-  var f = _uiFlip, aba = f && f.abas[i];
-  if (!aba) return;
-  if (aba.classList.contains('active')) { uiFlip3DFechar(); return; }   // a carta "Atual" só fecha o seletor, sem recarregar a aba
-  f.idx = i;
-  _uiFlipPosicionar();
-  f.el.classList.add('is-escolhendo');   // as outras cartas somem e a escolhida avança
-  setTimeout(function () { uiFlip3DFechar(); aba.click(); }, 240);
-}
-// Toque longo no botão em pilha: a lista simples de abas (atalho de quem já sabe para onde ir); o toque curto abre o seletor 3D.
-var _uiFlipLongoEm = 0;
-function _uiFlipToqueLongo(btn) {
-  var timer = null, x0 = 0, y0 = 0;
-  function cancelar() { clearTimeout(timer); timer = null; }
-  btn.addEventListener('touchstart', function (e) {
-    if (e.touches.length !== 1) return;
-    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
-    timer = setTimeout(function () {
-      timer = null;
-      _uiFlipLongoEm = Date.now();
-      if (navigator.vibrate) navigator.vibrate(15);
-      uiAbasLista(btn);
-    }, 450);
-  }, { passive: true });
-  btn.addEventListener('touchmove', function (e) { if (timer && (Math.abs(e.touches[0].clientX - x0) > 10 || Math.abs(e.touches[0].clientY - y0) > 10)) cancelar(); }, { passive: true });
-  btn.addEventListener('touchend', cancelar, { passive: true });
-  btn.addEventListener('touchcancel', cancelar, { passive: true });
-  btn.addEventListener('contextmenu', function (e) { if (window.matchMedia('(pointer: coarse)').matches) e.preventDefault(); });
-}
-function uiAbasLista(gatilho) {
-  abrirMenuSelecao(gatilho, [{ itens: _uiTopoAbasLista().map(function (b, i) {
-    var n = _uiFlipContagem(b);
-    return { label: _uiTopoRotulo(b) + (n ? ' (' + n + ')' : ''), ativo: b.classList.contains('active'), onclick: 'uiAbasIr(' + i + ')' };
-  }) }], { titulo: 'Abas' });
-}
-function uiAbasIr(i) {
-  var b = _uiTopoAbasLista()[i];
-  if (b && !b.classList.contains('active')) b.click();
-}
-function uiFlip3DAbrir() {
-  if (Date.now() - _uiFlipLongoEm < 700) return;   // o toque que terminou um toque longo já abriu a lista
+// Seletor de abas do celular (.ds-abas-grade): o botão em pilha abre a grade de quadrados, um por aba (como as abas do Chrome no celular); tocar num quadrado ativa a aba
+// (no da aba atual só fecha). Dois toques da tela até a aba. Esc e o X fecham; "Adicionar aba" aparece quando a página permite.
+var _uiAbasGrade = null;
+function uiAbasGradeAbrir() {
   var p = _uiTopoPagina(), abas = _uiTopoAbasLista();
   if (!p || abas.length < 2) return;
-  uiFlip3DFechar();
-  var ativa = abas.findIndex(function (b) { return b.classList.contains('active'); });
-  var el = document.createElement('div');
-  el.className = 'ds-flip3d';
+  uiAbasGradeFechar();
+  var el = document.createElement('div'), add = _uiAbasAdicionar(p);
+  el.className = 'ds-abas-grade';
   el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'Abas da página');
-  var atual = document.querySelector('#topbar-crumbs .bc-current'), add = _uiFlipAdicionar(p);
-  el.innerHTML = '<div class="ds-flip3d__cab"><h2 class="ds-flip3d__titulo">' + escapeHtml(atual ? atual.textContent.trim() : '') + '</h2>'   // o mesmo título da barra do topo
-    + '<button type="button" class="ds-icon-action" aria-label="Fechar"' + uiAtributosAcao('uiFlip3DFechar()', 'click') + '><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div>'
-    + '<div class="ds-flip3d__palco"><div class="ds-flip3d__pilha"></div></div>'
-    + '<div class="ds-flip3d__rodape"><div class="ds-flip3d__pontos">' + abas.map(function (b, i) {
-      return '<button type="button" class="ds-flip3d__ponto-nav" aria-label="' + escapeHtml(_uiTopoRotulo(b)) + '" data-i="' + i + '"></button>';
-    }).join('') + '</div><div class="ds-flip3d__atual"></div>'
-    + (add ? '<button type="button" class="ds-flip3d__adicionar"' + uiAtributosAcao('uiFlip3DAdicionarAba()', 'click') + '><span class="material-symbols-outlined" aria-hidden="true">add</span>Adicionar aba</button>' : '')
-    + '</div>';
-  var pilha = el.querySelector('.ds-flip3d__pilha');
-  var cartas = abas.map(function (b, i) {
-    var atual = b.classList.contains('active'), qtd = _uiFlipContagem(b), c = document.createElement('div');
-    c.className = 'ds-flip3d__carta' + (atual ? ' is-aba-ativa' : '');
-    c.innerHTML = '<div class="ds-flip3d__carta-cab"><span class="ds-flip3d__carta-ico"><span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(_uiFlipIconeAba(b)) + '</span></span>'
-      + '<span class="ds-flip3d__carta-nome">' + escapeHtml(_uiTopoRotulo(b)) + '</span>' + (atual ? '<span class="ds-badge ds-badge--info">Atual</span>' : '')
-      + (qtd ? '<span class="ds-badge ds-badge--neutral">' + escapeHtml(qtd) + '</span>' : '') + '</div>'
-      + '<div class="ds-flip3d__carta-corpo">' + _uiFlipPreviaHTML(p, b) + '</div>';
-    pilha.appendChild(c);
-    return c;
-  });
-  _uiFlip = { el: el, cartas: cartas, abas: abas, idx: ativa >= 0 ? ativa : 0, y0: null, x0: null, trava: false, roda: null };
-  el.addEventListener('click', function (e) { var d = e.target.closest('.ds-flip3d__ponto-nav'); if (d) { _uiFlip.idx = Number(d.dataset.i); _uiFlipPosicionar(); } });
-  el.addEventListener('wheel', function (e) {
-    e.preventDefault();
-    var f = _uiFlip;
-    if (!f || f.roda || Math.abs(e.deltaY || e.deltaX) < 2) return;
-    _uiFlipMover((e.deltaY || e.deltaX) > 0 ? 1 : -1);
-    f.roda = setTimeout(function () { if (_uiFlip) _uiFlip.roda = null; }, 120);
-  }, { passive: false });
-  el.addEventListener('pointerdown', function (e) { if (!e.target.closest('button')) { _uiFlip.y0 = e.clientY; _uiFlip.x0 = e.clientX; _uiFlip.toqueX = e.clientX; _uiFlip.toqueY = e.clientY; _uiFlip.moveu = false; } });
-  el.addEventListener('pointermove', function (e) {
-    var f = _uiFlip;
-    if (!f || f.y0 === null || f.trava) return;
-    var dy = e.clientY - f.y0, dx = e.clientX - f.x0;
-    if (Math.sqrt(dx * dx + dy * dy) < 28) return;
-    f.trava = true; f.moveu = true;
-    // a carta em foco sai para baixo e à direita: o dedo que vai para baixo/direita leva a carta embora (próxima); para cima/esquerda a traz de volta (anterior)
-    _uiFlipMover((Math.abs(dy) >= Math.abs(dx) ? dy > 0 : dx > 0) ? 1 : -1);
-    f.y0 = e.clientY; f.x0 = e.clientX;
-    setTimeout(function () { if (_uiFlip) _uiFlip.trava = false; }, 140);
-  });
-  el.addEventListener('pointerup', function (e) {
-    var f = _uiFlip;
-    if (!f) return;
-    var toque = f.y0 !== null && !f.moveu && Math.abs(e.clientX - f.toqueX) < 10 && Math.abs(e.clientY - f.toqueY) < 10;
-    f.y0 = null; f.x0 = null;
-    if (toque) _uiFlipToque(e.clientX, e.clientY);
-  });
-  el.addEventListener('pointercancel', function () { if (_uiFlip) { _uiFlip.y0 = null; _uiFlip.x0 = null; } });
-  document.addEventListener('keydown', _uiFlipTecla, true);
+  el.innerHTML = '<div class="ds-abas-grade__cab"><h2 class="ds-abas-grade__titulo">Abas</h2>'
+    + '<button type="button" class="ds-abas-grade__fechar" aria-label="Fechar"' + uiAtributosAcao('uiAbasGradeFechar()', 'click') + '><span class="material-symbols-outlined" aria-hidden="true">close</span></button></div>'
+    + '<div class="ds-abas-grade__grade">' + abas.map(function (b, i) {
+      var ativa = b.classList.contains('active'), qtd = _uiAbasContagem(b);
+      return '<button type="button" class="ds-abas-grade__quadro' + (ativa ? ' is-ativa' : '') + '"' + (ativa ? ' aria-current="true"' : '') + uiAtributosAcao('uiAbasGradeIr(' + i + ')', 'click') + '>'
+        + '<span class="ds-abas-grade__ico"><span class="material-symbols-outlined" aria-hidden="true">' + escapeHtml(_uiAbasIcone(b)) + '</span></span>'
+        + '<span class="ds-abas-grade__nome">' + escapeHtml(_uiTopoRotulo(b)) + '</span>'
+        + (qtd ? '<span class="ds-badge ds-badge--neutral">' + escapeHtml(qtd) + '</span>' : '') + '</button>';
+    }).join('') + '</div>'
+    + (add ? '<div class="ds-abas-grade__rodape"><button type="button" class="ds-abas-grade__adicionar"' + uiAtributosAcao('uiAbasGradeAdicionar()', 'click') + '><span class="material-symbols-outlined" aria-hidden="true">add</span>Adicionar aba</button></div>' : '');
+  _uiAbasGrade = el;
+  document.addEventListener('keydown', _uiAbasGradeTecla, true);
   document.body.appendChild(el);
   bloquearFundo();
-  _uiFlipPosicionar();
   requestAnimationFrame(function () { el.classList.add('is-aberto'); });
 }
-function _uiFlipTecla(e) {
-  var k = e.key;
-  if (k === 'Escape') uiFlip3DFechar();
-  else if (k === 'ArrowDown' || k === 'ArrowRight') _uiFlipMover(1);
-  else if (k === 'ArrowUp' || k === 'ArrowLeft') _uiFlipMover(-1);
-  else if (k === 'Enter' && _uiFlip) _uiFlipEscolher(_uiFlip.idx);
-  else return;
-  e.preventDefault(); e.stopPropagation();   // enquanto o seletor está aberto, as teclas são dele
+function _uiAbasGradeTecla(e) { if (e.key !== 'Escape') return; uiAbasGradeFechar(); e.preventDefault(); e.stopPropagation(); }
+function uiAbasGradeIr(i) {
+  var b = _uiTopoAbasLista()[i];
+  uiAbasGradeFechar();
+  if (b && !b.classList.contains('active')) b.click();
 }
-function uiFlip3DAdicionarAba() {
-  var add = _uiFlipAdicionar(_uiTopoPagina());
-  uiFlip3DFechar();
+function uiAbasGradeAdicionar() {
+  var add = _uiAbasAdicionar(_uiTopoPagina());
+  uiAbasGradeFechar();
   if (add) add.click();
 }
-function uiFlip3DFechar() {
-  if (!_uiFlip) return;
-  var el = _uiFlip.el;
-  document.removeEventListener('keydown', _uiFlipTecla, true);
-  clearTimeout(_uiFlip.roda);
-  _uiFlip = null;
+function uiAbasGradeFechar() {
+  if (!_uiAbasGrade) return;
+  var el = _uiAbasGrade;
+  document.removeEventListener('keydown', _uiAbasGradeTecla, true);
+  _uiAbasGrade = null;
   desbloquearFundo();
   el.classList.remove('is-aberto');
   setTimeout(function () { el.remove(); }, 300);
@@ -13485,12 +13373,6 @@ function _contarPorAba() {
 
 // ---- Abas ----------------------------------------------------------------
 
-// Prévia das cartas do seletor de abas (celular): os três primeiros planos da aba, já em memória
-uiFlip3DPrevia('page-planos', function(chave) {
-  var itens = estadoPlanos.dadosBrutos.filter(function(p) { var k = _classificarPlano(p); return chave === 'todos' ? k !== 'lixeira' : k === chave; });
-  return { itens: itens.slice(0, 3).map(function(p) { return { titulo: p.nome, meta: p.status }; }) };
-});
-
 function _renderizarAbas() {
   var contagem = _contarPorAba();
   var bar = document.getElementById('planos-tabs');
@@ -13498,7 +13380,7 @@ function _renderizarAbas() {
   estadoPlanos.abas.forEach(function(aba) {
     var ativa = aba.key === estadoPlanos.abaAtiva;
     bar.insertAdjacentHTML('beforeend',
-      '<button type="button" role="tab" aria-selected="' + ativa + '" class="ds-tabs-nav__item' + (ativa ? ' active' : '') + '" data-aba="' + aba.key + '" data-rotulo-mobile="' + escapeHtml(aba.rotuloMobile || aba.label) + '" data-on-click="pages_planos_lista.26" data-aclick0="' + aba.key + '">' +
+      '<button type="button" role="tab" aria-selected="' + ativa + '" class="ds-tabs-nav__item' + (ativa ? ' active' : '') + '" data-rotulo-mobile="' + escapeHtml(aba.rotuloMobile || aba.label) + '" data-on-click="pages_planos_lista.26" data-aclick0="' + aba.key + '">' +
         '<span class="material-symbols-outlined">' + aba.icon + '</span>' +
         '<span>' + escapeHtml(aba.label) + '</span>' +
         '<span class="ds-tab-count" id="tab-count-' + aba.key + '">' + (contagem[aba.key] || 0) + '</span>' +
@@ -15442,6 +15324,7 @@ uiRegistrarAcoes('pages_calendario', {
                 <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_modelo.15" data-title="Ordenar" aria-label="Ordenar" aria-haspopup="menu"><span class="material-symbols-outlined">sort</span></button>
                 <button type="button" class="ds-icon-action ds-icon-action--sm" data-on-click="pages_modelo.2" data-title="Atualizar" aria-label="Atualizar lista"><span class="material-symbols-outlined">refresh</span></button>
                 <button type="button" class="ds-icon-action ds-icon-action--sm" id="mdl-btn-reorg" data-on-click="pages_modelo.29" data-title="Reorganizar" aria-label="Reorganizar"><span class="material-symbols-outlined">low_priority</span></button>
+                <button type="button" class="ds-icon-action ds-icon-action--sm" id="mdl-btn-expandir" data-on-click="pages_modelo.33" data-title="Expandir tudo" aria-label="Expandir tudo"><span class="material-symbols-outlined">unfold_more</span></button>
                 <button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Baixar"><span class="material-symbols-outlined">download</span></button>
                 <button type="button" class="ds-icon-action ds-icon-action--sm" aria-disabled="true" data-title="Em breve" aria-label="Imprimir"><span class="material-symbols-outlined">print</span></button>
               </span>
@@ -15489,13 +15372,29 @@ function _mdlDados() {
   return lista;
 }
 
-// Lista em árvore (OPCIONAL): os itens vêm na ordem da árvore, cada um com nível (0 = raiz); filho = item logo abaixo com nível maior. Ex.: 1 > (2 > (3, 4), 5), 6 > 7 > 8
+// Os TRÊS tipos de item (o modelo mostra todos juntos; numa página real escolhe-se UM dos dois componentes de expansão, nunca os dois):
+//   plano (sem seta, nada a expandir)  ·  com filhos (seta; expande os filhos — hierarquia)  ·  com área (seta; expande a área de detalhe: gráfico, informação).
+// Itens planos convivem com itens com filhos (como em Elementos). Hierarquia e área de detalhe NÃO convivem numa página real; só o modelo mistura, para mostrar tudo.
+// Os itens vêm na ordem da árvore, cada um com nível (0 = raiz); filho = item logo abaixo com nível maior; `area: true` marca o item sem filhos que expande a área. Ex.: 1 > (2 > (3, 4), 5), 6 > 7 > 8
 function _mdlArvoreDados() {
-  var niveis = [0, 1, 2, 2, 1, 0, 1, 2];
-  return _mdlDados().slice(0, niveis.length).map(function(i, k) { i.nivel = niveis[k]; i.pai = ''; return i; });
+  var niveis = [0, 1, 2, 2, 1, 0, 1, 2, 0, 0], area = { 2: true, 4: true, 9: true };   // 3 e 8 e 7: planos; 2, 4 e 9: com área
+  return _mdlDados().slice(0, niveis.length).map(function(i, k) { i.nivel = niveis[k]; i.pai = ''; i.area = !!area[k]; return i; });
+}
+
+// Opções da página no ⋮ do topo (celular, depois da lupa): numa página real, as do plano/tela inteira; o botão flutuante fica só com as da aba/lista
+function mdlMenuPagina() {
+  var itens = [
+    { icone: 'send', rotulo: 'Ação principal da página', onclick: "showMessage('info', 'Modelo', 'Ação principal da página')" },
+    { icone: 'right_panel_open', rotulo: 'Detalhes', onclick: "showMessage('info', 'Modelo', 'Abriria o painel lateral de detalhes')" },
+    { icone: 'settings', rotulo: 'Configurações', onclick: "showMessage('info', 'Modelo', 'Configurações da página')" },
+    { icone: 'delete', rotulo: 'Excluir', onclick: "showMessage('info', 'Modelo', 'Excluir')", perigo: true }
+  ].map(_acoesLinhaNormalizar);
+  uiSheetAbrir({ titulo: uiTopoTitulo(), corpo: '<div role="menu">' + _acoesLinhaItensHTML(itens, 'uiSheetFechar(); ') + '</div>' });
 }
 
 function initModelo() {
+  uiTopoStatus('page-modelo', 'Em Execução');   // círculo da situação na barra do topo (celular): páginas de um item com situação o declaram
+  uiTopoMenuRegistrar('modelo', mdlMenuPagina);   // ⋮ do topo
   uiAcoesPaginaMontar(document.getElementById('page-modelo'), 'pagina-modelo', [
     { icone: 'add', rotulo: 'Novo item', onclick: "showMessage('info', 'Modelo', 'Ação principal')", principal: true },
     { icone: 'content_copy', rotulo: 'Duplicar', onclick: "showMessage('info', 'Modelo', 'Ação da seta')" },
@@ -15503,7 +15402,7 @@ function initModelo() {
     { icone: 'check', rotulo: 'Simular: só 1 item', onclick: "mdlCenario(1)" },
     { icone: 'done_all', rotulo: 'Simular: só 2 itens', onclick: "mdlCenario(2)" },
     { icone: 'list', rotulo: 'Simular: lista com itens', onclick: "mdlCenario(null)" },
-    { icone: 'account_tree', rotulo: 'Simular: lista em árvore', onclick: "mdlCenario('arvore')" },
+    { icone: 'account_tree', rotulo: 'Simular: lista com hierarquia', onclick: "mdlCenario('arvore')" },
     { icone: 'download', rotulo: 'Importar', desabilitado: true }
   ], [
     // No celular o botão secundário não existe como botão: a ação dele e as opções do menu dele vêm para o botão flutuante
@@ -15520,7 +15419,7 @@ function initModelo() {
     texto: document.getElementById('mdl-selecao-texto'), todos: document.getElementById('mdl-chk-todos'), rotuloTodos: document.getElementById('mdl-rotulo-todos'), caixas: '.js-mdl-chk' });
   uiAtalhosLista({ pagina: document.getElementById('page-modelo'), corpo: document.getElementById('mdl-tbody'), busca: document.getElementById('mdl-search-wrap'), sel: mdlSel,
     aoAbrir: function(id) { showMessage('info', 'Modelo', 'Abrir o item ' + id); },
-    aoExpandir: function(id, abrir) { mdlAbertos[id] = abrir; mdlRender(); } });
+    aoExpandir: function(id, abrir) { mdlAbertos[id] = abrir; mdlRenderAnimado(); } });
   mdlRenderAbas();
   mdlRender();
 }
@@ -15535,15 +15434,10 @@ function _mdlFiltrados() {
 }
 
 // ---- Abas ----
-// Prévia das cartas do seletor 3D (celular): os três primeiros itens da aba, já em memória (sem pedir nada ao servidor)
-uiFlip3DPrevia('page-modelo', function(chave) {
-  var itens = estadoModelo.itens.filter(function(i) { return chave === 'todos' || i.aba === chave || i.extra === chave; });
-  return { itens: itens.slice(0, 3).map(function(i) { return { titulo: i.nome, meta: (i.codigo ? i.codigo + ' · ' : '') + i.status, tom: i.alerta ? i.alerta.tom : '' }; }) };
-});
 function mdlRenderAbas() {
   document.getElementById('mdl-tabs').innerHTML = MDL_ABAS.map(function(a) {
     var ativa = a.key === estadoModelo.aba, n = estadoModelo.itens.filter(function(i) { return a.key === 'todos' || i.aba === a.key || i.extra === a.key; }).length;
-    return '<button type="button" role="tab" aria-selected="' + ativa + '" class="ds-tabs-nav__item' + (ativa ? ' active' : '') + '" data-aba="' + a.key + '" data-rotulo-mobile="' + escapeHtml(a.label) + '"' + (a.criterio ? ' data-criterio="' + escapeHtml(a.criterio) + '"' : '') + ' data-on-click="pages_modelo.18" data-aclick0="' + a.key + '">' +
+    return '<button type="button" role="tab" aria-selected="' + ativa + '" class="ds-tabs-nav__item' + (ativa ? ' active' : '') + '" data-rotulo-mobile="' + escapeHtml(a.label) + '"' + ' data-on-click="pages_modelo.18" data-aclick0="' + a.key + '">' +
       '<span class="material-symbols-outlined">' + a.icon + '</span><span>' + escapeHtml(a.label) + '</span><span class="ds-tab-count">' + n + '</span></button>';
   }).join('');
   uiPaginaMedir(document.getElementById('page-modelo'));
@@ -15593,6 +15487,7 @@ function mdlRender() {
     tbody._mdlContornos = {};
     tbody.innerHTML = '<tr class="ds-tabela__msg"><td colspan="8"><div class="ds-vazio"><span class="material-symbols-outlined ds-vazio__icone">' + vz.icone + '</span><p class="ds-vazio__titulo">' + escapeHtml(vz.titulo) + '</p><p class="ds-vazio__texto">' + escapeHtml(vz.texto) + '</p></div></td></tr>';
     mdlSel.atualizar();
+    mdlExpandirUI();
     return;
   }
   tbody.innerHTML = '';
@@ -15639,14 +15534,15 @@ function mdlRender() {
     }
     if (sel) tr.classList.add('is-selecionada');
     if (i.alerta) tr.classList.add('ds-linha--' + i.alerta.tom);
-    var aberto = mdlArvore ? temFilhos && (mdlReorg || !!mdlAbertos[i.id]) : !mdlReorg && !!mdlAbertos[i.id];
-    pilha[nivel] = visivel && aberto;
-    if (!mdlArvore || temFilhos) tr.setAttribute('aria-expanded', String(aberto));
+    var expansivel = !mdlArvore || temFilhos || !!i.area;   // lista plana: todo item expande a área; hierarquia: só quem tem filhos ou área
+    var aberto = expansivel && !mdlReorg && !!mdlAbertos[i.id];   // reorganizando, a árvore abre inteira e sem área de detalhe
+    pilha[nivel] = visivel && temFilhos && (mdlReorg || aberto);
+    if (expansivel) tr.setAttribute('aria-expanded', String(aberto));
     if (!mdlReorg) { tr.setAttribute('data-on-click', 'ui.chamar'); tr.setAttribute('data-chamada-click', "mdlCliqueLinha(event, '" + i.id + "')"); }
     tr.innerHTML =
       (mdlReorg ? '<td class="ds-tabela__check"><span class="material-symbols-outlined ds-item-alca" data-title="Arrastar para reorganizar">drag_indicator</span></td>'
         : '<td class="ds-tabela__check"><input type="checkbox" class="js-mdl-chk" data-id="' + i.id + '" data-on-change="pages_modelo.19" data-achange0="' + i.id + '" aria-label="Selecionar item"' + (sel ? ' checked' : '') + '></td>') +
-      '<td class="ds-tabela__expandir">' + (!mdlArvore || temFilhos ? '<button type="button" class="ds-item-seta' + (aberto ? ' is-aberto' : '') + '" data-on-click="pages_modelo.26" data-aclick0="' + i.id + '" aria-label="Expandir"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button>' : '') + '</td>' +
+      '<td class="ds-tabela__expandir">' + (!expansivel ? '' : '<button type="button" class="ds-item-seta' + (aberto ? ' is-aberto' : '') + '" data-on-click="pages_modelo.26" data-aclick0="' + i.id + '" aria-label="Expandir"><span class="material-symbols-outlined" aria-hidden="true">chevron_right</span></button>') + '</td>' +
       '<td class="ds-tabela__principal"><div class="ds-tabela__id">' +
         '<span class="ds-badge-tipo ds-tabela__tipo">' + escapeHtml(i.tipo) + '</span>' +
         '<div class="ds-tabela__nome-wrap"><div class="ds-tabela__nome" data-title="' + escapeHtml(i.nome) + '">' + (i.codigo ? '<span class="ds-tabela__codigo">' + escapeHtml(i.codigo) + '</span>' : '') + escapeHtml(i.nome) + '</div></div></div>' + (i.avisoNome ? '<div class="ds-aviso-item ds-aviso-item--warning ds-tabela__so-desktop">' + i.avisoNome + '</div>' : '') + '</td>' +
@@ -15659,9 +15555,13 @@ function mdlRender() {
     var codigo = tr.querySelector('.ds-tabela__codigo');
     if (mdlArvore && nivel >= 2 && codigo) codigo.style.setProperty('color', tr.dataset.cor);   // do 3.º nível em diante o código também leva a cor do tipo
     tbody.appendChild(tr);
-    if (aberto && !mdlArvore) {
+    if (aberto && !temFilhos) {   // item com filhos expande os filhos; só o item com área (ou da lista plana) abre a área de detalhe
       var det = document.createElement('tr');
       det.className = 'ds-linha-detalhe';
+      if (mdlArvore) {   // a área de detalhe acompanha a linha na árvore (visível só com ela) e entra no contorno do grupo
+        det.dataset.id = 'd' + i.id; det.dataset.level = String(nivel + 1);
+        if (nivel > 0) { det.classList.add('ds-linha-filha'); if (visivel) det.classList.add('is-aberta'); }
+      }
       det.innerHTML = '<td colspan="8"></td>';   // área de detalhe vazia: cada página decide o que mostrar aqui
       tbody.appendChild(det);
     }
@@ -15671,6 +15571,39 @@ function mdlRender() {
   mdlSel.atualizar();
   mdlContornos();
   mdlReorgUI();
+  mdlExpandirUI();
+}
+
+// ---- Expandir/recolher tudo (OPCIONAL, vai junto com itens expansíveis): abre todos os itens expansíveis da página; se já estão todos abertos, recolhe ----
+// Cascata ao expandir (design system: uiCascata): redesenha e anima só as linhas que não estavam à vista (filhos, área de detalhe)
+function _mdlChavesVisiveis() {
+  var chaves = {};
+  Array.prototype.forEach.call(document.querySelectorAll('#mdl-tbody tr'), function(tr) {
+    if (tr.classList.contains('ds-linha-detalhe')) { var p = tr.previousElementSibling; if (p) chaves['d' + p.dataset.id] = true; }
+    else if (tr.dataset.id && _uiLinhaVisivel(tr)) chaves[tr.dataset.id] = true;
+  });
+  return chaves;
+}
+function mdlRenderAnimado() {
+  var antes = _mdlChavesVisiveis();
+  mdlRender();
+  uiCascata(Array.prototype.filter.call(document.querySelectorAll('#mdl-tbody tr'), function(tr) {
+    if (tr.classList.contains('ds-linha-detalhe')) { var p = tr.previousElementSibling; return !!p && !antes['d' + p.dataset.id]; }
+    return tr.dataset.id && _uiLinhaVisivel(tr) && !antes[tr.dataset.id];
+  }));
+}
+function _mdlLinhasExpansiveis() { return Array.prototype.slice.call(document.querySelectorAll('#mdl-tbody tr.ds-linha-lista[aria-expanded]')); }
+function _mdlTudoAberto() { var l = _mdlLinhasExpansiveis(); return l.length > 0 && l.every(function(tr) { return tr.getAttribute('aria-expanded') === 'true'; }); }
+function mdlExpandirUI() {
+  var b = document.getElementById('mdl-btn-expandir'), aberto = _mdlTudoAberto(), rot = aberto ? 'Recolher tudo' : 'Expandir tudo';
+  b.querySelector('.material-symbols-outlined').textContent = aberto ? 'unfold_less' : 'unfold_more';
+  b.setAttribute('data-title', rot); b.setAttribute('aria-label', rot);
+  b.disabled = !_mdlLinhasExpansiveis().length || mdlReorg;
+}
+function mdlExpandirTodos() {
+  var abrir = !_mdlTudoAberto();
+  _mdlLinhasExpansiveis().forEach(function(tr) { mdlAbertos[tr.dataset.id] = abrir; });
+  mdlRenderAnimado();
 }
 
 // ---- Reorganizar (OPCIONAL): o arrastar é do design system (uiReordenarAtivar); a tela só guarda a ordem. Lista plana: sem aninhar ----
@@ -15684,7 +15617,7 @@ function mdlReorgUI() {
   document.getElementById('mdl-filtros-selecao').classList.add('hidden');
   document.getElementById('mdl-reorg-texto').textContent = mdlReorgAlterado ? 'Ordem alterada' : 'Arraste os itens para reorganizar';
   ['mdl-reorg-divisor', 'mdl-reorg-confirmar', 'mdl-reorg-restaurar'].forEach(function(id) { document.getElementById(id).classList.toggle('hidden', !mdlReorgAlterado); });
-  uiReordenarAtivar(tbody, { linhas: 'tr.ds-linha-lista', aninhar: mdlArvore, aoSoltar: mdlAoSoltar });
+  uiReordenarAtivar(tbody, { linhas: 'tr.ds-linha-lista', aninhar: mdlArvore, aoSoltar: mdlAoSoltar, aoCancelar: function() { mdlReorgSair(false); } });
 }
 function mdlReorganizar() {
   if (mdlReorg) return;
@@ -15747,7 +15680,7 @@ function mdlCliqueLinha(ev, id) {
   if (ev.target.closest('input, button, a')) return;
   // Linha expansível (em qualquer largura): o toque expande/recolhe; só a linha comum abre o item
   var tr = ev.currentTarget.closest ? ev.currentTarget : null;
-  if (tr && tr.hasAttribute('aria-expanded')) { mdlAbertos[id] = !mdlAbertos[id]; mdlRender(); return; }
+  if (tr && tr.hasAttribute('aria-expanded')) { mdlAbertos[id] = !mdlAbertos[id]; mdlRenderAnimado(); return; }
   if (window.innerWidth <= 768) { mdlSel.cliqueMobile(id, function() { showMessage('info', 'Modelo', 'Abrir o item ' + id); }); return; }
   // Desktop: linha comum → o clique abre o item. Selecionar é pela caixa (ou Ctrl+A).
   showMessage('info', 'Modelo', 'Abrir o item ' + id);
@@ -15789,6 +15722,7 @@ function mdlListaMenu() {
   var lista = [
     { icone: 'refresh', rotulo: 'Atualizar', onclick: 'mdlRender()' },
     { icone: 'low_priority', rotulo: 'Reorganizar', onclick: 'mdlReorganizar()', desabilitado: document.getElementById('mdl-btn-reorg').disabled },
+    { icone: _mdlTudoAberto() ? 'unfold_less' : 'unfold_more', rotulo: _mdlTudoAberto() ? 'Recolher tudo' : 'Expandir tudo', onclick: 'mdlExpandirTodos()', desabilitado: document.getElementById('mdl-btn-expandir').disabled },
     { icone: 'download', rotulo: 'Baixar', desabilitado: true },
     { icone: 'print', rotulo: 'Imprimir', desabilitado: true }
   ].map(_acoesLinhaNormalizar);
@@ -15811,7 +15745,8 @@ uiRegistrarAcoes('pages_modelo', {
   '30': function () { mdlReorgSair(false); },
   '31': function () { mdlReorgSair(true); },
   '32': function () { mdlReorgRestaurar(); },
-  '26': function () { var id = this.dataset.aclick0; mdlAbertos[id] = !mdlAbertos[id]; mdlRender(); },
+  '33': function () { mdlExpandirTodos(); },
+  '26': function () { var id = this.dataset.aclick0; mdlAbertos[id] = !mdlAbertos[id]; mdlRenderAnimado(); },
   '27': function () { showMessage('info', 'Modelo', 'Ação necessária: ' + this.dataset.aclick0); },
   '24': function () { showMessage('info', 'Modelo', 'Abriria o painel lateral de detalhes'); },
   '2': function () { mdlRender(); },
@@ -19581,9 +19516,8 @@ function _detGruposMenuPlano(p) {
   return grupos;
 }
 
-// ---- Celular: o botão flutuante reúne as ações da aba (principal) e as do plano -------------------------------------------
+// ---- Celular: o botão flutuante só tem as ações da ABA; as do plano ficam no ⋮ do topo (gaveta "Plano": detAbrirGavetaPlano) --------------------
 // Cada aba registra em DET_ACOES_ABA[idDaAba] uma função que devolve suas ações (formato de acoesLinhaHTML; a 1ª visível é a principal do botão).
-// O botão traz as ações da aba (a 1ª é a principal), a ação de trâmite do plano, "Detalhes do plano" e "Mais do plano" (gaveta com o restante do menu do plano).
 var DET_ACOES_ABA = {};
 function detFabAtualizar() {
   const pagina = document.getElementById('page-plano-detalhe');
@@ -19591,20 +19525,22 @@ function detFabAtualizar() {
   const p = dadosDetalhados.plano;
   const fnAba = DET_ACOES_ABA[_detAbaAtivaId()];
   const daAba = (fnAba ? fnAba() : []).filter(function(a) { return !a.oculto; }).map(function(a, i) { return Object.assign({}, a, { principal: i === 0 }); });
-  const tramite = _detAcaoTramitePrincipal(p);
-  // ordem de baixo para cima no botão: a ação principal da aba, as demais da aba, o trâmite, "Detalhes" e "Mais do plano" (no topo)
-  const itens = [{ icone: 'more_vert', rotulo: 'Mais do plano', onclick: 'detAbrirGavetaPlano()' },
-    { icone: 'right_panel_open', rotulo: 'Detalhes do plano', onclick: 'abrirDetalhesPlanoPainel()', principal: !daAba.length && !tramite }];
-  if (tramite) itens.push({ icone: tramite.icone, rotulo: tramite.rotulo, onclick: tramite.onclick, principal: !daAba.length });
-  itens.push.apply(itens, daAba.slice().reverse());
-  uiAcoesPaginaMontar(pagina, 'detalhe-plano', itens);
+  uiTopoMenuRegistrar('plano-detalhe', detAbrirGavetaPlano);
+  uiTopoAtualizar();
+  // ordem de baixo para cima no botão: a ação principal da aba por último (a mais perto do dedo)
+  uiAcoesPaginaMontar(pagina, 'detalhe-plano', daAba.slice().reverse().map(function(a, i, v) { return Object.assign({}, a, { principal: i === v.length - 1 }); }));
 }
 function detAbrirGavetaPlano() {
   if (!dadosDetalhados || !dadosDetalhados.plano) return;
-  const todos = [];
-  _detGruposMenuPlano(dadosDetalhados.plano).forEach(function(g) { g.itens.forEach(function(it) { todos.push(_acoesLinhaNormalizar(it)); }); });
-  if (!todos.length) return;
-  uiSheetAbrir({ titulo: 'Plano', corpo: '<div role="menu">' + _acoesLinhaItensHTML(todos, 'uiSheetFechar(); ') + '</div>' });
+  const p = dadosDetalhados.plano, todos = [];
+  // 1) trâmite do plano (o botão principal da web); 2) painel lateral: detalhes, atividade e configurações; 3) o restante do menu do plano
+  const tramite = _detAcaoTramitePrincipal(p);
+  if (tramite) todos.push(_acoesLinhaNormalizar({ icone: tramite.icone, label: tramite.rotulo, onclick: tramite.onclick }));
+  [{ icone: 'right_panel_open', label: 'Detalhes do plano', onclick: 'abrirDetalhesPlanoPainel()' },
+    { icone: 'history', label: 'Atividade', onclick: "abrirPainelDetalhes('atividade')" },
+    { icone: 'settings', label: 'Configurações do plano', onclick: 'abrirConfigPlanoCfg()' }].forEach(function(it) { todos.push(_acoesLinhaNormalizar(it)); });
+  _detGruposMenuPlano(p).forEach(function(g) { g.itens.forEach(function(it) { todos.push(_acoesLinhaNormalizar(it)); }); });
+  uiSheetAbrir({ titulo: uiTopoTitulo(), corpo: '<div role="menu">' + _acoesLinhaItensHTML(todos, 'uiSheetFechar(); ') + '</div>' });
 }
 
 function _detMontarMenu(gatilho, grupos) {
@@ -19816,7 +19752,6 @@ function _appsRenderizarAbas(appsInstalados) {
     btn.setAttribute('role', 'tab');
     btn.setAttribute('aria-selected', 'false');
     btn.setAttribute('data-app-tab', '1');
-    btn.setAttribute('data-aba', app.pageParam);
     btn.onclick = function() { mudarView(app.pageParam); };
 
     const icone = app.icone || 'extension';
@@ -19896,13 +19831,6 @@ function _appRenderizarDescontinuado(pageParam, app, permissoes) {
     '</div>';
 }
 
-// Prévia das cartas do seletor de abas (celular): os três primeiros itens já em memória (as demais abas mostram só o critério e a contagem)
-uiFlip3DPrevia('page-plano-detalhe', function(chave) {
-  var d = dadosDetalhados || {};
-  if (chave === 'elementos') return { itens: (d.elementos || []).slice(0, 3).map(function(e) { return { titulo: e.titulo, meta: (e.codigo ? e.codigo + ' · ' : '') + (e.status || '') }; }) };
-  if (chave === 'metas') return { itens: ((typeof _indIndicadores !== 'undefined' && _indIndicadores.length ? _indIndicadores : d.indicadores) || []).slice(0, 3).map(function(i) { return { titulo: i.nome, meta: [i.frequencia, i.unidade].filter(Boolean).join(' · ') }; }) };
-  return null;
-});
 
 // pages_plano_detalhe_modais — modais e wizards (abrir, validar, salvar)
 

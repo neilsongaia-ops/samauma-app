@@ -733,6 +733,14 @@ input[type="checkbox"] { accent-color: var(--ds-color-action); }   /* checkbox: 
 .ds-tabela tbody tr.is-solta-antes td { border-top: var(--ds-borda-forte) solid var(--ds-color-action); }
 .ds-tabela tbody tr.is-solta-depois td { border-bottom: var(--ds-borda-forte) solid var(--ds-color-action); }
 .ds-tabela tbody tr.is-solta-dentro td { background: var(--ds-color-info-bg); }
+/* entre itens: os dois vizinhos do ponto de soltura se afastam de leve (uiReordenarAtivar marca is-afasta-cima/baixo) */
+.ds-tabela--reorganizando tbody tr { transition: transform var(--ds-duration-base) var(--ds-ease-emphasized); }
+.ds-tabela--reorganizando tbody tr.is-afasta-cima { transform: translateY(calc(-1 * var(--ds-space-1))); }
+.ds-tabela--reorganizando tbody tr.is-afasta-baixo { transform: translateY(var(--ds-space-1)); }
+/* cascata ao expandir (uiCascata): as linhas novas entram em sequência, subindo de leve */
+@keyframes ds-cascata-entrar { from { opacity: 0; transform: translateY(calc(-1 * var(--ds-space-3))) scale(0.97); } to { opacity: 1; transform: none; } }
+.ds-tabela tbody tr.is-cascata { --ds-cascata-i: 0; transform-origin: top center; animation: ds-cascata-entrar var(--ds-duration-slow) var(--ds-ease-emphasized) backwards; animation-delay: calc(var(--ds-cascata-i) * var(--ds-duration-fast) / 3); }
+@media (prefers-reduced-motion: reduce) { .ds-tabela--reorganizando tbody tr { transition: none; } .ds-tabela tbody tr.is-cascata { animation: none; } }
 .ds-arraste-fantasma {
   position: fixed; z-index: var(--ds-z-toast); pointer-events: none; transform: translate(-50%, calc(-100% - var(--ds-space-3))); max-width: 70vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   padding: var(--ds-space-1) var(--ds-space-3); border-radius: var(--ds-r-pill); background: var(--ds-color-surface-2); color: var(--ds-color-text); border: var(--ds-borda) solid var(--ds-color-action);
@@ -767,9 +775,12 @@ input[type="checkbox"] { accent-color: var(--ds-color-action); }   /* checkbox: 
   .ds-tabela--reorganizando .ds-item-alca { padding: var(--ds-space-3) var(--ds-space-1); }
   /* a linha reserva sempre o espaço da alça (esquerda + alça + folga), com ou sem seta na lista: o conteúdo nunca encosta nela */
   .ds-tabela.ds-tabela--reorganizando tbody tr { padding-left: calc(var(--ds-space-1) + var(--ds-icon-lg) + 2 * var(--ds-space-1) + var(--ds-space-2)); }
-  .ds-tabela tbody tr.is-solta-antes { box-shadow: 0 calc(-1 * var(--ds-borda-forte)) 0 var(--ds-color-action); }
-  .ds-tabela tbody tr.is-solta-depois { box-shadow: 0 var(--ds-borda-forte) 0 var(--ds-color-action); }
-  .ds-tabela tbody tr.is-solta-dentro { outline: var(--ds-borda-forte) solid var(--ds-color-action); outline-offset: calc(-1 * var(--ds-borda-forte)); }
+  .ds-tabela tbody tr.is-solta-antes td, .ds-tabela tbody tr.is-solta-depois td { border-top-width: 0; border-bottom-width: 0; }   /* a linha azul é da linha inteira: a borda por célula (web) viraria um sublinhado em cada faixa do item */
+  .ds-tabela tbody tr.is-solta-antes { box-shadow: inset 0 var(--ds-borda-forte) 0 var(--ds-color-action); }
+  .ds-tabela tbody tr.is-solta-depois { box-shadow: inset 0 calc(-1 * var(--ds-borda-forte)) 0 var(--ds-color-action); }
+  /* receptor: a linha inteira fica marcada (fundo + anel recuado das bordas, que o contorno do grupo esconderia), sem linha só embaixo; a linha azul é só do entre-itens (is-solta-antes/depois) */
+  .ds-tabela tbody tr.is-solta-dentro { background: var(--ds-color-info-bg); outline: var(--ds-borda-forte) solid var(--ds-color-action); outline-offset: calc(-1 * var(--ds-space-2)); border-radius: var(--ds-r-lg); }
+  .ds-tabela tbody tr.is-solta-dentro td { background: none; }
   .ds-tabela--selecionando thead th.ds-tabela__ordenar, .ds-tabela--selecionando thead th.ds-tabela__cab-acoes { display: none; }
   .ds-tabela--selecionando thead th.ds-tabela__check { display: flex; align-items: center; gap: var(--ds-space-2); width: auto; padding: 2px 0; border: none; }
   .ds-tabela thead .ds-tabela__card { display: inline; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); text-transform: none; letter-spacing: normal; color: var(--ds-color-text); cursor: pointer; }
@@ -865,66 +876,35 @@ input[type="checkbox"] { accent-color: var(--ds-color-action); }   /* checkbox: 
   .ds-pagina:has(> .ds-fab) > .ds-pagina__acoes, .ds-pagina:has(> .ds-fab) .ds-pagina__hero > .ds-pagina__acoes { display: none; }
 }
 
-/* Abas no celular — botão em pilha (.ds-fab-stack) e seletor 3D (.ds-flip3d). Nunca à mão: uiCardStackAtualizar monta o botão dentro do .ds-fab (acima do botão principal;
-   sem .ds-fab na página ele cria o seu) e uiFlip3DAbrir monta o seletor (app_ui_utils.html). O selo do botão mostra o ícone da aba atual. */
+/* Abas no celular — botão em pilha (.ds-fab-stack) e grade de abas (.ds-abas-grade). Nunca à mão: uiCardStackAtualizar monta o botão dentro do .ds-fab (acima do botão principal;
+   sem .ds-fab na página ele cria o seu) e uiAbasGradeAbrir monta a grade (app_ui_utils.html). O selo do botão mostra o ícone da aba atual. */
 .ds-fab-stack { display: none; position: relative; align-self: flex-end; pointer-events: auto; margin-bottom: var(--ds-space-1); transition: opacity var(--ds-duration-fast) var(--ds-ease-standard), transform var(--ds-duration-base) var(--ds-ease-emphasized); }
 @media (max-width: 768px) { .ds-fab-stack { display: flex; } }
-.ds-fab.is-aberto .ds-fab-stack { opacity: 0; transform: scale(0.7) translateY(var(--ds-space-4)); pointer-events: none; }
-.ds-fab-stack__btn { position: relative; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; padding: 0; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-2xl); background: var(--ds-color-surface); color: var(--ds-color-action); box-shadow: var(--ds-shadow-3); cursor: pointer; }
+.ds-fab.is-aberto .ds-fab-stack { position: absolute; opacity: 0; transform: scale(0.7) translateY(var(--ds-space-4)); pointer-events: none; }
+.ds-fab-stack__btn { position: relative; display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; padding: 0; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-pill); background: var(--ds-color-surface); color: var(--ds-color-action); box-shadow: var(--ds-shadow-3); cursor: pointer; }
 .ds-fab-stack__btn:active { transform: scale(0.95); }
-.ds-fab-stack__btn::before, .ds-fab-stack__btn::after { content: ''; position: absolute; inset: 0; border-radius: var(--ds-r-2xl); border: var(--ds-borda) solid var(--ds-color-border); background: var(--ds-color-surface-2); pointer-events: none; }
-.ds-fab-stack__btn::before { z-index: -1; transform: translateY(-5px) scale(0.88); box-shadow: var(--ds-shadow-1); }
-.ds-fab-stack__btn::after { z-index: -2; opacity: 0.6; transform: translateY(-9px) scale(0.76); }
 .ds-fab-stack__btn .material-symbols-outlined { font-size: var(--ds-icon-xl); }
 .ds-fab-stack__selo { position: absolute; top: calc(-1 * var(--ds-space-2)); right: calc(-1 * var(--ds-space-2)); display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); color: var(--ds-color-action); box-shadow: var(--ds-shadow-1); pointer-events: none; }
 .ds-fab-stack__selo .material-symbols-outlined { font-size: var(--ds-icon-xs); }
 
-.ds-flip3d { position: fixed; inset: 0; z-index: calc(var(--ds-z-modal) + 20); display: flex; flex-direction: column; background: var(--ds-glass-bg-strong); backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate)); color: var(--ds-color-text); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--ds-duration-slow) var(--ds-ease-standard), visibility var(--ds-duration-slow) var(--ds-ease-standard); user-select: none; }
-.ds-flip3d.is-aberto { opacity: 1; visibility: visible; pointer-events: auto; }
-.ds-flip3d__cab { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-3); padding: max(var(--ds-space-3), env(safe-area-inset-top)) var(--ds-space-4) var(--ds-space-1); }
-.ds-flip3d__titulo { margin: 0; min-width: 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-flip3d__palco { position: relative; flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; perspective: 1000px; perspective-origin: 55% 42%; overflow: hidden; touch-action: none; }
-.ds-flip3d__pilha { position: relative; width: min(80vw, 300px); height: min(54vh, 350px); transform-style: preserve-3d; transform: translate(var(--ds-space-2), var(--ds-space-5)); }
-/* a pose da carta vem da distância até a carta em foco (--d): as de trás afundam, sobem e encolhem; a já folheada sai para a frente */
-.ds-flip3d__carta { position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-2xl); background: var(--ds-color-surface); box-shadow: var(--ds-shadow-4); cursor: pointer; pointer-events: none; will-change: transform, opacity;
-  transform: translate3d(calc(var(--d) * -16px), calc(var(--d) * -20px), calc(var(--d) * -75px)) rotateY(-13deg) scale(calc(1 - var(--d) * 0.04)); opacity: calc(1 - var(--d) * 0.14); z-index: calc(100 - var(--d));
-  transition: transform 500ms var(--ds-ease-emphasized), opacity var(--ds-duration-slow) var(--ds-ease-standard), border-color var(--ds-duration-slow) var(--ds-ease-standard); }
-.ds-flip3d__carta.is-alcance { pointer-events: auto; }
-.ds-flip3d__carta.is-foco { transform: translate3d(0, 0, 0) rotateY(-8deg) scale(1); opacity: 1; z-index: 100; border-color: var(--ds-color-action); }
-.ds-flip3d__carta.is-antes { transform: translate3d(calc(50px + var(--d) * 30px), calc(100px + var(--d) * 20px), calc(180px + var(--d) * 40px)) rotateY(-30deg) scale(0.9); opacity: 0; pointer-events: none; z-index: calc(50 + var(--d)); }
-.ds-flip3d__carta.is-longe { transform: translate3d(-96px, -120px, -450px) rotateY(-15deg) scale(0.7); opacity: 0; z-index: 1; }
-.ds-flip3d.is-escolhendo .ds-flip3d__carta:not(.is-foco) { opacity: 0; }
-.ds-flip3d.is-escolhendo .ds-flip3d__carta.is-foco { transform: translate3d(0, 0, 60px) rotateY(0) scale(1.04); }
-.ds-flip3d__carta-cab { flex: none; display: flex; align-items: center; gap: var(--ds-space-2); padding: var(--ds-space-3); background: var(--ds-color-surface-2); border-bottom: var(--ds-borda) solid var(--ds-color-border); }
-.ds-flip3d__carta.is-aba-ativa .ds-flip3d__carta-cab { background: var(--ds-color-info-bg); }
-.ds-flip3d__carta-ico { flex: none; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface); color: var(--ds-color-action); }
-.ds-flip3d__carta-ico .material-symbols-outlined { font-size: var(--ds-icon-md); }
-.ds-flip3d__carta-nome { flex: 1 1 auto; min-width: 0; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-flip3d__carta-corpo { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--ds-space-2); padding: var(--ds-space-3); overflow: hidden; }
-.ds-flip3d__criterio { margin: 0; font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.ds-flip3d__kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--ds-space-2); }
-.ds-flip3d__kpi, .ds-flip3d__item { display: flex; border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-lg); background: var(--ds-color-surface-2); padding: var(--ds-space-2); }
-.ds-flip3d__kpi { flex-direction: column; gap: var(--ds-space-1); }
-.ds-flip3d__kpi-valor { font-size: var(--ds-text-md); font-weight: var(--ds-weight-bold); }
-.ds-flip3d__kpi-rotulo { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-flip3d__item { align-items: center; gap: var(--ds-space-2); }
-.ds-flip3d__ponto { flex: none; width: 8px; height: 8px; border-radius: var(--ds-r-pill); background: var(--ds-color-action); }
-.ds-flip3d__ponto--danger { background: var(--ds-color-danger); }
-.ds-flip3d__ponto--warning { background: var(--ds-color-warning); }
-.ds-flip3d__ponto--success { background: var(--ds-color-success); }
-.ds-flip3d__ponto--info { background: var(--ds-color-info); }
-.ds-flip3d__item-txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-.ds-flip3d__item-titulo { font-size: var(--ds-text-xs); font-weight: var(--ds-weight-semibold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-flip3d__item-meta { font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); }
-.ds-flip3d__vazio { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--ds-space-2); font-size: var(--ds-text-xs); color: var(--ds-color-text-muted); text-align: center; }
-.ds-flip3d__vazio .material-symbols-outlined { font-size: var(--ds-icon-xl); opacity: 0.5; }
-.ds-flip3d__rodape { flex: none; display: flex; flex-direction: column; align-items: center; gap: var(--ds-space-2); padding: var(--ds-space-2) var(--ds-space-4) max(var(--ds-space-3), env(safe-area-inset-bottom)); }
-.ds-flip3d__pontos { display: flex; align-items: center; gap: var(--ds-space-1-5); padding: var(--ds-space-2) var(--ds-space-3); }
-.ds-flip3d__ponto-nav { width: 8px; height: 8px; padding: 0; border: 0; border-radius: var(--ds-r-pill); background: var(--ds-color-border-strong); cursor: pointer; transition: width var(--ds-duration-base) var(--ds-ease-standard), background var(--ds-duration-base) var(--ds-ease-standard); }
-.ds-flip3d__ponto-nav.is-ativo { width: 20px; background: var(--ds-color-action); }
-.ds-flip3d__atual { max-width: 260px; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ds-flip3d__adicionar { display: inline-flex; align-items: center; gap: var(--ds-space-1); padding: var(--ds-space-2) var(--ds-space-4); border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-pill); background: var(--ds-color-surface); color: var(--ds-color-action); font-family: inherit; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; }
-.ds-flip3d__adicionar .material-symbols-outlined { font-size: var(--ds-icon-md); }
+/* Grade de abas no celular (.ds-abas-grade): tela cheia de vidro com um quadrado por aba, duas colunas (como as abas do Chrome no celular). Nunca à mão: uiAbasGradeAbrir (app_ui_utils.html). */
+.ds-abas-grade { position: fixed; inset: 0; z-index: calc(var(--ds-z-modal) + 20); display: flex; flex-direction: column; background: var(--ds-glass-bg-strong); backdrop-filter: blur(var(--ds-glass-blur)) saturate(var(--ds-glass-saturate)); color: var(--ds-color-text); opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--ds-duration-base) var(--ds-ease-standard), visibility var(--ds-duration-base) var(--ds-ease-standard); }
+.ds-abas-grade.is-aberto { opacity: 1; visibility: visible; pointer-events: auto; }
+.ds-abas-grade__cab { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-3); padding: max(var(--ds-space-3), env(safe-area-inset-top)) var(--ds-space-4) var(--ds-space-2); }
+.ds-abas-grade__titulo { margin: 0; min-width: 0; font-size: var(--ds-text-lg); font-weight: var(--ds-weight-bold); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ds-abas-grade__fechar { flex: none; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; padding: 0; border: 0; background: none; color: var(--ds-color-text); cursor: pointer; }
+.ds-abas-grade__fechar .material-symbols-outlined { font-size: var(--ds-icon-xl); }
+.ds-abas-grade__grade { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: min-content; gap: var(--ds-space-3); padding: var(--ds-space-2) var(--ds-space-4) var(--ds-space-4); }
+.ds-abas-grade__quadro { position: relative; aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--ds-space-2); padding: var(--ds-space-3); border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-2xl); background: var(--ds-color-surface); color: var(--ds-color-text); font-family: inherit; cursor: pointer; box-shadow: var(--ds-shadow-2); }
+.ds-abas-grade__quadro:active { transform: scale(0.97); }
+.ds-abas-grade__quadro.is-ativa { border-color: var(--ds-color-action); }
+.ds-abas-grade__ico { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: var(--ds-r-xl); background: var(--ds-color-surface-2); color: var(--ds-color-action); }
+.ds-abas-grade__ico .material-symbols-outlined { font-size: var(--ds-icon-xl); }
+.ds-abas-grade__nome { max-width: 100%; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-bold); text-align: center; overflow-wrap: anywhere; }
+.ds-abas-grade__quadro .ds-badge { position: absolute; top: var(--ds-space-2); right: var(--ds-space-2); }
+.ds-abas-grade__rodape { flex: none; display: flex; justify-content: center; padding: var(--ds-space-2) var(--ds-space-4) max(var(--ds-space-3), env(safe-area-inset-bottom)); }
+.ds-abas-grade__adicionar { display: inline-flex; align-items: center; gap: var(--ds-space-1); padding: var(--ds-space-2) var(--ds-space-4); border: var(--ds-borda) solid var(--ds-color-border); border-radius: var(--ds-r-pill); background: var(--ds-color-surface); color: var(--ds-color-action); font-family: inherit; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-semibold); cursor: pointer; }
+.ds-abas-grade__adicionar .material-symbols-outlined { font-size: var(--ds-icon-md); }
 
 /* Voltar: botão discreto (.ds-icon-action) à esquerda do título; injetado por uiVoltarGarantir (app_ui_utils.html) em todo .ds-pagina__hero. Some quando não há para onde voltar. */
 .ds-pagina__voltar { flex: none; margin-left: calc(-1 * var(--ds-space-2)); background: none; border-color: transparent; box-shadow: none; }
@@ -1259,7 +1239,7 @@ body.high-contrast .ds-tabs-nav__item.active { border-bottom-color: var(--ds-col
 .ds-tabs-nav__item.active .ds-tab-count--notificacao { background: var(--ds-color-notificacao); color: var(--ds-color-on-notificacao); }
 
 @media (max-width: 768px) {
-  /* Abas no mobile: saem da página; o botão em pilha (.ds-fab-stack) acima do flutuante abre o seletor 3D (.ds-flip3d) */
+  /* Abas no mobile: saem da página; o botão em pilha (.ds-fab-stack) acima do flutuante abre a grade de abas (.ds-abas-grade) */
   .ds-tabs-nav { display: none; }
 }
 }

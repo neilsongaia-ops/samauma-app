@@ -2676,9 +2676,12 @@ function toggleExpandirTudo() {
   // Tabela hierárquica (modo padrão)
   const tbody = document.getElementById('el-tbody');
   if (tbody) {
+    const novas = [];
     tbody.querySelectorAll('tr.ds-linha-filha').forEach(tr => {
+      if (arvoreTotalmenteExpandida && !tr.classList.contains('is-aberta')) novas.push(tr);
       tr.classList.toggle('is-aberta', arvoreTotalmenteExpandida);
     });
+    uiCascata(novas);
     tbody.querySelectorAll('.ds-item-seta').forEach(btn => {
       btn.classList.toggle('is-aberto', arvoreTotalmenteExpandida);
       btn.setAttribute('aria-label', arvoreTotalmenteExpandida ? 'Recolher' : 'Expandir');
@@ -3794,12 +3797,12 @@ function elToggleFilhos(ev, parentId) {
   btn.setAttribute('aria-label', expanded ? 'Recolher' : 'Expandir');
 
   // Abrir revela só o próximo nível (os netos abrem quando o filho for aberto); recolher esconde todos os descendentes e fecha as setas deles
-  var parentIds = new Set([parentId]);
+  var parentIds = new Set([parentId]), novas = [];
   document.querySelectorAll('#el-tbody tr').forEach(function(tr) {
     var pai = tr.dataset.pai;
     if (!pai || !parentIds.has(pai)) return;
     if (expanded) {
-      tr.classList.add('is-aberta');
+      tr.classList.add('is-aberta'); novas.push(tr);
     } else {
       tr.classList.remove('is-aberta');
       var subBtn = tr.querySelector('.ds-item-seta');
@@ -3811,6 +3814,7 @@ function elToggleFilhos(ev, parentId) {
     }
   });
   elAtualizarGruposArvore();
+  if (expanded) uiCascata(novas);
 }
 
 /** Celular: cola o item raiz e seus descendentes abertos num só bloco e desenha o contorno colorido (cor do tipo do raiz) quando há itens abertos; liga a faixa da seta quando há hierarquia.
@@ -4564,7 +4568,8 @@ function _ativarDragTabela() {
   uiReordenarAtivar(document.getElementById('el-tbody'), {
     aninhar: true,
     rotulo: function(tr) { return ((tr.querySelector('.ds-tabela__codigo') || {}).textContent || '') + ' ' + ((tr.querySelector('.ds-tabela__nome') || {}).dataset || {}).title; },
-    aoSoltar: _elAoSoltar
+    aoSoltar: _elAoSoltar,
+    aoCancelar: _cancelarModoReorganizar
   });
 }
 
